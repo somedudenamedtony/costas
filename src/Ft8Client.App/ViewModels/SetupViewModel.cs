@@ -400,7 +400,7 @@ public sealed partial class SetupViewModel : ObservableObject
         if (rigctl is null) return;
         try
         {
-            _allModels = await HamlibModels.LoadAsync(rigctl, CancellationToken.None);
+            _allModels = HamlibModels.ForPicker(await HamlibModels.LoadAsync(rigctl, CancellationToken.None), _host.Settings.Current.Developer.Enabled);
         }
         catch (Exception ex) when (ex is RigException or System.ComponentModel.Win32Exception)
         {

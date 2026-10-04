@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Ft8Client.App.ViewModels"
         xmlns:v="using:Ft8Client.App.Views"
+        xmlns:rig="using:Ft8Client.Rig"
         x:Class="Ft8Client.App.Views.SetupWindow"
         x:DataType="vm:SetupViewModel"
         Title="Set up FT8 Client" Width="860" Height="600" WindowStartupLocation="CenterOwner">
@@ -27,7 +28,7 @@
           <TextBlock Text="Your radio" FontSize="20" FontWeight="SemiBold" />
           <TextBlock Text="Model" /><TextBox Text="{Binding ModelSearch}" PlaceholderText="Search, e.g. IC-7300" Width="320" HorizontalAlignment="Left" />
           <ListBox ItemsSource="{Binding Models}" SelectedItem="{Binding Model}" Height="140" Width="420" HorizontalAlignment="Left">
-            <ListBox.ItemTemplate><DataTemplate x:DataType="x:Object"><TextBlock Text="{Binding $parent[ListBoxItem].DataContext}" /></DataTemplate></ListBox.ItemTemplate>
+            <ListBox.ItemTemplate><DataTemplate x:DataType="rig:HamlibModel"><TextBlock Text="{Binding Display}" /></DataTemplate></ListBox.ItemTemplate>
           </ListBox>
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Port" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding Ports}" SelectedItem="{Binding Port}" MinWidth="120" />
