@@ -131,6 +131,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Decode journal and WAV saving (null in simulation).</summary>
     public RecordingService? Recording { get; private set; }
 
+    /// <summary>Update checks.</summary>
+    public UpdateService Updates { get; private set; } = null!;
+
     /// <summary>WSJT-X UDP interop.</summary>
     public UdpInteropService Udp { get; private set; } = null!;
 
@@ -257,6 +260,9 @@ public sealed class AppHost : IAsyncDisposable
 
         Psk = new PskReporterService(Session, Settings, Spots, Countries, Clock, uploadsAllowed: !Simulating);
         Psk.Start();
+
+        Updates = new UpdateService(Settings, Path.Combine(Paths.Temp, "updates"));
+        Updates.Start();
 
         Udp = new UdpInteropService(Session, Settings, offAir: Simulating);
         log.Stored += Udp.OnLogged;
@@ -471,6 +477,7 @@ public sealed class AppHost : IAsyncDisposable
         _mutedOutput?.Dispose();
         Qrz?.Dispose();
         Udp?.Dispose();
+        Updates?.Dispose();
         Recording?.Dispose();
         if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);
         await _rig.DisposeAsync().ConfigureAwait(false);

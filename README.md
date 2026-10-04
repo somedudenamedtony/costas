@@ -20,10 +20,11 @@ in `docs/07-milestones.md` up to M7 passes (`dotnet test`: 487 tests, Linux, wit
 | M5 contacts | Contact engine rules; ten simulated partner contacts end to end | On-air contacts |
 | M6 PSK Reporter | IPFIX byte for byte; feed against a local broker incl. reconnect and de-dupe; query fallback | Live MQTT subscription (port blocked in the build sandbox, V7); spot upload seen on pskreporter.info |
 | M7 setup, settings, log, interop | UDP datagrams for every type; settings migration; secrets kept out of settings, logs and the bundle | GridTracker on Windows; first-run timing with an IC-7300 |
-| M8 FT4, hardening, release | FT4 vectors and decode round trip | 24-hour soak, code signing, user guide (auto-update deferred while the repository is private, D11) |
+| M8 FT4, hardening, release | FT4 vectors and decode round trip | 24-hour soak, code signing, user guide |
 
-Install on Windows: every CI run builds `Costas-Setup-<version>.exe` (the **Costas-Setup** artifact on the
-Actions run), self-contained with `jt9` and Hamlib bundled. It is not code-signed yet, so Windows SmartScreen will warn
+Install on Windows: download `Costas-Setup-<version>.exe` from the repository's **Releases** page (every green build of
+`main` is published there; the installed app checks for newer ones daily and offers to install them). Every CI run also
+builds the installer as the **Costas-Setup** artifact on the Actions run, self-contained with `jt9` and Hamlib bundled. It is not code-signed yet, so Windows SmartScreen will warn
 on first run. To build it locally: `scripts/build-installer.ps1`.
 Running a newer installer upgrades the existing install in place and keeps the log and settings; an install of a build
 from before the rename ("FT8 Client") is upgraded too, and its data is moved to the Costas data folder on first start.

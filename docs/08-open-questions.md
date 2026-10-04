@@ -14,7 +14,7 @@
 | D8 | Split operation | Off in v1 | Enable "Fake it" later if Tx audio purity matters on the owner's radio |
 | D9 | Simulation by default | **Decided by the owner (2026-10-04):** no replayed or made-up data unless asked. Simulation only with `--simulate` or the hidden developer mode (seven clicks on the product name in About), which can also use Hamlib's test radio | |
 | D10 | Tuning the radio at start-up | Not done: the dial is read from the radio, and only picking a band tunes it. If the radio is outside the selected band, transmit is refused by the band-edge check | Owner to decide whether start-up should tune the radio to the selected band |
-| D11 | Updates | **Decided by the owner (2026-10-04):** no in-app update check while the repository is private. Updates are installed by hand from the CI installer, which upgrades in place and keeps data | Revisit when the repository goes public: GitHub Releases can then serve an update check |
+| D11 | Updates | **Decided by the owner (2026-10-04):** the repository is public; the app checks GitHub Releases a minute after start and daily (Settings can turn it off), offers a newer build in a bar, and on request downloads it, verifies its SHA-256 and runs the installer, which upgrades in place. Every green build of `main` is published as a release | |
 
 ## Facts to verify (marked VERIFY in the docs)
 

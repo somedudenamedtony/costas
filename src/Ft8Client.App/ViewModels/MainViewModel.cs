@@ -45,6 +45,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Reach = new ReachViewModel(host.Spots, host.Countries, () => host.Session.LogIndex, () => host.Clock.UtcNow);
         LogView = new LogViewModel(host.Qsos, host.Countries, () => (host.Settings.Current.Profile.Id, host.Settings.Current.Profile.Callsign),
             host.Qrz.SyncNowAsync, () => host.Qrz.LastSyncUtc, host.RebuildLogIndex);
+        Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
+            () => Shutdown());
         Modes = ["FT8", "FT4"];
         ApplySettings();
         _host.Settings.Changed += _ => Dispatch(ApplySettings);
@@ -52,6 +54,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>Marshals to the UI thread (set by the view).</summary>
     public static Action<Action> Dispatch { get; set; } = a => a();
+
+    /// <summary>Closes the app normally (set by the app; releases PTT and stops the child processes).</summary>
+    public static Action Shutdown { get; set; } = () => { };
+
+    /// <summary>The update bar.</summary>
+    public UpdateBarViewModel Update { get; }
 
     /// <summary>Operate view.</summary>
     public OperateViewModel Operate { get; }

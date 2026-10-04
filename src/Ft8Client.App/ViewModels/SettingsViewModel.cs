@@ -62,6 +62,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Units = s.Appearance.Units;
         Jt9Path = s.Paths.Jt9 ?? string.Empty;
         HamlibDir = s.Paths.HamlibDir ?? string.Empty;
+        CheckUpdates = s.Updates.CheckEnabled;
         ShowDeveloper = s.Developer.Enabled;
         DeveloperMode = s.Developer.Enabled;
         ReplaySamples = s.Developer.ReplaySamples;
@@ -204,6 +205,31 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string UdpPort { get; set; }
 
+    /// <summary>Check for newer builds.</summary>
+    [ObservableProperty]
+    public partial bool CheckUpdates { get; set; }
+
+    /// <summary>Result of "Check now".</summary>
+    [ObservableProperty]
+    public partial string UpdateStatus { get; set; } = string.Empty;
+
+    /// <summary>Checks for a newer build now (also offers a build that was skipped before).</summary>
+    [RelayCommand]
+    private async Task CheckNow()
+    {
+        UpdateStatus = "Checking…";
+        _host.Settings.Update(s =>
+        {
+            s.Updates.CheckEnabled = true;
+            s.Updates.SkippedTag = null;
+        });
+        CheckUpdates = true;
+        var r = await _host.Updates.CheckAsync(CancellationToken.None);
+        UpdateStatus = r is not null ? $"Costas {r.Version} is available: see the bar at the top of the main window."
+            : _host.Updates.LastError is { } e ? $"Could not check: {e}"
+            : $"You have the latest build ({Ft8Client.Core.AppInfo.Version}).";
+    }
+
     /// <summary>Developer section shown (developer mode was on when the window opened).</summary>
     public bool ShowDeveloper { get; }
 
@@ -316,6 +342,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Appearance.Units = Units;
             s.Paths.Jt9 = string.IsNullOrWhiteSpace(Jt9Path) ? null : Jt9Path.Trim();
             s.Paths.HamlibDir = string.IsNullOrWhiteSpace(HamlibDir) ? null : HamlibDir.Trim();
+            s.Updates.CheckEnabled = CheckUpdates;
             if (ShowDeveloper)
             {
                 s.Developer.Enabled = DeveloperMode;

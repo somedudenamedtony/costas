@@ -37,6 +37,7 @@ public sealed class App : Application
                 _ => ThemeVariant.Default,
             };
             MainViewModel.Dispatch = a => Dispatcher.UIThread.Post(a);
+            MainViewModel.Shutdown = () => Dispatcher.UIThread.Post(() => desktop.Shutdown());
             var vm = new MainViewModel(host);
             desktop.MainWindow = new MainWindow { DataContext = vm };
             desktop.ShutdownRequested += (_, _) => host.DisposeAsync().AsTask().GetAwaiter().GetResult();

@@ -6,7 +6,7 @@
         x:DataType="vm:MainViewModel"
         Title="{Binding Title}"
         Width="1440" Height="900" MinWidth="1100" MinHeight="720">
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
     <!-- Top bar -->
     <DockPanel Grid.Row="0" Margin="16,8,16,8" LastChildFill="False">
       <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -43,7 +43,24 @@
     </DockPanel>
 
     <!-- Views -->
-    <Panel Grid.Row="1">
+    <!-- Update bar -->
+    <Border Grid.Row="1" IsVisible="{Binding Update.Visible}" Margin="16,0,16,8" Padding="12,8" CornerRadius="6"
+            Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+      <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <Button Content="Install and restart" Classes="accent" Command="{Binding Update.InstallCommand}" IsEnabled="{Binding !Update.Busy}" />
+          <Button Content="Release notes" Command="{Binding Update.ReleaseNotesCommand}" />
+          <Button Content="Skip this version" Command="{Binding Update.SkipCommand}" IsEnabled="{Binding !Update.Busy}" />
+        </StackPanel>
+        <DockPanel VerticalAlignment="Center" Margin="0,0,12,0">
+          <TextBlock DockPanel.Dock="Left" Text="{Binding Update.Text}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0" />
+          <TextBlock Text="{Binding Update.Detail}" Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                     ToolTip.Tip="{Binding Update.Detail}" />
+        </DockPanel>
+      </DockPanel>
+    </Border>
+
+    <Panel Grid.Row="2">
       <v:OperateView DataContext="{Binding Operate}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}" />
       <v:RawDecodesView DataContext="{Binding Raw}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}" />
       <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
@@ -51,7 +68,7 @@
     </Panel>
 
     <!-- Bottom bar -->
-    <Border Grid.Row="2" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource CardBackgroundBrush}">
+    <Border Grid.Row="3" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource CardBackgroundBrush}">
       <DockPanel Margin="16,8">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <Button Classes="link" AutomationProperties.Name="Transmit offset" VerticalAlignment="Center">

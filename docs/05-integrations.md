@@ -196,3 +196,13 @@ SNTP over UDP port 123 to `pool.ntp.org` (configurable). Take 4 samples, use the
 ## 10. Audio devices (Windows)
 
 NAudio, WASAPI shared mode by default. Identify devices by their endpoint ID and show the friendly name. Capture at the device's mix format, convert to mono float, resample to 12 kHz with a windowed-sinc resampler. Never use the default device implicitly: if the configured device is missing, receive stops with a clear status and transmit is disabled. Watch for device removal and arrival and reopen automatically.
+
+## 10. Update check
+
+GitHub Releases for `somedudenamedtony/costas` (public). CI publishes every green build of `main` as release `v<version>` with `Costas-Setup-<version>.exe` and `Costas-Setup-<version>.exe.sha256` attached.
+
+- `GET https://api.github.com/repos/somedudenamedtony/costas/releases/latest` with the app's User-Agent and `Accept: application/vnd.github+json`. Unauthenticated limit is 60 requests an hour per address; the app asks a minute after start and then once a day. 404 (no release yet, or the repository is private) means "no update", not an error.
+- The checksum comes from the asset's `digest` field (`sha256:<hex>`) when GitHub provides it, otherwise from the `.sha256` asset. With neither, the app refuses to install the download.
+- Draft and pre-release releases are ignored. A release is offered only when its version is greater than the running build's, and not after the operator chose "Skip this version".
+- Install: download to the data folder's `tmp/updates`, verify, start the installer, close the app normally (PTT released, child processes stopped). Refused while transmitting or in a contact. The installer upgrades in place.
+
