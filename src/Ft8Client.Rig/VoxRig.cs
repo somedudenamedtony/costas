@@ -6,6 +6,8 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using Ft8Client.Core.Transmit;
+
 namespace Ft8Client.Rig;
 
 /// <summary>Audio-only operation: no CAT, the operator sets the band on the radio, PTT is by VOX (no-op here).</summary>
@@ -38,6 +40,9 @@ public sealed class VoxRig(long frequencyHz) : IRig
 
     /// <inheritdoc />
     public Task SetPttAsync(bool on, CancellationToken ct) => Task.CompletedTask;
+
+    /// <inheritdoc />
+    public Task<TxMeterReading> ReadTxMetersAsync(CancellationToken ct) => Task.FromResult(TxMeterReading.None);
 
     /// <inheritdoc />
     public Task SetSplitAsync(bool on, long txHz, CancellationToken ct) => Task.CompletedTask;

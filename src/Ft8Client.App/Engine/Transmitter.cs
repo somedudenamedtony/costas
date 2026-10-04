@@ -56,6 +56,9 @@ public sealed class Transmitter
     /// <summary>Raised when audio starts (plan, start time).</summary>
     public event Action<PreparedTx, DateTime>? Started;
 
+    /// <summary>Raised when a Tune or test tone starts.</summary>
+    public event Action<PreparedTx>? ToneStarted;
+
     /// <summary>Raised when a transmission ends; true if it completed, false if it was cut short.</summary>
     public event Action<PreparedTx, bool>? Ended;
 
@@ -278,6 +281,9 @@ public sealed class Transmitter
         }
         await SetPttSafe(true).ConfigureAwait(false);
         _output.Play(tone);
+        bool keyed;
+        lock (_gate) keyed = ReferenceEquals(_current, tx); // not when asserting PTT failed and halted
+        if (keyed) ToneStarted?.Invoke(tx);
         return null;
     }
 

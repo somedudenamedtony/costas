@@ -26,6 +26,29 @@ public class RigTests
     }
 
     [Fact]
+    public void Reply_GetLevel_ValueOnItsOwnLine()
+    {
+        // Captured from rigctld 4.5.5 (-m 1): "+l SWR" answers with the echo, the bare value, then RPRT.
+        var r = RigctldReply.Parse(["get_level: SWR", "1.662162", "RPRT 0"]);
+        r.Ok.Should().BeTrue();
+        r.BareValues.Should().Equal("1.662162");
+        RigctldReply.Parse(["get_level: BOGUS", "RPRT -1"]).BareValues.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SimulatedRig_TxMeters_ReadOnlyWhileKeyed()
+    {
+        var rig = new SimulatedRig(new ManualClock(new DateTime(2026, 1, 4, 2, 54, 0, DateTimeKind.Utc)))
+        {
+            TxMeters = new Core.Transmit.TxMeterReading(0.3, 1.4),
+        };
+        var ct = TestContext.Current.CancellationToken;
+        (await rig.ReadTxMetersAsync(ct)).Should().Be(Core.Transmit.TxMeterReading.None);
+        await rig.SetPttAsync(true, ct);
+        (await rig.ReadTxMetersAsync(ct)).Should().Be(new Core.Transmit.TxMeterReading(0.3, 1.4));
+    }
+
+    [Fact]
     public void Options_Arguments_BindLocalhostAndMapPtt()
     {
         var a = new RigctldOptions("rigctld", 3073, "COM4", 115200, "rts", "COM5").Arguments(4532);
@@ -83,6 +106,12 @@ public class RigTests
         await rig.SetSplitAsync(true, 14_075_000, ct);
         (await rig.GetStateAsync(ct)).Split.Should().BeTrue();
 
+        // The dummy rig reports both meters (as 0); reading them never faults.
+        var meterFaults = new List<RigFault>();
+        rig.Faulted += (_, f) => meterFaults.Add(f);
+        (await rig.ReadTxMetersAsync(ct)).Should().Be(new Core.Transmit.TxMeterReading(0, 0));
+        meterFaults.Should().BeEmpty();
+
         // Kill rigctld behind the client's back: the next command faults, then the supervisor restarts it.
         var faults = new List<RigFault>();
         rig.Faulted += (_, f) => faults.Add(f);
@@ -135,13 +164,16 @@ public class RigTests
                 await rig.SetModeAsync(RigMode.PktUsb, ct);
                 await rig.SetPttAsync(true, ct);
                 (await rig.GetStateAsync(ct)).Should().Match<RigState>(s => s.FrequencyHz == 14_074_000 && s.Mode == "PKTUSB" && s.Ptt);
+                var meters = await rig.ReadTxMetersAsync(ct);
+                meters.Alc.Should().BeInRange(0.01, 1.0, "the emulator's ALC meter reads 32 of 255");
+                meters.Swr.Should().BeGreaterThan(1.0, "the emulator's SWR meter reads 32 of 255");
                 await rig.SetPttAsync(false, ct);
                 (await rig.GetStateAsync(ct)).Ptt.Should().BeFalse();
             }
             var sent = File.ReadAllLines(log);
             sent.Should().Contain("FA014074000;", "VFO A set to the dial frequency");
             sent.Should().Contain("MD0C;", "DATA-U is the FT-710's data mode");
-            sent.Should().ContainInOrder("TX1;", "TX0;");
+            sent.Should().ContainInOrder("TX1;", "RM4;", "RM6;", "TX0;");
             sent.Should().NotContain(l => l.StartsWith("SH0", StringComparison.Ordinal) && l.Length > 4, "the operator's receive filter is left alone");
         }
         finally

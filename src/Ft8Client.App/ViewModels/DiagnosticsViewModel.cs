@@ -61,6 +61,7 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
         {
             Add("Radio", _host.Rig.Name);
         }
+        Add("Transmit meters, last transmission", TxMeterText.Summary(s.TxMeters));
         foreach (var (name, st) in s.Services) Add($"Status: {name}", $"{st.Health} · {st.Message}");
         Add("Upload queue", _host.Uploads.Count().ToString(System.Globalization.CultureInfo.InvariantCulture));
         Add("Contacts in log", _host.Qsos.Count().ToString(System.Globalization.CultureInfo.InvariantCulture));

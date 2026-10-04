@@ -17,6 +17,7 @@ namespace Ft8Client.Rig;
 public sealed class RigctldReply
 {
     private readonly Dictionary<string, string> _values = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _bare = [];
 
     /// <summary>The RPRT code; 0 is success, negative is an error.</summary>
     public int Code { get; private set; }
@@ -26,6 +27,9 @@ public sealed class RigctldReply
 
     /// <summary>A value by key (Frequency, Mode, Passband, PTT, Split, TX VFO).</summary>
     public string? this[string key] => _values.TryGetValue(key, out var v) ? v : null;
+
+    /// <summary>Lines with no key, in order: get_level puts its value on such a line after the echo.</summary>
+    public IReadOnlyList<string> BareValues => _bare;
 
     /// <summary>Parses the lines of one reply, ending with RPRT.</summary>
     public static RigctldReply Parse(IEnumerable<string> lines)
@@ -41,6 +45,7 @@ public sealed class RigctldReply
             }
             var colon = line.IndexOf(':', StringComparison.Ordinal);
             if (colon > 0 && colon < line.Length - 1) r._values[line[..colon].Trim()] = line[(colon + 1)..].Trim();
+            else if (colon < 0 && line.Length > 0) r._bare.Add(line);
         }
         return r;
     }

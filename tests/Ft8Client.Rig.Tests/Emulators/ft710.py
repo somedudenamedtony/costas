@@ -10,7 +10,7 @@ print(os.ttyname(slave), flush=True)
 log = open(sys.argv[1], 'w', buffering=1)
 st = {'ID': '0800', 'FA': '014074000', 'FB': '007074000', 'MD0': '2', 'TX': '0', 'AI': '0', 'FT': '0', 'ST': '0',
       'PS': '1', 'VS': '0', 'SH0': '00', 'NA0': '0', 'PC': '050', 'RA0': '0', 'PA0': '0', 'KS': '20', 'BS': '', 'SM0': '0050',
-      'RI0': '0', 'FR': '0', 'EX': ''}
+      'RI0': '0', 'FR': '0', 'EX': '', 'RM4': '032000', 'RM6': '032000'}
 buf = b''
 while True:
     r, _, _ = select.select([master], [], [], 0.5)

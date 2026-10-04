@@ -48,6 +48,7 @@ One window, minimum 1100 × 720, default 1440 × 900, remembers size and positio
 | Call CQ | Starts calling CQ in the next slot of the chosen parity. Becomes "Stop CQ" while running |
 | Halt Tx | Always enabled. Drops PTT immediately and stops sequencing. Critical colour while transmitting. Esc does the same |
 | Slot progress | Label "Receiving" or "Transmitting", seconds to next slot, a 4 px bar. Critical colour while transmitting |
+| Meter warning | Only when the last transmission's ALC or SWR crossed a threshold (`04-domain-logic.md` section 11): "SWR 3.4 · ALC 70%", caution colour, critical when SWR is 3 or more. The tooltip and screen reader text give the full advice. Hidden when the meters read within limits |
 | Indicators | Radio, audio, QRZ, PSK Reporter: a dot and a word each. Click opens Diagnostics |
 
 ## Operate view
@@ -169,7 +170,7 @@ Mockup: `setup` (step 2). A left rail lists the six steps; the right pane holds 
 | 1 Station | Callsign, grid (4 or 6 characters), distance units | Callsign and grid are valid |
 | 2 Radio | Model (searchable list from Hamlib), port (auto-scan), baud (auto), PTT method. Live frequency readback. Link "No radio control? Use audio and VOX only" | Frequency is read back, or audio-only is chosen |
 | 3 Audio | Input and output device by name, live input level meter with a "good" band | Input level is in range for 5 seconds |
-| 4 Transmit test | Explains what will happen, asks for a dummy load or low power, a "Send test tone" button (2 seconds) | Operator confirms the radio transmitted. Skippable |
+| 4 Transmit test | Explains what will happen, asks for a dummy load or low power, a "Send test tone" button (2 seconds). After the tone, the ALC and SWR read during it, with any warning | Operator confirms the radio transmitted. Skippable |
 | 5 Clock check | Measured offset against internet time, pass under 0.5 s, link to Windows time settings | Offset measured. Skippable when offline |
 | 6 QRZ | Logbook API key, optional QRZ username and password for lookups, "Test" buttons, and a line saying why each is needed (`05-integrations.md` section 4). Then first sync with a progress count | Skippable |
 
@@ -179,7 +180,7 @@ Sections: Station profiles · Radio · Audio · Transmit (power, watchdog minute
 
 ## Diagnostics
 
-Audio dropouts, decode time per slot, median DT of decodes, clock offset, CAT round-trip time, `jt9` and `rigctld` process state and restarts, QRZ and PSK Reporter connection state and last error, upload queue length. A button "Save diagnostics bundle" writes a zip of logs and settings (with secrets removed).
+Audio dropouts, decode time per slot, median DT of decodes, clock offset, CAT round-trip time, ALC and SWR of the last transmission, `jt9` and `rigctld` process state and restarts, QRZ and PSK Reporter connection state and last error, upload queue length. A button "Save diagnostics bundle" writes a zip of logs and settings (with secrets removed).
 
 ## Keyboard
 

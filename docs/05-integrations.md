@@ -75,10 +75,11 @@ Hamlib: https://hamlib.github.io/ . Bundle the Windows release under `third_part
 | Get split | `s` | split line, Tx VFO line |
 | Set split | `S 1 VFOB` | `RPRT 0` |
 | Set split Tx frequency | `I 14075000` | `RPRT 0` |
+| Get ALC / SWR meter | `l ALC` / `l SWR` | echo line, the value on a line of its own (`0.25`, `1.66`), `RPRT 0`; `RPRT -N` when not supported |
 
 A reply of `RPRT -N` (negative) is an error. **VERIFY** exact reply shapes against the bundled version with `rigctld -m 1` (the dummy rig), which is also used in integration tests.
 
-- Poll frequency and mode every 1 s when idle; do not poll during a transmission.
+- Poll frequency and mode every 1 s when idle; do not poll during a transmission. During a transmission only the ALC and SWR meters are read, on a second connection (`04-domain-logic.md` section 11).
 - Port auto-scan (setup step 2): for each serial port and the model's common baud rates, start `rigctld`, send `f`, accept the first that returns a plausible frequency. Time out at 2 s per attempt.
 - VOX / audio-only mode: no `rigctld`; band is chosen by the operator; PTT calls are no-ops.
 - Split: default off in v1 (transmit offset is used as is). A setting enables "Fake it" (shift the dial during Tx to keep Tx audio between 1500 and 2000 Hz) once basic operation is proven.

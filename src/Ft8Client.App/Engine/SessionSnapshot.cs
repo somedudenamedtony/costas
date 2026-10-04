@@ -11,6 +11,7 @@ using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Stations;
+using Ft8Client.Core.Transmit;
 
 namespace Ft8Client.App.Engine;
 
@@ -91,6 +92,9 @@ public sealed record SessionSnapshot
 
     /// <summary>Measured clock offset in seconds (SNTP or DT estimate), if known.</summary>
     public double? ClockOffsetSeconds { get; init; }
+
+    /// <summary>ALC and SWR from the latest transmission that reported them on this band, with any warning; null before then.</summary>
+    public TxMeterResult? TxMeters { get; init; }
 
     /// <summary>Stations waiting for me (called me), oldest first.</summary>
     public IReadOnlyList<WaitingCaller> Waiting { get; init; } = [];

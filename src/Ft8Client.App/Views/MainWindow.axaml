@@ -75,6 +75,10 @@
     <Border Grid.Row="3" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource CardBackgroundBrush}">
       <DockPanel Margin="16,8">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Text="{Binding MeterText}" FontWeight="SemiBold" VerticalAlignment="Center" ToolTip.Tip="{Binding MeterTip}"
+                     Foreground="{Binding MeterKind, Converter={x:Static v:Converters.KindBrush}}"
+                     IsVisible="{Binding MeterText, Converter={x:Static v:Converters.NotEmpty}}"
+                     AutomationProperties.Name="{Binding MeterTip}" AutomationProperties.LiveSetting="Assertive" />
           <Button Classes="link" AutomationProperties.Name="Transmit offset" VerticalAlignment="Center">
             <TextBlock Text="{Binding TxOffsetText}" Classes="secondary num" TextDecorations="{x:Null}" />
             <Button.Flyout>

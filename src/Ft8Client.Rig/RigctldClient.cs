@@ -90,6 +90,17 @@ public sealed class RigctldClient : IAsyncDisposable
         return hz;
     }
 
+    /// <summary>
+    /// Reads a level such as ALC or SWR (<c>l NAME</c>; the reply is the echo, the value on a line of its own, then
+    /// RPRT). Returns null when rigctld or the radio does not support it.
+    /// </summary>
+    public async Task<double?> GetLevelAsync(string name, CancellationToken ct)
+    {
+        var r = await SendAsync("l " + name, ct).ConfigureAwait(false);
+        if (!r.Ok || r.BareValues.Count == 0) return null;
+        return double.TryParse(r.BareValues[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+    }
+
     private async Task EnsureConnectedAsync(CancellationToken ct)
     {
         if (_tcp is { Connected: true }) return;

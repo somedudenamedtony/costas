@@ -313,7 +313,16 @@ public sealed partial class SetupViewModel : ObservableObject
         var s = _host.Session.Snapshot;
         var why = await _host.Transmitter.TuneAsync(1500, 2.0,
             new Engine.TxGuardInput(s.Band, s.DialHz, s.ClockOffsetSeconds, 100, null, true));
-        Message = why ?? "Sending a 2-second tone at 1500 Hz. Did the radio transmit?";
+        if (why is not null)
+        {
+            Message = why;
+            return;
+        }
+        Message = "Sending a 2-second tone at 1500 Hz. Did the radio transmit?";
+        var meters = await _host.TxMeters.Idle;
+        if (meters is null) return;
+        Message = $"Meters during the tone: {TxMeterText.Summary(meters)}. "
+                  + (meters.Warning ?? "Within limits. Did the radio transmit?");
     }
 
     /// <summary>Tests the logbook key.</summary>
