@@ -38,6 +38,7 @@
           </StackPanel>
           <TextBlock><Run Text="Frequency read back: " /><Run Text="{Binding Readback}" FontWeight="SemiBold" /></TextBlock>
           <Button Classes="link" Command="{Binding UseAudioOnlyCommand}"><TextBlock Text="No radio control? Use audio and VOX only" /></Button>
+          <TextBlock Classes="secondary" TextWrapping="Wrap" Text="Not ready? Press Next to carry on; the radio can be set up later from ☰ › Station setup. Until then nothing is transmitted." />
         </StackPanel>
         <!-- 3 Audio -->
         <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}">
@@ -47,6 +48,7 @@
           <TextBlock Text="Output (audio to the radio)" />
           <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding Output}" MinWidth="320" />
           <TextBlock Text="Choose the radio's USB audio device, not the computer's speakers. The app never uses the default device by itself." Classes="secondary" TextWrapping="Wrap" />
+          <TextBlock Classes="secondary" TextWrapping="Wrap" Text="Not ready? Press Next; audio can be chosen later from ☰ › Station setup." />
         </StackPanel>
         <!-- 4 Transmit test -->
         <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}">

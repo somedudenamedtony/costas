@@ -319,26 +319,8 @@ public sealed partial class SetupViewModel : ObservableObject
                     return false;
                 }
                 return true;
-            case 1:
-                if (AudioOnly || _host.Simulating && Model is null) return true;
-                if (Model is null)
-                {
-                    why = "Choose your radio, or use audio and VOX only.";
-                    return false;
-                }
-                if (string.IsNullOrEmpty(Readback))
-                {
-                    why = "Scan for the radio so its frequency is read back, or use audio and VOX only.";
-                    return false;
-                }
-                return true;
-            case 2:
-                if (Inputs.Count > 0 && Input is null)
-                {
-                    why = "Choose the input your radio's audio comes in on.";
-                    return false;
-                }
-                return true;
+            // The radio and audio steps can be left for later (Station setup in the menu): an unchecked or missing radio
+            // only means the radio indicator says so and transmit is refused until it is set up.
             default:
                 return true;
         }
