@@ -58,9 +58,17 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>Closes the app normally (set by the app; releases PTT and stops the child processes).</summary>
     public static Action Shutdown { get; set; } = () => { };
 
-    /// <summary>Shows a view (0 Operate, 1 Raw decodes, 2 Reach, 3 Log).</summary>
-    [RelayCommand]
-    private void SelectTab(string index) => Tab = int.Parse(index, System.Globalization.CultureInfo.InvariantCulture);
+    /// <summary>Red bar text while the radio is keyed.</summary>
+    [ObservableProperty]
+    public partial string OnAirText { get; set; } = "ON AIR";
+
+    /// <summary>Yellow bar: no working radio (and not transmitting).</summary>
+    [ObservableProperty]
+    public partial bool NoRadio { get; set; }
+
+    /// <summary>Why there is no radio.</summary>
+    [ObservableProperty]
+    public partial string NoRadioText { get; set; } = string.Empty;
 
     /// <summary>The update bar.</summary>
     public UpdateBarViewModel Update { get; }
@@ -176,6 +184,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Raw.Apply(s.RawDecodes);
         Frequency = FormatFrequency(s.DialHz);
         Transmitting = s.Transmitting;
+        OnAirText = s.TransmittingMessage is { Length: > 0 } msg ? $"ON AIR · {msg}" : "ON AIR";
+        var radio = s.Services.TryGetValue(ServiceNames.Radio, out var r) ? r : null;
+        NoRadio = !s.Transmitting && radio is not null && radio.Health != ServiceHealth.Ok;
+        NoRadioText = radio is null ? string.Empty : $"Radio not connected · {radio.Message}";
         CanChangeBand = !s.Transmitting;
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));

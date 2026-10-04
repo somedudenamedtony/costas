@@ -19,6 +19,8 @@
           <SolidColorBrush x:Key="SuccessBrush" Color="#0F7B0F" />
           <SolidColorBrush x:Key="SelectedRowBrush" Color="#E5F1FB" />
           <SolidColorBrush x:Key="RowDividerBrush" Color="#EBEBEB" />
+          <SolidColorBrush x:Key="OnAirBrush" Color="#D11F1F" />
+          <SolidColorBrush x:Key="NoRadioBrush" Color="#F5C518" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
           <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#202020" />
@@ -34,6 +36,8 @@
           <SolidColorBrush x:Key="SuccessBrush" Color="#6CCB5F" />
           <SolidColorBrush x:Key="SelectedRowBrush" Color="#1F3A55" />
           <SolidColorBrush x:Key="RowDividerBrush" Color="#353535" />
+          <SolidColorBrush x:Key="OnAirBrush" Color="#D11F1F" />
+          <SolidColorBrush x:Key="NoRadioBrush" Color="#F5C518" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
       <FontFamily x:Key="AppFont">Segoe UI Variable Text, Segoe UI, Inter, Open Sans, DejaVu Sans</FontFamily>
