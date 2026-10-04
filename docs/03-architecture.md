@@ -102,7 +102,9 @@ All child processes are placed in a Windows job object so they die with the app.
 
 ## Simulation mode
 
-Required from Milestone 0 so that everything can be built and tested without a radio.
+Required from Milestone 0 so that everything can be built and tested without a radio. It is never on by default (decision D9): an installed app with no radio set up shows no data, says "No radio set up" and refuses to transmit. Simulation runs only with `--simulate` or in developer mode.
+
+- Developer mode is hidden: click the product name in About seven times to toggle it. It adds a Developer section to Settings (replay the sample recordings, with or without the simulated partner) and lists Hamlib's test radios (Dummy, models 1 and 6) in Setup. With a test radio selected, transmit audio goes to a null output so a radio with VOX on cannot be keyed by a test.
 
 - `--simulate <folder>` replaces the audio input with a player that feeds WAV files from the folder slot by slot, aligned to the real slot clock, looping.
 - `SimulatedRig` implements `IRig` in memory and logs PTT transitions with timestamps.

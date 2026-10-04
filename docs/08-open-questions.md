@@ -12,6 +12,8 @@
 | D6 | "Confirmed" in need tiers | Tiers use worked, not confirmed; setting to switch | |
 | D7 | Uploading spots to PSK Reporter | Off until the operator turns it on | WSJT-X has it on by default for most users |
 | D8 | Split operation | Off in v1 | Enable "Fake it" later if Tx audio purity matters on the owner's radio |
+| D9 | Simulation by default | **Decided by the owner (2026-10-04):** no replayed or made-up data unless asked. Simulation only with `--simulate` or the hidden developer mode (seven clicks on the product name in About), which can also use Hamlib's test radio | |
+| D10 | Tuning the radio at start-up | Not done: the dial is read from the radio, and only picking a band tunes it. If the radio is outside the selected band, transmit is refused by the band-edge check | Owner to decide whether start-up should tune the radio to the selected band |
 
 ## Facts to verify (marked VERIFY in the docs)
 

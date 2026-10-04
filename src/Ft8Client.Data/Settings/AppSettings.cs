@@ -47,6 +47,9 @@ public sealed class AppSettings
     /// <summary>Paths.</summary>
     public PathOptions Paths { get; set; } = new();
 
+    /// <summary>Developer mode (hidden).</summary>
+    public DeveloperOptions Developer { get; set; } = new();
+
     /// <summary>Window.</summary>
     public WindowOptions Window { get; set; } = new();
 

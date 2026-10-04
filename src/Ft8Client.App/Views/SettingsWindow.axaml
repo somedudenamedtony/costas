@@ -88,6 +88,14 @@
             <TextBlock Text="Units" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding UnitChoices}" SelectedItem="{Binding Units}" />
           </StackPanel>
 
+          <StackPanel Spacing="6" IsVisible="{Binding ShowDeveloper}">
+            <TextBlock Text="Developer" Classes="title" Margin="0,10,0,0" />
+            <TextBlock TextWrapping="Wrap" Opacity="0.8" Text="To test against Hamlib's test radio, choose Hamlib Dummy in Setup. Transmit audio is never played while a test radio is selected. Replay changes apply after a restart." />
+            <CheckBox Content="Replay the sample recordings instead of the sound card" IsChecked="{Binding ReplaySamples}" />
+            <CheckBox Content="A simulated station answers my calls (while replaying)" IsChecked="{Binding SimulatedPartner}" IsEnabled="{Binding ReplaySamples}" />
+            <CheckBox Content="Developer mode" IsChecked="{Binding DeveloperMode}" />
+          </StackPanel>
+
           <TextBlock Text="Programs" Classes="title" Margin="0,10,0,0" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="jt9" VerticalAlignment="Center" Width="80" /><TextBox Text="{Binding Jt9Path}" Width="420" PlaceholderText="search automatically" />

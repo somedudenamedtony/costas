@@ -62,6 +62,10 @@ public sealed partial class SettingsViewModel : ObservableObject
         Units = s.Appearance.Units;
         Jt9Path = s.Paths.Jt9 ?? string.Empty;
         HamlibDir = s.Paths.HamlibDir ?? string.Empty;
+        ShowDeveloper = s.Developer.Enabled;
+        DeveloperMode = s.Developer.Enabled;
+        ReplaySamples = s.Developer.ReplaySamples;
+        SimulatedPartner = s.Developer.SimulatedPartner;
         SecretsNote = host.Secrets.IsPersistent
             ? "Keys and passwords are kept in the system credential store, not in the settings file."
             : "No system credential store is available here: keys and passwords last until the app closes.";
@@ -200,6 +204,21 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string UdpPort { get; set; }
 
+    /// <summary>Developer section shown (developer mode was on when the window opened).</summary>
+    public bool ShowDeveloper { get; }
+
+    /// <summary>Developer mode.</summary>
+    [ObservableProperty]
+    public partial bool DeveloperMode { get; set; }
+
+    /// <summary>Replay the sample recordings instead of the sound card.</summary>
+    [ObservableProperty]
+    public partial bool ReplaySamples { get; set; }
+
+    /// <summary>A simulated station answers my calls while replaying.</summary>
+    [ObservableProperty]
+    public partial bool SimulatedPartner { get; set; }
+
     /// <summary>WAV choices.</summary>
     public IReadOnlyList<string> WavChoices { get; } = ["none", "decoded", "all"];
 
@@ -297,6 +316,12 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Appearance.Units = Units;
             s.Paths.Jt9 = string.IsNullOrWhiteSpace(Jt9Path) ? null : Jt9Path.Trim();
             s.Paths.HamlibDir = string.IsNullOrWhiteSpace(HamlibDir) ? null : HamlibDir.Trim();
+            if (ShowDeveloper)
+            {
+                s.Developer.Enabled = DeveloperMode;
+                s.Developer.ReplaySamples = ReplaySamples;
+                s.Developer.SimulatedPartner = SimulatedPartner;
+            }
         });
         if (!RankingOnly)
         {

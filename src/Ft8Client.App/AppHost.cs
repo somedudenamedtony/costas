@@ -39,6 +39,8 @@ public sealed class AppHost : IAsyncDisposable
     private readonly List<IDisposable> _disposables = [];
     private IAudioInput? _input;
     private IAudioOutput? _output;
+    private NullAudioOutput? _mutedOutput;
+    private volatile ServiceStatus? _rigOpenStatus;
     private CapturePump? _pump;
     private SlotLoop? _loop;
     private IRig _rig;
@@ -111,6 +113,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>True when running without a radio (no radio configured, or --simulate).</summary>
     public bool Simulating { get; private set; }
 
+    /// <summary>What the app runs against (decided at start-up).</summary>
+    public StartupPlan Plan { get; private set; } = null!;
+
     /// <summary>The session.</summary>
     public Session Session { get; private set; } = null!;
 
@@ -174,17 +179,16 @@ public sealed class AppHost : IAsyncDisposable
             : new Jt9Decoder(new Jt9Options(Jt9Path, Paths.Temp, Threads: Jt9Locator.SupportsMultithread(Jt9Path) ? Math.Min(4, Environment.ProcessorCount) : 0), Guard);
 
         var config = SettingsMapper.ToConfig(s);
-        Simulating = Args.SimulateFolder is not null || s.Profile.Rig.Mode == RigModes.None;
+        Plan = StartupPlan.Decide(Args, s, FindSamples());
+        Simulating = Plan.Replaying;
 
         // Audio.
         ISlotSource source;
         SimulatedPartner? partner = null;
-        var samples = Args.SimulateFolder ?? FindSamples();
-        if (Simulating && (Directory.Exists(samples) || File.Exists(samples)))
+        if (Plan.ReplayFolder is { } folder && (Directory.Exists(folder) || File.Exists(folder)))
         {
-            var folder = samples;
             var sim = new SimulatedSlotSource(folder);
-            if (Args.SimulatePartner)
+            if (Plan.Partner)
             {
                 partner = SimulatedPartner.FromFile(Args.PartnerFile ?? Path.Combine(FindSamples(), "partners.txt"));
                 sim.Mixer = partner.Mix;
@@ -311,11 +315,17 @@ public sealed class AppHost : IAsyncDisposable
         var old = _rig;
         IRig rig;
         ServiceStatus status;
-        if (Simulating || r.Mode == RigModes.None)
+        var dialHz = Frequencies.Find(Settings.Current.Operating.Band, SettingsMapper.ToConfig(Settings.Current).Mode)?.DialHz ?? 14_074_000;
+        if (Plan.SimulatedRig)
         {
-            var dial = Frequencies.Find(Settings.Current.Operating.Band, SettingsMapper.ToConfig(Settings.Current).Mode)?.DialHz ?? 14_074_000;
-            rig = new SimulatedRig(Clock, dial);
+            rig = new SimulatedRig(Clock, dialHz);
             status = new ServiceStatus(ServiceHealth.Ok, "Simulated radio", Clock.UtcNow);
+        }
+        else if (r.Mode == RigModes.None)
+        {
+            // Nothing set up: no made-up radio. The Down status makes the transmit guard refuse.
+            rig = new VoxRig(dialHz);
+            status = new ServiceStatus(ServiceHealth.Down, "No radio set up. Open Setup to choose your radio.", Clock.UtcNow);
         }
         else if (r.Mode == RigModes.Vox)
         {
@@ -348,6 +358,17 @@ public sealed class AppHost : IAsyncDisposable
         rig.Faulted += (_, f) => Session?.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, f.Message, f.TimeUtc));
         _rig = rig;
         Transmitter?.SetRig(rig);
+        if (Plan.MutesTransmitAudio(r))
+        {
+            Transmitter?.SetOutput(_mutedOutput ??= new NullAudioOutput());
+            if (HamlibModels.IsTestModel(r.Model) && status.Health == ServiceHealth.Ok)
+                status = status with { Message = "Hamlib test radio (transmit audio muted)" };
+        }
+        else
+        {
+            Transmitter?.SetOutput(_output);
+        }
+        _rigOpenStatus = status.Health == ServiceHealth.Ok ? status : null;
         Session?.SetService(ServiceNames.Radio, status);
         if (!ReferenceEquals(old, rig)) await old.DisposeAsync().ConfigureAwait(false);
     }
@@ -362,8 +383,10 @@ public sealed class AppHost : IAsyncDisposable
                 if (Transmitter.Transmitting) continue; // never poll during a transmission
                 var st = await _rig.GetStateAsync(_cts.Token).ConfigureAwait(false);
                 if (st.FrequencyHz != Session.Snapshot.DialHz) Session.SetDial(st.FrequencyHz);
-                if (Session.Snapshot.Services[ServiceNames.Radio].Health != ServiceHealth.Ok)
-                    Session.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Ok, _rig.Name, Clock.UtcNow));
+                // Recovery after a fault, only for a radio that opened properly: a placeholder for a missing or
+                // failed radio answers polls too, and must not turn the indicator green (that would allow transmit).
+                if (_rigOpenStatus is { } ok && Session.Snapshot.Services[ServiceNames.Radio].Health != ServiceHealth.Ok)
+                    Session.SetService(ServiceNames.Radio, ok with { SinceUtc = Clock.UtcNow });
             }
             catch (RigException)
             {
@@ -420,6 +443,7 @@ public sealed class AppHost : IAsyncDisposable
         _pump?.Dispose();
         _input?.Dispose();
         _output?.Dispose();
+        _mutedOutput?.Dispose();
         Qrz?.Dispose();
         Udp?.Dispose();
         Recording?.Dispose();

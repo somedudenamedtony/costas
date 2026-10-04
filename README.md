@@ -29,7 +29,11 @@ on first run. To build it locally: `scripts/build-installer.ps1`.
 Quick start from source (no radio needed): run `third_party/fetch.ps1` (Windows) or `third_party/fetch.sh` (Linux) for `jt9` and
 Hamlib, then `dotnet run --project src/Ft8Client.App -- --simulate samples/ft8 --simulate-partner` to replay the sample
 recordings with a simulated station that answers your calls. Simulation never keys a radio, never uploads spots and
-does not write the decode journal or WAV files.
+does not write the decode journal or WAV files. Without `--simulate` and with no radio set up, the app shows no data.
+
+Developer mode (hidden): in About, click the product name seven times. Settings then has a Developer section (replay the
+sample recordings, optionally with the simulated station), and Setup lists Hamlib's test radio ("Hamlib Dummy"), which
+runs the real `rigctld` path with transmit audio muted.
 
 ## What this is
 

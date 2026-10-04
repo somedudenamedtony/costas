@@ -47,7 +47,7 @@ third_party/                  jt9 and Hamlib binaries with their licences (not c
 ## Rules that are not negotiable
 
 1. **Never key a real radio from tests or on start-up.** Transmit and PTT only happen after an explicit operator action in the UI. Automated tests use the simulated rig and a null audio output.
-2. **Simulation is the default for development.** If no radio is configured, the app runs in simulation mode. Do not write code that assumes hardware is present.
+2. **Simulation is for development and tests, never shown by default.** Replayed recordings and the simulated radio are used only with `--simulate` or the hidden developer mode (owner decision D9). With no radio configured the app shows no made-up data: it receives nothing, the radio indicator says so, and transmit is refused. Do not write code that assumes hardware is present.
 3. **Do not write an FT8 decoder.** Decoding goes through `jt9`. The transmit encoder is a port of `ft8_lib`'s encode path and must be checked against `ft8code` test vectors (see `docs/04-domain-logic.md`).
 4. **Never alter a message silently.** If a message cannot be encoded exactly as shown to the operator, refuse to send it and say why.
 5. **Transmit safety guards are part of the feature**, not a later task: watchdog, band-edge check, PTT release on any rig or audio error, no transmit when the clock is off by more than 2 s.
