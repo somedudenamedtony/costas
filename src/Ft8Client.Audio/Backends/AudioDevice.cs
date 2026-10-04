@@ -6,4 +6,9 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
-[assembly: CaptureConsole]
+namespace Ft8Client.Audio.Backends;
+
+/// <summary>An audio endpoint.</summary>
+/// <param name="Id">Stable endpoint id.</param>
+/// <param name="Name">Friendly name.</param>
+public sealed record AudioDevice(string Id, string Name);
