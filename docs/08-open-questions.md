@@ -55,7 +55,7 @@ Confirmed from primary sources while writing this package: the `jt9` option tabl
 
 Decode time: single-threaded `jt9` takes 3.4 to 3.7 s on the busy FT8 samples on a 4-core Linux VM, over the 1.2 s target. WSJT-X 2.7 has no `-M`; `Jt9Options.Threads` passes `-M -N n` for WSJT-X 3.x. Measure on the owner's PC with 3.0.2.
 
-Golden files were captured with WSJT-X 2.7.0-rc3 because it is what Ubuntu packages; recapture with the pinned GA release (3.0.2) on Windows before release (`scripts/capture-golden.sh`).
+Golden files were captured with WSJT-X 2.7.0-rc3 because it is what Ubuntu packages; recapture with the pinned GA release (3.0.1, the newest Windows build on SourceForge; `05-integrations.md` names 3.0.2, which is not published there) on Windows before release (`scripts/capture-golden.sh`).
 
 Yaesu FT-710 (the owner's radio): Hamlib model 1049, Stable in 4.5.5 and in the 4.6.5 build the Windows fetch script
 installs. Checked against a CAT emulator: frequency is `FA`, the data mode `PKTUSB` is `MD0C` (DATA-U), CAT PTT is
