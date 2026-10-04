@@ -122,26 +122,3 @@ public sealed partial class ReachViewModel : ObservableObject
         return i < 0 ? 99 : i;
     }
 }
-
-/// <summary>A row of Who heard you.</summary>
-/// <param name="Station">Call.</param>
-/// <param name="Where">Place.</param>
-/// <param name="Distance">Distance text.</param>
-/// <param name="Bearing">Bearing.</param>
-/// <param name="Db">Report.</param>
-/// <param name="Age">Age.</param>
-/// <param name="InLog">Needed or Worked.</param>
-/// <param name="Km">For sorting.</param>
-public sealed record ReachRowViewModel(string Station, string Where, string Distance, string Bearing, string Db, string Age, string InLog, double Km)
-{
-    /// <summary>Needed shows in accent.</summary>
-    public TextKind InLogKind => InLog == "Needed" ? TextKind.Accent : TextKind.Secondary;
-}
-
-/// <summary>A row of By band.</summary>
-/// <param name="Band">Band.</param>
-/// <param name="Stations">Stations that heard me.</param>
-/// <param name="Farthest">Farthest.</param>
-/// <param name="Median">Median report.</param>
-/// <param name="Current">Current band (highlighted).</param>
-public sealed record BandReachRowViewModel(string Band, string Stations, string Farthest, string Median, bool Current);

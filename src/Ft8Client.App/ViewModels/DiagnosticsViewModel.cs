@@ -7,10 +7,10 @@
 // see the GNU General Public License in LICENSE for details.
 
 using System.Collections.ObjectModel;
-using System.IO.Compression;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Ft8Client.Core;
+using Ft8Client.App.Services;
 using Ft8Client.Data.Secrets;
 using Ft8Client.Rig;
 
@@ -73,46 +73,9 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
     private void SaveBundle()
     {
         var path = Path.Combine(_host.Paths.Root, $"diagnostics-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip");
-        var secrets = SecretValues();
-        using (var zip = ZipFile.Open(path, ZipArchiveMode.Create))
-        {
-            AddScrubbed(zip, _host.Paths.Settings, "settings.json", secrets);
-            if (Directory.Exists(_host.Paths.Logs))
-            {
-                foreach (var f in Directory.EnumerateFiles(_host.Paths.Logs).OrderByDescending(File.GetLastWriteTimeUtc).Take(3))
-                    AddScrubbed(zip, f, "logs/" + Path.GetFileName(f), secrets);
-            }
-            var e = zip.CreateEntry("diagnostics.txt");
-            using var w = new StreamWriter(e.Open());
-            foreach (var (k, v) in Rows.Select(r => (r.Key, r.Value))) w.WriteLine($"{k}: {Scrub(v, secrets)}");
-        }
+        var secrets = new[] { SecretNames.QrzLogbookKey(_host.Settings.Current.Profile.Id), SecretNames.QrzUsername, SecretNames.QrzPassword }
+            .Select(_host.Secrets.Get).Where(v => v is not null).Select(v => v!).ToList();
+        DiagnosticsBundle.Write(path, _host.Paths.Settings, _host.Paths.Logs, Rows.Select(r => (r.Key, r.Value)), secrets);
         Message = $"Saved {path}";
     }
-
-    /// <summary>Removes any secret value from text.</summary>
-    public static string Scrub(string text, IEnumerable<string> secrets)
-    {
-        foreach (var s in secrets.Where(s => s.Length >= 4)) text = text.Replace(s, "[removed]", StringComparison.Ordinal);
-        return text;
-    }
-
-    private List<string> SecretValues() =>
-        new[] { SecretNames.QrzLogbookKey(_host.Settings.Current.Profile.Id), SecretNames.QrzUsername, SecretNames.QrzPassword }
-            .Select(_host.Secrets.Get).Where(v => v is not null).Select(v => v!).ToList();
-
-    private static void AddScrubbed(ZipArchive zip, string file, string name, List<string> secrets)
-    {
-        if (!File.Exists(file)) return;
-        string text;
-        using (var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-        using (var r = new StreamReader(fs)) text = r.ReadToEnd();
-        var e = zip.CreateEntry(name);
-        using var w = new StreamWriter(e.Open());
-        w.Write(Scrub(text, secrets));
-    }
 }
-
-/// <summary>A diagnostics row.</summary>
-/// <param name="Key">Name.</param>
-/// <param name="Value">Value.</param>
-public sealed record DiagRow(string Key, string Value);

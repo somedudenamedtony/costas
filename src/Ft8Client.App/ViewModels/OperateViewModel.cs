@@ -21,46 +21,6 @@ using Ft8Client.Core.Ranking;
 
 namespace Ft8Client.App.ViewModels;
 
-/// <summary>Commands the Operate view sends to the session.</summary>
-public interface IOperateCommands
-{
-    /// <summary>Call a station.</summary>
-    void Call(string call);
-
-    /// <summary>Answer a waiting caller now.</summary>
-    void Answer(string call);
-
-    /// <summary>Answer a waiting caller after this contact.</summary>
-    void AnswerAfter(string call);
-
-    /// <summary>Resend the current step.</summary>
-    void Resend();
-
-    /// <summary>Log now.</summary>
-    void LogNow();
-
-    /// <summary>Abandon the contact.</summary>
-    void Abandon();
-
-    /// <summary>Jump to a step.</summary>
-    void JumpTo(int step);
-
-    /// <summary>Look up a station (QRZ) for the details flyout.</summary>
-    void Lookup(string call);
-
-    /// <summary>Open the reach view.</summary>
-    void OpenReach();
-
-    /// <summary>Open the log.</summary>
-    void OpenLog();
-
-    /// <summary>Open the ranking settings.</summary>
-    void OpenRankingSettings();
-
-    /// <summary>Retry a failed upload.</summary>
-    void RetryUpload(long qsoId);
-}
-
 /// <summary>The Operate view: band summary or contact on top, the line, Watching, and the right column.</summary>
 public sealed partial class OperateViewModel : ObservableObject
 {

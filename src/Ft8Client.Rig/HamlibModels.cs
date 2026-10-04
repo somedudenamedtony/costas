@@ -14,35 +14,24 @@ namespace Ft8Client.Rig;
 /// <summary>The Hamlib model list from <c>rigctl -l</c>, for the searchable radio list.</summary>
 public static partial class HamlibModels
 {
-    /// <summary>One model.</summary>
-    /// <param name="Number">Model number.</param>
-    /// <param name="Manufacturer">Manufacturer.</param>
-    /// <param name="Model">Model name.</param>
-    /// <param name="Status">Stable, Beta, Alpha, Untested.</param>
-    public sealed record Entry(int Number, string Manufacturer, string Model, string Status)
-    {
-        /// <summary>"Icom IC-7300".</summary>
-        public string Display => $"{Manufacturer} {Model}";
-    }
-
     [GeneratedRegex(@"^\s*(\d+)\s+(.+?)\s{2,}(.+?)\s{2,}(\S+)\s+(\S+)\s+(\S+)\s*$")]
     private static partial Regex Line();
 
     /// <summary>Parses <c>rigctl -l</c> output.</summary>
-    public static IReadOnlyList<Entry> Parse(string output)
+    public static IReadOnlyList<HamlibModel> Parse(string output)
     {
-        var list = new List<Entry>();
+        var list = new List<HamlibModel>();
         foreach (var line in output.Split('\n'))
         {
             var m = Line().Match(line);
             if (!m.Success) continue;
-            list.Add(new Entry(int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture), m.Groups[2].Value.Trim(), m.Groups[3].Value.Trim(), m.Groups[5].Value));
+            list.Add(new HamlibModel(int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture), m.Groups[2].Value.Trim(), m.Groups[3].Value.Trim(), m.Groups[5].Value));
         }
         return list;
     }
 
     /// <summary>Runs <c>rigctl -l</c> from a Hamlib folder.</summary>
-    public static async Task<IReadOnlyList<Entry>> LoadAsync(string rigctlPath, CancellationToken ct)
+    public static async Task<IReadOnlyList<HamlibModel>> LoadAsync(string rigctlPath, CancellationToken ct)
     {
         var psi = new ProcessStartInfo(rigctlPath, "-l") { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
         using var p = Process.Start(psi) ?? throw new RigException("rigctl did not start.");

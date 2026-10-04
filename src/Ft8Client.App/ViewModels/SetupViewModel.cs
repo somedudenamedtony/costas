@@ -25,7 +25,7 @@ public sealed partial class SetupViewModel : ObservableObject
     public static readonly IReadOnlyList<string> StepNames = ["Station", "Radio", "Audio", "Transmit test", "Clock check", "QRZ"];
 
     private readonly AppHost _host;
-    private IReadOnlyList<HamlibModels.Entry> _allModels = [];
+    private IReadOnlyList<HamlibModel> _allModels = [];
 
     /// <summary>Creates the wizard from current settings.</summary>
     public SetupViewModel(AppHost host)
@@ -96,11 +96,11 @@ public sealed partial class SetupViewModel : ObservableObject
     public partial string ModelSearch { get; set; } = string.Empty;
 
     /// <summary>Matching models.</summary>
-    public ObservableCollection<HamlibModels.Entry> Models { get; } = [];
+    public ObservableCollection<HamlibModel> Models { get; } = [];
 
     /// <summary>Chosen model.</summary>
     [ObservableProperty]
-    public partial HamlibModels.Entry? Model { get; set; }
+    public partial HamlibModel? Model { get; set; }
 
     /// <summary>Serial ports.</summary>
     public ObservableCollection<string> Ports { get; } = [];

@@ -320,8 +320,3 @@ public sealed partial class SettingsViewModel : ObservableObject
         else _host.Secrets.Set(name, value);
     }
 }
-
-/// <summary>A tier in the order list.</summary>
-/// <param name="Tag">Tag.</param>
-/// <param name="Name">Display name.</param>
-public sealed record TierItem(NeedTag Tag, string Name);

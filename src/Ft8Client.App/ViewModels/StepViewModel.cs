@@ -8,22 +8,6 @@
 
 namespace Ft8Client.App.ViewModels;
 
-/// <summary>How a conversation-strip box looks.</summary>
-public enum StepLook
-{
-    /// <summary>Accent tint, solid border.</summary>
-    Done,
-
-    /// <summary>Critical fill, white text.</summary>
-    Transmitting,
-
-    /// <summary>Accent border, no fill.</summary>
-    Waiting,
-
-    /// <summary>Dashed border, secondary text.</summary>
-    Upcoming,
-}
-
 /// <summary>One box of the conversation strip.</summary>
 /// <param name="Index">Step index, for jumping.</param>
 /// <param name="Mine">Mine (raised) or theirs (lowered).</param>

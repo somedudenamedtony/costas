@@ -44,7 +44,7 @@ public class RigTests
             """;
         var m = HamlibModels.Parse(text);
         m.Should().HaveCount(3);
-        m[2].Should().Be(new HamlibModels.Entry(3073, "Icom", "IC-7300", "Stable"));
+        m[2].Should().Be(new HamlibModel(3073, "Icom", "IC-7300", "Stable"));
         m[1].Model.Should().Be("TRXManager 5.7.630+");
     }
 

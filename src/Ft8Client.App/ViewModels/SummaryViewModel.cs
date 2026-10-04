@@ -85,9 +85,3 @@ public sealed class SummaryViewModel
     /// <summary>True when the notice shows.</summary>
     public bool HasLogNotice => LogNotice is not null;
 }
-
-/// <summary>A continent column.</summary>
-/// <param name="Name">Label.</param>
-/// <param name="Count">Stations.</param>
-/// <param name="BarHeight">Bar height in pixels, scaled to the largest.</param>
-public sealed record ContinentBar(string Name, int Count, double BarHeight);

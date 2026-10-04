@@ -32,21 +32,16 @@ public static class IpfixPacketBuilder
     /// <summary>Receiver options template id.</summary>
     public const ushort ReceiverTemplateId = 0x50E2;
 
-    /// <summary>One datagram and how many spots it carries.</summary>
-    /// <param name="Payload">Bytes to send.</param>
-    /// <param name="SpotCount">Spots included (for the sequence number).</param>
-    public sealed record Packet(byte[] Payload, int SpotCount);
-
     /// <summary>Builds the datagrams for a batch of spots.</summary>
-    public static IReadOnlyList<Packet> Build(PskReceiver receiver, IReadOnlyList<PskSpot> spots, bool includeDescriptors,
+    public static IReadOnlyList<IpfixPacket> Build(PskReceiver receiver, IReadOnlyList<PskSpot> spots, bool includeDescriptors,
                                               uint sequence, uint observationId, uint exportTime, int maxPayload = MaxUdpPayload)
     {
-        var packets = new List<Packet>();
+        var packets = new List<IpfixPacket>();
         var receiverSet = ReceiverSet(receiver);
         var firstBase = includeDescriptors ? Concat(DescriptorSets(), receiverSet) : receiverSet;
         if (spots.Count == 0)
         {
-            packets.Add(new Packet(Message(firstBase, sequence, observationId, exportTime), 0));
+            packets.Add(new IpfixPacket(Message(firstBase, sequence, observationId, exportTime), 0));
             return packets;
         }
 
@@ -59,7 +54,7 @@ public static class IpfixPacketBuilder
             var candidate = MessageLength(baseSets.Length + SenderSetLength(recordBytes + record.Length));
             if (records.Count > 0 && candidate > maxPayload)
             {
-                packets.Add(new Packet(Message(Concat(baseSets, SenderSet(records)), sequence, observationId, exportTime), records.Count));
+                packets.Add(new IpfixPacket(Message(Concat(baseSets, SenderSet(records)), sequence, observationId, exportTime), records.Count));
                 sequence += (uint)records.Count;
                 records.Clear();
                 recordBytes = 0;
@@ -68,7 +63,7 @@ public static class IpfixPacketBuilder
             records.Add(record);
             recordBytes += record.Length;
         }
-        if (records.Count > 0) packets.Add(new Packet(Message(Concat(baseSets, SenderSet(records)), sequence, observationId, exportTime), records.Count));
+        if (records.Count > 0) packets.Add(new IpfixPacket(Message(Concat(baseSets, SenderSet(records)), sequence, observationId, exportTime), records.Count));
         return packets;
     }
 
