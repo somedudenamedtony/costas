@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -25,7 +25,7 @@ namespace Ft8Client.App.Services;
 public sealed class UdpInteropService : IDisposable
 {
     /// <summary>The Id field in every datagram.</summary>
-    public const string ClientId = "Ft8Client";
+    public const string ClientId = AppInfo.Id;
 
     private static readonly TimeSpan Pulse = TimeSpan.FromSeconds(15);
 

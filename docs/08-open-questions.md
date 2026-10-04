@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | D1 | Licence | GPLv3, open source | A closed build cannot ship or run `jt9`; it would need `ft8_lib` (weaker decoding) or a new decoder |
 | D2 | Stack | C# on .NET 10, Avalonia 12 | The owner raised C# and MAUI; Avalonia was recommended for desktop grids and Linux. WinUI 3 is the alternative if Windows-only is acceptable |
-| D3 | Product name | Not chosen; working name "FT8 Client" | Needed for the installer, the QRZ User-Agent and the PSK Reporter software ID |
+| D3 | Product name | **Decided by the owner (2026-10-04): Costas.** User-Agent `Costas/<version>`, data folder `Costas`, installer `Costas-Setup`; code namespaces stay `Ft8Client`. Data and credentials from earlier builds are migrated on first start | Needed for the installer, the QRZ User-Agent and the PSK Reporter software ID |
 | D4 | Decoder packaging | Run `jt9` in place from an installed WSJT-X during development; bundle for release | Bundling needs the dependent DLL set and licence notices |
 | D5 | Units | Miles by default, km as a setting | |
 | D6 | "Confirmed" in need tiers | Tiers use worked, not confirmed; setting to switch | |

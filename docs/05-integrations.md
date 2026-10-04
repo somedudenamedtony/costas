@@ -89,7 +89,7 @@ Source: https://www.qrz.com/docs/logbook/QRZLogbookAPI.html (confirmed).
 
 - Endpoint: `POST https://logbook.qrz.com/api`, form-encoded name=value pairs in and out.
 - Every request has `KEY` (the per-logbook API key) and `ACTION`. Unknown parameters are rejected.
-- User-Agent is required, at most 128 characters: `Ft8Client/<version> (<callsign>)`. Generic agents may be rate limited.
+- User-Agent is required, at most 128 characters: `Costas/<version> (<callsign>)`. Generic agents may be rate limited.
 - INSERT, DELETE, STATUS and FETCH are marked subscription-required by QRZ.
 - A logbook serves exactly one callsign; `W7LIT` and `W7LIT/P` are different logbooks. Store the key per station profile.
 
@@ -124,7 +124,7 @@ Source: https://www.qrz.com/docs/logbook/QRZLogbookAPI.html (confirmed).
 
 Source: https://www.qrz.com/XML/current_spec.html (confirmed).
 
-- Log in: `GET https://xmldata.qrz.com/xml/current/?username=<u>;password=<p>;agent=Ft8Client<version>` → `<QRZDatabase><Session><Key>…</Key></Session></QRZDatabase>`. Cache the key; do not log in per lookup.
+- Log in: `GET https://xmldata.qrz.com/xml/current/?username=<u>;password=<p>;agent=Costas<version>` → `<QRZDatabase><Session><Key>…</Key></Session></QRZDatabase>`. Cache the key; do not log in per lookup.
 - Look up: `GET https://xmldata.qrz.com/xml/current/?s=<key>;callsign=<call>` → `<Callsign>` with `call`, `fname`, `name`, `addr2` (city), `state`, `country`, `grid`, `lat`, `lon`, `dxcc`, and more.
 - A `<Session><Error>` element or a missing `<Key>` means the session expired or the call was not found; re-login once on session errors.
 - Full data needs a QRZ XML subscription; without one, fields are limited.
@@ -168,7 +168,7 @@ Spot only decodes with a resolved callsign that are not low confidence. Never sp
 Source: `Network/NetworkMessage.hpp` in the WSJT-X source (confirmed). Lets GridTracker, JTAlert, N1MM+ and loggers work unchanged.
 
 - UDP to a configurable address, default `127.0.0.1:2237`. Unicast or multicast.
-- Every datagram: `quint32` magic `0xadbccbda`, `quint32` schema (send 2), `quint32` message type, then `utf8` Id (a unique name, `Ft8Client`), then the fields.
+- Every datagram: `quint32` magic `0xadbccbda`, `quint32` schema (send 2), `quint32` message type, then `utf8` Id (a unique name, `Costas`), then the fields.
 - Encoding is Qt `QDataStream`, big-endian. `utf8` = `quint32` byte length then bytes; length `0xffffffff` = null. `bool` = one byte. `QTime` = `quint32` milliseconds since midnight. Floating point = 64-bit IEEE double. **VERIFY** `QDateTime` (expected: `qint64` Julian day, `quint32` ms since midnight, `quint8` timespec, 1 = UTC).
 
 | Type | Name | Fields after Id, in order |

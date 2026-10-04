@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -62,7 +62,7 @@ public static class Jt9Locator
             yield return Directory.Exists(configuredPath) ? Path.Combine(configuredPath, ExecutableName) : configuredPath;
         }
 
-        var env = Environment.GetEnvironmentVariable("FT8CLIENT_JT9");
+        var env = Environment.GetEnvironmentVariable("COSTAS_JT9") ?? Environment.GetEnvironmentVariable("FT8CLIENT_JT9");
         if (!string.IsNullOrWhiteSpace(env)) yield return env;
 
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

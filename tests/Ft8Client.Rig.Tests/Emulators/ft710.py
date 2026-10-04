@@ -1,5 +1,5 @@
-# Ft8Client - a station-centric FT8/FT4 client.
-# Copyright (C) 2026 Ft8Client contributors. GPLv3; see LICENSE.
+# Costas - a station-centric FT8/FT4 client.
+# Copyright (C) 2026 Costas contributors. GPLv3; see LICENSE.
 #
 # Minimal Yaesu FT-710 CAT emulator on a pseudo-terminal, for tests. Prints the terminal path, then answers the
 # newcat commands Hamlib's FT-710 backend (model 1049) uses and logs every command to the file named in argv[1].

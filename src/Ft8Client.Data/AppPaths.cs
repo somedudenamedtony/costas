@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -8,7 +8,7 @@
 
 namespace Ft8Client.Data;
 
-/// <summary>Per-user data folders: <c>%LOCALAPPDATA%\Ft8Client\</c> on Windows, the platform equivalent elsewhere.</summary>
+/// <summary>Per-user data folders: <c>%LOCALAPPDATA%\Costas\</c> on Windows, the platform equivalent elsewhere.</summary>
 public sealed class AppPaths
 {
     /// <summary>Creates paths under a root folder (tests and portable use pass their own).</summary>
@@ -20,18 +20,35 @@ public sealed class AppPaths
     /// <summary>The default root for the current user.</summary>
     public static AppPaths Default()
     {
-        var env = Environment.GetEnvironmentVariable("FT8CLIENT_HOME");
+        var env = Environment.GetEnvironmentVariable("COSTAS_HOME") ?? Environment.GetEnvironmentVariable("FT8CLIENT_HOME");
         if (!string.IsNullOrWhiteSpace(env)) return new AppPaths(env);
+        return new AppPaths(Path.Combine(BaseDir(), Core.AppInfo.Id));
+    }
+
+    /// <summary>True when the root came from the environment (tests, portable use): no legacy migration then.</summary>
+    public static bool RootFromEnvironment =>
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("COSTAS_HOME") ?? Environment.GetEnvironmentVariable("FT8CLIENT_HOME"));
+
+    /// <summary>The data folder used before the rename to Costas.</summary>
+    public static string LegacyRoot() => Path.Combine(BaseDir(), Core.AppInfo.LegacyId);
+
+    private static string BaseDir()
+    {
         var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if (string.IsNullOrEmpty(baseDir)) baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
-        return new AppPaths(Path.Combine(baseDir, Core.AppInfo.Id));
+        return string.IsNullOrEmpty(baseDir) ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share") : baseDir;
     }
 
     /// <summary>Root folder.</summary>
     public string Root { get; }
 
     /// <summary>SQLite database.</summary>
-    public string Database => Path.Combine(Root, "ft8client.db");
+    public string Database => Path.Combine(Root, DatabaseFileName);
+
+    /// <summary>Database file name.</summary>
+    public const string DatabaseFileName = "costas.db";
+
+    /// <summary>Database file name used before the rename to Costas.</summary>
+    public const string LegacyDatabaseFileName = "ft8client.db";
 
     /// <summary>Settings file.</summary>
     public string Settings => Path.Combine(Root, "settings.json");

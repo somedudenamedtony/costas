@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -92,7 +92,7 @@ public sealed class PskFeedClient : IAsyncDisposable
                 var options = new MqttClientOptionsBuilder()
                     .WithTcpServer(_host, _port)
                     .WithTlsOptions(o => o.UseTls(_tls))
-                    .WithClientId($"ft8client-{Guid.NewGuid():N}"[..23])
+                    .WithClientId($"costas-{Guid.NewGuid():N}"[..23])
                     .WithCleanSession(true)
                     .WithKeepAlivePeriod(TimeSpan.FromSeconds(60))
                     .WithTimeout(TimeSpan.FromSeconds(15))

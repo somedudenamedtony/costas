@@ -5,7 +5,7 @@
         xmlns:rig="using:Ft8Client.Rig"
         x:Class="Ft8Client.App.Views.SetupWindow"
         x:DataType="vm:SetupViewModel"
-        Title="Set up FT8 Client" Width="860" Height="600" WindowStartupLocation="CenterOwner">
+        Title="Set up Costas" Width="860" Height="600" WindowStartupLocation="CenterOwner">
   <Grid ColumnDefinitions="200,*" RowDefinitions="*,Auto">
     <Border Grid.RowSpan="2" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,1,0">
       <ListBox ItemsSource="{Binding Steps}" SelectedIndex="{Binding Step}" Background="Transparent" Margin="8,16" IsEnabled="False">

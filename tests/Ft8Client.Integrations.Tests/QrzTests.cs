@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -71,7 +71,7 @@ public sealed class QrzTests : IDisposable
         var s = await Client().StatusAsync(Key, TestContext.Current.CancellationToken);
         s.Count.Should().Be(1);
         s.Confirmed.Should().Be(1);
-        _http.DefaultRequestHeaders.UserAgent.ToString().Should().StartWith("Ft8Client/").And.EndWith("(W7LIT)");
+        _http.DefaultRequestHeaders.UserAgent.ToString().Should().StartWith("Costas/").And.EndWith("(W7LIT)");
     }
 
     [Fact]

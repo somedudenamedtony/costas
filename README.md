@@ -1,8 +1,8 @@
-# FT8 Client — build package
+# Costas — build package
 
 Everything needed to start building a modern FT8/FT4 client for Windows (cross-platform later). Hand this folder to Claude Code as the root of a new repository.
 
-Owner: Tony Shepherd, W7LIT, grid DN40. Working name: **FT8 Client** (namespace `Ft8Client`). The product name is not chosen yet; keep it in one constant so it can be renamed.
+Owner: Tony Shepherd, W7LIT, grid DN40. Product name: **Costas** (code namespace `Ft8Client`, kept for continuity). The name lives in one constant, `AppInfo.ProductName`.
 
 ## Build status
 
@@ -22,9 +22,11 @@ in `docs/07-milestones.md` up to M7 passes (`dotnet test`: 487 tests, Linux, wit
 | M7 setup, settings, log, interop | UDP datagrams for every type; settings migration; secrets kept out of settings, logs and the bundle | GridTracker on Windows; first-run timing with an IC-7300 |
 | M8 FT4, hardening, release | FT4 vectors and decode round trip | 24-hour soak, installer, code signing, auto-update, user guide |
 
-Install on Windows: every CI run builds `Ft8Client-Setup-<version>.exe` (the **Ft8Client-Setup** artifact on the
+Install on Windows: every CI run builds `Costas-Setup-<version>.exe` (the **Costas-Setup** artifact on the
 Actions run), self-contained with `jt9` and Hamlib bundled. It is not code-signed yet, so Windows SmartScreen will warn
 on first run. To build it locally: `scripts/build-installer.ps1`.
+Running a newer installer upgrades the existing install in place and keeps the log and settings; an install of a build
+from before the rename ("FT8 Client") is upgraded too, and its data is moved to the Costas data folder on first start.
 
 Quick start from source (no radio needed): run `third_party/fetch.ps1` (Windows) or `third_party/fetch.sh` (Linux) for `jt9` and
 Hamlib, then `dotnet run --project src/Ft8Client.App -- --simulate samples/ft8 --simulate-partner` to replay the sample

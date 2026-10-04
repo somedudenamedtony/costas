@@ -114,7 +114,7 @@ Required from Milestone 0 so that everything can be built and tested without a r
 
 ## Configuration and storage
 
-Per-user data lives in `%LOCALAPPDATA%\Ft8Client\` (on other platforms, the equivalent app-data folder): `ft8client.db`, `settings.json`, `logs\`, `wav\`, `cache\`. See `06-data-model.md`.
+Per-user data lives in `%LOCALAPPDATA%\Costas\` (on other platforms, the equivalent app-data folder): `costas.db`, `settings.json`, `logs\`, `wav\`, `cache\`. See `06-data-model.md`.
 
 ## Error handling
 

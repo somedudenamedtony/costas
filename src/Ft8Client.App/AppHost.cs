@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -156,11 +156,27 @@ public sealed class AppHost : IAsyncDisposable
     public static async Task<AppHost> StartAsync(CommandLine args)
     {
         var paths = args.Home is null ? AppPaths.Default() : new AppPaths(args.Home);
+        // Builds from before the rename to Costas kept their data under the old name: bring it across once.
+        string? migrated = null;
+        Exception? migrationError = null;
+        if (args.Home is null && !AppPaths.RootFromEnvironment)
+        {
+            try
+            {
+                migrated = LegacyMigration.MigrateFolder(paths.Root, AppPaths.LegacyRoot());
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                migrationError = ex;
+            }
+        }
         paths.EnsureCreated();
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
             .WriteTo.File(Path.Combine(paths.Logs, "app-.log"), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 14)
             .CreateLogger();
+        if (migrated is not null) Log.Information("{Note}", migrated);
+        if (migrationError is not null) Log.Warning(migrationError, "Could not bring data across from {Legacy}", AppPaths.LegacyRoot());
         var store = new SettingsStore(paths.Settings);
         var host = new AppHost(args, paths, new AppSettingsAccessor(store, store.Load()));
         await host.InitializeAsync().ConfigureAwait(false);
@@ -171,6 +187,15 @@ public sealed class AppHost : IAsyncDisposable
     {
         var s = Settings.Current;
         Log.Information("{Product} {Version} starting; data in {Root}", AppInfo.ProductName, AppInfo.Version, Paths.Root);
+        try
+        {
+            var moved = LegacyMigration.MigrateSecrets(Secrets, s.Profiles.Select(p => p.Id));
+            if (moved > 0) Log.Information("Moved {Count} saved credentials to their new names", moved);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
+        {
+            Log.Warning(ex, "Could not move saved credentials to their new names");
+        }
         Jt9Decoder.CleanTempRoot(Paths.Temp);
 
         Jt9Path = Jt9Locator.Find(s.Paths.Jt9);

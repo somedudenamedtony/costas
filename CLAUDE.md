@@ -4,7 +4,7 @@ Project instructions for Claude Code. Read `README.md` and `docs/` before writin
 
 ## Project
 
-A Windows-first desktop FT8/FT4 client in C#. Station-centric UI, WSJT-X decoder (`jt9`) as a child process, Hamlib `rigctld` for rig control, QRZ logbook for worked-before data, PSK Reporter for "who hears me". Licence GPLv3.
+Costas: a Windows-first desktop FT8/FT4 client in C# (code namespace `Ft8Client`). Station-centric UI, WSJT-X decoder (`jt9`) as a child process, Hamlib `rigctld` for rig control, QRZ logbook for worked-before data, PSK Reporter for "who hears me". Licence GPLv3.
 
 ## Stack
 
@@ -55,7 +55,7 @@ third_party/                  jt9 and Hamlib binaries with their licences (not c
 7. **Secrets** (QRZ API key, QRZ password) go in the OS credential store, never in settings files, logs or the repository.
 8. **No sample callsigns in production code.** Mock data lives under `samples/` and test projects only.
 9. **Third-party services are optional.** The app must work with QRZ and PSK Reporter unreachable. Network calls have timeouts, back-off and a visible status.
-10. **Respect service limits.** Identify the app in every HTTP request (User-Agent `Ft8Client/<version> (<callsign>)`). Limits are in `docs/05-integrations.md`.
+10. **Respect service limits.** Identify the app in every HTTP request (User-Agent `Costas/<version> (<callsign>)`). Limits are in `docs/05-integrations.md`.
 
 ## Conventions
 

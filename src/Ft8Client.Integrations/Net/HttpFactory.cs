@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -17,7 +17,7 @@ public static class HttpFactory
     /// <summary>Default request timeout.</summary>
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(20);
 
-    /// <summary>A client with the app's User-Agent (<c>Ft8Client/&lt;version&gt; (&lt;callsign&gt;)</c>).</summary>
+    /// <summary>A client with the app's User-Agent (<c>Costas/&lt;version&gt; (&lt;callsign&gt;)</c>).</summary>
     public static HttpClient Create(string callsign, HttpMessageHandler? handler = null, TimeSpan? timeout = null)
     {
         var client = handler is null ? new HttpClient() : new HttpClient(handler, disposeHandler: false);
