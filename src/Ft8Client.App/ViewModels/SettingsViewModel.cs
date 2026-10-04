@@ -26,7 +26,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     public SettingsViewModel(AppHost host, bool rankingOnly = false)
     {
         _host = host;
-        RankingOnly = rankingOnly;
+        SelectedPage = rankingOnly ? WhoToCallPage : 0;
         var s = host.Settings.Current;
         Callsign = s.Profile.Callsign;
         Grid = s.Profile.Grid;
@@ -45,12 +45,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         SkipLongShots = s.Ranking.SkipLongShots;
         ConfirmedOnly = s.Ranking.ConfirmedOnly;
         LogbookEnabled = s.Qrz.LogbookEnabled;
-        LookupEnabled = s.Qrz.LookupEnabled;
         UploadOnComplete = s.Qrz.UploadOnComplete;
         SyncMinutes = s.Qrz.SyncMinutes.ToString(CultureInfo.InvariantCulture);
         LogbookKey = host.Secrets.Get(SecretNames.QrzLogbookKey(s.Profile.Id)) ?? string.Empty;
-        QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
-        QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
         FeedEnabled = s.PskReporter.FeedEnabled;
         UploadSpots = s.PskReporter.UploadSpots;
         UdpEnabled = s.Udp.Enabled;
@@ -68,18 +65,41 @@ public sealed partial class SettingsViewModel : ObservableObject
         ReplaySamples = s.Developer.ReplaySamples;
         SimulatedPartner = s.Developer.SimulatedPartner;
         SecretsNote = host.Secrets.IsPersistent
-            ? "Keys and passwords are kept in the system credential store, not in the settings file."
-            : "No system credential store is available here: keys and passwords last until the app closes.";
+            ? "The API key is kept in the Windows credential store, not in the settings file."
+            : "No system credential store is available here: the API key is kept only until the app closes.";
     }
 
     /// <summary>Raised when the window should close.</summary>
     public event Action? Close;
 
-    /// <summary>Opened from "How the line is ordered": show only ranking.</summary>
-    public bool RankingOnly { get; }
+    /// <summary>Index of the Who to call page.</summary>
+    public const int WhoToCallPage = 2;
 
-    /// <summary>Show every section.</summary>
-    public bool AllSections => !RankingOnly;
+    /// <summary>The page shown when the window opens (Who to call when opened from "Change").</summary>
+    [ObservableProperty]
+    public partial int SelectedPage { get; set; }
+
+    /// <summary>Result of "Test key".</summary>
+    [ObservableProperty]
+    public partial string KeyStatus { get; set; } = string.Empty;
+
+    /// <summary>Tests the logbook API key with QRZ.</summary>
+    [RelayCommand]
+    private async Task TestKey()
+    {
+        if (string.IsNullOrWhiteSpace(LogbookKey))
+        {
+            KeyStatus = "Paste the key first.";
+            return;
+        }
+        KeyStatus = "Testing…";
+        var (_, msg) = await _host.Qrz.TestKeyAsync(LogbookKey.Trim(), CancellationToken.None);
+        KeyStatus = msg;
+    }
+
+    /// <summary>Opens the QRZ Logbook, where the API key is shown.</summary>
+    [RelayCommand]
+    private static void OpenQrz() => Services.Browser.Open(Services.Browser.QrzLogbook);
 
     /// <summary>Message line.</summary>
     [ObservableProperty]
@@ -158,9 +178,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool LogbookEnabled { get; set; }
 
-    /// <summary>QRZ lookups.</summary>
-    [ObservableProperty]
-    public partial bool LookupEnabled { get; set; }
 
     /// <summary>Upload on completion.</summary>
     [ObservableProperty]
@@ -174,13 +191,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string LogbookKey { get; set; }
 
-    /// <summary>QRZ username.</summary>
-    [ObservableProperty]
-    public partial string QrzUser { get; set; }
 
-    /// <summary>QRZ password.</summary>
-    [ObservableProperty]
-    public partial string QrzPassword { get; set; }
 
     /// <summary>Where secrets are kept.</summary>
     public string SecretsNote { get; }
@@ -303,9 +314,10 @@ public sealed partial class SettingsViewModel : ObservableObject
         static double Dbl(string s, double min, double max, double fallback) =>
             double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v, min, max) : fallback;
 
-        if (!RankingOnly && !Core.Messages.Callsign.IsValid(Callsign.Trim().ToUpperInvariant()))
+        if (!Core.Messages.Callsign.IsValid(Callsign.Trim().ToUpperInvariant()))
         {
-            Message = "Enter a valid callsign.";
+            Message = "Enter a valid callsign (Station page).";
+            SelectedPage = 0;
             return;
         }
         _host.Settings.Update(s =>
@@ -316,7 +328,6 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Ranking.HideWorked = HideWorked;
             s.Ranking.SkipLongShots = SkipLongShots;
             s.Ranking.ConfirmedOnly = ConfirmedOnly;
-            if (RankingOnly) return;
             s.Profile.Callsign = Callsign.Trim().ToUpperInvariant();
             s.Profile.Grid = Grid.Trim().ToUpperInvariant();
             s.Profile.PowerWatts = Int(Power, 1, 2000, s.Profile.PowerWatts);
@@ -328,7 +339,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
             s.Qrz.LogbookEnabled = LogbookEnabled;
-            s.Qrz.LookupEnabled = LookupEnabled;
+            s.Qrz.LookupEnabled = false; // lookups needed the QRZ login, which the app no longer asks for
             s.Qrz.UploadOnComplete = UploadOnComplete;
             s.Qrz.SyncMinutes = Int(SyncMinutes, 5, 1440, 15);
             s.PskReporter.FeedEnabled = FeedEnabled;
@@ -350,15 +361,12 @@ public sealed partial class SettingsViewModel : ObservableObject
                 s.Developer.SimulatedPartner = SimulatedPartner;
             }
         });
-        if (!RankingOnly)
-        {
-            var id = _host.Settings.Current.Profile.Id;
-            Set(SecretNames.QrzLogbookKey(id), LogbookKey.Trim());
-            Set(SecretNames.QrzUsername, QrzUser.Trim());
-            Set(SecretNames.QrzPassword, QrzPassword);
-            _host.Transmitter.GainDb = _host.Settings.Current.Profile.Audio.TxGainDb;
-            _host.RebuildLogIndex();
-        }
+        var id = _host.Settings.Current.Profile.Id;
+        Set(SecretNames.QrzLogbookKey(id), LogbookKey.Trim());
+        _host.Secrets.Delete(SecretNames.QrzUsername);
+        _host.Secrets.Delete(SecretNames.QrzPassword);
+        _host.Transmitter.GainDb = _host.Settings.Current.Profile.Audio.TxGainDb;
+        _host.RebuildLogIndex();
         Close?.Invoke();
     }
 

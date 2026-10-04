@@ -24,21 +24,33 @@
           <CheckBox Content="Show distances in kilometres (miles otherwise)" IsChecked="{Binding UnitsKm}" />
         </StackPanel>
         <!-- 2 Radio -->
-        <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}">
+        <StackPanel Spacing="14" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}">
           <TextBlock Text="Your radio" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="Model" /><TextBox Text="{Binding ModelSearch}" PlaceholderText="Search, e.g. IC-7300" Width="320" HorizontalAlignment="Left" />
-          <ListBox ItemsSource="{Binding Models}" SelectedItem="{Binding Model}" Height="140" Width="420" HorizontalAlignment="Left">
-            <ListBox.ItemTemplate><DataTemplate x:DataType="rig:HamlibModel"><TextBlock Text="{Binding Display}" /></DataTemplate></ListBox.ItemTemplate>
-          </ListBox>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="Port" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding Ports}" SelectedItem="{Binding Port}" MinWidth="120" />
-            <TextBlock Text="Baud" VerticalAlignment="Center" /><TextBox Text="{Binding Baud}" Width="90" PlaceholderText="auto" />
-            <TextBlock Text="PTT" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding PttMethods}" SelectedItem="{Binding Ptt}" MinWidth="80" />
-            <Button Content="Find the radio" Command="{Binding ScanCommand}" IsEnabled="{Binding !Busy}" />
+          <TextBlock Classes="secondary" TextWrapping="Wrap"
+                     Text="Choose your radio so the app can set its frequency and key it for transmit. Not connected yet? Press Next and come back from ☰ › Station setup." />
+          <CheckBox Content="My radio has no CAT control: use audio and VOX only" IsChecked="{Binding AudioOnly}" />
+          <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10" IsEnabled="{Binding !AudioOnly}">
+            <TextBlock Grid.Row="0" Text="Manufacturer" VerticalAlignment="Center" />
+            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Manufacturers}" SelectedItem="{Binding Manufacturer}" Width="300"
+                      PlaceholderText="Choose…" MaxDropDownHeight="360" />
+            <TextBlock Grid.Row="1" Text="Model" VerticalAlignment="Center" />
+            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Models}" SelectedItem="{Binding Model}" Width="300"
+                      PlaceholderText="Choose…" MaxDropDownHeight="360">
+              <ComboBox.ItemTemplate><DataTemplate x:DataType="rig:HamlibModel"><TextBlock Text="{Binding Model}" /></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Grid.Row="2" Text="Port" VerticalAlignment="Center" />
+            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Ports}" SelectedItem="{Binding Port}" Width="300" PlaceholderText="Find automatically" />
+            <TextBlock Grid.Row="3" Text="Speed (baud)" VerticalAlignment="Center" />
+            <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding BaudChoices}" SelectedItem="{Binding BaudChoice}" Width="300" />
+            <TextBlock Grid.Row="4" Text="Transmit (PTT)" VerticalAlignment="Center" />
+            <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding PttChoices}" SelectedItem="{Binding PttChoice}" Width="300" />
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="12" IsEnabled="{Binding !AudioOnly}">
+            <Button Content="Test connection" Command="{Binding ScanCommand}" IsEnabled="{Binding !Busy}" Margin="130,0,0,0" />
+            <TextBlock VerticalAlignment="Center" IsVisible="{Binding Readback, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              <Run Text="Connected: the radio is on " /><Run Text="{Binding Readback}" FontWeight="SemiBold" />
+            </TextBlock>
           </StackPanel>
-          <TextBlock><Run Text="Frequency read back: " /><Run Text="{Binding Readback}" FontWeight="SemiBold" /></TextBlock>
-          <Button Classes="link" Command="{Binding UseAudioOnlyCommand}"><TextBlock Text="No radio control? Use audio and VOX only" /></Button>
-          <TextBlock Classes="secondary" TextWrapping="Wrap" Text="Not ready? Press Next to carry on; the radio can be set up later from ☰ › Station setup. Until then nothing is transmitted." />
         </StackPanel>
         <!-- 3 Audio -->
         <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}">
@@ -66,17 +78,13 @@
         <!-- 6 QRZ -->
         <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=5}">
           <TextBlock Text="QRZ and PSK Reporter" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="Logbook API key (QRZ logbook › Settings)" />
+          <TextBlock Text="QRZ logbook API key (optional)" FontWeight="SemiBold" />
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBox Text="{Binding LogbookKey}" Width="260" PasswordChar="•" />
-            <Button Content="Test" Command="{Binding TestKeyCommand}" />
+            <TextBox Text="{Binding LogbookKey}" Width="260" PasswordChar="•" PlaceholderText="XXXX-XXXX-XXXX-XXXX" />
+            <Button Content="Test key" Command="{Binding TestKeyCommand}" />
           </StackPanel>
-          <TextBlock Text="QRZ username and password, for name and location lookups (optional)" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBox Text="{Binding QrzUser}" Width="160" PlaceholderText="Username" />
-            <TextBox Text="{Binding QrzPassword}" Width="160" PlaceholderText="Password" PasswordChar="•" />
-            <Button Content="Test" Command="{Binding TestLookupCommand}" />
-          </StackPanel>
+          <TextBlock Classes="secondary" TextWrapping="Wrap" Text="With it, the app knows what you have worked and confirmed, and uploads new contacts. Find it in your QRZ Logbook: open the logbook's Settings and copy its API access key." />
+          <Button Classes="link" Command="{Binding OpenQrzCommand}" Padding="0"><TextBlock Text="Open the QRZ Logbook" /></Button>
           <CheckBox Content="Upload the stations I hear to PSK Reporter" IsChecked="{Binding UploadSpots}" />
           <TextBlock Text="{Binding SyncProgress}" Classes="secondary" />
         </StackPanel>

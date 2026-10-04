@@ -11,4 +11,8 @@ namespace Ft8Client.Audio.Backends;
 /// <summary>An audio endpoint.</summary>
 /// <param name="Id">Stable endpoint id.</param>
 /// <param name="Name">Friendly name.</param>
-public sealed record AudioDevice(string Id, string Name);
+public sealed record AudioDevice(string Id, string Name)
+{
+    /// <summary>The device's name, as lists show it.</summary>
+    public override string ToString() => Name;
+}
