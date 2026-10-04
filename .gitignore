@@ -11,3 +11,4 @@ third_party/*
 *.db
 *.db-wal
 *.db-shm
+artifacts/

@@ -22,7 +22,11 @@ in `docs/07-milestones.md` up to M7 passes (`dotnet test`: 487 tests, Linux, wit
 | M7 setup, settings, log, interop | UDP datagrams for every type; settings migration; secrets kept out of settings, logs and the bundle | GridTracker on Windows; first-run timing with an IC-7300 |
 | M8 FT4, hardening, release | FT4 vectors and decode round trip | 24-hour soak, installer, code signing, auto-update, user guide |
 
-Quick start (no radio needed): run `third_party/fetch.ps1` (Windows) or `third_party/fetch.sh` (Linux) for `jt9` and
+Install on Windows: every CI run builds `Ft8Client-Setup-<version>.exe` (the **Ft8Client-Setup** artifact on the
+Actions run), self-contained with `jt9` and Hamlib bundled. It is not code-signed yet, so Windows SmartScreen will warn
+on first run. To build it locally: `scripts/build-installer.ps1`.
+
+Quick start from source (no radio needed): run `third_party/fetch.ps1` (Windows) or `third_party/fetch.sh` (Linux) for `jt9` and
 Hamlib, then `dotnet run --project src/Ft8Client.App -- --simulate samples/ft8 --simulate-partner` to replay the sample
 recordings with a simulated station that answers your calls. Simulation never keys a radio, never uploads spots and
 does not write the decode journal or WAV files.

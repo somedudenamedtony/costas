@@ -22,3 +22,23 @@ jobs:
           dotnet-version: '10.0.x'
       - run: ./scripts/ci.ps1
         shell: pwsh
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Cache jt9 and Hamlib downloads
+        uses: actions/cache@v4
+        with:
+          path: third_party/.download
+          key: third-party-${{ hashFiles('third_party/fetch.ps1') }}
+      - name: Build installer
+        run: ./scripts/build-installer.ps1 -BuildNumber ${{ github.run_number }}
+        shell: pwsh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ft8Client-Setup
+          path: artifacts/Ft8Client-Setup-*.exe
+          if-no-files-found: error
