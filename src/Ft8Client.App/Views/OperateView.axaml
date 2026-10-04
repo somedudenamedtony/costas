@@ -13,14 +13,14 @@
           <Grid ColumnDefinitions="*,*,*" DataContext="{Binding Summary}" x:DataType="vm:SummaryViewModel">
             <StackPanel Grid.Column="0" Spacing="6">
               <TextBlock Text="{Binding Title}" Classes="title" />
-              <StackPanel Orientation="Horizontal" Spacing="22">
+              <WrapPanel ItemSpacing="22" LineSpacing="6">
                 <StackPanel><TextBlock Text="{Binding StationsHeard}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Stations heard" Classes="secondary" /></StackPanel>
                 <StackPanel><TextBlock Text="{Binding Countries}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Countries" Classes="secondary" /></StackPanel>
                 <StackPanel><TextBlock Text="{Binding CallingCq}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Calling CQ" Classes="secondary" /></StackPanel>
                 <StackPanel><TextBlock Text="{Binding YouNeed}" FontSize="26" FontWeight="SemiBold" Classes="num" Foreground="{DynamicResource AccentTextBrush}" /><TextBlock Text="You need" Classes="secondary" /></StackPanel>
-              </StackPanel>
-              <TextBlock Text="{Binding Caption}" Classes="secondary num" />
-              <TextBlock Text="{Binding LogNotice}" IsVisible="{Binding HasLogNotice}" Foreground="{DynamicResource CautionBrush}" TextWrapping="Wrap" />
+              </WrapPanel>
+              <TextBlock Text="{Binding Caption}" Classes="secondary num" TextWrapping="Wrap" Margin="0,0,12,0" />
+              <TextBlock Text="{Binding LogNotice}" IsVisible="{Binding HasLogNotice}" Foreground="{DynamicResource CautionBrush}" TextWrapping="Wrap" Margin="0,0,12,0" />
             </StackPanel>
             <StackPanel Grid.Column="1" Spacing="6" Margin="12,0">
               <TextBlock Text="Heard from" Classes="title" />
@@ -44,11 +44,11 @@
             <Grid Grid.Column="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
               <TextBlock Grid.ColumnSpan="2" Text="{Binding LogTitle}" Classes="title" Margin="0,0,0,6" />
               <TextBlock Grid.Row="1" Text="Countries" Classes="secondary" Margin="0,2,16,2" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LogCountries}" Classes="num" Margin="0,2" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LogCountries}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
               <TextBlock Grid.Row="2" Text="US states" Classes="secondary" Margin="0,2,16,2" />
               <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LogStates}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
               <TextBlock Grid.Row="3" Text="Grid squares" Classes="secondary" Margin="0,2,16,2" />
-              <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding LogGrids}" Classes="num" Margin="0,2" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding LogGrids}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
               <TextBlock Grid.Row="4" Text="Tonight" Classes="secondary" Margin="0,2,16,2" />
               <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Tonight}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
             </Grid>
