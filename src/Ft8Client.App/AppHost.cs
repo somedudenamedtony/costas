@@ -123,6 +123,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>QRZ background work.</summary>
     public QrzService Qrz { get; private set; } = null!;
 
+    /// <summary>PSK Reporter feed, query and uploads.</summary>
+    public PskReporterService Psk { get; private set; } = null!;
+
     /// <summary>The audio backend.</summary>
     public IAudioBackend AudioBackend { get; private set; } = new NullAudioBackend();
 
@@ -216,6 +219,9 @@ public sealed class AppHost : IAsyncDisposable
         Qrz = new QrzService(Session, Settings, Secrets, Qsos, Uploads, SyncState, Cache, Countries, Clock);
         Qrz.LogChanged += RebuildLogIndex;
         Qrz.Start();
+
+        Psk = new PskReporterService(Session, Settings, Spots, Countries, Clock, uploadsAllowed: !Simulating);
+        Psk.Start();
 
         _ = Task.Run(ClockCheckLoopAsync);
         _ = Task.Run(RigPollLoopAsync);
@@ -399,6 +405,7 @@ public sealed class AppHost : IAsyncDisposable
         _input?.Dispose();
         _output?.Dispose();
         Qrz?.Dispose();
+        if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);
         await _rig.DisposeAsync().ConfigureAwait(false);
         foreach (var d in _disposables) d.Dispose();
         Guard.Dispose();

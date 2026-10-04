@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<receptionReports>
+  <lastSequenceNumber value="73380253972"/>
+  <maxFlowStartSeconds value="1767495300"/>
+  <receptionReport receiverCallsign="ZL2RPA" receiverLocator="RF70" senderCallsign="W7LIT" senderLocator="DN40DD" frequency="14075432" flowStartSeconds="1767495240" mode="FT8" isSender="1" receiverDXCC="New Zealand" receiverDXCCCode="ZL" senderLotwUpload="2026-01-01" sNR="-22"/>
+  <receptionReport receiverCallsign="KG5OWB" receiverLocator="EM12" senderCallsign="W7LIT" senderLocator="DN40DD" frequency="14075432" flowStartSeconds="1767495270" mode="FT8" sNR="-3"/>
+  <receptionReport receiverCallsign="NOSNR" receiverLocator="EM12" senderCallsign="W7LIT" frequency="14075432" flowStartSeconds="1767495270" mode="FT8"/>
+</receptionReports>
