@@ -20,7 +20,7 @@ in `docs/07-milestones.md` up to M7 passes (`dotnet test`: 487 tests, Linux, wit
 | M5 contacts | Contact engine rules; ten simulated partner contacts end to end | On-air contacts |
 | M6 PSK Reporter | IPFIX byte for byte; feed against a local broker incl. reconnect and de-dupe; query fallback | Live MQTT subscription (port blocked in the build sandbox, V7); spot upload seen on pskreporter.info |
 | M7 setup, settings, log, interop | UDP datagrams for every type; settings migration; secrets kept out of settings, logs and the bundle | GridTracker on Windows; first-run timing with an IC-7300 |
-| M8 FT4, hardening, release | FT4 vectors and decode round trip | 24-hour soak, installer, code signing, auto-update, user guide |
+| M8 FT4, hardening, release | FT4 vectors and decode round trip | 24-hour soak, code signing, user guide (auto-update deferred while the repository is private, D11) |
 
 Install on Windows: every CI run builds `Costas-Setup-<version>.exe` (the **Costas-Setup** artifact on the
 Actions run), self-contained with `jt9` and Hamlib bundled. It is not code-signed yet, so Windows SmartScreen will warn
