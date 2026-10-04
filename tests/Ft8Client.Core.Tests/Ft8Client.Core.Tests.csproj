@@ -9,6 +9,9 @@
     <ProjectReference Include="..\..\src\Ft8Client.Core\Ft8Client.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\src\Ft8Client.Data\Resources\cty.dat" Link="cty.dat" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="FluentAssertions" />
   </ItemGroup>

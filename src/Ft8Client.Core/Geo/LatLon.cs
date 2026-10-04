@@ -6,4 +6,9 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
-[assembly: CaptureConsole]
+namespace Ft8Client.Core.Geo;
+
+/// <summary>A position in degrees, north and east positive.</summary>
+/// <param name="Lat">Latitude, -90 to 90.</param>
+/// <param name="Lon">Longitude, -180 to 180.</param>
+public readonly record struct LatLon(double Lat, double Lon);
