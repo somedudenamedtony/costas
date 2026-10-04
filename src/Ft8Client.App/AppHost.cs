@@ -123,6 +123,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>QRZ background work.</summary>
     public QrzService Qrz { get; private set; } = null!;
 
+    /// <summary>WSJT-X UDP interop.</summary>
+    public UdpInteropService Udp { get; private set; } = null!;
+
     /// <summary>PSK Reporter feed, query and uploads.</summary>
     public PskReporterService Psk { get; private set; } = null!;
 
@@ -222,6 +225,10 @@ public sealed class AppHost : IAsyncDisposable
 
         Psk = new PskReporterService(Session, Settings, Spots, Countries, Clock, uploadsAllowed: !Simulating);
         Psk.Start();
+
+        Udp = new UdpInteropService(Session, Settings, offAir: Simulating);
+        log.Stored += Udp.OnLogged;
+        Udp.Start();
 
         _ = Task.Run(ClockCheckLoopAsync);
         _ = Task.Run(RigPollLoopAsync);
@@ -405,6 +412,7 @@ public sealed class AppHost : IAsyncDisposable
         _input?.Dispose();
         _output?.Dispose();
         Qrz?.Dispose();
+        Udp?.Dispose();
         if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);
         await _rig.DisposeAsync().ConfigureAwait(false);
         foreach (var d in _disposables) d.Dispose();
