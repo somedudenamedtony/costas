@@ -15,6 +15,7 @@
 | D9 | Simulation by default | **Decided by the owner (2026-10-04):** no replayed or made-up data unless asked. Simulation only with `--simulate` or the hidden developer mode (seven clicks on the product name in About), which can also use Hamlib's test radio | |
 | D10 | Tuning the radio at start-up | Not done: the dial is read from the radio, and only picking a band tunes it. If the radio is outside the selected band, transmit is refused by the band-edge check | Owner to decide whether start-up should tune the radio to the selected band |
 | D11 | Updates | **Decided by the owner (2026-10-04):** the repository is public; the app checks GitHub Releases a minute after start and daily (Settings can turn it off), offers a newer build in a bar, and on request downloads it, verifies its SHA-256 and runs the installer, which upgrades in place. Every green build of `main` is published as a release | |
+| D12 | QRZ login | **Decided by the owner (2026-10-04):** only the QRZ logbook API key is asked for. The QRZ username and password (XML lookups of names and locations) are no longer offered, and any stored login is deleted when settings are saved | Lookups can come back if wanted; the client code is still in `Ft8Client.Integrations.Qrz` |
 
 ## Facts to verify (marked VERIFY in the docs)
 

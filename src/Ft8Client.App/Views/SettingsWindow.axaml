@@ -3,120 +3,369 @@
         xmlns:vm="using:Ft8Client.App.ViewModels"
         x:Class="Ft8Client.App.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
-        Title="Settings" Width="720" Height="700" WindowStartupLocation="CenterOwner">
+        Title="Settings" Width="900" Height="640" MinWidth="760" MinHeight="520" WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <!-- One setting: label on the left, control and a short explanation on the right. -->
+    <Style Selector="Grid.field">
+      <Setter Property="Margin" Value="0,0,0,14" />
+    </Style>
+    <Style Selector="Grid.field > TextBlock.label">
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Margin" Value="0,6,12,0" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.help">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Opacity" Value="0.75" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+    <Style Selector="TextBlock.page">
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="TextBlock.intro">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Opacity" Value="0.8" />
+      <Setter Property="Margin" Value="0,0,0,18" />
+    </Style>
+    <Style Selector="TabControl.pages > TabItem">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="Padding" Value="14,6" />
+    </Style>
+  </Window.Styles>
+
   <Grid RowDefinitions="*,Auto">
-    <ScrollViewer Margin="20,16,20,0">
-      <StackPanel Spacing="6">
-        <StackPanel Spacing="6" IsVisible="{Binding AllSections}">
-          <TextBlock Text="Station" Classes="title" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="Callsign" VerticalAlignment="Center" /><TextBox Text="{Binding Callsign}" Width="120" />
-            <TextBlock Text="Grid" VerticalAlignment="Center" /><TextBox Text="{Binding Grid}" Width="90" />
-            <TextBlock Text="Power (W)" VerticalAlignment="Center" /><TextBox Text="{Binding Power}" Width="70" />
-          </StackPanel>
-          <TextBlock Text="Transmit" Classes="title" Margin="0,10,0,0" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="Gain (dBFS)" VerticalAlignment="Center" /><TextBox Text="{Binding TxGain}" Width="70" />
-            <TextBlock Text="Watchdog (min)" VerticalAlignment="Center" /><TextBox Text="{Binding Watchdog}" Width="60" />
-            <TextBlock Text="Retry limit" VerticalAlignment="Center" /><TextBox Text="{Binding RetryLimit}" Width="60" />
-          </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="Sign-off" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding Signoffs}" SelectedItem="{Binding Signoff}" />
-            <TextBlock Text="CQ in" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding Parities}" SelectedItem="{Binding CqParity}" />
-            <TextBlock Text="slots" VerticalAlignment="Center" />
-            <CheckBox Content="Log automatically" IsChecked="{Binding AutoLog}" />
-          </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="Block transmitting when the clock is off by more than (s)" VerticalAlignment="Center" /><TextBox Text="{Binding ClockBlock}" Width="60" />
-          </StackPanel>
-        </StackPanel>
+    <TabControl Classes="pages" TabStripPlacement="Left" SelectedIndex="{Binding SelectedPage}" Padding="24,16,24,0">
 
-        <TextBlock Text="Ranking" Classes="title" Margin="0,10,0,0" />
-        <TextBlock Text="Tier order" Classes="secondary" />
-        <ItemsControl ItemsSource="{Binding TierOrder}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:TierItem">
-              <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
-                <Button Content="▲" Padding="6,0" Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).TierUpCommand}" CommandParameter="{Binding}" AutomationProperties.Name="Move up" />
-                <Button Content="▼" Padding="6,0" Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).TierDownCommand}" CommandParameter="{Binding}" AutomationProperties.Name="Move down" />
-                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+      <!-- 0 Station -->
+      <TabItem Header="Station">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Station" />
+            <TextBlock Classes="intro" Text="Who you are and where you are. Used in every message you send and to work out distances." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Callsign" />
+              <StackPanel Grid.Column="1"><TextBox Text="{Binding Callsign}" Width="160" HorizontalAlignment="Left" /></StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Grid square" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding Grid}" Width="120" HorizontalAlignment="Left" />
+                <TextBlock Classes="help" Text="4 or 6 characters, for example DN40 or DN40dd." />
               </StackPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <CheckBox Content="Prefer stations that hear me" IsChecked="{Binding PreferHearsMe}" />
-        <CheckBox Content="Only stations calling CQ" IsChecked="{Binding OnlyCallingCq}" />
-        <CheckBox Content="Hide stations worked on this band" IsChecked="{Binding HideWorked}" />
-        <CheckBox Content="Skip long shots" IsChecked="{Binding SkipLongShots}" />
-        <CheckBox Content="Count only confirmed contacts" IsChecked="{Binding ConfirmedOnly}" />
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Power (watts)" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding Power}" Width="90" HorizontalAlignment="Left" />
+                <TextBlock Classes="help" Text="Recorded in the log for each contact. It does not change the radio's power." />
+              </StackPanel>
+            </Grid>
+            <TextBlock Classes="help" Text="Radio, audio devices and the transmit test are in Station setup (menu ☰)." />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
-        <StackPanel Spacing="6" IsVisible="{Binding AllSections}">
-          <TextBlock Text="QRZ" Classes="title" Margin="0,10,0,0" />
-          <CheckBox Content="Sync and upload to my QRZ logbook" IsChecked="{Binding LogbookEnabled}" />
-          <CheckBox Content="Upload each contact when it completes" IsChecked="{Binding UploadOnComplete}" />
-          <CheckBox Content="Look up names and locations" IsChecked="{Binding LookupEnabled}" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="Logbook key" VerticalAlignment="Center" /><TextBox Text="{Binding LogbookKey}" Width="220" PasswordChar="•" />
-            <TextBlock Text="Sync every (min)" VerticalAlignment="Center" /><TextBox Text="{Binding SyncMinutes}" Width="60" />
+      <!-- 1 Transmitting -->
+      <TabItem Header="Transmitting">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Transmitting" />
+            <TextBlock Classes="intro" Text="How contacts are run once you start one. Nothing is sent unless you click Call or Call CQ." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Audio level (dB)" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding TxGain}" Width="90" HorizontalAlignment="Left" />
+                <TextBlock Classes="help" Text="Level of the transmit audio sent to the radio, from -40 to 0. Lower it if the radio's ALC moves." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Sign-off" />
+              <StackPanel Grid.Column="1">
+                <ComboBox ItemsSource="{Binding Signoffs}" SelectedItem="{Binding Signoff}" MinWidth="110" />
+                <TextBlock Classes="help" Text="RR73 ends the contact in one message; RRR waits for the other station's 73." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Call CQ in" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <ComboBox ItemsSource="{Binding Parities}" SelectedItem="{Binding CqParity}" MinWidth="110" />
+                  <TextBlock Text="slots" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="Even slots start at :00 and :30, odd slots at :15 and :45." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Give up after" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBox Text="{Binding RetryLimit}" Width="70" />
+                  <TextBlock Text="tries without an answer" VerticalAlignment="Center" />
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Watchdog" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBox Text="{Binding Watchdog}" Width="70" />
+                  <TextBlock Text="minutes" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="Transmitting stops if you have not touched the app for this long." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Clock limit" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBox Text="{Binding ClockBlock}" Width="70" />
+                  <TextBlock Text="seconds" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="Transmitting is blocked when the computer's clock is off by more than this. FT8 needs it within about a second." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Logging" />
+              <CheckBox Grid.Column="1" Content="Log each contact automatically when it completes" IsChecked="{Binding AutoLog}" />
+            </Grid>
           </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="Username" VerticalAlignment="Center" /><TextBox Text="{Binding QrzUser}" Width="140" />
-            <TextBlock Text="Password" VerticalAlignment="Center" /><TextBox Text="{Binding QrzPassword}" Width="140" PasswordChar="•" />
-          </StackPanel>
-          <TextBlock Text="{Binding SecretsNote}" Classes="secondary" TextWrapping="Wrap" />
+        </ScrollViewer>
+      </TabItem>
 
-          <TextBlock Text="PSK Reporter" Classes="title" Margin="0,10,0,0" />
-          <CheckBox Content="Receive the live feed of who hears me" IsChecked="{Binding FeedEnabled}" />
-          <CheckBox Content="Upload the stations I hear" IsChecked="{Binding UploadSpots}" />
+      <!-- 2 Who to call -->
+      <TabItem Header="Who to call">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Who to call" />
+            <TextBlock Classes="intro" Text="How the Next in line list on the Operate screen is ordered. Stations you need most come first." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Priority" />
+              <StackPanel Grid.Column="1">
+                <ItemsControl ItemsSource="{Binding TierOrder}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TierItem">
+                      <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                        <Button Content="▲" Padding="8,2" ToolTip.Tip="Move up"
+                                Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).TierUpCommand}" CommandParameter="{Binding}" AutomationProperties.Name="Move up" />
+                        <Button Content="▼" Padding="8,2" ToolTip.Tip="Move down"
+                                Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).TierDownCommand}" CommandParameter="{Binding}" AutomationProperties.Name="Move down" />
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="help" Text="A station that is a new country for you outranks one that is only a new band, and so on down the list." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Options" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <CheckBox Content="Rank stations that hear me higher (from PSK Reporter)" IsChecked="{Binding PreferHearsMe}" />
+                <CheckBox Content="Only list stations that are calling CQ" IsChecked="{Binding OnlyCallingCq}" />
+                <CheckBox Content="Hide stations I have already worked on this band" IsChecked="{Binding HideWorked}" />
+                <CheckBox Content="Leave out long shots (signals too weak to likely complete)" IsChecked="{Binding SkipLongShots}" />
+                <CheckBox Content="Count a country or state as worked only when confirmed" IsChecked="{Binding ConfirmedOnly}" />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
-          <TextBlock Text="Interop (WSJT-X UDP)" Classes="title" Margin="0,10,0,0" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <CheckBox Content="Send" IsChecked="{Binding UdpEnabled}" />
-            <TextBlock Text="Address" VerticalAlignment="Center" /><TextBox Text="{Binding UdpAddress}" Width="140" />
-            <TextBlock Text="Port" VerticalAlignment="Center" /><TextBox Text="{Binding UdpPort}" Width="70" />
+      <!-- 3 QRZ -->
+      <TabItem Header="QRZ">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="QRZ logbook" />
+            <TextBlock Classes="intro" Text="Your QRZ logbook tells the app what you have already worked and confirmed, and contacts you make are uploaded to it." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Logbook API key" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBox Text="{Binding LogbookKey}" Width="260" PasswordChar="•" PlaceholderText="XXXX-XXXX-XXXX-XXXX" />
+                  <Button Content="Test key" Command="{Binding TestKeyCommand}" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="{Binding KeyStatus}" IsVisible="{Binding KeyStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Classes="help" Text="Find it in your QRZ Logbook: open the logbook's Settings and copy its API access key." />
+                <Button Classes="link" Command="{Binding OpenQrzCommand}" Padding="0" Margin="0,4,0,0">
+                  <TextBlock Text="Open the QRZ Logbook" />
+                </Button>
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Sync" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <CheckBox Content="Read my logbook and upload new contacts" IsChecked="{Binding LogbookEnabled}" />
+                <CheckBox Content="Upload each contact as soon as it is logged" IsChecked="{Binding UploadOnComplete}" IsEnabled="{Binding LogbookEnabled}" />
+                <StackPanel Orientation="Horizontal" Spacing="8" IsEnabled="{Binding LogbookEnabled}">
+                  <TextBlock Text="Check for changes every" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding SyncMinutes}" Width="70" />
+                  <TextBlock Text="minutes" VerticalAlignment="Center" />
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+            <TextBlock Classes="help" Text="{Binding SecretsNote}" />
           </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
-          <TextBlock Text="Files" Classes="title" Margin="0,10,0,0" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="Save slot audio" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding WavChoices}" SelectedItem="{Binding SaveWav}" />
-            <TextBlock Text="Keep (days)" VerticalAlignment="Center" /><TextBox Text="{Binding Retention}" Width="60" />
+      <!-- 4 PSK Reporter -->
+      <TabItem Header="PSK Reporter">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="PSK Reporter" />
+            <TextBlock Classes="intro" Text="PSK Reporter collects reports of who hears whom. It powers the Reach view and the Hears you column." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Who hears me" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Receive live reports of stations hearing my signal" IsChecked="{Binding FeedEnabled}" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Share what I hear" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Send the stations I decode to PSK Reporter" IsChecked="{Binding UploadSpots}" />
+                <TextBlock Classes="help" Text="Helps other operators see where their signals reach. Sent every few minutes; never in simulation." />
+              </StackPanel>
+            </Grid>
           </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
-          <TextBlock Text="Appearance" Classes="title" Margin="0,10,0,0" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="Theme" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}" />
-            <TextBlock Text="Units" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding UnitChoices}" SelectedItem="{Binding Units}" />
+      <!-- 5 Other programs -->
+      <TabItem Header="Other programs">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Other programs" />
+            <TextBlock Classes="intro" Text="Share decodes and logged contacts with GridTracker, JTAlert, N1MM+ and loggers that understand WSJT-X." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="WSJT-X UDP" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <CheckBox Content="Send decodes, status and logged contacts" IsChecked="{Binding UdpEnabled}" />
+                <StackPanel Orientation="Horizontal" Spacing="8" IsEnabled="{Binding UdpEnabled}">
+                  <TextBlock Text="Address" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding UdpAddress}" Width="150" />
+                  <TextBlock Text="Port" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding UdpPort}" Width="80" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="The defaults (127.0.0.1, port 2237) work with GridTracker and JTAlert on this computer." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Save received audio" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <ComboBox ItemsSource="{Binding WavChoices}" SelectedItem="{Binding SaveWav}" MinWidth="110" />
+                  <TextBlock Text="keep for" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding Retention}" Width="70" />
+                  <TextBlock Text="days" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="Saves each 15-second slot as a WAV file: none, only slots with decodes, or all. Useful for checking reception later." />
+              </StackPanel>
+            </Grid>
           </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
-          <TextBlock Text="Updates" Classes="title" Margin="0,10,0,0" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <CheckBox Content="Check for new builds (once a day)" IsChecked="{Binding CheckUpdates}" />
-            <Button Content="Check now" Command="{Binding CheckNowCommand}" />
-            <TextBlock Text="{Binding UpdateStatus}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="360" />
+      <!-- 6 Appearance -->
+      <TabItem Header="Appearance">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Appearance" />
+            <TextBlock Classes="intro" Text="How the app looks." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Theme" />
+              <StackPanel Grid.Column="1">
+                <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}" MinWidth="120" />
+                <TextBlock Classes="help" Text="System follows the Windows light or dark setting." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Distances in" />
+              <ComboBox Grid.Column="1" ItemsSource="{Binding UnitChoices}" SelectedItem="{Binding Units}" MinWidth="120" />
+            </Grid>
           </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
-          <StackPanel Spacing="6" IsVisible="{Binding ShowDeveloper}">
-            <TextBlock Text="Developer" Classes="title" Margin="0,10,0,0" />
-            <TextBlock TextWrapping="Wrap" Opacity="0.8" Text="To test against Hamlib's test radio, choose Hamlib Dummy in Setup. Transmit audio is never played while a test radio is selected. Replay changes apply after a restart." />
-            <CheckBox Content="Replay the sample recordings instead of the sound card" IsChecked="{Binding ReplaySamples}" />
-            <CheckBox Content="A simulated station answers my calls (while replaying)" IsChecked="{Binding SimulatedPartner}" IsEnabled="{Binding ReplaySamples}" />
-            <CheckBox Content="Developer mode" IsChecked="{Binding DeveloperMode}" />
+      <!-- 7 Updates -->
+      <TabItem Header="Updates">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Updates" />
+            <TextBlock Classes="intro" Text="New builds are published on GitHub. When one is available, a bar at the top of the main window offers to install it." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Automatic check" />
+              <CheckBox Grid.Column="1" Content="Check for a new build once a day" IsChecked="{Binding CheckUpdates}" />
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Check now" />
+              <StackPanel Grid.Column="1">
+                <Button Content="Check now" Command="{Binding CheckNowCommand}" />
+                <TextBlock Classes="help" Text="{Binding UpdateStatus}" />
+              </StackPanel>
+            </Grid>
           </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
-          <TextBlock Text="Programs" Classes="title" Margin="0,10,0,0" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="jt9" VerticalAlignment="Center" Width="80" /><TextBox Text="{Binding Jt9Path}" Width="420" PlaceholderText="search automatically" />
+      <!-- 8 Advanced -->
+      <TabItem Header="Advanced">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Advanced" />
+            <TextBlock Classes="intro" Text="The app finds its decoder and radio control programs by itself. Set these only to use a different copy." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="jt9 decoder" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding Jt9Path}" PlaceholderText="Found automatically" />
+                <TextBlock Classes="help" Text="Full path to jt9.exe from WSJT-X." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Hamlib folder" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding HamlibDir}" PlaceholderText="Found automatically" />
+                <TextBlock Classes="help" Text="Folder containing rigctld.exe." />
+              </StackPanel>
+            </Grid>
           </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="Hamlib folder" VerticalAlignment="Center" Width="80" /><TextBox Text="{Binding HamlibDir}" Width="420" PlaceholderText="search automatically" />
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- 9 Developer (hidden unless developer mode is on) -->
+      <TabItem Header="Developer" IsVisible="{Binding ShowDeveloper}">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Developer" />
+            <TextBlock Classes="intro" Text="Test tools. To test against Hamlib's test radio, choose Hamlib Dummy in Station setup; transmit audio is never played while a test radio is selected. Replay changes apply after a restart." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Replay" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <CheckBox Content="Replay the sample recordings instead of the sound card" IsChecked="{Binding ReplaySamples}" />
+                <CheckBox Content="A simulated station answers my calls" IsChecked="{Binding SimulatedPartner}" IsEnabled="{Binding ReplaySamples}" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Developer mode" />
+              <CheckBox Grid.Column="1" Content="On (untick to hide this page)" IsChecked="{Binding DeveloperMode}" />
+            </Grid>
           </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+
+    <Border Grid.Row="1" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
+      <DockPanel Margin="20,12">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <Button Content="Cancel" Command="{Binding CancelCommand}" />
+          <Button Content="Save" Command="{Binding SaveCommand}" Classes="accent" MinWidth="80" />
         </StackPanel>
-        <TextBlock Text="{Binding Message}" Foreground="{DynamicResource CriticalBrush}" />
-      </StackPanel>
-    </ScrollViewer>
-    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="20,12">
-      <Button Content="Cancel" Command="{Binding CancelCommand}" />
-      <Button Content="Save" Command="{Binding SaveCommand}" Classes="accent" MinWidth="80" />
-    </StackPanel>
+        <TextBlock Text="{Binding Message}" Foreground="{DynamicResource CriticalBrush}" VerticalAlignment="Center" TextWrapping="Wrap" />
+      </DockPanel>
+    </Border>
   </Grid>
 </Window>

@@ -58,6 +58,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>Closes the app normally (set by the app; releases PTT and stops the child processes).</summary>
     public static Action Shutdown { get; set; } = () => { };
 
+    /// <summary>Shows a view (0 Operate, 1 Raw decodes, 2 Reach, 3 Log).</summary>
+    [RelayCommand]
+    private void SelectTab(string index) => Tab = int.Parse(index, System.Globalization.CultureInfo.InvariantCulture);
+
     /// <summary>The update bar.</summary>
     public UpdateBarViewModel Update { get; }
 

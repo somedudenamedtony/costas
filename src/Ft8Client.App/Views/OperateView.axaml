@@ -111,7 +111,21 @@
               <DockPanel Margin="14,12,14,8">
                 <Button DockPanel.Dock="Right" Content="List updated" IsVisible="{Binding ListUpdated}" Command="{Binding ApplyUpdateCommand}"
                         Background="{DynamicResource AccentBrush}" Foreground="White" CornerRadius="12" MinHeight="24" Padding="10,2" />
-                <TextBlock Text="Next in line" Classes="title" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="Next in line" Classes="title" />
+                  <!-- How the line is ordered: a tooltip, with Change opening the ranking settings. -->
+                  <Button Classes="link" Command="{Binding OpenRankingCommand}" Padding="0" VerticalAlignment="Center"
+                          AutomationProperties.Name="How the line is ordered">
+                    <ToolTip.Tip>
+                      <StackPanel MaxWidth="320" Spacing="4">
+                        <TextBlock Text="How the line is ordered" FontWeight="SemiBold" TextDecorations="{x:Null}" />
+                        <TextBlock Text="{Binding OrderText}" TextWrapping="Wrap" TextDecorations="{x:Null}" />
+                        <TextBlock Text="Click to change." Opacity="0.7" TextDecorations="{x:Null}" />
+                      </StackPanel>
+                    </ToolTip.Tip>
+                    <TextBlock Text="ⓘ" FontSize="15" />
+                  </Button>
+                </StackPanel>
               </DockPanel>
               <Grid ColumnDefinitions="36,100,190,110,*,140,46,80,74" Margin="14,0,14,4">
                 <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
@@ -312,13 +326,6 @@
           </StackPanel>
         </Border>
 
-        <Border Classes="card" Padding="14,12">
-          <StackPanel Spacing="4">
-            <TextBlock Text="How the line is ordered" Classes="title" />
-            <TextBlock Text="{Binding OrderText}" TextWrapping="Wrap" Classes="secondary" />
-            <Button Classes="link" Command="{Binding OpenRankingCommand}"><TextBlock Text="Change" /></Button>
-          </StackPanel>
-        </Border>
       </StackPanel>
     </ScrollViewer>
   </Grid>

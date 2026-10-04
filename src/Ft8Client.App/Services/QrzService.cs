@@ -91,20 +91,6 @@ public sealed class QrzService : IDisposable
         }
     }
 
-    /// <summary>Tests XML lookup credentials.</summary>
-    public async Task<(bool Ok, string Message)> TestLookupAsync(string user, string password, CancellationToken ct)
-    {
-        try
-        {
-            var ok = await new QrzXmlClient(Client(), () => (user, password)).TestAsync(ct).ConfigureAwait(false);
-            return ok ? (true, "Lookups work.") : (false, "QRZ refused the username or password.");
-        }
-        catch (QrzException ex)
-        {
-            return (false, ex.Message);
-        }
-    }
-
     /// <summary>Syncs now. Returns a message for the status line.</summary>
     public async Task<string> SyncNowAsync(CancellationToken ct)
     {

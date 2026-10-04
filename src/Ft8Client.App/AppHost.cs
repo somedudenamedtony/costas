@@ -356,7 +356,7 @@ public sealed class AppHost : IAsyncDisposable
         {
             // Nothing set up: no made-up radio. The Down status makes the transmit guard refuse.
             rig = new VoxRig(dialHz);
-            status = new ServiceStatus(ServiceHealth.Down, "No radio set up. Open Setup to choose your radio.", Clock.UtcNow);
+            status = new ServiceStatus(ServiceHealth.Down, "No radio set up. Open Station setup to choose your radio.", Clock.UtcNow);
         }
         else if (r.Mode == RigModes.Vox)
         {
@@ -366,10 +366,14 @@ public sealed class AppHost : IAsyncDisposable
         else
         {
             var exe = HamlibModels.Find("rigctld", Settings.Current.Paths.HamlibDir);
-            if (exe is null || r.Model is null)
+            if (exe is null || r.Model is null || (string.IsNullOrEmpty(r.Port) && !HamlibModels.IsTestModel(r.Model)))
             {
-                rig = new VoxRig(14_074_000);
-                status = new ServiceStatus(ServiceHealth.Down, exe is null ? "rigctld not found" : "No radio model chosen", Clock.UtcNow);
+                // Without a port rigctld would fall back to a default serial port and talk to whatever is there.
+                rig = new VoxRig(dialHz);
+                status = new ServiceStatus(ServiceHealth.Down,
+                    exe is null ? "rigctld not found"
+                    : r.Model is null ? "No radio model chosen. Open Station setup to choose your radio."
+                    : "No port chosen for the radio. Open Station setup and use Find the radio.", Clock.UtcNow);
             }
             else
             {

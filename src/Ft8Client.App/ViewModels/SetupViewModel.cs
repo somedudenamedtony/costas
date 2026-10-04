@@ -45,8 +45,6 @@ public sealed partial class SetupViewModel : ObservableObject
         Input = Inputs.FirstOrDefault(d => d.Id == s.Profile.Audio.InputId);
         Output = Outputs.FirstOrDefault(d => d.Id == s.Profile.Audio.OutputId);
         LogbookKey = host.Secrets.Get(SecretNames.QrzLogbookKey(s.Profile.Id)) ?? string.Empty;
-        QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
-        QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
         UploadSpots = s.PskReporter.UploadSpots;
         _ = LoadModelsAsync(s.Profile.Rig.Model);
     }
@@ -91,9 +89,37 @@ public sealed partial class SetupViewModel : ObservableObject
 
     // Step 2 ---------------------------------------------------------------
 
-    /// <summary>Radio search text.</summary>
+    /// <summary>Manufacturers that Hamlib supports.</summary>
+    public ObservableCollection<string> Manufacturers { get; } = [];
+
+    /// <summary>Chosen manufacturer; fills <see cref="Models"/>.</summary>
     [ObservableProperty]
-    public partial string ModelSearch { get; set; } = string.Empty;
+    public partial string? Manufacturer { get; set; }
+
+    /// <summary>Baud rate choices ("Automatic" tries the common rates).</summary>
+    public IReadOnlyList<string> BaudChoices { get; } = ["Automatic", "4800", "9600", "19200", "38400", "57600", "115200"];
+
+    /// <summary>Chosen baud rate as shown.</summary>
+    public string BaudChoice
+    {
+        get => string.IsNullOrEmpty(Baud) ? "Automatic" : Baud;
+        set => Baud = value == "Automatic" ? string.Empty : value;
+    }
+
+    /// <summary>PTT choices.</summary>
+    public IReadOnlyList<PttChoice> PttChoices => PttChoice.All;
+
+    /// <summary>Chosen PTT method.</summary>
+    public PttChoice? PttChoice
+    {
+        get => PttChoice.All.FirstOrDefault(c => c.Value == Ptt);
+        set
+        {
+            if (value is null) return;
+            Ptt = value.Value;
+            OnPropertyChanged();
+        }
+    }
 
     /// <summary>Matching models.</summary>
     public ObservableCollection<HamlibModel> Models { get; } = [];
@@ -113,8 +139,6 @@ public sealed partial class SetupViewModel : ObservableObject
     [ObservableProperty]
     public partial string Baud { get; set; }
 
-    /// <summary>PTT methods.</summary>
-    public IReadOnlyList<string> PttMethods { get; } = ["cat", "rts", "dtr", "vox"];
 
     /// <summary>PTT method.</summary>
     [ObservableProperty]
@@ -170,13 +194,7 @@ public sealed partial class SetupViewModel : ObservableObject
     [ObservableProperty]
     public partial string LogbookKey { get; set; }
 
-    /// <summary>QRZ username.</summary>
-    [ObservableProperty]
-    public partial string QrzUser { get; set; }
 
-    /// <summary>QRZ password.</summary>
-    [ObservableProperty]
-    public partial string QrzPassword { get; set; }
 
     /// <summary>Upload my reception spots to PSK Reporter.</summary>
     [ObservableProperty]
@@ -186,7 +204,26 @@ public sealed partial class SetupViewModel : ObservableObject
     [ObservableProperty]
     public partial string SyncProgress { get; set; } = string.Empty;
 
-    partial void OnModelSearchChanged(string value) => FilterModels();
+    partial void OnManufacturerChanged(string? value)
+    {
+        Models.Clear();
+        foreach (var m in _allModels.Where(m => string.Equals(m.Manufacturer, value, StringComparison.Ordinal))) Models.Add(m);
+        if (Model is not null && !Models.Contains(Model)) Model = null;
+        Readback = string.Empty;
+    }
+
+    partial void OnModelChanged(HamlibModel? value) => Readback = string.Empty;
+
+    partial void OnBaudChanged(string value) => OnPropertyChanged(nameof(BaudChoice));
+
+    partial void OnPttChanged(string value) => OnPropertyChanged(nameof(PttChoice));
+
+    partial void OnAudioOnlyChanged(bool value)
+    {
+        if (value) Ptt = "vox";
+        else if (Ptt == "vox") Ptt = "cat";
+        OnPropertyChanged(nameof(PttChoice));
+    }
 
     partial void OnStepChanged(int value)
     {
@@ -224,15 +261,6 @@ public sealed partial class SetupViewModel : ObservableObject
     {
         if (Step == 5) await FinishAsync();
         else Step++;
-    }
-
-    /// <summary>Choose audio and VOX only.</summary>
-    [RelayCommand]
-    private void UseAudioOnly()
-    {
-        AudioOnly = true;
-        Ptt = "vox";
-        Message = "Audio only: set the band on the radio yourself. PTT is by VOX.";
     }
 
     /// <summary>Port auto-scan.</summary>
@@ -293,13 +321,9 @@ public sealed partial class SetupViewModel : ObservableObject
         Message = ok ? "Key works. " + msg : msg;
     }
 
-    /// <summary>Tests the lookup login.</summary>
+    /// <summary>Opens the QRZ Logbook, where the API key is shown.</summary>
     [RelayCommand]
-    private async Task TestLookupAsync()
-    {
-        var (_, msg) = await _host.Qrz.TestLookupAsync(QrzUser.Trim(), QrzPassword, CancellationToken.None);
-        Message = msg;
-    }
+    private static void OpenQrz() => Services.Browser.Open(Services.Browser.QrzLogbook);
 
     /// <summary>Validates the current step.</summary>
     public bool Validate(out string why)
@@ -319,26 +343,8 @@ public sealed partial class SetupViewModel : ObservableObject
                     return false;
                 }
                 return true;
-            case 1:
-                if (AudioOnly || _host.Simulating && Model is null) return true;
-                if (Model is null)
-                {
-                    why = "Choose your radio, or use audio and VOX only.";
-                    return false;
-                }
-                if (string.IsNullOrEmpty(Readback))
-                {
-                    why = "Scan for the radio so its frequency is read back, or use audio and VOX only.";
-                    return false;
-                }
-                return true;
-            case 2:
-                if (Inputs.Count > 0 && Input is null)
-                {
-                    why = "Choose the input your radio's audio comes in on.";
-                    return false;
-                }
-                return true;
+            // The radio and audio steps can be left for later (Station setup in the menu): an unchecked or missing radio
+            // only means the radio indicator says so and transmit is refused until it is set up.
             default:
                 return true;
         }
@@ -364,8 +370,9 @@ public sealed partial class SetupViewModel : ObservableObject
         });
         var id = _host.Settings.Current.Profile.Id;
         SetOrDelete(SecretNames.QrzLogbookKey(id), LogbookKey.Trim());
-        SetOrDelete(SecretNames.QrzUsername, QrzUser.Trim());
-        SetOrDelete(SecretNames.QrzPassword, QrzPassword);
+        // Lookups needed the QRZ login, which the app no longer asks for; drop any stored login.
+        _host.Secrets.Delete(SecretNames.QrzUsername);
+        _host.Secrets.Delete(SecretNames.QrzPassword);
         _host.RebuildLogIndex();
         await _host.ReopenDevicesAsync();
         if (!string.IsNullOrWhiteSpace(LogbookKey))
@@ -408,15 +415,11 @@ public sealed partial class SetupViewModel : ObservableObject
         }
         MainViewModel.Dispatch(() =>
         {
-            FilterModels();
-            Model = _allModels.FirstOrDefault(m => m.Number == current);
+            Manufacturers.Clear();
+            foreach (var maker in _allModels.Select(m => m.Manufacturer).Distinct(StringComparer.Ordinal)) Manufacturers.Add(maker);
+            var chosen = _allModels.FirstOrDefault(m => m.Number == current);
+            Manufacturer = chosen?.Manufacturer;
+            Model = chosen;
         });
-    }
-
-    private void FilterModels()
-    {
-        Models.Clear();
-        var q = ModelSearch.Trim();
-        foreach (var m in _allModels.Where(m => q.Length == 0 || m.Display.Contains(q, StringComparison.OrdinalIgnoreCase)).Take(200)) Models.Add(m);
     }
 }
