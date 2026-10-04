@@ -1,0 +1,25 @@
+# jt9 golden output. WSJT-X 2.7.0-rc3
+# args: 
+180245  17  0.1  600 ~  KV4ZY NX8G 539 OH                       
+180245   7  0.6 1151 ~  KC8YDS KF6CRW R 559 ID                  
+180245   0  0.1 1000 ~  XE1MEX N0UX 559 CO                      
+180245  13  0.2  653 ~  KV7J WD9HSY 529 IL                      
+180245   7  0.2 2454 ~  WB3LGC AA5AU R 529 LA                   
+180245   8  0.1  232 ~  K8RGI W6BQ 73                           
+180245  13  0.2 2189 ~  N9LF WV4P R 529 TN                      
+180245 -13  0.1 1442 ~  K1JT 9A2JK RR73                         
+180245  18  0.1 1879 ~  W3RGA KM6JD RR73                        
+180245 -12  0.1  923 ~  XE1MEX KE7MSU 549 OR                    
+180245   4  0.5  786 ~  N8HRZ W7CD 73                           
+180245  -1  0.0  446 ~  CQ RU W7BOB DN14                        
+180245   0  0.1 1979 ~  CQ RU NT2A FN20                         
+180245 -15  0.2  325 ~  CQ RU K1BAA DM03                        
+180245  -3  0.1 1799 ~  N9CIF KE0PX DM67                        
+180245 -10  0.3 1719 ~  W3RGA KJ7G 529 WA                       
+180245  -6 -0.0  754 ~  CQ UW5EJX/MM                            
+180245  -9 -0.1  462 ~  HI8DL KB9A 559 FL                       
+180245 -15  0.1  842 ~  W7PP AF4T 539 TN                        
+180245 -17  0.2 1247 ~  W1ATV F6DKQ 73                          
+180245  -4  0.1 1062 ~  N6OIL W1GKT 569 AL                      
+180245   1  0.1 1898 ~  N0TA K7STO R 579 WA                     
+<DecodeFinished>   0  22        0

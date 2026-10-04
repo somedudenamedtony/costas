@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Ft8Client.Decoding</RootNamespace>
+
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Ft8Client.Core\Ft8Client.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ft8Client.Decoding.Tests" />
+  </ItemGroup>
+</Project>

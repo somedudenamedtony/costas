@@ -1,0 +1,4 @@
+# jt9 golden output. WSJT-X 2.7.0-rc3
+# args: -c W7LIT -G DN40 -x K1ABC -Q 1
+000100 -22  0.0 1501 ~  W7LIT K1ABC FN42                    ? a3
+<DecodeFinished>   0   1        0

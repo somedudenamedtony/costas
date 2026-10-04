@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Ft8Client.DecodeCli</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Ft8Client.Core\Ft8Client.Core.csproj" />
+    <ProjectReference Include="..\..\src\Ft8Client.Decoding\Ft8Client.Decoding.csproj" />
+  </ItemGroup>
+</Project>

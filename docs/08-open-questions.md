@@ -34,6 +34,21 @@
 
 Confirmed from primary sources while writing this package: the `jt9` option table and `<DecodeFinished>` format; the WSJT-X UDP message types and fields; the QRZ Logbook API actions, parameters, responses and User-Agent rule; the QRZ XML login and lookup flow; the PSK Reporter upload rules (host, port, timing); the MQTT broker, ports, topic structure and payload fields; and that the PSK Reporter query endpoint answers with `<receptionReports>` XML.
 
+## Findings (VERIFY items resolved)
+
+| # | Finding | Evidence |
+| --- | --- | --- |
+| V1 | Confirmed. `jt9` prints `HHMMSS SNR DT FREQ ~  MESSAGE` padded to 37 characters, then markers. FT4 uses `+`. Markers seen: `a1`..`a7` and `?`, in the order `? a3` when both apply. Trailer `<DecodeFinished>   0  22        0` (second integer is the decode count). | Output of WSJT-X 2.7.0-rc3 `jt9` (Ubuntu 24.04 package) on the samples; saved as `samples/**/*.golden.txt` |
+| V2 | Linux: `jt9` needs only shared libraries from the distribution (FFTW, gfortran). It writes `decoded.txt`, `jt9_wisdom.dat` and `timer.out` to the data/temp path, so each run gets its own scratch folder. Windows DLL set still to be checked from a clean folder on Windows. | `ls` after a run; `ldd /usr/bin/jt9` |
+| V3 | Confirmed: hashed callsigns do **not** resolve across separate `jt9` runs. They resolve within one run (two WAVs passed together), and `-x` with the full DX call does not help. The decode text carries only `<...>`, not the hash value, so our own table cannot substitute. v1 accepts the limitation: `<...>` senders are not tracked or callable. Owner decision needed on whether, in a contact with a nonstandard-call station, a `<...>` message at the DX's offset may advance the contact (an on-air behaviour change). | `samples/ft8/260101_000000.wav` + `260101_000015.wav`, run separately and together |
+| V4 | Partly: WSJT-X writes 72,576 samples (6.048 s) per FT4 slot (sample `000000_000002.wav` has that length). `-p 7` is accepted; with `-L 200 -H 3000` the result is the same as without `-p`. To recheck against WSJT-X 3.0.2 source. | FT4 sample run |
+| V13 | `https://www.country-files.com/cty/cty.dat` serves the current file (no versioned path). | HTTP fetch 2026-10-04 |
+| V14 | NuGet 2026-10-04: Avalonia 12.1.3, CommunityToolkit.Mvvm 8.4.2, NAudio.Wasapi 3.1.0, MQTTnet 5.2.0, Microsoft.Data.Sqlite 10.0.x, Dapper 2.1.89, Serilog 4.4.0, xunit.v3 4.0.1, FluentAssertions 8.11.0 (FluentAssertions 8 is free for non-commercial use only; revisit if that matters). All target .NET 8+ and work on .NET 10. | `dotnet add package` |
+
+Decode time: single-threaded `jt9` takes 3.4 to 3.7 s on the busy FT8 samples on a 4-core Linux VM, over the 1.2 s target. WSJT-X 2.7 has no `-M`; `Jt9Options.Threads` passes `-M -N n` for WSJT-X 3.x. Measure on the owner's PC with 3.0.2.
+
+Golden files were captured with WSJT-X 2.7.0-rc3 because it is what Ubuntu packages; recapture with the pinned GA release (3.0.2) on Windows before release (`scripts/capture-golden.sh`).
+
 ## Risks
 
 | Risk | Effect | Mitigation |

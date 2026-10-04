@@ -1,0 +1,4 @@
+# jt9 golden output. WSJT-X 2.7.0-rc3
+# args: 
+000015  -5  0.0 1500 ~  <...> W7LIT DN40                        
+<DecodeFinished>   0   1        0
