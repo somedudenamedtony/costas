@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Ft8Client.App.Views.ShortcutsWindow"
+        Title="Keyboard shortcuts" Width="460" Height="360" WindowStartupLocation="CenterOwner">
+  <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="20">
+    <TextBlock Grid.Row="0" Text="Enter" FontWeight="SemiBold" /><TextBlock Grid.Row="0" Grid.Column="1" Text="Call the selected station" Margin="0,0,0,8" />
+    <TextBlock Grid.Row="1" Text="Up, Down" FontWeight="SemiBold" /><TextBlock Grid.Row="1" Grid.Column="1" Text="Move the selection in the line" Margin="0,0,0,8" />
+    <TextBlock Grid.Row="2" Text="Esc" FontWeight="SemiBold" /><TextBlock Grid.Row="2" Grid.Column="1" Text="Halt Tx. In a contact: abandon it (press twice once reports are exchanged)" TextWrapping="Wrap" Margin="0,0,0,8" />
+    <TextBlock Grid.Row="3" Text="Ctrl+Q" FontWeight="SemiBold" /><TextBlock Grid.Row="3" Grid.Column="1" Text="Call CQ / stop CQ" Margin="0,0,0,8" />
+    <TextBlock Grid.Row="4" Text="Ctrl+R" FontWeight="SemiBold" /><TextBlock Grid.Row="4" Grid.Column="1" Text="Resend" Margin="0,0,0,8" />
+    <TextBlock Grid.Row="5" Text="Ctrl+L" FontWeight="SemiBold" /><TextBlock Grid.Row="5" Grid.Column="1" Text="Log now" Margin="0,0,0,8" />
+    <TextBlock Grid.Row="6" Text="Ctrl+1 … 4" FontWeight="SemiBold" /><TextBlock Grid.Row="6" Grid.Column="1" Text="Operate, Raw decodes, Reach, Log" Margin="0,0,0,8" />
+    <TextBlock Grid.Row="7" Text="F1" FontWeight="SemiBold" /><TextBlock Grid.Row="7" Grid.Column="1" Text="This list" />
+  </Grid>
+</Window>

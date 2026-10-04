@@ -1,0 +1,14 @@
+# Stations the simulated partner (--simulate-partner) answers CQ with, in order: CALL GRID.
+# Example data for simulation only.
+K1ABC FN42
+VE7HLB CN89
+JA1QRS PM95
+ZL2RPA RF70
+LU8DCM GF05
+PY2WRA GG66
+EA5HVK IM98
+OH2KQA KP20
+VK3BMT QF22
+KH6TU BL11
+W9RDL EN52
+G4ABC IO91

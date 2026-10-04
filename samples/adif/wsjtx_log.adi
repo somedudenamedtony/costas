@@ -1,0 +1,7 @@
+WSJT-X ADIF Export<eoh>
+<call:6>JA1QRS <gridsquare:4>PM95 <mode:3>FT8 <rst_sent:3>-15 <rst_rcvd:3>-16 <qso_date:8>20240104 <time_on:6>025345 <qso_date_off:8>20240104 <time_off:6>025500 <band:3>20m <freq:9>14.075234 <station_callsign:5>W7LIT <my_gridsquare:6>DN40DD <tx_pwr:2>25 <comment:0> <name:0> <operator:5>W7LIT <eor>
+<call:6>ZL2RPA <gridsquare:4>RF70 <mode:4>MFSK <submode:3>FT4 <rst_sent:3>-10 <rst_rcvd:3>-12 <qso_date:8>20240105 <time_on:6>061015 <qso_date_off:8>20240105 <time_off:6>061130 <band:3>40m <freq:8>7.049100 <station_callsign:5>W7LIT <my_gridsquare:6>DN40DD <eor>
+junk between records <app_wsjtx_x:3>abc
+<gridsquare:4>FN42 <mode:3>FT8 <qso_date:8>20240106 <time_on:4>1200 <band:3>20m <eor>
+<CALL:5>K1ABC <GRIDSQUARE:4>FN42 <MODE:3>FT8 <QSO_DATE:8>20240106 <TIME_ON:4>1201 <BAND:3>20M <STATE:2>MA <MY_UNKNOWN_FIELD:5>hello <eor>
+<call:5>K1ABC <gridsquare:4>FN42 <mode:3>FT8 <qso_date:8>20240106 <time_on:4>1215 <band:3>20m <name:4>John <eor>

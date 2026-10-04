@@ -1,0 +1,22 @@
+[
+  { "band": "160m", "mode": "FT8", "dialHz": 1840000,  "lowHz": 1800000,  "highHz": 2000000 },
+  { "band": "80m",  "mode": "FT8", "dialHz": 3573000,  "lowHz": 3500000,  "highHz": 4000000 },
+  { "band": "60m",  "mode": "FT8", "dialHz": 5357000,  "lowHz": 5351500,  "highHz": 5366500 },
+  { "band": "40m",  "mode": "FT8", "dialHz": 7074000,  "lowHz": 7000000,  "highHz": 7300000 },
+  { "band": "30m",  "mode": "FT8", "dialHz": 10136000, "lowHz": 10100000, "highHz": 10150000 },
+  { "band": "20m",  "mode": "FT8", "dialHz": 14074000, "lowHz": 14000000, "highHz": 14350000 },
+  { "band": "17m",  "mode": "FT8", "dialHz": 18100000, "lowHz": 18068000, "highHz": 18168000 },
+  { "band": "15m",  "mode": "FT8", "dialHz": 21074000, "lowHz": 21000000, "highHz": 21450000 },
+  { "band": "12m",  "mode": "FT8", "dialHz": 24915000, "lowHz": 24890000, "highHz": 24990000 },
+  { "band": "10m",  "mode": "FT8", "dialHz": 28074000, "lowHz": 28000000, "highHz": 29700000 },
+  { "band": "6m",   "mode": "FT8", "dialHz": 50313000, "lowHz": 50000000, "highHz": 54000000 },
+  { "band": "80m",  "mode": "FT4", "dialHz": 3575000,  "lowHz": 3500000,  "highHz": 4000000 },
+  { "band": "40m",  "mode": "FT4", "dialHz": 7047500,  "lowHz": 7000000,  "highHz": 7300000 },
+  { "band": "30m",  "mode": "FT4", "dialHz": 10140000, "lowHz": 10100000, "highHz": 10150000 },
+  { "band": "20m",  "mode": "FT4", "dialHz": 14080000, "lowHz": 14000000, "highHz": 14350000 },
+  { "band": "17m",  "mode": "FT4", "dialHz": 18104000, "lowHz": 18068000, "highHz": 18168000 },
+  { "band": "15m",  "mode": "FT4", "dialHz": 21140000, "lowHz": 21000000, "highHz": 21450000 },
+  { "band": "12m",  "mode": "FT4", "dialHz": 24919000, "lowHz": 24890000, "highHz": 24990000 },
+  { "band": "10m",  "mode": "FT4", "dialHz": 28180000, "lowHz": 28000000, "highHz": 29700000 },
+  { "band": "6m",   "mode": "FT4", "dialHz": 50318000, "lowHz": 50000000, "highHz": 54000000 }
+]

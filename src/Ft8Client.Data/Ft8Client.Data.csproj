@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Ft8Client.Data</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Ft8Client.Core\Ft8Client.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.89" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Database\Migrations\*.sql" LogicalName="Migrations.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Resources\cty.dat" LogicalName="cty.dat" />
+    <EmbeddedResource Include="Resources\frequencies.json" LogicalName="frequencies.json" />
+    <None Include="Resources\cty.dat_LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ft8Client.Data.Tests" />
+  </ItemGroup>
+</Project>

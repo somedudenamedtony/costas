@@ -4,6 +4,33 @@ Everything needed to start building a modern FT8/FT4 client for Windows (cross-p
 
 Owner: Tony Shepherd, W7LIT, grid DN40. Working name: **FT8 Client** (namespace `Ft8Client`). The product name is not chosen yet; keep it in one constant so it can be renamed.
 
+## Build status
+
+The application in `src/` is built through M7, with FT4 receive and transmit from M8. Every automated acceptance test
+in `docs/07-milestones.md` up to M7 passes (`dotnet test`: 487 tests, Linux, with WSJT-X 2.7 `jt9`/`ft8code` and Hamlib
+4.5 `rigctld` installed). It has not yet been run on Windows or against a real radio.
+
+| Milestone | Automated | Still to do by hand or not built |
+| --- | --- | --- |
+| M0 skeleton, decode harness | Golden decodes for every sample through `jt9` | Windows DLL set for `jt9.exe` (V2) |
+| M1 core domain | Parser, tracker, need tiers, ranking, country lookup | — |
+| M2 log and QRZ | ADIF round trip, fake QRZ server; real read-only sync of the owner's logbook checked (396/396) | — |
+| M3 receive, Operate (idle) | Slot clock, simulation, screen checked against the mockup under Xvfb | Live audio on Windows (WASAPI) |
+| M4 radio and transmit | 53 FT8 + 53 FT4 vectors against `ft8code`/`ft4code`; waveform decodes through `jt9`; guards; `rigctld` crash recovery | On-air transmit with an IC-7300 |
+| M5 contacts | Contact engine rules; ten simulated partner contacts end to end | On-air contacts |
+| M6 PSK Reporter | IPFIX byte for byte; feed against a local broker incl. reconnect and de-dupe; query fallback | Live MQTT subscription (port blocked in the build sandbox, V7); spot upload seen on pskreporter.info |
+| M7 setup, settings, log, interop | UDP datagrams for every type; settings migration; secrets kept out of settings, logs and the bundle | GridTracker on Windows; first-run timing with an IC-7300 |
+| M8 FT4, hardening, release | FT4 vectors and decode round trip | 24-hour soak, installer, code signing, auto-update, user guide |
+
+Install on Windows: every CI run builds `Ft8Client-Setup-<version>.exe` (the **Ft8Client-Setup** artifact on the
+Actions run), self-contained with `jt9` and Hamlib bundled. It is not code-signed yet, so Windows SmartScreen will warn
+on first run. To build it locally: `scripts/build-installer.ps1`.
+
+Quick start from source (no radio needed): run `third_party/fetch.ps1` (Windows) or `third_party/fetch.sh` (Linux) for `jt9` and
+Hamlib, then `dotnet run --project src/Ft8Client.App -- --simulate samples/ft8 --simulate-partner` to replay the sample
+recordings with a simulated station that answers your calls. Simulation never keys a radio, never uploads spots and
+does not write the decode journal or WAV files.
+
 ## What this is
 
 A station-centric FT8 operating app. Instead of a scrolling list of decoded messages, it shows one row per station, ranked by what the operator needs (from their QRZ logbook), whether the station is free, and whether the station can hear them (from PSK Reporter). It reuses the WSJT-X decoder and Hamlib, and replaces everything the operator touches.

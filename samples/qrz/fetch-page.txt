@@ -1,0 +1,39 @@
+RESULT=OK&COUNT=2&ADIF=&lt;call:5&gt;K1ABC
+&lt;band:3&gt;40m
+&lt;mode:3&gt;FT8
+&lt;qso_date:8&gt;20240306
+&lt;time_on:4&gt;0435
+&lt;qso_date_off:8&gt;20240306
+&lt;time_off:4&gt;0436
+&lt;freq:7&gt;7.07426
+&lt;rst_sent:3&gt;-10
+&lt;rst_rcvd:3&gt;-22
+&lt;gridsquare:6&gt;EM83IJ
+&lt;state:2&gt;GA
+&lt;country:13&gt;United States
+&lt;dxcc:3&gt;291
+&lt;name:8&gt;Ann &amp; Bo
+&lt;comment:25&gt;FT8  Sent: -10  Rcvd: -22
+&lt;station_callsign:5&gt;W7LIT
+&lt;my_gridsquare:6&gt;DN40DD
+&lt;qsl_rcvd:1&gt;N
+&lt;app_qrzlog_status:1&gt;C
+&lt;app_qrzlog_logid:10&gt;1067389545
+&lt;eor&gt;
+
+&lt;call:6&gt;JA1QRS
+&lt;band:3&gt;20m
+&lt;mode:3&gt;FT4
+&lt;qso_date:8&gt;20240307
+&lt;time_on:6&gt;021500
+&lt;rst_sent:3&gt;-05
+&lt;rst_rcvd:3&gt;-12
+&lt;gridsquare:4&gt;PM95
+&lt;country:5&gt;Japan
+&lt;dxcc:3&gt;339
+&lt;station_callsign:5&gt;W7LIT
+&lt;qsl_rcvd:1&gt;N
+&lt;app_qrzlog_status:1&gt;N
+&lt;app_qrzlog_logid:10&gt;1067389600
+&lt;eor&gt;
+

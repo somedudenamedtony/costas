@@ -1,0 +1,14 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+TestResults/
+third_party/*
+!third_party/README.md
+!third_party/fetch.ps1
+!third_party/fetch.sh
+*.db
+*.db-wal
+*.db-shm
+artifacts/

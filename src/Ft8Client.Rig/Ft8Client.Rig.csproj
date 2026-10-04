@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Ft8Client.Rig</RootNamespace>
+
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Ft8Client.Core\Ft8Client.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ft8Client.Rig.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.IO.Ports" Version="10.0.12" />
+  </ItemGroup>
+</Project>

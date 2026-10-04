@@ -1,0 +1,107 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ft8Client.App.ViewModels"
+        x:Class="Ft8Client.App.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Settings" Width="720" Height="700" WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="*,Auto">
+    <ScrollViewer Margin="20,16,20,0">
+      <StackPanel Spacing="6">
+        <StackPanel Spacing="6" IsVisible="{Binding AllSections}">
+          <TextBlock Text="Station" Classes="title" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Callsign" VerticalAlignment="Center" /><TextBox Text="{Binding Callsign}" Width="120" />
+            <TextBlock Text="Grid" VerticalAlignment="Center" /><TextBox Text="{Binding Grid}" Width="90" />
+            <TextBlock Text="Power (W)" VerticalAlignment="Center" /><TextBox Text="{Binding Power}" Width="70" />
+          </StackPanel>
+          <TextBlock Text="Transmit" Classes="title" Margin="0,10,0,0" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Gain (dBFS)" VerticalAlignment="Center" /><TextBox Text="{Binding TxGain}" Width="70" />
+            <TextBlock Text="Watchdog (min)" VerticalAlignment="Center" /><TextBox Text="{Binding Watchdog}" Width="60" />
+            <TextBlock Text="Retry limit" VerticalAlignment="Center" /><TextBox Text="{Binding RetryLimit}" Width="60" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Sign-off" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding Signoffs}" SelectedItem="{Binding Signoff}" />
+            <TextBlock Text="CQ in" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding Parities}" SelectedItem="{Binding CqParity}" />
+            <TextBlock Text="slots" VerticalAlignment="Center" />
+            <CheckBox Content="Log automatically" IsChecked="{Binding AutoLog}" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Block transmitting when the clock is off by more than (s)" VerticalAlignment="Center" /><TextBox Text="{Binding ClockBlock}" Width="60" />
+          </StackPanel>
+        </StackPanel>
+
+        <TextBlock Text="Ranking" Classes="title" Margin="0,10,0,0" />
+        <TextBlock Text="Tier order" Classes="secondary" />
+        <ItemsControl ItemsSource="{Binding TierOrder}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:TierItem">
+              <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2">
+                <Button Content="▲" Padding="6,0" Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).TierUpCommand}" CommandParameter="{Binding}" AutomationProperties.Name="Move up" />
+                <Button Content="▼" Padding="6,0" Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).TierDownCommand}" CommandParameter="{Binding}" AutomationProperties.Name="Move down" />
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <CheckBox Content="Prefer stations that hear me" IsChecked="{Binding PreferHearsMe}" />
+        <CheckBox Content="Only stations calling CQ" IsChecked="{Binding OnlyCallingCq}" />
+        <CheckBox Content="Hide stations worked on this band" IsChecked="{Binding HideWorked}" />
+        <CheckBox Content="Skip long shots" IsChecked="{Binding SkipLongShots}" />
+        <CheckBox Content="Count only confirmed contacts" IsChecked="{Binding ConfirmedOnly}" />
+
+        <StackPanel Spacing="6" IsVisible="{Binding AllSections}">
+          <TextBlock Text="QRZ" Classes="title" Margin="0,10,0,0" />
+          <CheckBox Content="Sync and upload to my QRZ logbook" IsChecked="{Binding LogbookEnabled}" />
+          <CheckBox Content="Upload each contact when it completes" IsChecked="{Binding UploadOnComplete}" />
+          <CheckBox Content="Look up names and locations" IsChecked="{Binding LookupEnabled}" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Logbook key" VerticalAlignment="Center" /><TextBox Text="{Binding LogbookKey}" Width="220" PasswordChar="•" />
+            <TextBlock Text="Sync every (min)" VerticalAlignment="Center" /><TextBox Text="{Binding SyncMinutes}" Width="60" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Username" VerticalAlignment="Center" /><TextBox Text="{Binding QrzUser}" Width="140" />
+            <TextBlock Text="Password" VerticalAlignment="Center" /><TextBox Text="{Binding QrzPassword}" Width="140" PasswordChar="•" />
+          </StackPanel>
+          <TextBlock Text="{Binding SecretsNote}" Classes="secondary" TextWrapping="Wrap" />
+
+          <TextBlock Text="PSK Reporter" Classes="title" Margin="0,10,0,0" />
+          <CheckBox Content="Receive the live feed of who hears me" IsChecked="{Binding FeedEnabled}" />
+          <CheckBox Content="Upload the stations I hear" IsChecked="{Binding UploadSpots}" />
+
+          <TextBlock Text="Interop (WSJT-X UDP)" Classes="title" Margin="0,10,0,0" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <CheckBox Content="Send" IsChecked="{Binding UdpEnabled}" />
+            <TextBlock Text="Address" VerticalAlignment="Center" /><TextBox Text="{Binding UdpAddress}" Width="140" />
+            <TextBlock Text="Port" VerticalAlignment="Center" /><TextBox Text="{Binding UdpPort}" Width="70" />
+          </StackPanel>
+
+          <TextBlock Text="Files" Classes="title" Margin="0,10,0,0" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Save slot audio" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding WavChoices}" SelectedItem="{Binding SaveWav}" />
+            <TextBlock Text="Keep (days)" VerticalAlignment="Center" /><TextBox Text="{Binding Retention}" Width="60" />
+          </StackPanel>
+
+          <TextBlock Text="Appearance" Classes="title" Margin="0,10,0,0" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Theme" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}" />
+            <TextBlock Text="Units" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding UnitChoices}" SelectedItem="{Binding Units}" />
+          </StackPanel>
+
+          <TextBlock Text="Programs" Classes="title" Margin="0,10,0,0" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="jt9" VerticalAlignment="Center" Width="80" /><TextBox Text="{Binding Jt9Path}" Width="420" PlaceholderText="search automatically" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Hamlib folder" VerticalAlignment="Center" Width="80" /><TextBox Text="{Binding HamlibDir}" Width="420" PlaceholderText="search automatically" />
+          </StackPanel>
+        </StackPanel>
+        <TextBlock Text="{Binding Message}" Foreground="{DynamicResource CriticalBrush}" />
+      </StackPanel>
+    </ScrollViewer>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="20,12">
+      <Button Content="Cancel" Command="{Binding CancelCommand}" />
+      <Button Content="Save" Command="{Binding SaveCommand}" Classes="accent" MinWidth="80" />
+    </StackPanel>
+  </Grid>
+</Window>

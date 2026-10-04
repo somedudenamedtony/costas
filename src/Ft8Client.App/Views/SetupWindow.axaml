@@ -1,0 +1,89 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ft8Client.App.ViewModels"
+        xmlns:v="using:Ft8Client.App.Views"
+        x:Class="Ft8Client.App.Views.SetupWindow"
+        x:DataType="vm:SetupViewModel"
+        Title="Set up FT8 Client" Width="860" Height="600" WindowStartupLocation="CenterOwner">
+  <Grid ColumnDefinitions="200,*" RowDefinitions="*,Auto">
+    <Border Grid.RowSpan="2" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,1,0">
+      <ListBox ItemsSource="{Binding Steps}" SelectedIndex="{Binding Step}" Background="Transparent" Margin="8,16" IsEnabled="False">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" Margin="8,6" /></DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Border>
+    <ScrollViewer Grid.Column="1" Margin="24,20,24,0">
+      <StackPanel Spacing="10">
+        <!-- 1 Station -->
+        <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}">
+          <TextBlock Text="Your station" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="Callsign" /><TextBox Text="{Binding Callsign}" Width="200" HorizontalAlignment="Left" />
+          <TextBlock Text="Grid (4 or 6 characters)" /><TextBox Text="{Binding Grid}" Width="200" HorizontalAlignment="Left" />
+          <CheckBox Content="Show distances in kilometres (miles otherwise)" IsChecked="{Binding UnitsKm}" />
+        </StackPanel>
+        <!-- 2 Radio -->
+        <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}">
+          <TextBlock Text="Your radio" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="Model" /><TextBox Text="{Binding ModelSearch}" PlaceholderText="Search, e.g. IC-7300" Width="320" HorizontalAlignment="Left" />
+          <ListBox ItemsSource="{Binding Models}" SelectedItem="{Binding Model}" Height="140" Width="420" HorizontalAlignment="Left">
+            <ListBox.ItemTemplate><DataTemplate x:DataType="x:Object"><TextBlock Text="{Binding $parent[ListBoxItem].DataContext}" /></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Port" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding Ports}" SelectedItem="{Binding Port}" MinWidth="120" />
+            <TextBlock Text="Baud" VerticalAlignment="Center" /><TextBox Text="{Binding Baud}" Width="90" PlaceholderText="auto" />
+            <TextBlock Text="PTT" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding PttMethods}" SelectedItem="{Binding Ptt}" MinWidth="80" />
+            <Button Content="Find the radio" Command="{Binding ScanCommand}" IsEnabled="{Binding !Busy}" />
+          </StackPanel>
+          <TextBlock><Run Text="Frequency read back: " /><Run Text="{Binding Readback}" FontWeight="SemiBold" /></TextBlock>
+          <Button Classes="link" Command="{Binding UseAudioOnlyCommand}"><TextBlock Text="No radio control? Use audio and VOX only" /></Button>
+        </StackPanel>
+        <!-- 3 Audio -->
+        <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}">
+          <TextBlock Text="Audio" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="Input (audio from the radio)" />
+          <ComboBox ItemsSource="{Binding Inputs}" SelectedItem="{Binding Input}" MinWidth="320" />
+          <TextBlock Text="Output (audio to the radio)" />
+          <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding Output}" MinWidth="320" />
+          <TextBlock Text="Choose the radio's USB audio device, not the computer's speakers. The app never uses the default device by itself." Classes="secondary" TextWrapping="Wrap" />
+        </StackPanel>
+        <!-- 4 Transmit test -->
+        <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}">
+          <TextBlock Text="Transmit test" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock TextWrapping="Wrap" Text="This sends a steady tone for 2 seconds so you can check that the radio keys and the power meter moves. Connect a dummy load or turn the power down first. Nothing is sent unless you press the button." />
+          <Button Content="Send test tone" Command="{Binding SendTestToneCommand}" HorizontalAlignment="Left" />
+          <CheckBox Content="The radio transmitted" IsChecked="{Binding ToneConfirmed}" />
+        </StackPanel>
+        <!-- 5 Clock -->
+        <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}">
+          <TextBlock Text="Clock check" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="FT8 needs your clock within about a second. The app measures it against internet time; it never changes your clock." TextWrapping="Wrap" />
+          <TextBlock Text="{Binding ClockResult}" FontWeight="SemiBold" TextWrapping="Wrap" />
+        </StackPanel>
+        <!-- 6 QRZ -->
+        <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=5}">
+          <TextBlock Text="QRZ and PSK Reporter" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Text="Logbook API key (QRZ logbook › Settings)" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBox Text="{Binding LogbookKey}" Width="260" PasswordChar="•" />
+            <Button Content="Test" Command="{Binding TestKeyCommand}" />
+          </StackPanel>
+          <TextBlock Text="QRZ username and password, for name and location lookups (optional)" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBox Text="{Binding QrzUser}" Width="160" PlaceholderText="Username" />
+            <TextBox Text="{Binding QrzPassword}" Width="160" PlaceholderText="Password" PasswordChar="•" />
+            <Button Content="Test" Command="{Binding TestLookupCommand}" />
+          </StackPanel>
+          <CheckBox Content="Upload the stations I hear to PSK Reporter" IsChecked="{Binding UploadSpots}" />
+          <TextBlock Text="{Binding SyncProgress}" Classes="secondary" />
+        </StackPanel>
+        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource AccentTextBrush}" />
+      </StackPanel>
+    </ScrollViewer>
+    <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="24,12">
+      <Button Content="Skip" Command="{Binding SkipCommand}" IsVisible="{Binding CanSkip}" />
+      <Button Content="Back" Command="{Binding BackCommand}" IsEnabled="{Binding CanBack}" />
+      <Button Content="{Binding NextText}" Command="{Binding NextCommand}" Classes="accent" MinWidth="90" />
+    </StackPanel>
+  </Grid>
+</Window>
