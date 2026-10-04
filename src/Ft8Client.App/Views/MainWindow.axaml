@@ -21,10 +21,14 @@
         <TextBlock Text="MHz" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,6" />
       </StackPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-        <ToggleButton Classes="tab" Content="Operate" IsChecked="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}" />
-        <ToggleButton Classes="tab" Content="Raw decodes" IsChecked="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}" />
-        <ToggleButton Classes="tab" Content="Reach" IsChecked="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
-        <ToggleButton Classes="tab" Content="Log" IsChecked="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}" />
+        <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}"
+                Content="Operate" Command="{Binding SelectTabCommand}" CommandParameter="0" ToolTip.Tip="Who to call next, ranked by what you need, and the contact in progress" />
+        <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}"
+                Content="Raw decodes" Command="{Binding SelectTabCommand}" CommandParameter="1" ToolTip.Tip="Every decoded message, as the decoder printed it" />
+        <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}"
+                Content="Reach" Command="{Binding SelectTabCommand}" CommandParameter="2" ToolTip.Tip="Who is hearing your signal, from PSK Reporter" />
+        <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}"
+                Content="Log" Command="{Binding SelectTabCommand}" CommandParameter="3" ToolTip.Tip="Your contacts: search, edit, import and export" />
         <TextBlock Text="{Binding ClockText}" FontSize="16" FontWeight="SemiBold" Classes="num" Margin="12,0,4,0" VerticalAlignment="Center"
                    Foreground="{Binding ClockKind, Converter={x:Static v:Converters.KindBrush}}" ToolTip.Tip="{Binding ClockTip}"
                    AutomationProperties.Name="UTC clock" />
