@@ -123,6 +123,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>QRZ background work.</summary>
     public QrzService Qrz { get; private set; } = null!;
 
+    /// <summary>Decode journal and WAV saving (null in simulation).</summary>
+    public RecordingService? Recording { get; private set; }
+
     /// <summary>WSJT-X UDP interop.</summary>
     public UdpInteropService Udp { get; private set; } = null!;
 
@@ -229,6 +232,12 @@ public sealed class AppHost : IAsyncDisposable
         Udp = new UdpInteropService(Session, Settings, offAir: Simulating);
         log.Stored += Udp.OnLogged;
         Udp.Start();
+
+        if (!Simulating)
+        {
+            Recording = new RecordingService(Session, Settings, Paths.Journal, Paths.Wav, Clock);
+            Recording.Start();
+        }
 
         _ = Task.Run(ClockCheckLoopAsync);
         _ = Task.Run(RigPollLoopAsync);
@@ -413,6 +422,7 @@ public sealed class AppHost : IAsyncDisposable
         _output?.Dispose();
         Qrz?.Dispose();
         Udp?.Dispose();
+        Recording?.Dispose();
         if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);
         await _rig.DisposeAsync().ConfigureAwait(false);
         foreach (var d in _disposables) d.Dispose();

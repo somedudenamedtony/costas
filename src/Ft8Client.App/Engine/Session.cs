@@ -97,6 +97,9 @@ public sealed class Session
     /// <summary>Raised after each decoded slot with its decodes (for interop and the journal).</summary>
     public event Action<DateTime, Mode, IReadOnlyList<Decode>>? SlotDecoded;
 
+    /// <summary>Raised after each decoded slot with its audio and decode count (for WAV saving).</summary>
+    public event Action<SlotAudio, int>? SlotAudioDecoded;
+
     /// <summary>Raised when a transmission starts (for the journal and interop).</summary>
     public event Action<PreparedTx, DateTime>? Transmitting;
 
@@ -200,6 +203,7 @@ public sealed class Session
             result = new DecodeResult([], TimeSpan.Zero, DecodeStatus.Failed, ex.Message);
         }
         ApplyDecodes(audio.SlotStartUtc, audio.Mode, result);
+        SlotAudioDecoded?.Invoke(audio, result.Decodes.Count);
     }
 
     private void ApplyDecodes(DateTime slot, Mode mode, DecodeResult result)
