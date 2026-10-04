@@ -111,7 +111,7 @@ public sealed class RigctldRig : IRig
         {
             try
             {
-                await Run(c => c.SetAsync("M PKTUSB 0", ct), ct).ConfigureAwait(false);
+                await Run(c => c.SetAsync("M PKTUSB -1", ct), ct).ConfigureAwait(false);
                 return;
             }
             catch (RigException)
@@ -119,7 +119,7 @@ public sealed class RigctldRig : IRig
                 _modeFallback = true; // the radio rejects PKTUSB: use USB from now on
             }
         }
-        await Run(c => c.SetAsync("M USB 0", ct), ct).ConfigureAwait(false);
+        await Run(c => c.SetAsync("M USB -1", ct), ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

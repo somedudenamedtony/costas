@@ -57,6 +57,12 @@ Decode time: single-threaded `jt9` takes 3.4 to 3.7 s on the busy FT8 samples on
 
 Golden files were captured with WSJT-X 2.7.0-rc3 because it is what Ubuntu packages; recapture with the pinned GA release (3.0.2) on Windows before release (`scripts/capture-golden.sh`).
 
+Yaesu FT-710 (the owner's radio): Hamlib model 1049, Stable in 4.5.5 and in the 4.6.5 build the Windows fetch script
+installs. Checked against a CAT emulator: frequency is `FA`, the data mode `PKTUSB` is `MD0C` (DATA-U), CAT PTT is
+`TX1`/`TX0`. Setting the mode with Hamlib's "normal" passband also sent `SH016`, changing the operator's receive
+filter, so the app now sets the mode with passband -1 (no change). The FT-710 must have its CAT rate in the radio's
+menu match the baud in setup, and use the "Enhanced" USB COM port for CAT. Not yet tried on the real radio.
+
 Other notes from M2:
 
 - 60 m transmit limits in `frequencies.json` use the ITU WRC-15 range 5351.5 to 5366.5 kHz. US 60 m rules are channelised; the owner should check the limits for his licence before transmitting on 60 m.

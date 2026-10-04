@@ -9,6 +9,9 @@
     <ProjectReference Include="..\..\src\Ft8Client.Rig\Ft8Client.Rig.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Emulators\*.py" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="FluentAssertions" />
   </ItemGroup>

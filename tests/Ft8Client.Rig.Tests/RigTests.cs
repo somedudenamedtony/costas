@@ -105,4 +105,42 @@ public class RigTests
         (await rig.GetStateAsync(ct)).FrequencyHz.Should().Be(7_074_000);
         rig.Restarts.Should().BeGreaterThan(0);
     }
+
+    // Hamlib's real FT-710 backend (model 1049) against a CAT emulator on a pseudo-terminal: checks the commands the
+    // radio would receive. Linux only (needs python3 and rigctld); kept in this class so the crash test above, which
+    // kills every rigctld, never runs at the same time.
+    [Fact]
+    public async Task Rigctld_Ft710Emulator_SendsDataUsbAndCatPttWithoutTouchingFilter()
+    {
+        var exe = HamlibModels.Find("rigctld", null);
+        var python = HamlibModels.Find("python3", null);
+        Assert.SkipWhen(exe is null || python is null || !OperatingSystem.IsLinux(), "Needs Linux with rigctld and python3.");
+        var ct = TestContext.Current.CancellationToken;
+        var log = Path.Combine(Path.GetTempPath(), $"ft710-{Guid.NewGuid():N}.log");
+        using var emu = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(python!,
+            [Path.Combine(AppContext.BaseDirectory, "Emulators", "ft710.py"), log]) { RedirectStandardOutput = true })!;
+        try
+        {
+            var pty = (await emu.StandardOutput.ReadLineAsync(ct))!.Trim();
+            await using (var rig = await RigctldRig.StartAsync(new RigctldOptions(exe!, 1049, pty, 38400), NullProcessGuard.Instance, SystemClock.Instance, ct))
+            {
+                await rig.SetFrequencyAsync(14_074_000, ct);
+                await rig.SetModeAsync(RigMode.PktUsb, ct);
+                await rig.SetPttAsync(true, ct);
+                (await rig.GetStateAsync(ct)).Should().Match<RigState>(s => s.FrequencyHz == 14_074_000 && s.Mode == "PKTUSB" && s.Ptt);
+                await rig.SetPttAsync(false, ct);
+                (await rig.GetStateAsync(ct)).Ptt.Should().BeFalse();
+            }
+            var sent = File.ReadAllLines(log);
+            sent.Should().Contain("FA014074000;", "VFO A set to the dial frequency");
+            sent.Should().Contain("MD0C;", "DATA-U is the FT-710's data mode");
+            sent.Should().ContainInOrder("TX1;", "TX0;");
+            sent.Should().NotContain(l => l.StartsWith("SH0", StringComparison.Ordinal) && l.Length > 4, "the operator's receive filter is left alone");
+        }
+        finally
+        {
+            emu.Kill();
+            File.Delete(log);
+        }
+    }
 }
