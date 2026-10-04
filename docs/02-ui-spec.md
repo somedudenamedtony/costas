@@ -171,7 +171,7 @@ Mockup: `setup` (step 2). A left rail lists the six steps; the right pane holds 
 | 3 Audio | Input and output device by name, live input level meter with a "good" band | Input level is in range for 5 seconds |
 | 4 Transmit test | Explains what will happen, asks for a dummy load or low power, a "Send test tone" button (2 seconds) | Operator confirms the radio transmitted. Skippable |
 | 5 Clock check | Measured offset against internet time, pass under 0.5 s, link to Windows time settings | Offset measured. Skippable when offline |
-| 6 QRZ | Logbook API key, optional QRZ username and password for lookups, "Test" buttons. Then first sync with a progress count | Skippable |
+| 6 QRZ | Logbook API key, optional QRZ username and password for lookups, "Test" buttons, and a line saying why each is needed (`05-integrations.md` section 4). Then first sync with a progress count | Skippable |
 
 ## Settings
 

@@ -39,6 +39,8 @@ public sealed class QrzService : IDisposable
     private readonly SemaphoreSlim _syncLock = new(1, 1);
     private HttpClient _http;
     private string _agentCall = string.Empty;
+    private QrzXmlClient? _xml;
+    private (string User, string Password, HttpClient Http)? _xmlFor;
 
     /// <summary>Creates the service. <paramref name="handler"/> replaces the network (the fake server in simulation).</summary>
     public QrzService(Session session, AppSettingsAccessor settings, ISecretStore secrets, QsoRepository qsos, UploadQueueRepository queue,
@@ -91,6 +93,20 @@ public sealed class QrzService : IDisposable
         }
     }
 
+    /// <summary>Tests the QRZ username and password used for callsign lookups.</summary>
+    public async Task<(bool Ok, string Message)> TestLookupAsync(string user, string password, CancellationToken ct)
+    {
+        try
+        {
+            var ok = await new QrzXmlClient(Client(), () => (user, password)).TestAsync(ct).ConfigureAwait(false);
+            return ok ? (true, "Lookups work.") : (false, "QRZ refused the username or password.");
+        }
+        catch (QrzException ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
     /// <summary>Syncs now. Returns a message for the status line.</summary>
     public async Task<string> SyncNowAsync(CancellationToken ct)
     {
@@ -132,7 +148,7 @@ public sealed class QrzService : IDisposable
         if (user is null || pass is null) return;
         try
         {
-            var svc = new CallsignLookupService(new QrzXmlClient(Client(), () => (user, pass)), _cache, _clock);
+            var svc = new CallsignLookupService(XmlClient(user, pass), _cache, _clock);
             var r = await svc.LookupAsync(call, ct).ConfigureAwait(false);
             if (r is not null) _session.SetLookup(call, r.Name, r.Grid, r.State);
         }
@@ -198,6 +214,18 @@ public sealed class QrzService : IDisposable
             _http = MakeClient();
         }
         return _http;
+    }
+
+    // One XML client per login, so its session key is reused rather than logging in for every lookup.
+    private QrzXmlClient XmlClient(string user, string password)
+    {
+        var http = Client();
+        if (_xml is null || _xmlFor != (user, password, http))
+        {
+            _xml = new QrzXmlClient(http, () => (user, password));
+            _xmlFor = (user, password, http);
+        }
+        return _xml;
     }
 
     private HttpClient MakeClient() => HttpFactory.Create(_settings.Current.Profile.Callsign, _handler);

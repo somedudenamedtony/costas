@@ -131,6 +131,15 @@ Source: https://www.qrz.com/XML/current_spec.html (confirmed).
 - Look up only the selected station and the current contact, not every decode. Cache results in `callsign_cache` for 30 days. Strip `/P`-style suffixes for the lookup if the full call is not found.
 - This uses the QRZ username and password, which are separate from the logbook key. Both optional.
 
+**Why two QRZ credentials.** QRZ runs two separate services with separate sign-ins, and neither accepts the other's:
+
+| Credential | Service | What the app does with it |
+| --- | --- | --- |
+| Logbook API key (per logbook, from the logbook's settings page) | Logbook API, `logbook.qrz.com/api` | Reads the operator's own logbook (worked and confirmed, for need tiers and log totals) and uploads new contacts. It identifies one logbook, not a QRZ user, and cannot look up other callsigns |
+| QRZ username and password | XML callsign data, `xmldata.qrz.com` | Logs in for a session key, then looks up other stations: name, city, state, grid. The contact subline, the station details flyout, the US-state column and the name, QTH and state fields of logged contacts come from here. QRZ only answers lookups for a signed-in user; a QRZ XML subscription gives the full record, a free account gets fewer fields |
+
+Either can be left out. Without the API key there is no worked-before data or upload; without the login, names and locations stay blank and stations are placed by the country file alone. Lookups are on exactly when both a username and a password are stored.
+
 ## 5. PSK Reporter: who hears me (live feed)
 
 Source: https://www.mqtt.pskreporter.info/ (confirmed). A best-effort community service run by M0LTE on top of PSK Reporter. Treat as optional.

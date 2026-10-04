@@ -45,6 +45,8 @@ public sealed partial class SetupViewModel : ObservableObject
         Input = Inputs.FirstOrDefault(d => d.Id == s.Profile.Audio.InputId);
         Output = Outputs.FirstOrDefault(d => d.Id == s.Profile.Audio.OutputId);
         LogbookKey = host.Secrets.Get(SecretNames.QrzLogbookKey(s.Profile.Id)) ?? string.Empty;
+        QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
+        QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
         UploadSpots = s.PskReporter.UploadSpots;
         _ = LoadModelsAsync(s.Profile.Rig.Model);
     }
@@ -194,7 +196,13 @@ public sealed partial class SetupViewModel : ObservableObject
     [ObservableProperty]
     public partial string LogbookKey { get; set; }
 
+    /// <summary>QRZ username, for callsign lookups.</summary>
+    [ObservableProperty]
+    public partial string QrzUser { get; set; }
 
+    /// <summary>QRZ password, for callsign lookups.</summary>
+    [ObservableProperty]
+    public partial string QrzPassword { get; set; }
 
     /// <summary>Upload my reception spots to PSK Reporter.</summary>
     [ObservableProperty]
@@ -321,6 +329,19 @@ public sealed partial class SetupViewModel : ObservableObject
         Message = ok ? "Key works. " + msg : msg;
     }
 
+    /// <summary>Tests the QRZ username and password used for callsign lookups.</summary>
+    [RelayCommand]
+    private async Task TestLookupAsync()
+    {
+        if (string.IsNullOrWhiteSpace(QrzUser) || string.IsNullOrEmpty(QrzPassword))
+        {
+            Message = "Enter your QRZ username and password first.";
+            return;
+        }
+        var (_, msg) = await _host.Qrz.TestLookupAsync(QrzUser.Trim(), QrzPassword, CancellationToken.None);
+        Message = msg;
+    }
+
     /// <summary>Opens the QRZ Logbook, where the API key is shown.</summary>
     [RelayCommand]
     private static void OpenQrz() => Services.Browser.Open(Services.Browser.QrzLogbook);
@@ -366,13 +387,13 @@ public sealed partial class SetupViewModel : ObservableObject
             s.Profile.Audio.InputId = Input?.Id;
             s.Profile.Audio.OutputId = Output?.Id;
             s.PskReporter.UploadSpots = UploadSpots;
+            s.Qrz.LookupEnabled = !string.IsNullOrWhiteSpace(QrzUser) && !string.IsNullOrEmpty(QrzPassword);
             s.SetupComplete = true;
         });
         var id = _host.Settings.Current.Profile.Id;
         SetOrDelete(SecretNames.QrzLogbookKey(id), LogbookKey.Trim());
-        // Lookups needed the QRZ login, which the app no longer asks for; drop any stored login.
-        _host.Secrets.Delete(SecretNames.QrzUsername);
-        _host.Secrets.Delete(SecretNames.QrzPassword);
+        SetOrDelete(SecretNames.QrzUsername, QrzUser.Trim());
+        SetOrDelete(SecretNames.QrzPassword, QrzPassword);
         _host.RebuildLogIndex();
         await _host.ReopenDevicesAsync();
         if (!string.IsNullOrWhiteSpace(LogbookKey))

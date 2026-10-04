@@ -179,8 +179,8 @@
       <TabItem Header="QRZ">
         <ScrollViewer>
           <StackPanel>
-            <TextBlock Classes="page" Text="QRZ logbook" />
-            <TextBlock Classes="intro" Text="Your QRZ logbook tells the app what you have already worked and confirmed, and contacts you make are uploaded to it." />
+            <TextBlock Classes="page" Text="QRZ" />
+            <TextBlock Classes="intro" Text="QRZ has two separate services, and each needs its own sign-in. The logbook API key opens your logbook only: what you have worked and confirmed, and uploading new contacts. Looking up other stations' names and locations goes through QRZ's XML callsign service, which does not accept the API key and needs your QRZ username and password. Both are optional." />
             <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Logbook API key" />
               <StackPanel Grid.Column="1">
@@ -205,6 +205,18 @@
                   <TextBox Text="{Binding SyncMinutes}" Width="70" />
                   <TextBlock Text="minutes" VerticalAlignment="Center" />
                 </StackPanel>
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Callsign lookups" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <TextBox Text="{Binding QrzUser}" Width="260" HorizontalAlignment="Left" PlaceholderText="QRZ username" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBox Text="{Binding QrzPassword}" Width="260" PasswordChar="•" PlaceholderText="QRZ password" />
+                  <Button Content="Test login" Command="{Binding TestLookupCommand}" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="{Binding LookupStatus}" IsVisible="{Binding LookupStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Classes="help" Text="Shows the name, city and state of the station you select or are working, and fills them in on logged contacts. The logbook API key cannot do this: QRZ only answers lookups for a signed-in user. Full details need a QRZ XML subscription; without one QRZ returns fewer fields. Leave both blank to turn lookups off." />
               </StackPanel>
             </Grid>
             <TextBlock Classes="help" Text="{Binding SecretsNote}" />
