@@ -90,6 +90,10 @@ public class SessionSimulationTests
         var config = Config() with { Contact = new ContactSettings { WatchdogMinutes = 60 } };
         var d = new SimDriver(source, config, log);
         d.Session.Transmitting += partner.OnTransmitted;
+        var txSlots = new HashSet<DateTime>();
+        var decodedSlots = new HashSet<DateTime>();
+        d.Session.Transmitting += (tx, _) => txSlots.Add(tx.Plan.SlotStartUtc);
+        d.Session.SlotDecoded += (slot, _, _) => decodedSlots.Add(slot);
 
         await d.RunSlotsAsync(4);
         d.Rig.PttLog.Should().BeEmpty("no transmission before the operator's command");
@@ -103,6 +107,8 @@ public class SessionSimulationTests
         queue.Count().Should().Be(logged.Count);
         logged.Should().OnlyContain(q => q.UploadState == UploadState.Queued);
         d.Session.Snapshot.Tonight.Should().HaveCount(logged.Count);
+        txSlots.Should().NotBeEmpty();
+        txSlots.Intersect(decodedSlots).Should().BeEmpty("nothing is recorded or decoded in a slot we transmit in");
         // PTT was only ever asserted for our planned transmissions, each released.
         d.Rig.PttLog.Count(p => p.On).Should().Be(d.Rig.PttLog.Count(p => !p.On));
     }

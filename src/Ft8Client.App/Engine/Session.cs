@@ -58,9 +58,7 @@ public sealed class Session
     private double? _medianDt;
     private double? _sntpOffset;
     private string? _fault;
-    private bool _decodeInFlight;
     private Task _decodeTask = Task.CompletedTask;
-    private DateTime? _deferredPlanSlot;
     private DateTime? _recordingSlot;
     private DateTime? _finishedShownAt;
     private DateTime _lastContactUtc = DateTime.MinValue;
@@ -180,11 +178,7 @@ public sealed class Session
         }
         var audio = _source.Cutoff(e.SlotStartUtc, e.Mode);
         if (audio is null) return;
-        lock (_gate)
-        {
-            _decodeInFlight = true;
-            _decodeTask = Task.Run(() => DecodeAsync(audio, CancellationToken.None));
-        }
+        lock (_gate) _decodeTask = Task.Run(() => DecodeAsync(audio, CancellationToken.None));
     }
 
     /// <summary>Decodes one slot and applies it. Public so tests and simulation can drive slots directly.</summary>
@@ -193,7 +187,6 @@ public sealed class Session
         DecodeContext ctx;
         lock (_gate)
         {
-            _decodeInFlight = true;
             ctx = new DecodeContext(_config.MyCall, Grid.Grid4(_config.MyGrid) ?? string.Empty, _engine.DxCall, _engine.DxGrid,
                 QsoProgress: _engine.QsoProgress, RxOffsetHz: _engine.DxOffsetHz ?? _txOffset);
         }
@@ -211,10 +204,8 @@ public sealed class Session
 
     private void ApplyDecodes(DateTime slot, Mode mode, DecodeResult result)
     {
-        DateTime? deferred;
         lock (_gate)
         {
-            _decodeInFlight = false;
             _services[ServiceNames.Decoder] = result.Succeeded
                 ? new ServiceStatus(ServiceHealth.Ok, $"{result.Decodes.Count} decodes in {result.Elapsed.TotalSeconds:0.0} s", _clock.UtcNow)
                 : new ServiceStatus(ServiceHealth.Degraded, result.Message, _clock.UtcNow);
@@ -247,16 +238,11 @@ public sealed class Session
             UpdateTxOffset(mode);
 
             _hearsMe.Prune(now);
-            deferred = _deferredPlanSlot;
-            _deferredPlanSlot = null;
         }
         SlotDecoded?.Invoke(slot, mode, result.Decodes);
-        if (deferred is { } d) PlanFor(d, mode, late: true);
-        else if (!_tx.Transmitting && _tx.Pending is null)
-        {
-            // A decode that just started a contact (a caller answering my CQ) may still make this slot.
-            PlanFor(SlotMath.SlotStart(_clock.UtcNow, mode), mode, late: true);
-        }
+        // Decodes that arrive after the next slot has begun may still change (or start) its transmission
+        // while its audio has not started, up to the late-start limit.
+        PlanFor(SlotMath.SlotStart(_clock.UtcNow, mode), mode, late: true);
         Publish();
     }
 
@@ -283,24 +269,22 @@ public sealed class Session
         TxPlan? plan;
         TxGuardInput guard;
         int offset;
+        PreparedTx? pending;
         lock (_gate)
         {
             var now = _clock.UtcNow;
             var txStart = slot + TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode));
             if (late && now > txStart + _config.LateStartLimit) return;
-            if (_tx.Transmitting || (_tx.Pending is { } p && p.Plan.SlotStartUtc == slot)) return;
-            if (_decodeInFlight && !late && (_engine.InContact || _engine.CallingCq))
-            {
-                // Wait for the previous slot's decodes; plan when they arrive if still within the late-start limit.
-                _deferredPlanSlot = slot;
-                return;
-            }
+            if (_tx.AudioStarted(slot)) return; // already on the air with this slot's message
+            pending = _tx.Pending is { } p && p.Plan.SlotStartUtc == slot ? p : null;
             plan = _engine.PlanTransmission(slot, mode, now);
             if (plan is null)
             {
                 if (_engine.StopReason is { } why) _fault = why;
+                if (pending is not null) _tx.CancelPending();
                 return;
             }
+            if (pending is not null && pending.Plan.Message == plan.Message) return;
             offset = _txOffset;
             guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
@@ -317,9 +301,18 @@ public sealed class Session
             Publish();
             return;
         }
-        lock (_gate) _fault = null;
-        var marksPassed = _clock.UtcNow > slot + TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode)) - _config.PttLead;
-        if (marksPassed) _tx.BeginLate(prepared, _config.PttLead);
+        lock (_gate)
+        {
+            _fault = null;
+            // Nothing is recorded or decoded in a slot we transmit in.
+            if (_recordingSlot == slot)
+            {
+                _recordingSlot = null;
+                _source.CancelSlot();
+            }
+        }
+        var pttDue = slot + TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode)) - _config.PttLead;
+        if (pending is null && _clock.UtcNow > pttDue) _tx.BeginLate(prepared, _config.PttLead);
     }
 
     private void OnTxStarted(PreparedTx tx, DateTime startedUtc)
@@ -608,6 +601,7 @@ public sealed class Session
                 Services = new Dictionary<string, ServiceStatus>(_services),
                 Contact = _engine.View,
                 Transmitting = _tx.Transmitting,
+                TransmittingMessage = _tx.CurrentMessage,
                 CallingCq = _engine.CallingCq,
                 TxOffsetHz = _txOffset,
                 TxOffsetClear = _txOffsetClear,

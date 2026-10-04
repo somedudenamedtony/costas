@@ -6,13 +6,42 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using Avalonia;
+using Serilog;
+
 namespace Ft8Client.App;
 
 internal static class Program
 {
-    private static int Main()
+    [STAThread]
+    private static int Main(string[] args)
     {
-        Console.WriteLine("The UI arrives in Milestone 3. Use tools/Ft8Client.DecodeCli for now.");
-        return 0;
+        var cmd = CommandLine.Parse(args);
+        try
+        {
+            App.Host = AppHost.StartAsync(cmd).GetAwaiter().GetResult();
+            return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Unhandled exception");
+            try
+            {
+                App.Host?.Transmitter?.HaltAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception haltEx)
+            {
+                Log.Error(haltEx, "PTT release after crash failed");
+            }
+            Console.Error.WriteLine(ex);
+            return 1;
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+        }
     }
+
+    /// <summary>Used by the designer and by Main.</summary>
+    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>().UsePlatformDetect().LogToTrace();
 }

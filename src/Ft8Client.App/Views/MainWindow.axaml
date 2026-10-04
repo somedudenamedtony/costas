@@ -1,0 +1,108 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ft8Client.App.ViewModels"
+        xmlns:v="using:Ft8Client.App.Views"
+        x:Class="Ft8Client.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{Binding Title}"
+        Width="1440" Height="900" MinWidth="1100" MinHeight="720">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <!-- Top bar -->
+    <DockPanel Grid.Row="0" Margin="16,8,16,8" LastChildFill="False">
+      <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <TextBlock Text="Band" VerticalAlignment="Center" />
+        <ComboBox ItemsSource="{Binding Bands}" SelectedItem="{Binding SelectedBand}" IsEnabled="{Binding CanChangeBand}" MinWidth="80"
+                  AutomationProperties.Name="Band" />
+        <TextBlock Text="Mode" VerticalAlignment="Center" Margin="8,0,0,0" />
+        <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" IsEnabled="{Binding CanChangeBand}" MinWidth="70"
+                  AutomationProperties.Name="Mode" />
+        <TextBlock Text="{Binding Frequency}" FontSize="24" FontWeight="SemiBold" Classes="num" Margin="12,0,0,0" VerticalAlignment="Center"
+                   AutomationProperties.Name="Dial frequency" />
+        <TextBlock Text="MHz" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,6" />
+      </StackPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+        <ToggleButton Classes="tab" Content="Operate" IsChecked="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}" />
+        <ToggleButton Classes="tab" Content="Raw decodes" IsChecked="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}" />
+        <ToggleButton Classes="tab" Content="Reach" IsChecked="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
+        <ToggleButton Classes="tab" Content="Log" IsChecked="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}" />
+        <TextBlock Text="{Binding ClockText}" FontSize="16" FontWeight="SemiBold" Classes="num" Margin="12,0,4,0" VerticalAlignment="Center"
+                   Foreground="{Binding ClockKind, Converter={x:Static v:Converters.KindBrush}}" ToolTip.Tip="{Binding ClockTip}"
+                   AutomationProperties.Name="UTC clock" />
+        <Button Content="☰" AutomationProperties.Name="Menu" Padding="10,4">
+          <Button.Flyout>
+            <MenuFlyout>
+              <MenuItem Header="Settings" Command="{Binding OpenCommand}" CommandParameter="settings" />
+              <MenuItem Header="Station setup" Command="{Binding OpenCommand}" CommandParameter="setup" />
+              <MenuItem Header="Diagnostics" Command="{Binding OpenCommand}" CommandParameter="diagnostics" />
+              <MenuItem Header="Keyboard shortcuts" Command="{Binding OpenCommand}" CommandParameter="shortcuts" />
+              <MenuItem Header="About" Command="{Binding OpenCommand}" CommandParameter="about" />
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+      </StackPanel>
+    </DockPanel>
+
+    <!-- Views -->
+    <Panel Grid.Row="1">
+      <v:OperateView DataContext="{Binding Operate}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}" />
+      <v:RawDecodesView DataContext="{Binding Raw}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}" />
+      <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
+      <v:LogView DataContext="{Binding LogView}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}" />
+    </Panel>
+
+    <!-- Bottom bar -->
+    <Border Grid.Row="2" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource CardBackgroundBrush}">
+      <DockPanel Margin="16,8">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <Button Classes="link" AutomationProperties.Name="Transmit offset" VerticalAlignment="Center">
+            <TextBlock Text="{Binding TxOffsetText}" Classes="secondary num" TextDecorations="{x:Null}" />
+            <Button.Flyout>
+              <Flyout>
+                <StackPanel Spacing="8" Width="220">
+                  <TextBlock Text="Transmit offset" Classes="title" />
+                  <Button Content="Automatic (picks a clear spot)" Command="{Binding OffsetAutoCommand}" HorizontalAlignment="Stretch" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBox Text="{Binding ManualOffset}" Width="90" AutomationProperties.Name="Manual offset in hertz" />
+                    <TextBlock Text="Hz" VerticalAlignment="Center" />
+                    <Button Content="Use" Command="{Binding OffsetManualCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Button Content="{Binding CqText}" Command="{Binding ToggleCqCommand}" MinWidth="80" />
+          <Button Content="Halt Tx" Command="{Binding HaltCommand}" MinWidth="70" AutomationProperties.Name="Halt transmit"
+                  Background="{Binding Transmitting, Converter={x:Static v:Converters.CriticalWhen}}" />
+          <StackPanel Width="200" VerticalAlignment="Center" Margin="6,0,0,0">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Right" Text="{Binding SlotRemaining}" Classes="secondary num" />
+              <TextBlock Text="{Binding SlotLabel}" Classes="secondary" />
+            </DockPanel>
+            <ProgressBar Value="{Binding SlotProgress}" Maximum="1" Height="4" MinHeight="4" Margin="0,4,0,0"
+                         Foreground="{Binding Transmitting, Converter={x:Static v:Converters.ProgressBrush}}" />
+          </StackPanel>
+          <ItemsControl ItemsSource="{Binding Indicators}" VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="10" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:IndicatorViewModel">
+                <Button Classes="link" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).OpenCommand}" CommandParameter="diagnostics"
+                        ToolTip.Tip="{Binding Detail}">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <Ellipse Width="8" Height="8" Fill="{Binding Health, Converter={x:Static v:Converters.HealthBrush}}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Text}" Classes="secondary" TextDecorations="{x:Null}" />
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+        <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                   Foreground="{Binding StatusKind, Converter={x:Static v:Converters.KindBrush}}" AutomationProperties.LiveSetting="Polite" />
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>

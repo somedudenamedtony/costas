@@ -27,6 +27,33 @@ public static class Jt9Locator
         return null;
     }
 
+    /// <summary>
+    /// True when this jt9 has the multithreaded FT8 decoder (<c>-M</c>, WSJT-X 3.x). Probed from its help text.
+    /// </summary>
+    public static bool SupportsMultithread(string jt9Path)
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo(jt9Path, "-h")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            using var p = System.Diagnostics.Process.Start(psi);
+            if (p is null) return false;
+            var text = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
+            p.WaitForExit(5000);
+            return text.Contains("--multithread", StringComparison.Ordinal) ||
+                   System.Text.RegularExpressions.Regex.IsMatch(text, @"(?m)^\s*-M\b");
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>All places looked at, in order.</summary>
     public static IEnumerable<string> Candidates(string? configuredPath)
     {

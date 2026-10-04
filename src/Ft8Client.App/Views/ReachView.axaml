@@ -1,0 +1,75 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ft8Client.App.ViewModels"
+             xmlns:v="using:Ft8Client.App.Views"
+             x:Class="Ft8Client.App.Views.ReachView"
+             x:DataType="vm:ReachViewModel">
+  <ScrollViewer Margin="16,0,16,12">
+    <StackPanel Spacing="12">
+      <Border Classes="card" Padding="14,12">
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Band" VerticalAlignment="Center" />
+            <ComboBox ItemsSource="{Binding Bands}" SelectedItem="{Binding Band}" MinWidth="80" />
+            <TextBlock Text="Window" VerticalAlignment="Center" Margin="8,0,0,0" />
+            <ComboBox ItemsSource="{Binding Windows}" SelectedItem="{Binding Window}" MinWidth="110" />
+          </StackPanel>
+          <TextBlock Text="{Binding Headline}" FontSize="15" TextWrapping="Wrap" />
+          <Grid ColumnDefinitions="460,*">
+            <v:ReachPlot Width="440" Height="440" Points="{Binding Points}" HorizontalAlignment="Left" />
+            <StackPanel Grid.Column="1" Spacing="6">
+              <TextBlock Text="By band, last 24 hours" Classes="title" />
+              <Grid ColumnDefinitions="70,90,110,*">
+                <TextBlock Text="Band" Classes="secondary" /><TextBlock Grid.Column="1" Text="Stations" Classes="secondary" />
+                <TextBlock Grid.Column="2" Text="Farthest" Classes="secondary" /><TextBlock Grid.Column="3" Text="Median report" Classes="secondary" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding ByBand}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:BandReachRowViewModel">
+                    <Border Background="{Binding Current, Converter={x:Static v:Converters.SelectedBackground}}">
+                      <Grid ColumnDefinitions="70,90,110,*" MinHeight="28">
+                        <TextBlock Text="{Binding Band}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Stations}" Classes="num" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding Farthest}" Classes="num" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{Binding Median}" Classes="num" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="You are at the centre, north is up. Bigger, darker dots are stronger reports. Hover over a dot for its call."
+                         Classes="secondary" TextWrapping="Wrap" Margin="0,12,0,0" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border Classes="card" Padding="14,12">
+        <StackPanel>
+          <TextBlock Text="Who heard you" Classes="title" Margin="0,0,0,6" />
+          <Grid ColumnDefinitions="100,200,90,70,50,80,*">
+            <TextBlock Text="Station" Classes="secondary" /><TextBlock Grid.Column="1" Text="Where" Classes="secondary" />
+            <TextBlock Grid.Column="2" Text="Distance" Classes="secondary" /><TextBlock Grid.Column="3" Text="Bearing" Classes="secondary" />
+            <TextBlock Grid.Column="4" Text="dB" Classes="secondary" /><TextBlock Grid.Column="5" Text="Age" Classes="secondary" />
+            <TextBlock Grid.Column="6" Text="In your log" Classes="secondary" />
+          </Grid>
+          <TextBlock Text="No reports yet. Reports appear a few minutes after you transmit." Classes="secondary" IsVisible="{Binding Empty}" Margin="0,8" />
+          <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ReachRowViewModel">
+                <Grid ColumnDefinitions="100,200,90,70,50,80,*" MinHeight="28">
+                  <TextBlock Text="{Binding Station}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="2" Text="{Binding Distance}" Classes="num" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Text="{Binding Bearing}" Classes="num" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="4" Text="{Binding Db}" Classes="num" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="5" Text="{Binding Age}" Classes="secondary" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="6" Text="{Binding InLog}" VerticalAlignment="Center" Foreground="{Binding InLogKind, Converter={x:Static v:Converters.KindBrush}}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

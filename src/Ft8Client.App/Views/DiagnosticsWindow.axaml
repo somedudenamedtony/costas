@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ft8Client.App.ViewModels"
+        x:Class="Ft8Client.App.Views.DiagnosticsWindow"
+        x:DataType="vm:DiagnosticsViewModel"
+        Title="Diagnostics" Width="720" Height="560" WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="*,Auto" Margin="20,16">
+    <ScrollViewer>
+      <ItemsControl ItemsSource="{Binding Rows}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:DiagRow">
+            <Grid ColumnDefinitions="220,*" Margin="0,2">
+              <TextBlock Text="{Binding Key}" Classes="secondary" />
+              <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" Classes="num" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+    <DockPanel Grid.Row="1" Margin="0,12,0,0">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+        <Button Content="Refresh" Command="{Binding RefreshCommand}" />
+        <Button Content="Save diagnostics bundle" Command="{Binding SaveBundleCommand}" />
+      </StackPanel>
+      <TextBlock Text="{Binding Message}" VerticalAlignment="Center" TextWrapping="Wrap" />
+    </DockPanel>
+  </Grid>
+</Window>

@@ -39,6 +39,7 @@ public sealed class Transmitter
     private DateTime _audioStartedUtc;
     private DateTime? _pttOffDueUtc;
     private DateTime? _lateAudioDueUtc;
+    private DateTime? _lastStartedSlot;
     private bool _ptt;
 
     /// <summary>Creates a transmitter.</summary>
@@ -73,10 +74,22 @@ public sealed class Transmitter
         get { lock (_gate) return _ptt || _current is not null; }
     }
 
+    /// <summary>The message on the air now, or null.</summary>
+    public string? CurrentMessage
+    {
+        get { lock (_gate) return _current?.Plan.Message; }
+    }
+
     /// <summary>The transmission waiting for its slot.</summary>
     public PreparedTx? Pending
     {
         get { lock (_gate) return _next; }
+    }
+
+    /// <summary>True when audio for the slot has started (or the slot's transmission has finished).</summary>
+    public bool AudioStarted(DateTime slotStartUtc)
+    {
+        lock (_gate) return (_current is { } c && c.Plan.SlotStartUtc == slotStartUtc) || _lastStartedSlot == slotStartUtc;
     }
 
     /// <summary>Replaces the rig (after setup or a profile change).</summary>
@@ -159,6 +172,7 @@ public sealed class Transmitter
                     if (!_ptt) return; // PTT was not asserted (fault or too late): do not play
                     _next = null;
                     _current = tx;
+                    _lastStartedSlot = tx.Plan.SlotStartUtc;
                     _audioStartedUtc = _clock.UtcNow;
                     _pttOffDueUtc = _audioStartedUtc + tx.Duration + Tail;
                 }
@@ -203,6 +217,7 @@ public sealed class Transmitter
                 _lateAudioDueUtc = null;
                 _next = null;
                 _current = n;
+                _lastStartedSlot = n.Plan.SlotStartUtc;
                 _audioStartedUtc = _clock.UtcNow;
                 _pttOffDueUtc = _audioStartedUtc + n.Duration + Tail;
                 late = n;

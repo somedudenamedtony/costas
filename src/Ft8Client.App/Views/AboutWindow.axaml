@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Ft8Client.App.Views.AboutWindow"
+        Title="About" Width="560" Height="420" WindowStartupLocation="CenterOwner">
+  <ScrollViewer Margin="20">
+    <StackPanel Spacing="8">
+      <TextBlock x:Name="Product" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock TextWrapping="Wrap" Text="Free software under the GNU General Public License, version 3 or later. It comes with no warranty." />
+      <TextBlock Text="Credits" Classes="title" Margin="0,8,0,0" />
+      <TextBlock TextWrapping="Wrap" Text="Decoding by jt9 from WSJT-X, by the WSJT Development Group (K1JT, K9AN, G4WJS and others), GPLv3. https://wsjt.sourceforge.io/" />
+      <TextBlock TextWrapping="Wrap" Text="Transmit encoder ported from ft8_lib by Kārlis Goba, MIT licence. https://github.com/kgoba/ft8_lib" />
+      <TextBlock TextWrapping="Wrap" Text="Rig control by Hamlib (rigctld), LGPL. https://hamlib.github.io/" />
+      <TextBlock TextWrapping="Wrap" Text="Country file cty.dat by Jim Reisert AD1C, https://www.country-files.com/" />
+      <TextBlock TextWrapping="Wrap" Text="Reports of your signal from PSK Reporter (Philip Gladstone, N1DQ) and its MQTT feed by M0LTE. Logbook and lookups by QRZ.com." />
+      <TextBlock TextWrapping="Wrap" Text="Built with .NET, Avalonia, CommunityToolkit.Mvvm, NAudio, MQTTnet, Microsoft.Data.Sqlite, Dapper and Serilog." />
+    </StackPanel>
+  </ScrollViewer>
+</Window>

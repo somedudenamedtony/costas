@@ -71,6 +71,9 @@ public sealed record SessionSnapshot
     /// <summary>True while transmitting.</summary>
     public bool Transmitting { get; init; }
 
+    /// <summary>The message being transmitted now, or null.</summary>
+    public string? TransmittingMessage { get; init; }
+
     /// <summary>True while calling CQ.</summary>
     public bool CallingCq { get; init; }
 
