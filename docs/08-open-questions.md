@@ -29,6 +29,7 @@
 | V10 | `QDateTime` wire format in the UDP protocol | M7 | Qt documentation; compare with a datagram captured from WSJT-X |
 | V11 | Encoder coverage of nonstandard-call messages in `ft8_lib` | M4 | `ft8code` vectors |
 | V12 | Default dial frequencies for FT8 and FT4 | M3 | WSJT-X frequency list (Settings, Frequencies) |
+| V6 | Confirmed with the owner's key (read-only calls). Replies are `name=value` pairs joined by `&`, keys in no fixed order, not URL-encoded. FETCH puts `ADIF=` last and its text is HTML-entity encoded (`&lt;call:5&gt;`, `&amp;` inside values), so the reply must be split at `ADIF=` before splitting on `&`. Records come in ascending `app_qrzlog_logid`. An empty page is `RESULT=FAIL&COUNT=0` with no reason. A wrong key gives `STATUS=AUTH&RESULT=AUTH&REASON=invalid api key ...`. Confirmation: `app_qrzlog_status` `C`; `qsl_rcvd` and `lotw_qsl_rcvd` also present. FT4 contacts come back as mode `FT4`, not `MFSK`/`FT4`. QRZ can hold two records of the same call, band and mode within 30 minutes under different log ids; the duplicate rule keeps them apart. First real sync: 396 fetched and stored = STATUS `COUNT=396`. Confirmed: 272 locally vs STATUS `CONFIRMED=271`, because one record is confirmed by QSL/LoTW but not QRZ status (the spec's "any of them" rule). | Fixtures in `samples/qrz/` are hand-written in the observed shape and hold no real contact data |
 | V13 | Stable download URL for `cty.dat` | M7 | country-files.com |
 | V14 | Current stable versions of Avalonia, NAudio, MQTTnet and their .NET 10 support | M0 | NuGet |
 
@@ -48,6 +49,10 @@ Confirmed from primary sources while writing this package: the `jt9` option tabl
 Decode time: single-threaded `jt9` takes 3.4 to 3.7 s on the busy FT8 samples on a 4-core Linux VM, over the 1.2 s target. WSJT-X 2.7 has no `-M`; `Jt9Options.Threads` passes `-M -N n` for WSJT-X 3.x. Measure on the owner's PC with 3.0.2.
 
 Golden files were captured with WSJT-X 2.7.0-rc3 because it is what Ubuntu packages; recapture with the pinned GA release (3.0.2) on Windows before release (`scripts/capture-golden.sh`).
+
+Other notes from M2:
+
+- 60 m transmit limits in `frequencies.json` use the ITU WRC-15 range 5351.5 to 5366.5 kHz. US 60 m rules are channelised; the owner should check the limits for his licence before transmitting on 60 m.
 
 ## Risks
 

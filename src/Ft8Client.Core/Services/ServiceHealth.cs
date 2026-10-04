@@ -6,4 +6,20 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
-[assembly: CaptureConsole]
+namespace Ft8Client.Core.Services;
+
+/// <summary>Health of an external service or device.</summary>
+public enum ServiceHealth
+{
+    /// <summary>Not configured or turned off.</summary>
+    Off,
+
+    /// <summary>Working.</summary>
+    Ok,
+
+    /// <summary>Working with problems (retrying, stale data).</summary>
+    Degraded,
+
+    /// <summary>Not working.</summary>
+    Down,
+}

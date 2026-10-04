@@ -6,4 +6,17 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
-[assembly: CaptureConsole]
+namespace Ft8Client.Data.Log;
+
+/// <summary>Where a contact came from.</summary>
+public static class QsoSource
+{
+    /// <summary>Made in this app.</summary>
+    public const string Local = "local";
+
+    /// <summary>Fetched from the QRZ logbook.</summary>
+    public const string Qrz = "qrz";
+
+    /// <summary>Imported from an ADIF file.</summary>
+    public const string Adif = "adif";
+}

@@ -10,6 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Ft8Client.Data" />
     <Using Include="FluentAssertions" />
   </ItemGroup>
   <ItemGroup>
