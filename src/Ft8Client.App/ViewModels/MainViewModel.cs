@@ -13,6 +13,7 @@ using CommunityToolkit.Mvvm.Input;
 using Ft8Client.App.Engine;
 using Ft8Client.App.Services;
 using Ft8Client.Core;
+using Ft8Client.Core.Messages;
 using Ft8Client.Core.Bands;
 using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Ranking;
@@ -410,11 +411,17 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         return (list, rows.Count);
     }
 
-    private static (string, TextKind) Status(SessionSnapshot s)
+    internal static (string, TextKind) Status(SessionSnapshot s)
     {
         if (s.Fault is { } f) return (f, TextKind.Critical);
         if (s.Contact is { Outcome: ContactOutcome.InProgress } c)
-            return (s.Transmitting ? $"Transmitting to {c.DxCall}." : $"Waiting for {c.DxCall}.", s.Transmitting ? TextKind.Critical : TextKind.Normal);
+        {
+            if (!s.Transmitting) return ($"Waiting for {c.DxCall}.", TextKind.Normal);
+            // An answer decoded after the slot began cannot change what is already on the air (usually still the CQ).
+            var onAir = s.TransmittingMessage;
+            var toDx = onAir is not null && Callsign.EqualsCall(onAir.Split(' ')[0].Trim('<', '>'), c.DxCall);
+            return (onAir is null || toDx ? $"Transmitting to {c.DxCall}." : $"Sending {onAir}; answering {c.DxCall} next slot.", TextKind.Critical);
+        }
         if (s.CallingCq) return (s.Transmitting ? "Transmitting CQ." : "Calling CQ.", s.Transmitting ? TextKind.Critical : TextKind.Normal);
         var top = s.Rank.Line.FirstOrDefault();
         return (top is null ? "Not in a contact." : $"Not in a contact. Enter calls {top.Station.Call}, the top of the line.", TextKind.Normal);
