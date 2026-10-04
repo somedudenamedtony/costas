@@ -86,9 +86,16 @@ public class RigTests
         // Kill rigctld behind the client's back: the next command faults, then the supervisor restarts it.
         var faults = new List<RigFault>();
         rig.Faulted += (_, f) => faults.Add(f);
-        foreach (var p in System.Diagnostics.Process.GetProcessesByName("rigctld")) p.Kill();
-        await rig.Invoking(r => r.SetFrequencyAsync(7_074_000, ct)).Should().ThrowAsync<RigException>();
+        foreach (var p in System.Diagnostics.Process.GetProcessesByName("rigctld"))
+        {
+            p.Kill();
+            await p.WaitForExitAsync(ct);
+        }
+        // The exit is reported with no command pending, and commands fail (rather than quietly restarting) until it is back.
+        var faultDeadline = DateTime.UtcNow.AddSeconds(5);
+        while (faults.Count == 0 && DateTime.UtcNow < faultDeadline) await Task.Delay(20, ct);
         faults.Should().NotBeEmpty();
+        await rig.Invoking(r => r.SetFrequencyAsync(7_074_000, ct)).Should().ThrowAsync<RigException>();
         var deadline = DateTime.UtcNow.AddSeconds(10);
         while (DateTime.UtcNow < deadline)
         {

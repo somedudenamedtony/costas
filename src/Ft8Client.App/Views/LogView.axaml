@@ -7,7 +7,7 @@
   <Border Classes="card" Margin="16,0,16,12" Padding="14,10">
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" ColumnDefinitions="*,Auto">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <TextBox Text="{Binding Search}" Watermark="Search call, grid, country or name" Width="280" AutomationProperties.Name="Search" />
+        <TextBox Text="{Binding Search}" PlaceholderText="Search call, grid, country or name" Width="280" AutomationProperties.Name="Search" />
         <Button Content="Edit" Command="{Binding EditCommand}" />
         <Button Content="{Binding ConfirmingDelete, Converter={x:Static v:LogView.DeleteText}}" Command="{Binding DeleteCommand}" />
         <Button Content="Import ADIF" Click="OnImport" />

@@ -8,7 +8,7 @@
     <Grid RowDefinitions="Auto,Auto,*">
       <DockPanel>
         <Button DockPanel.Dock="Right" Content="Jump to live" Command="{Binding JumpToLiveCommand}" IsVisible="{Binding ScrolledUp}" />
-        <TextBox Text="{Binding Filter}" Watermark="Filter by callsign or text" Width="260" HorizontalAlignment="Left" AutomationProperties.Name="Filter" />
+        <TextBox Text="{Binding Filter}" PlaceholderText="Filter by callsign or text" Width="260" HorizontalAlignment="Left" AutomationProperties.Name="Filter" />
       </DockPanel>
       <Grid Grid.Row="1" ColumnDefinitions="80,50,50,60,320,*" Margin="0,10,0,4">
         <TextBlock Text="UTC" Classes="secondary" />

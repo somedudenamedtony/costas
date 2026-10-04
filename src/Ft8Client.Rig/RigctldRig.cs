@@ -26,6 +26,7 @@ public sealed class RigctldRig : IRig
     private readonly IClock _clock;
     private readonly SemaphoreSlim _restartLock = new(1, 1);
     private Process? _process;
+    private Process? _live;
     private RigctldClient? _client;
     private int _port;
     private int _restarts;
@@ -179,8 +180,9 @@ public sealed class RigctldRig : IRig
     {
         try
         {
-            if (_client is null || !ProcessRunning) await RestartAsync(ct).ConfigureAwait(false);
-            return await f(_client!).ConfigureAwait(false);
+            // A dead rigctld is a rig error (the transmitter must stop), not something to paper over by restarting quietly.
+            if (_client is null || !ProcessRunning) throw new RigException("rigctld is not running; restarting it.");
+            return await f(_client).ConfigureAwait(false);
         }
         catch (RigException ex)
         {
@@ -252,6 +254,7 @@ public sealed class RigctldRig : IRig
             try
             {
                 await _client.GetFrequencyAsync(ct).ConfigureAwait(false);
+                WatchForExit(_process);
                 return;
             }
             catch (RigException) when (DateTime.UtcNow < deadline && !_process.HasExited)
@@ -266,10 +269,27 @@ public sealed class RigctldRig : IRig
         }
     }
 
+    // From here on an exit we did not ask for is reported at once, even with no command pending, so a transmission in
+    // progress is stopped and the process is restarted.
+    private void WatchForExit(Process p)
+    {
+        Volatile.Write(ref _live, p);
+        void OnExit()
+        {
+            if (!ReferenceEquals(Interlocked.CompareExchange(ref _live, null, p), p)) return;
+            RaiseFault("rigctld stopped unexpectedly; restarting it.");
+            _ = Task.Run(() => RestartAsync(CancellationToken.None), CancellationToken.None);
+        }
+        p.EnableRaisingEvents = true;
+        p.Exited += (_, _) => OnExit();
+        if (p.HasExited) OnExit();
+    }
+
     private async Task StopProcessAsync()
     {
         var p = _process;
         _process = null;
+        Volatile.Write(ref _live, null);
         if (p is null) return;
         try
         {

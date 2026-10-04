@@ -25,13 +25,13 @@
         <!-- 2 Radio -->
         <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}">
           <TextBlock Text="Your radio" FontSize="20" FontWeight="SemiBold" />
-          <TextBlock Text="Model" /><TextBox Text="{Binding ModelSearch}" Watermark="Search, e.g. IC-7300" Width="320" HorizontalAlignment="Left" />
+          <TextBlock Text="Model" /><TextBox Text="{Binding ModelSearch}" PlaceholderText="Search, e.g. IC-7300" Width="320" HorizontalAlignment="Left" />
           <ListBox ItemsSource="{Binding Models}" SelectedItem="{Binding Model}" Height="140" Width="420" HorizontalAlignment="Left">
             <ListBox.ItemTemplate><DataTemplate x:DataType="x:Object"><TextBlock Text="{Binding $parent[ListBoxItem].DataContext}" /></DataTemplate></ListBox.ItemTemplate>
           </ListBox>
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Port" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding Ports}" SelectedItem="{Binding Port}" MinWidth="120" />
-            <TextBlock Text="Baud" VerticalAlignment="Center" /><TextBox Text="{Binding Baud}" Width="90" Watermark="auto" />
+            <TextBlock Text="Baud" VerticalAlignment="Center" /><TextBox Text="{Binding Baud}" Width="90" PlaceholderText="auto" />
             <TextBlock Text="PTT" VerticalAlignment="Center" /><ComboBox ItemsSource="{Binding PttMethods}" SelectedItem="{Binding Ptt}" MinWidth="80" />
             <Button Content="Find the radio" Command="{Binding ScanCommand}" IsEnabled="{Binding !Busy}" />
           </StackPanel>
@@ -70,8 +70,8 @@
           </StackPanel>
           <TextBlock Text="QRZ username and password, for name and location lookups (optional)" />
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBox Text="{Binding QrzUser}" Width="160" Watermark="Username" />
-            <TextBox Text="{Binding QrzPassword}" Width="160" Watermark="Password" PasswordChar="•" />
+            <TextBox Text="{Binding QrzUser}" Width="160" PlaceholderText="Username" />
+            <TextBox Text="{Binding QrzPassword}" Width="160" PlaceholderText="Password" PasswordChar="•" />
             <Button Content="Test" Command="{Binding TestLookupCommand}" />
           </StackPanel>
           <CheckBox Content="Upload the stations I hear to PSK Reporter" IsChecked="{Binding UploadSpots}" />

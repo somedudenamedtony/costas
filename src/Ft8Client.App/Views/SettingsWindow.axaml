@@ -90,10 +90,10 @@
 
           <TextBlock Text="Programs" Classes="title" Margin="0,10,0,0" />
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="jt9" VerticalAlignment="Center" Width="80" /><TextBox Text="{Binding Jt9Path}" Width="420" Watermark="search automatically" />
+            <TextBlock Text="jt9" VerticalAlignment="Center" Width="80" /><TextBox Text="{Binding Jt9Path}" Width="420" PlaceholderText="search automatically" />
           </StackPanel>
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="Hamlib folder" VerticalAlignment="Center" Width="80" /><TextBox Text="{Binding HamlibDir}" Width="420" Watermark="search automatically" />
+            <TextBlock Text="Hamlib folder" VerticalAlignment="Center" Width="80" /><TextBox Text="{Binding HamlibDir}" Width="420" PlaceholderText="search automatically" />
           </StackPanel>
         </StackPanel>
         <TextBlock Text="{Binding Message}" Foreground="{DynamicResource CriticalBrush}" />

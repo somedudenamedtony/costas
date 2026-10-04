@@ -37,6 +37,7 @@ public sealed class PskFeedClient : IAsyncDisposable
     private CancellationTokenSource? _cts;
     private Task? _loop;
     private IMqttClient? _client;
+    private volatile bool _subscribed;
 
     /// <summary>Creates a client.</summary>
     public PskFeedClient(CountryFile? countries, string host = DefaultHost, int port = DefaultTlsPort, bool tls = true)
@@ -53,8 +54,8 @@ public sealed class PskFeedClient : IAsyncDisposable
     /// <summary>Raised when the connection state changes.</summary>
     public event Action<ServiceStatus>? StatusChanged;
 
-    /// <summary>True while connected and subscribed.</summary>
-    public bool Connected => _client?.IsConnected == true;
+    /// <summary>True while connected and subscribed (reports can arrive).</summary>
+    public bool Connected => _subscribed && _client?.IsConnected == true;
 
     /// <summary>Connections made so far (reconnects included).</summary>
     public int Connections { get; private set; }
@@ -84,6 +85,7 @@ public sealed class PskFeedClient : IAsyncDisposable
                 };
                 _client.DisconnectedAsync += _ =>
                 {
+                    _subscribed = false;
                     disconnected.TrySetResult();
                     return Task.CompletedTask;
                 };
@@ -98,6 +100,7 @@ public sealed class PskFeedClient : IAsyncDisposable
                 await _client.ConnectAsync(options, ct).ConfigureAwait(false);
                 await _client.SubscribeAsync(new MqttClientSubscribeOptionsBuilder().WithTopicFilter(TopicFor(myCall)).Build(), ct).ConfigureAwait(false);
                 Connections++;
+                _subscribed = true;
                 _backoff.Reset();
                 StatusChanged?.Invoke(new ServiceStatus(ServiceHealth.Ok, "Live feed connected", DateTime.UtcNow));
                 await disconnected.Task.WaitAsync(ct).ConfigureAwait(false);
@@ -113,6 +116,7 @@ public sealed class PskFeedClient : IAsyncDisposable
             }
             finally
             {
+                _subscribed = false;
                 _client?.Dispose();
                 _client = null;
             }
