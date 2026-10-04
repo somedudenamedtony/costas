@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -46,6 +46,12 @@ public sealed class AppSettings
 
     /// <summary>Paths.</summary>
     public PathOptions Paths { get; set; } = new();
+
+    /// <summary>Update checks.</summary>
+    public UpdateOptions Updates { get; set; } = new();
+
+    /// <summary>Developer mode (hidden).</summary>
+    public DeveloperOptions Developer { get; set; } = new();
 
     /// <summary>Window.</summary>
     public WindowOptions Window { get; set; } = new();

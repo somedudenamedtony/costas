@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -72,7 +72,7 @@ public partial class MainWindow : Window
             "settings" or "ranking" => new SettingsWindow { DataContext = new SettingsViewModel(vm.Host, name == "ranking") },
             "diagnostics" => new DiagnosticsWindow { DataContext = new DiagnosticsViewModel(vm.Host) },
             "shortcuts" => new ShortcutsWindow(),
-            _ => new AboutWindow(),
+            _ => new AboutWindow(vm.Host.Settings),
         };
         w.ShowDialog(this);
     }

@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -62,6 +62,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         Units = s.Appearance.Units;
         Jt9Path = s.Paths.Jt9 ?? string.Empty;
         HamlibDir = s.Paths.HamlibDir ?? string.Empty;
+        CheckUpdates = s.Updates.CheckEnabled;
+        ShowDeveloper = s.Developer.Enabled;
+        DeveloperMode = s.Developer.Enabled;
+        ReplaySamples = s.Developer.ReplaySamples;
+        SimulatedPartner = s.Developer.SimulatedPartner;
         SecretsNote = host.Secrets.IsPersistent
             ? "Keys and passwords are kept in the system credential store, not in the settings file."
             : "No system credential store is available here: keys and passwords last until the app closes.";
@@ -200,6 +205,46 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string UdpPort { get; set; }
 
+    /// <summary>Check for newer builds.</summary>
+    [ObservableProperty]
+    public partial bool CheckUpdates { get; set; }
+
+    /// <summary>Result of "Check now".</summary>
+    [ObservableProperty]
+    public partial string UpdateStatus { get; set; } = string.Empty;
+
+    /// <summary>Checks for a newer build now (also offers a build that was skipped before).</summary>
+    [RelayCommand]
+    private async Task CheckNow()
+    {
+        UpdateStatus = "Checking…";
+        _host.Settings.Update(s =>
+        {
+            s.Updates.CheckEnabled = true;
+            s.Updates.SkippedTag = null;
+        });
+        CheckUpdates = true;
+        var r = await _host.Updates.CheckAsync(CancellationToken.None);
+        UpdateStatus = r is not null ? $"Costas {r.Version} is available: see the bar at the top of the main window."
+            : _host.Updates.LastError is { } e ? $"Could not check: {e}"
+            : $"You have the latest build ({Ft8Client.Core.AppInfo.Version}).";
+    }
+
+    /// <summary>Developer section shown (developer mode was on when the window opened).</summary>
+    public bool ShowDeveloper { get; }
+
+    /// <summary>Developer mode.</summary>
+    [ObservableProperty]
+    public partial bool DeveloperMode { get; set; }
+
+    /// <summary>Replay the sample recordings instead of the sound card.</summary>
+    [ObservableProperty]
+    public partial bool ReplaySamples { get; set; }
+
+    /// <summary>A simulated station answers my calls while replaying.</summary>
+    [ObservableProperty]
+    public partial bool SimulatedPartner { get; set; }
+
     /// <summary>WAV choices.</summary>
     public IReadOnlyList<string> WavChoices { get; } = ["none", "decoded", "all"];
 
@@ -297,6 +342,13 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Appearance.Units = Units;
             s.Paths.Jt9 = string.IsNullOrWhiteSpace(Jt9Path) ? null : Jt9Path.Trim();
             s.Paths.HamlibDir = string.IsNullOrWhiteSpace(HamlibDir) ? null : HamlibDir.Trim();
+            s.Updates.CheckEnabled = CheckUpdates;
+            if (ShowDeveloper)
+            {
+                s.Developer.Enabled = DeveloperMode;
+                s.Developer.ReplaySamples = ReplaySamples;
+                s.Developer.SimulatedPartner = SimulatedPartner;
+            }
         });
         if (!RankingOnly)
         {

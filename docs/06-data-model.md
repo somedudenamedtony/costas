@@ -2,11 +2,11 @@
 
 ## Files on disk
 
-Root: `%LOCALAPPDATA%\Ft8Client\` (platform equivalent elsewhere).
+Root: `%LOCALAPPDATA%\Costas\` (builds before the rename used `Ft8Client\`; the app moves it on first start) (platform equivalent elsewhere).
 
 | Path | Content |
 | --- | --- |
-| `ft8client.db` | SQLite database (WAL mode) |
+| `costas.db` | SQLite database (WAL mode) |
 | `settings.json` | App settings and station profiles. No secrets |
 | `logs\app-YYYYMMDD.log` | Serilog files, 14 days |
 | `journal\decodes-YYYY-MM.txt` | Decode journal, one line per decode and per transmission |

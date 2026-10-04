@@ -1,9 +1,9 @@
-# Ft8Client - a station-centric FT8/FT4 client.
-# Copyright (C) 2026 Ft8Client contributors. GPLv3; see LICENSE.
+# Costas - a station-centric FT8/FT4 client.
+# Copyright (C) 2026 Costas contributors. GPLv3; see LICENSE.
 #
 # Builds the Windows installer: publishes the app self-contained for win-x64, stages jt9 (WSJT-X) and rigctld (Hamlib)
-# with their licences, smoke-tests both from the staged folder, then compiles installer/Ft8Client.iss with Inno Setup.
-# Output: artifacts/Ft8Client-Setup-<version>.exe
+# with their licences, smoke-tests both from the staged folder, then compiles installer/Costas.iss with Inno Setup.
+# Output: artifacts/Costas-Setup-<version>.exe
 param([string]$BuildNumber = '')
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -27,6 +27,7 @@ dotnet publish src/Ft8Client.App -c Release -r win-x64 --self-contained -o $stag
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed' }
 Get-ChildItem $stage -Filter '*.xml' | Remove-Item
 Copy-Item (Join-Path $root 'LICENSE') $stage
+if (-not (Test-Path (Join-Path $stage 'Costas.exe'))) { throw 'Costas.exe missing from the publish output' }
 
 # jt9 and Hamlib in the layout the app searches (third_party/... beside the exe), with their licences.
 $stp = Join-Path $stage 'third_party'
@@ -39,7 +40,7 @@ foreach ($name in 'wsjtx', 'hamlib') {
         ForEach-Object { Copy-Item $_.FullName (Join-Path $dest $_.Name) -Force }
 }
 @"
-FT8 Client bundles these programs, unmodified, as separate executables:
+Costas bundles these programs, unmodified, as separate executables:
 
 jt9 (decoder) from WSJT-X - GNU GPL version 3. Source: https://sourceforge.net/projects/wsjt/files/
 rigctld (radio control) from Hamlib - GNU LGPL 2.1 / GPL 2. Source: https://github.com/Hamlib/Hamlib/releases
@@ -72,6 +73,6 @@ if (-not (Test-Path $iscc)) {
     choco install innosetup -y --no-progress | Out-Host
     $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
 }
-& $iscc "/DAppVersion=$version" "/DStageDir=$stage" "/DOutputDir=$art" (Join-Path $root 'installer/Ft8Client.iss')
+& $iscc "/DAppVersion=$version" "/DStageDir=$stage" "/DOutputDir=$art" (Join-Path $root 'installer/Costas.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed' }
-Get-ChildItem $art -Filter 'Ft8Client-Setup-*.exe' | ForEach-Object { Write-Host "Installer: $($_.FullName) ($([math]::Round($_.Length / 1MB)) MB)" }
+Get-ChildItem $art -Filter 'Costas-Setup-*.exe' | ForEach-Object { Write-Host "Installer: $($_.FullName) ($([math]::Round($_.Length / 1MB)) MB)" }

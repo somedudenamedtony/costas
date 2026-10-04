@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -22,14 +22,14 @@ public class WsjtxUdpTests
         r.UInt32().Should().Be(0xADBCCBDA);
         r.UInt32().Should().Be(2u);
         r.UInt32().Should().Be((uint)type);
-        r.Utf8().Should().Be("Ft8Client");
+        r.Utf8().Should().Be("Costas");
         return r;
     }
 
     [Fact]
     public void Heartbeat_Read_HasSchemaAndVersion()
     {
-        var r = Open(WsjtxMessages.Heartbeat("Ft8Client", "0.1.0", "abc"), WsjtxMessageType.Heartbeat);
+        var r = Open(WsjtxMessages.Heartbeat("Costas", "0.1.0", "abc"), WsjtxMessageType.Heartbeat);
         r.UInt32().Should().Be(3u);
         r.Utf8().Should().Be("0.1.0");
         r.Utf8().Should().Be("abc");
@@ -52,7 +52,7 @@ public class WsjtxUdpTests
             RxDf = 1200, TxDf = 1500, DeCall = "W7LIT", DeGrid = "DN40", DxGrid = "FN42", TxWatchdog = false, TrPeriodSeconds = 15,
             ConfigurationName = "Home", TxMessage = "K1ABC W7LIT DN40",
         };
-        var r = Open(WsjtxMessages.Status("Ft8Client", s), WsjtxMessageType.Status);
+        var r = Open(WsjtxMessages.Status("Costas", s), WsjtxMessageType.Status);
         r.UInt64().Should().Be(14_074_000ul);
         r.Utf8().Should().Be("FT8");
         r.Utf8().Should().Be("K1ABC");
@@ -83,7 +83,7 @@ public class WsjtxUdpTests
     public void Decode_Read_AllFields(string mode, string modeChar)
     {
         var d = new WsjtxDecode(On.AddSeconds(15), -12, 0.3, 1234, mode, "CQ K1ABC FN42", true, false);
-        var r = Open(WsjtxMessages.Decode("Ft8Client", d), WsjtxMessageType.Decode);
+        var r = Open(WsjtxMessages.Decode("Costas", d), WsjtxMessageType.Decode);
         r.Bool().Should().BeTrue();
         r.Time().Should().Be(new TimeSpan(0, 3, 12, 45));
         r.Int32().Should().Be(-12);
@@ -99,8 +99,8 @@ public class WsjtxUdpTests
     [Fact]
     public void ClearAndClose_Read_HeaderOnly()
     {
-        Open(WsjtxMessages.Clear("Ft8Client"), WsjtxMessageType.Clear).AtEnd.Should().BeTrue();
-        Open(WsjtxMessages.Close("Ft8Client"), WsjtxMessageType.Close).AtEnd.Should().BeTrue();
+        Open(WsjtxMessages.Clear("Costas"), WsjtxMessageType.Clear).AtEnd.Should().BeTrue();
+        Open(WsjtxMessages.Close("Costas"), WsjtxMessageType.Close).AtEnd.Should().BeTrue();
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class WsjtxUdpTests
             TimeOnUtc = On, TimeOffUtc = On.AddSeconds(75.5), DxCall = "K1ABC", DxGrid = "FN42", FrequencyHz = 14_075_234, Mode = "FT8",
             ReportSent = "-10", ReportReceived = "-07", TxPower = "50", Comments = "", Name = "Al", MyCall = "W7LIT", MyGrid = "DN40",
         };
-        var r = Open(WsjtxMessages.QsoLogged("Ft8Client", q), WsjtxMessageType.QsoLogged);
+        var r = Open(WsjtxMessages.QsoLogged("Costas", q), WsjtxMessageType.QsoLogged);
         r.DateTime().Should().Be(On.AddSeconds(75.5));
         r.Utf8().Should().Be("K1ABC");
         r.Utf8().Should().Be("FN42");
@@ -136,7 +136,7 @@ public class WsjtxUdpTests
     public void LoggedAdif_Read_Text()
     {
         const string adif = "<adif_ver:5>3.1.4\n<EOH>\n<call:5>K1ABC <EOR>\n";
-        var r = Open(WsjtxMessages.LoggedAdif("Ft8Client", adif), WsjtxMessageType.LoggedAdif);
+        var r = Open(WsjtxMessages.LoggedAdif("Costas", adif), WsjtxMessageType.LoggedAdif);
         r.Utf8().Should().Be(adif);
         r.AtEnd.Should().BeTrue();
     }
@@ -154,7 +154,7 @@ public class WsjtxUdpTests
         using var listener = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
         var port = ((IPEndPoint)listener.Client.LocalEndPoint!).Port;
         using var b = new WsjtxUdpBroadcaster("127.0.0.1", port);
-        b.Send(WsjtxMessages.Clear("Ft8Client")).Should().BeTrue();
+        b.Send(WsjtxMessages.Clear("Costas")).Should().BeTrue();
         var got = await listener.ReceiveAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Open(got.Buffer, WsjtxMessageType.Clear).AtEnd.Should().BeTrue();
         b.Sent.Should().Be(1);
@@ -164,6 +164,6 @@ public class WsjtxUdpTests
     public void Send_NobodyListening_DoesNotThrow()
     {
         using var b = new WsjtxUdpBroadcaster("127.0.0.1", 9);
-        for (var i = 0; i < 3; i++) b.Send(WsjtxMessages.Close("Ft8Client"));
+        for (var i = 0; i < 3; i++) b.Send(WsjtxMessages.Close("Costas"));
     }
 }

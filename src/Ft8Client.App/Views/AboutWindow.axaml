@@ -4,7 +4,8 @@
         Title="About" Width="560" Height="420" WindowStartupLocation="CenterOwner">
   <ScrollViewer Margin="20">
     <StackPanel Spacing="8">
-      <TextBlock x:Name="Product" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock x:Name="Product" FontSize="20" FontWeight="SemiBold" Background="Transparent" />
+      <TextBlock x:Name="Secret" TextWrapping="Wrap" Foreground="{DynamicResource AccentBrush}" IsVisible="False" />
       <TextBlock TextWrapping="Wrap" Text="Free software under the GNU General Public License, version 3 or later. It comes with no warranty." />
       <TextBlock Text="Credits" Classes="title" Margin="0,8,0,0" />
       <TextBlock TextWrapping="Wrap" Text="Decoding by jt9 from WSJT-X, by the WSJT Development Group (K1JT, K9AN, G4WJS and others), GPLv3. https://wsjt.sourceforge.io/" />

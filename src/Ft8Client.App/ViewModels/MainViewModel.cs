@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -13,6 +13,7 @@ using CommunityToolkit.Mvvm.Input;
 using Ft8Client.App.Engine;
 using Ft8Client.App.Services;
 using Ft8Client.Core;
+using Ft8Client.Core.Messages;
 using Ft8Client.Core.Bands;
 using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Ranking;
@@ -44,6 +45,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Reach = new ReachViewModel(host.Spots, host.Countries, () => host.Session.LogIndex, () => host.Clock.UtcNow);
         LogView = new LogViewModel(host.Qsos, host.Countries, () => (host.Settings.Current.Profile.Id, host.Settings.Current.Profile.Callsign),
             host.Qrz.SyncNowAsync, () => host.Qrz.LastSyncUtc, host.RebuildLogIndex);
+        Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
+            () => Shutdown());
         Modes = ["FT8", "FT4"];
         ApplySettings();
         _host.Settings.Changed += _ => Dispatch(ApplySettings);
@@ -51,6 +54,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>Marshals to the UI thread (set by the view).</summary>
     public static Action<Action> Dispatch { get; set; } = a => a();
+
+    /// <summary>Closes the app normally (set by the app; releases PTT and stops the child processes).</summary>
+    public static Action Shutdown { get; set; } = () => { };
+
+    /// <summary>The update bar.</summary>
+    public UpdateBarViewModel Update { get; }
 
     /// <summary>Operate view.</summary>
     public OperateViewModel Operate { get; }
@@ -410,11 +419,17 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         return (list, rows.Count);
     }
 
-    private static (string, TextKind) Status(SessionSnapshot s)
+    internal static (string, TextKind) Status(SessionSnapshot s)
     {
         if (s.Fault is { } f) return (f, TextKind.Critical);
         if (s.Contact is { Outcome: ContactOutcome.InProgress } c)
-            return (s.Transmitting ? $"Transmitting to {c.DxCall}." : $"Waiting for {c.DxCall}.", s.Transmitting ? TextKind.Critical : TextKind.Normal);
+        {
+            if (!s.Transmitting) return ($"Waiting for {c.DxCall}.", TextKind.Normal);
+            // An answer decoded after the slot began cannot change what is already on the air (usually still the CQ).
+            var onAir = s.TransmittingMessage;
+            var toDx = onAir is not null && Callsign.EqualsCall(onAir.Split(' ')[0].Trim('<', '>'), c.DxCall);
+            return (onAir is null || toDx ? $"Transmitting to {c.DxCall}." : $"Sending {onAir}; answering {c.DxCall} next slot.", TextKind.Critical);
+        }
         if (s.CallingCq) return (s.Transmitting ? "Transmitting CQ." : "Calling CQ.", s.Transmitting ? TextKind.Critical : TextKind.Normal);
         var top = s.Rank.Line.FirstOrDefault();
         return (top is null ? "Not in a contact." : $"Not in a contact. Enter calls {top.Station.Call}, the top of the line.", TextKind.Normal);

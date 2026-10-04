@@ -6,12 +6,15 @@
 | --- | --- | --- | --- |
 | D1 | Licence | GPLv3, open source | A closed build cannot ship or run `jt9`; it would need `ft8_lib` (weaker decoding) or a new decoder |
 | D2 | Stack | C# on .NET 10, Avalonia 12 | The owner raised C# and MAUI; Avalonia was recommended for desktop grids and Linux. WinUI 3 is the alternative if Windows-only is acceptable |
-| D3 | Product name | Not chosen; working name "FT8 Client" | Needed for the installer, the QRZ User-Agent and the PSK Reporter software ID |
+| D3 | Product name | **Decided by the owner (2026-10-04): Costas.** User-Agent `Costas/<version>`, data folder `Costas`, installer `Costas-Setup`; code namespaces stay `Ft8Client`. Data and credentials from earlier builds are migrated on first start | Needed for the installer, the QRZ User-Agent and the PSK Reporter software ID |
 | D4 | Decoder packaging | Run `jt9` in place from an installed WSJT-X during development; bundle for release | Bundling needs the dependent DLL set and licence notices |
 | D5 | Units | Miles by default, km as a setting | |
 | D6 | "Confirmed" in need tiers | Tiers use worked, not confirmed; setting to switch | |
 | D7 | Uploading spots to PSK Reporter | Off until the operator turns it on | WSJT-X has it on by default for most users |
 | D8 | Split operation | Off in v1 | Enable "Fake it" later if Tx audio purity matters on the owner's radio |
+| D9 | Simulation by default | **Decided by the owner (2026-10-04):** no replayed or made-up data unless asked. Simulation only with `--simulate` or the hidden developer mode (seven clicks on the product name in About), which can also use Hamlib's test radio | |
+| D10 | Tuning the radio at start-up | Not done: the dial is read from the radio, and only picking a band tunes it. If the radio is outside the selected band, transmit is refused by the band-edge check | Owner to decide whether start-up should tune the radio to the selected band |
+| D11 | Updates | **Decided by the owner (2026-10-04):** the repository is public; the app checks GitHub Releases a minute after start and daily (Settings can turn it off), offers a newer build in a bar, and on request downloads it, verifies its SHA-256 and runs the installer, which upgrades in place. Every green build of `main` is published as a release | |
 
 ## Facts to verify (marked VERIFY in the docs)
 

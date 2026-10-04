@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -149,5 +149,22 @@ public class RigTests
             emu.Kill();
             File.Delete(log);
         }
+    }
+
+    [Fact]
+    public void ForPicker_RigctlList_SortedAndTestRadiosOnlyInDeveloperMode()
+    {
+        var all = HamlibModels.Parse("""
+             Rig #  Mfg                    Model                   Version         Status      Macro
+                 1  Hamlib                 Dummy                   20221128.0      Stable      RIG_MODEL_DUMMY
+                 2  Hamlib                 NET rigctl              20221111.0      Stable      RIG_MODEL_NETRIGCTL
+                 6  Hamlib                 Dummy No VFO            20221128.0      Stable      RIG_MODEL_DUMMY_NOVFO
+              3073  Icom                   IC-7300                 20230109.6      Stable      RIG_MODEL_IC7300
+              1049  Yaesu                  FT-710                  20230328.3      Stable      RIG_MODEL_FT710
+              1035  Yaesu                  FT-991                  20230328.15     Stable      RIG_MODEL_FT991
+            """);
+        HamlibModels.ForPicker(all, false).Select(m => m.Display).Should().Equal("Hamlib NET rigctl", "Icom IC-7300", "Yaesu FT-710", "Yaesu FT-991");
+        HamlibModels.ForPicker(all, true).Select(m => m.Number).Should().Contain([1, 6]);
+        all.Single(m => m.Number == 1049).Display.Should().Be("Yaesu FT-710");
     }
 }

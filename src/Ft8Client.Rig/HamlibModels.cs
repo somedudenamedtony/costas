@@ -1,5 +1,5 @@
-// Ft8Client - a station-centric FT8/FT4 client.
-// Copyright (C) 2026 Ft8Client contributors
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
 //
 // This program is free software: you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -29,6 +29,19 @@ public static partial class HamlibModels
         }
         return list;
     }
+
+    /// <summary>
+    /// Hamlib's built-in test radios (Dummy, Dummy No VFO): nothing is keyed, so the app never sends transmit audio to
+    /// the sound card while one is selected.
+    /// </summary>
+    public static bool IsTestModel(int? number) => number is 1 or 6;
+
+    /// <summary>The models to offer in a radio list, sorted by manufacturer then model; test radios only in developer mode.</summary>
+    public static IReadOnlyList<HamlibModel> ForPicker(IEnumerable<HamlibModel> models, bool includeTestModels) =>
+        models.Where(m => includeTestModels || !IsTestModel(m.Number))
+            .OrderBy(m => m.Manufacturer, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(m => m.Model, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     /// <summary>Runs <c>rigctl -l</c> from a Hamlib folder.</summary>
     public static async Task<IReadOnlyList<HamlibModel>> LoadAsync(string rigctlPath, CancellationToken ct)
