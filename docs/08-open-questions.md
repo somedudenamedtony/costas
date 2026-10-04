@@ -16,7 +16,7 @@
 | D10 | Tuning the radio at start-up | Not done: the dial is read from the radio, and only picking a band tunes it. If the radio is outside the selected band, transmit is refused by the band-edge check | Owner to decide whether start-up should tune the radio to the selected band |
 | D11 | Updates | **Decided by the owner (2026-10-04):** the repository is public; the app checks GitHub Releases a minute after start and daily (Settings can turn it off), offers a newer build in a bar, and on request downloads it, verifies its SHA-256 and runs the installer, which upgrades in place. Every green build of `main` is published as a release | |
 | D12 | QRZ login | **Revised by the owner (2026-10-04):** the QRZ username and password are asked for again (optional), beside the logbook API key, because QRZ's callsign lookups do not accept the API key. Setup and Settings say why each is needed (`05-integrations.md` section 4). Lookups are on when both are stored. An earlier build of the same day asked for the key alone and deleted any stored login, so operators who used it enter the login again | |
-| D13 | High SWR | The app warns (`04-domain-logic.md` section 11) but never stops or refuses a transmission because of ALC or SWR | Owner to decide whether SWR of 3 or more should halt transmitting (an on-air behaviour change) |
+| D13 | ALC and SWR | **Decided by the owner (2026-10-04):** display the meter readings and warnings only (`04-domain-logic.md` section 11). The app never stops, refuses or changes a transmission because of ALC or SWR | |
 
 ## Facts to verify (marked VERIFY in the docs)
 

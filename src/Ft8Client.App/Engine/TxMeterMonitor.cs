@@ -15,7 +15,7 @@ namespace Ft8Client.App.Engine;
 /// <summary>
 /// Reads the radio's ALC and SWR meters while a transmission or test tone is on the air and reports the result when
 /// it ends. Readings start once the radio has settled and stop shortly before the audio ends, so no meter command is
-/// in flight when PTT is released. Only warns; it never stops a transmission.
+/// in flight when PTT is released. Display only (owner decision D13): it never stops, refuses or changes a transmission.
 /// </summary>
 public sealed class TxMeterMonitor
 {
