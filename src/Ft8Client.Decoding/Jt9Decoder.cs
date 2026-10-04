@@ -151,17 +151,21 @@ public sealed class Jt9Decoder : IDecoder
         catch (System.ComponentModel.Win32Exception) { }
     }
 
+    // On Windows a killed process tree can hold its working folder for a moment after the kill returns, so keep
+    // trying for about two seconds. Anything still left is removed by CleanTempRoot at the next start.
     private static void TryDelete(string dir)
     {
-        for (var i = 0; i < 3; i++)
+        for (var i = 0; i < 10; i++)
         {
             try
             {
                 if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
                 return;
             }
-            catch (IOException) { Thread.Sleep(50); }
-            catch (UnauthorizedAccessException) { Thread.Sleep(50); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(Math.Min(50 * (i + 1), 300));
+            }
         }
     }
 
