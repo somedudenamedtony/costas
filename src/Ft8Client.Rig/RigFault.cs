@@ -6,4 +6,9 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
-[assembly: CaptureConsole]
+namespace Ft8Client.Rig;
+
+/// <summary>Something went wrong with the radio.</summary>
+/// <param name="Message">What, in one line.</param>
+/// <param name="TimeUtc">When.</param>
+public sealed record RigFault(string Message, DateTime TimeUtc);

@@ -6,4 +6,17 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
-[assembly: CaptureConsole]
+namespace Ft8Client.Core.Contacts;
+
+/// <summary>State of one box in the conversation strip.</summary>
+public enum StepState
+{
+    /// <summary>Not reached yet.</summary>
+    Upcoming,
+
+    /// <summary>The step being sent or waited for.</summary>
+    Now,
+
+    /// <summary>Sent or received.</summary>
+    Done,
+}

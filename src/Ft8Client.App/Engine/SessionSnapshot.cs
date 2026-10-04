@@ -7,6 +7,7 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Ft8Client.Core;
+using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Stations;

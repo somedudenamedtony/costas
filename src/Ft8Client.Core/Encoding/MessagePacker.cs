@@ -21,6 +21,13 @@ public static class MessagePacker
     internal const uint NTokens = 2063592;
     internal const int MaxGrid4 = 32400;
 
+    /// <summary>True when a call fits the standard 28-bit form (with an optional /P or /R), so it need not be hashed.</summary>
+    public static bool IsStandardCall(string call)
+    {
+        var n = Pack28(call.Trim('<', '>').ToUpperInvariant(), out _);
+        return n >= NTokens + Max22;
+    }
+
     /// <summary>Normalises text the way it is sent: upper case, single spaces.</summary>
     public static string Normalize(string text) =>
         string.Join(' ', text.ToUpperInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
