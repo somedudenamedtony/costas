@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Combined main window, idle</title>
+<style>
+body{margin:0}
+button,input,select{font:inherit}
+a{color:#005FB8}a:hover{color:#003E73}
+</style>
+</head>
+<body>
+<div style="min-height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #F3F3F3; color: #1A1A1A; font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif; font-size: 13px; line-height: 1.35">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 8px 16px">
+<div style="display: flex; align-items: center; gap: 6px">
+<label for="band">Band</label>
+<select id="band" style="height: 32px; padding: 0 8px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #8A8A8A; background: #FDFDFD; color: #1A1A1A"><option>20 m</option></select>
+</div>
+<div style="display: flex; align-items: center; gap: 6px">
+<label for="mode">Mode</label>
+<select id="mode" style="height: 32px; padding: 0 8px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #8A8A8A; background: #FDFDFD; color: #1A1A1A"><option>FT8</option></select>
+</div>
+<div style="display: flex; align-items: baseline; gap: 6px">
+<div style="font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums">14.074.000</div>
+<div style="color: #5F5F5F; font-size: 12px">MHz</div>
+</div>
+<div style="flex: 1 1 0"></div>
+<div role="group" aria-label="View" style="display: flex; gap: 2px">
+<button aria-pressed="true" style="height: 32px; padding: 0 12px; border-radius: 4px; border: 1px solid #005FB8; background: #005FB8; color: #FFFFFF; cursor: pointer">Operate</button>
+<button aria-pressed="false" style="height: 32px; padding: 0 12px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Raw decodes</button>
+<button aria-pressed="false" style="height: 32px; padding: 0 12px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Reach</button>
+<button aria-pressed="false" style="height: 32px; padding: 0 12px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Log</button>
+</div>
+<div style="font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums">02:53:58 UTC</div>
+</header>
+
+<main style="flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; padding: 0 16px 12px 16px">
+
+<div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+
+
+<section aria-label="Band at a glance" style="background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px; padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 28px">
+<div style="flex: 1 1 300px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">20 m right now</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 8px">
+<div><div style="font-size: 26px; font-weight: 600; line-height: 1.15">31</div><div style="font-size: 12px; color: #5F5F5F">Stations heard</div></div>
+<div><div style="font-size: 26px; font-weight: 600; line-height: 1.15">14</div><div style="font-size: 12px; color: #5F5F5F">Countries</div></div>
+<div><div style="font-size: 26px; font-weight: 600; line-height: 1.15">12</div><div style="font-size: 12px; color: #5F5F5F">Calling CQ</div></div>
+<div><div style="font-size: 26px; font-weight: 600; line-height: 1.15; color: #005FB8">7</div><div style="font-size: 12px; color: #5F5F5F">You need</div></div>
+</div>
+<div style="margin-top: 10px; font-size: 12px; color: #5F5F5F">23 decodes in the last slot · 19 per slot over the past hour</div>
+</div>
+<div style="flex: 1 1 220px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Heard from</h2>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 8px; align-items: end">
+
+<div style="text-align: center">
+<div style="font-weight: 600; font-variant-numeric: tabular-nums">14</div>
+<div style="height: 42px; margin: 2px 6px 0 6px; background: #0078D4"></div>
+<div style="margin-top: 4px; padding-top: 3px; border-top: 1px solid #8A8A8A; font-size: 12px; color: #5F5F5F">N. Am.</div>
+</div>
+
+<div style="text-align: center">
+<div style="font-weight: 600; font-variant-numeric: tabular-nums">3</div>
+<div style="height: 9px; margin: 2px 6px 0 6px; background: #0078D4"></div>
+<div style="margin-top: 4px; padding-top: 3px; border-top: 1px solid #8A8A8A; font-size: 12px; color: #5F5F5F">Europe</div>
+</div>
+
+<div style="text-align: center">
+<div style="font-weight: 600; font-variant-numeric: tabular-nums">5</div>
+<div style="height: 15px; margin: 2px 6px 0 6px; background: #0078D4"></div>
+<div style="margin-top: 4px; padding-top: 3px; border-top: 1px solid #8A8A8A; font-size: 12px; color: #5F5F5F">Asia</div>
+</div>
+
+<div style="text-align: center">
+<div style="font-weight: 600; font-variant-numeric: tabular-nums">4</div>
+<div style="height: 12px; margin: 2px 6px 0 6px; background: #0078D4"></div>
+<div style="margin-top: 4px; padding-top: 3px; border-top: 1px solid #8A8A8A; font-size: 12px; color: #5F5F5F">Oceania</div>
+</div>
+
+<div style="text-align: center">
+<div style="font-weight: 600; font-variant-numeric: tabular-nums">4</div>
+<div style="height: 12px; margin: 2px 6px 0 6px; background: #0078D4"></div>
+<div style="margin-top: 4px; padding-top: 3px; border-top: 1px solid #8A8A8A; font-size: 12px; color: #5F5F5F">S. Am.</div>
+</div>
+
+<div style="text-align: center">
+<div style="font-weight: 600; font-variant-numeric: tabular-nums">1</div>
+<div style="height: 3px; margin: 2px 6px 0 6px; background: #0078D4"></div>
+<div style="margin-top: 4px; padding-top: 3px; border-top: 1px solid #8A8A8A; font-size: 12px; color: #5F5F5F">Africa</div>
+</div>
+
+</div>
+</div>
+<div style="flex: 1 1 260px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Your log on 20 m</h2>
+<div style="display: flex; flex-direction: column; gap: 5px; margin-top: 8px">
+<div style="display: flex; gap: 12px"><div style="width: 96px; color: #5F5F5F">Countries</div><div><span style="font-weight: 600">87</span> worked · <span style="font-weight: 600">71</span> confirmed</div></div>
+<div style="display: flex; gap: 12px"><div style="width: 96px; color: #5F5F5F">US states</div><div><span style="font-weight: 600">48</span> of 50 · need RI, DE</div></div>
+<div style="display: flex; gap: 12px"><div style="width: 96px; color: #5F5F5F">Grid squares</div><div><span style="font-weight: 600">212</span> worked</div></div>
+<div style="display: flex; gap: 12px"><div style="width: 96px; color: #5F5F5F">Tonight</div><div><span style="font-weight: 600">6</span> contacts · 1 new country · 2 new bands</div></div>
+</div>
+</div>
+</section>
+
+
+
+
+<section aria-label="Next in line" style="background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px">
+<h2 style="margin: 0; padding: 10px 14px; font-size: 15px; font-weight: 600">Next in line</h2>
+<div style="overflow-x: auto">
+<div style="min-width: 860px">
+<div style="display: flex; gap: 12px; padding: 6px 14px; background: #FAFAFA; border-top: 1px solid #E0E0E0; border-bottom: 1px solid #E0E0E0; color: #5F5F5F; font-size: 12px">
+<div style="width: 18px">#</div>
+<div style="width: 72px">Call</div>
+<div style="width: 150px">Where</div>
+<div style="width: 150px">Why</div>
+<div style="flex: 1 1 0">Doing now</div>
+<div style="width: 110px">Hears you</div>
+<div style="width: 34px; text-align: right">dB</div>
+<div style="width: 70px">Chance</div>
+<div style="width: 56px"></div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px 0 11px; height: 40px; background: #E5F1FB; border-left: 3px solid #005FB8; border-bottom: 1px solid #F0F0F0">
+<div style="width: 18px; color: #5F5F5F">1</div>
+<div style="width: 72px; font-size: 14px; font-weight: 600">ZL2RPA</div>
+<div style="width: 150px">New Zealand · 7,180 mi</div>
+<div style="width: 150px; font-weight: 600; color: #8A4B00">New country</div>
+<div style="flex: 1 1 0">Calling CQ, 6 slots</div>
+<div style="width: 110px">Yes, -22</div>
+<div style="width: 34px; text-align: right; font-variant-numeric: tabular-nums">-19</div>
+<div style="width: 70px; font-weight: 400">Fair</div>
+<div style="width: 56px"><button aria-label="Call ZL2RPA" style="height: 28px; padding: 0 12px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Call</button></div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px 0 11px; height: 40px; background: #FFFFFF; border-left: 3px solid #FFFFFF; border-bottom: 1px solid #F0F0F0">
+<div style="width: 18px; color: #5F5F5F">2</div>
+<div style="width: 72px; font-size: 14px; font-weight: 600">JA1QRS</div>
+<div style="width: 150px">Japan · 5,480 mi</div>
+<div style="width: 150px; font-weight: 600; color: #005FB8">New band</div>
+<div style="flex: 1 1 0">Calling CQ, 3 slots</div>
+<div style="width: 110px">Japan does, at -17</div>
+<div style="width: 34px; text-align: right; font-variant-numeric: tabular-nums">-08</div>
+<div style="width: 70px; font-weight: 600">Good</div>
+<div style="width: 56px"><button aria-label="Call JA1QRS" style="height: 28px; padding: 0 12px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Call</button></div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px 0 11px; height: 40px; background: #FFFFFF; border-left: 3px solid #FFFFFF; border-bottom: 1px solid #F0F0F0">
+<div style="width: 18px; color: #5F5F5F">3</div>
+<div style="width: 72px; font-size: 14px; font-weight: 600">KH6TU</div>
+<div style="width: 150px">Hawaii · 2,990 mi</div>
+<div style="width: 150px; font-weight: 600; color: #005FB8">New band</div>
+<div style="flex: 1 1 0">Calling CQ, 4 slots, fading</div>
+<div style="width: 110px">Yes, -14</div>
+<div style="width: 34px; text-align: right; font-variant-numeric: tabular-nums">-21</div>
+<div style="width: 70px; font-weight: 400">Fair</div>
+<div style="width: 56px"><button aria-label="Call KH6TU" style="height: 28px; padding: 0 12px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Call</button></div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px 0 11px; height: 40px; background: #FFFFFF; border-left: 3px solid #FFFFFF; border-bottom: 1px solid #F0F0F0">
+<div style="width: 18px; color: #5F5F5F">4</div>
+<div style="width: 72px; font-size: 14px; font-weight: 600">VK3BMT</div>
+<div style="width: 150px">Australia · 8,240 mi</div>
+<div style="width: 150px; font-weight: 600; color: #005FB8">New grid</div>
+<div style="flex: 1 1 0">Calling CQ DX, 2 slots</div>
+<div style="width: 110px">No reports yet</div>
+<div style="width: 34px; text-align: right; font-variant-numeric: tabular-nums">-11</div>
+<div style="width: 70px; font-weight: 400">Long shot</div>
+<div style="width: 56px"><button aria-label="Call VK3BMT" style="height: 28px; padding: 0 12px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Call</button></div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px 0 11px; height: 40px; background: #FFFFFF; border-left: 3px solid #FFFFFF; border-bottom: 1px solid #F0F0F0">
+<div style="width: 18px; color: #5F5F5F">5</div>
+<div style="width: 72px; font-size: 14px; font-weight: 600">VE7HLB</div>
+<div style="width: 150px">Canada · 820 mi</div>
+<div style="width: 150px; font-weight: 400; color: #1A1A1A">New call</div>
+<div style="flex: 1 1 0">Calling CQ, 2 slots</div>
+<div style="width: 110px">Yes, -10</div>
+<div style="width: 34px; text-align: right; font-variant-numeric: tabular-nums">-10</div>
+<div style="width: 70px; font-weight: 600">Good</div>
+<div style="width: 56px"><button aria-label="Call VE7HLB" style="height: 28px; padding: 0 12px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Call</button></div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px 0 11px; height: 40px; background: #FFFFFF; border-left: 3px solid #FFFFFF; border-bottom: 1px solid #F0F0F0">
+<div style="width: 18px; color: #5F5F5F">6</div>
+<div style="width: 72px; font-size: 14px; font-weight: 600">LU8DCM</div>
+<div style="width: 150px">Argentina · 5,930 mi</div>
+<div style="width: 150px; font-weight: 400; color: #1A1A1A">New call</div>
+<div style="flex: 1 1 0">Calling CQ, 2 slots</div>
+<div style="width: 110px">Yes, -20</div>
+<div style="width: 34px; text-align: right; font-variant-numeric: tabular-nums">-12</div>
+<div style="width: 70px; font-weight: 400">Fair</div>
+<div style="width: 56px"><button aria-label="Call LU8DCM" style="height: 28px; padding: 0 12px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Call</button></div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px 0 11px; height: 40px; background: #FFFFFF; border-left: 3px solid #FFFFFF; border-bottom: 1px solid #F0F0F0">
+<div style="width: 18px; color: #5F5F5F">7</div>
+<div style="width: 72px; font-size: 14px; font-weight: 600">PY2WRA</div>
+<div style="width: 150px">Brazil · 6,120 mi</div>
+<div style="width: 150px; font-weight: 400; color: #1A1A1A">New call</div>
+<div style="flex: 1 1 0">Calling CQ NA, 3 slots</div>
+<div style="width: 110px">Yes, -21</div>
+<div style="width: 34px; text-align: right; font-variant-numeric: tabular-nums">-09</div>
+<div style="width: 70px; font-weight: 400">Fair</div>
+<div style="width: 56px"><button aria-label="Call PY2WRA" style="height: 28px; padding: 0 12px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Call</button></div>
+</div>
+
+</div>
+</div>
+</section>
+
+<section aria-label="Watching" style="background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px">
+<div style="padding: 10px 14px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Watching</h2>
+<div style="color: #5F5F5F; font-size: 12px">Needed, but not callable right now. They join the line when that changes.</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 34px; border-top: 1px solid #F0F0F0; color: #5F5F5F">
+<div style="width: 72px; font-size: 14px; font-weight: 600">CE3MPV</div>
+<div style="width: 150px">Chile · 5,560 mi</div>
+<div style="width: 150px; font-weight: 600; color: #8A4B00">New country</div>
+<div style="flex: 1 1 0">Went quiet 45 seconds ago</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 34px; border-top: 1px solid #F0F0F0; color: #5F5F5F">
+<div style="width: 72px; font-size: 14px; font-weight: 600">JH4UTP</div>
+<div style="width: 150px">Japan · 5,750 mi</div>
+<div style="width: 150px; font-weight: 400; color: #1A1A1A">New call</div>
+<div style="flex: 1 1 0">Finishing a contact with K7RGB</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 34px; border-top: 1px solid #F0F0F0; color: #5F5F5F">
+<div style="width: 72px; font-size: 14px; font-weight: 600">W9RDL</div>
+<div style="width: 150px">Illinois, USA · 1,190 mi</div>
+<div style="width: 150px; font-weight: 400; color: #1A1A1A">New call</div>
+<div style="flex: 1 1 0">In a contact with EA5HVK</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 34px; border-top: 1px solid #F0F0F0; color: #5F5F5F">
+<div style="width: 72px; font-size: 14px; font-weight: 600">OH2KQA</div>
+<div style="width: 150px">Finland · 5,010 mi</div>
+<div style="width: 150px; font-weight: 400; color: #1A1A1A">New call</div>
+<div style="flex: 1 1 0">Went quiet 1 minute ago</div>
+</div>
+
+<div style="padding: 10px 14px; border-top: 1px solid #E0E0E0; color: #5F5F5F">5 stations you have already worked on 20 m are hidden. <a href="#all">Show them</a></div>
+</section>
+</div>
+
+<div style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+
+
+
+<section aria-label="Your signal" style="background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px; padding: 12px 16px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Your signal on 20 m</h2>
+<div style="font-size: 12px; color: #5F5F5F">PSK Reporter · live</div>
+</div>
+<div style="display: flex; align-items: center; gap: 14px; margin-top: 10px">
+<div style="position: relative; flex: none; width: 124px; height: 124px; border-radius: 50%; background: #FAFAFA; border: 1px solid #8A8A8A">
+<div style="position: absolute; left: 25%; top: 25%; width: 50%; height: 50%; border-radius: 50%; border: 1px solid #D1D1D1; box-sizing: border-box"></div>
+<div style="position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px solid #E0E0E0"></div>
+<div style="position: absolute; top: 50%; left: 0; right: 0; border-top: 1px solid #E0E0E0"></div>
+<div style="position: absolute; left: 50%; top: 3px; transform: translateX(-50%); padding: 0 2px; background: #FAFAFA; font-size: 11px; color: #5F5F5F">N</div>
+<div style="position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; transform: translate(-50%, -50%) rotate(45deg); background: #1A1A1A"></div>
+
+<div style="position: absolute; left: 16.1%; top: 79.4%; width: 6px; height: 6px; transform: translate(-50%, -50%); border-radius: 50%; background: #7FB5E6; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 82.1%; top: 70.8%; width: 6px; height: 6px; transform: translate(-50%, -50%); border-radius: 50%; background: #7FB5E6; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 75.3%; top: 77.1%; width: 6px; height: 6px; transform: translate(-50%, -50%); border-radius: 50%; background: #7FB5E6; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 22.5%; top: 26.9%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 74.6%; top: 27.9%; width: 6px; height: 6px; transform: translate(-50%, -50%); border-radius: 50%; background: #7FB5E6; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 68.0%; top: 26.1%; width: 6px; height: 6px; transform: translate(-50%, -50%); border-radius: 50%; background: #7FB5E6; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 69.1%; top: 54.8%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 32.4%; top: 56.4%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 42.3%; top: 39.0%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 62.4%; top: 46.0%; width: 10px; height: 10px; transform: translate(-50%, -50%); border-radius: 50%; background: #003E73; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 59.5%; top: 46.2%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 59.6%; top: 51.5%; width: 10px; height: 10px; transform: translate(-50%, -50%); border-radius: 50%; background: #003E73; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 52.4%; top: 55.9%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+
+<div style="position: absolute; left: 55.2%; top: 53.5%; width: 10px; height: 10px; transform: translate(-50%, -50%); border-radius: 50%; background: #003E73; border: 1px solid #FFFFFF"></div>
+
+</div>
+<div style="flex: 1 1 0; min-width: 0">
+<div><span style="font-size: 20px; font-weight: 600">14</span> stations in <span style="font-weight: 600">12</span> countries heard you in the last 15 minutes.</div>
+<div style="margin-top: 6px; color: #5F5F5F; font-size: 12px">Farthest</div>
+<div>ZL2RPA · 7,180 mi</div>
+<div style="margin-top: 4px; color: #5F5F5F; font-size: 12px">Best report</div>
+<div>-03 from KG5OWB</div>
+</div>
+</div>
+<div style="margin-top: 6px; font-size: 12px; color: #5F5F5F">You are at the centre, north is up. Rings at 4,000 and 8,000 miles. Bigger, darker dots are stronger reports.</div>
+<div style="margin-top: 10px; border-top: 1px solid #F0F0F0">
+
+<div style="display: flex; align-items: center; gap: 10px; height: 28px; border-bottom: 1px solid #F0F0F0">
+<div style="width: 64px; font-weight: 600">KG5OWB</div>
+<div style="flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Texas, USA</div>
+<div style="width: 30px; text-align: right; font-variant-numeric: tabular-nums">-03</div>
+<div style="width: 64px; text-align: right; color: #5F5F5F">2 min ago</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; height: 28px; border-bottom: 1px solid #F0F0F0">
+<div style="width: 64px; font-weight: 600">K4ZZT</div>
+<div style="flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Georgia, USA</div>
+<div style="width: 30px; text-align: right; font-variant-numeric: tabular-nums">-07</div>
+<div style="width: 64px; text-align: right; color: #5F5F5F">2 min ago</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; height: 28px; border-bottom: 1px solid #F0F0F0">
+<div style="width: 64px; font-weight: 600">VE3KTN</div>
+<div style="flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Ontario, Canada</div>
+<div style="width: 30px; text-align: right; font-variant-numeric: tabular-nums">-15</div>
+<div style="width: 64px; text-align: right; color: #5F5F5F">3 min ago</div>
+</div>
+
+</div>
+<a href="Reach.dc.html" style="display: inline-block; padding: 8px 0 0 0">Open reach view</a>
+</section>
+
+<section aria-label="Worked tonight" style="background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px">
+<div style="padding: 12px 16px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Worked tonight · 6</h2>
+<div style="color: #5F5F5F">1 new country · 2 new bands</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; padding: 6px 16px; border-top: 1px solid #F0F0F0">
+<div style="flex: 1 1 0; min-width: 0">
+<div><span style="font-weight: 600">W6DTR</span> · California, USA</div>
+<div style="font-size: 12px; color: #5F5F5F">Uploaded to QRZ</div>
+</div>
+<div style="text-align: right">
+<div style="font-size: 12px; font-weight: 400; color: #5F5F5F">Worked before</div>
+<div style="font-size: 12px; color: #5F5F5F">02:49 UTC</div>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; padding: 6px 16px; border-top: 1px solid #F0F0F0">
+<div style="flex: 1 1 0; min-width: 0">
+<div><span style="font-weight: 600">KG5OWB</span> · Texas, USA</div>
+<div style="font-size: 12px; color: #5F5F5F">Uploaded to QRZ</div>
+</div>
+<div style="text-align: right">
+<div style="font-size: 12px; font-weight: 400; color: #5F5F5F">Worked before</div>
+<div style="font-size: 12px; color: #5F5F5F">02:31 UTC</div>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; padding: 6px 16px; border-top: 1px solid #F0F0F0">
+<div style="flex: 1 1 0; min-width: 0">
+<div><span style="font-weight: 600">EA5HVK</span> · Spain</div>
+<div style="font-size: 12px; color: #5F5F5F">Uploaded to QRZ</div>
+</div>
+<div style="text-align: right">
+<div style="font-size: 12px; font-weight: 600; color: #005FB8">New band</div>
+<div style="font-size: 12px; color: #5F5F5F">02:12 UTC</div>
+</div>
+</div>
+
+<div style="padding: 8px 16px; border-top: 1px solid #F0F0F0"><a href="#log">Show all 6 in the log</a></div>
+</section>
+
+<section aria-label="Ranking" style="background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px; padding: 12px 16px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">How the line is ordered</h2>
+<div style="margin-top: 4px; color: #5F5F5F">New countries first, then bands, grids and calls. Stations that hear you rank higher. <a href="#ranking">Change</a></div>
+</section>
+</div>
+</main>
+
+<footer style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 16px; background: #FFFFFF; border-top: 1px solid #E0E0E0">
+<div style="flex: 1 1 260px">Not in a contact. Enter calls ZL2RPA, the top of the line.</div>
+<div style="color: #5F5F5F">Tx offset 1650 Hz · clear</div>
+<button style="height: 32px; padding: 0 16px; margin-left: 8px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Call CQ</button>
+<button style="height: 32px; padding: 0 16px; border-radius: 4px; border: 1px solid #D1D1D1; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Halt Tx</button>
+<div style="width: 200px; display: flex; flex-direction: column; gap: 4px; margin-left: 8px">
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #5F5F5F"><div>Receiving</div><div>2 s to next slot</div></div>
+<div style="height: 4px; background: #D1D1D1"><div style="width: 87%; height: 4px; background: #005FB8"></div></div>
+</div>
+</footer>
+
+</div>
+</body>
+</html>

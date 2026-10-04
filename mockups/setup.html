@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>First-run setup, radio step</title>
+<style>
+body{margin:0}
+button,input,select{font:inherit}
+a{color:#005FB8}a:hover{color:#003E73}
+</style>
+</head>
+<body>
+<div style="min-height: 720px; box-sizing: border-box; display: flex; flex-wrap: wrap; background: #F3F3F3; color: #1A1A1A; font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.4">
+
+<nav aria-label="Setup steps" style="flex: 1 1 240px; box-sizing: border-box; padding: 28px 12px; display: flex; flex-direction: column; gap: 4px">
+<div style="padding: 0 12px 14px 12px; font-size: 12px; color: #5F5F5F">[App name] setup</div>
+<div style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 4px; color: #5F5F5F">
+<div style="width: 3px; height: 16px"></div>
+<div>1. Station <span style="font-size: 12px">· W7LIT, DN40</span></div>
+</div>
+<div aria-current="step" style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 4px; background: #E9E9E9; font-weight: 600">
+<div style="width: 3px; height: 16px; border-radius: 2px; background: #005FB8"></div>
+<div>2. Radio</div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 4px">
+<div style="width: 3px; height: 16px"></div>
+<div>3. Audio</div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 4px">
+<div style="width: 3px; height: 16px"></div>
+<div>4. Transmit test</div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 4px">
+<div style="width: 3px; height: 16px"></div>
+<div>5. Clock check</div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 4px">
+<div style="width: 3px; height: 16px"></div>
+<div>6. QRZ logbook <span style="font-size: 12px; color: #5F5F5F">· optional</span></div>
+</div>
+</nav>
+
+<main style="flex: 999 1 480px; min-width: 0; box-sizing: border-box; margin: 12px 12px 12px 0; padding: 32px 40px; background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px; display: flex; flex-direction: column; gap: 20px">
+<div>
+<h1 style="margin: 0; font-size: 28px; font-weight: 600">Connect your radio</h1>
+<p style="margin: 6px 0 0 0; color: #5F5F5F; max-width: 560px">Pick your model and the app finds the port. The radio's frequency shows below as soon as the link works.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 600px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<label for="model">Radio model</label>
+<input id="model" type="text" value="Icom IC-7300" style="height: 32px; box-sizing: border-box; padding: 0 10px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom: 2px solid #005FB8; background: #FFFFFF; color: #1A1A1A">
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<label for="port">Port</label>
+<select id="port" style="height: 32px; box-sizing: border-box; padding: 0 8px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #8A8A8A; background: #FDFDFD; color: #1A1A1A">
+<option>COM4 (found automatically)</option>
+<option>COM3</option>
+</select>
+</div>
+</div>
+
+<fieldset style="margin: 0; padding: 0; border: 0">
+<legend style="padding: 0; margin-bottom: 6px">How should the app key the radio?</legend>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<label style="display: flex; align-items: center; gap: 8px; height: 32px"><input type="radio" name="ptt" checked style="width: 18px; height: 18px; accent-color: #005FB8">CAT command (recommended for this radio)</label>
+<label style="display: flex; align-items: center; gap: 8px; height: 32px"><input type="radio" name="ptt" style="width: 18px; height: 18px; accent-color: #005FB8">RTS line</label>
+<label style="display: flex; align-items: center; gap: 8px; height: 32px"><input type="radio" name="ptt" style="width: 18px; height: 18px; accent-color: #005FB8">DTR line</label>
+<label style="display: flex; align-items: center; gap: 8px; height: 32px"><input type="radio" name="ptt" style="width: 18px; height: 18px; accent-color: #005FB8">VOX (the radio keys itself on audio)</label>
+</div>
+</fieldset>
+
+<div role="status" style="max-width: 600px; box-sizing: border-box; padding: 12px 14px; border-radius: 4px; border: 1px solid #C5E3C3; background: #DFF6DD; display: flex; flex-wrap: wrap; align-items: center; gap: 16px">
+<div style="flex: 1 1 220px">
+<div style="font-weight: 600"><span style="display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; background: #0F7B0F"></span>Connected</div>
+<div style="margin-top: 2px; font-size: 13px">Reading from the radio once a second. Turn the dial and this number should follow.</div>
+</div>
+<div style="text-align: right">
+<div style="font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums">14.074.000</div>
+<div style="font-size: 12px">MHz · USB-D · 115200 baud</div>
+</div>
+</div>
+
+<div style="flex: 1 1 auto"></div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<a href="#audio" style="padding: 6px 0">No radio control? Use audio and VOX only</a>
+<div style="flex: 1 1 0"></div>
+<button style="height: 32px; min-width: 96px; padding: 0 16px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #B8B8B8; background: #FDFDFD; color: #1A1A1A; cursor: pointer">Back</button>
+<button style="height: 32px; min-width: 96px; padding: 0 16px; border-radius: 4px; border: 1px solid #005FB8; background: #005FB8; color: #FFFFFF; cursor: pointer">Next</button>
+</div>
+</main>
+
+</div>
+</body>
+</html>

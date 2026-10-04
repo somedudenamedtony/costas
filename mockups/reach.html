@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reach view</title>
+<style>
+body{margin:0}
+button,input,select{font:inherit}
+a{color:#005FB8}a:hover{color:#003E73}
+</style>
+</head>
+<body>
+<div style="min-height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #F3F3F3; color: #1A1A1A; font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif; font-size: 13px; line-height: 1.35">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 12px 20px">
+<a href="Main.dc.html" style="padding: 6px 0">Back to operating</a>
+<div>
+<h1 style="margin: 0; font-size: 20px; font-weight: 600">Where W7LIT is being heard</h1>
+<div style="color: #5F5F5F; font-size: 12px">Reception reports from PSK Reporter · live feed connected</div>
+</div>
+<div style="flex: 1 1 0"></div>
+<div style="display: flex; align-items: center; gap: 6px">
+<label for="band">Band</label>
+<select id="band" style="height: 32px; padding: 0 8px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #8A8A8A; background: #FDFDFD; color: #1A1A1A">
+<option>20 m</option>
+<option>40 m</option>
+<option>15 m</option>
+<option>All bands</option>
+</select>
+</div>
+<div style="display: flex; align-items: center; gap: 6px">
+<label for="win">Window</label>
+<select id="win" style="height: 32px; padding: 0 8px; border-radius: 4px; border: 1px solid #D1D1D1; border-bottom-color: #8A8A8A; background: #FDFDFD; color: #1A1A1A">
+<option>Last 15 minutes</option>
+<option>Last hour</option>
+<option>Last 24 hours</option>
+</select>
+</div>
+</header>
+
+<main style="flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 12px; padding: 0 20px 16px 20px">
+
+<section aria-label="Reach plot" style="flex: 1 1 520px; min-width: 0; background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; gap: 28px">
+<div><div style="color: #5F5F5F; font-size: 12px">Heard by</div><div style="font-size: 20px; font-weight: 600">14 stations</div></div>
+<div><div style="color: #5F5F5F; font-size: 12px">Countries</div><div style="font-size: 20px; font-weight: 600">12</div></div>
+<div><div style="color: #5F5F5F; font-size: 12px">Farthest</div><div style="font-size: 20px; font-weight: 600">7,180 mi</div></div>
+<div><div style="color: #5F5F5F; font-size: 12px">Best report</div><div style="font-size: 20px; font-weight: 600">-03 dB</div></div>
+</div>
+<div style="position: relative; width: min(540px, 100%); aspect-ratio: 1 / 1; align-self: center; border-radius: 50%; background: #FAFAFA; border: 1px solid #8A8A8A">
+<div style="position: absolute; left: 12.5%; top: 12.5%; width: 75%; height: 75%; border-radius: 50%; border: 1px solid #D1D1D1; box-sizing: border-box"></div>
+<div style="position: absolute; left: 25%; top: 25%; width: 50%; height: 50%; border-radius: 50%; border: 1px solid #D1D1D1; box-sizing: border-box"></div>
+<div style="position: absolute; left: 37.5%; top: 37.5%; width: 25%; height: 25%; border-radius: 50%; border: 1px solid #D1D1D1; box-sizing: border-box"></div>
+<div style="position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px solid #E0E0E0"></div>
+<div style="position: absolute; top: 50%; left: 0; right: 0; border-top: 1px solid #E0E0E0"></div>
+<div style="position: absolute; left: 50%; top: 6px; transform: translateX(-50%); padding: 0 3px; background: #FAFAFA; font-size: 12px; color: #5F5F5F">N</div>
+<div style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); padding: 0 3px; background: #FAFAFA; font-size: 12px; color: #5F5F5F">E</div>
+<div style="position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); padding: 0 3px; background: #FAFAFA; font-size: 12px; color: #5F5F5F">S</div>
+<div style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); padding: 0 3px; background: #FAFAFA; font-size: 12px; color: #5F5F5F">W</div>
+<div style="position: absolute; left: 51%; top: 38.5%; font-size: 11px; color: #5F5F5F">2,000</div>
+<div style="position: absolute; left: 51%; top: 26%; font-size: 11px; color: #5F5F5F">4,000</div>
+<div style="position: absolute; left: 51%; top: 13.5%; font-size: 11px; color: #5F5F5F">6,000 mi</div>
+<div style="position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; transform: translate(-50%, -50%) rotate(45deg); background: #1A1A1A"></div>
+
+<div style="position: absolute; left: 16.1%; top: 79.4%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #7FB5E6; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 16.1%; top: 79.4%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">ZL2RPA</div>
+
+<div style="position: absolute; left: 82.1%; top: 70.8%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #7FB5E6; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 82.1%; top: 70.8%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">PY2WRA</div>
+
+<div style="position: absolute; left: 75.3%; top: 77.1%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #7FB5E6; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 75.3%; top: 77.1%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">LU8DCM</div>
+
+<div style="position: absolute; left: 22.5%; top: 26.9%; width: 11px; height: 11px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 22.5%; top: 26.9%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">JH4UTP</div>
+
+<div style="position: absolute; left: 74.6%; top: 27.9%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #7FB5E6; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 74.6%; top: 27.9%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">EA5HVK</div>
+
+<div style="position: absolute; left: 68.0%; top: 26.1%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #7FB5E6; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 68.0%; top: 26.1%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">G4HWT</div>
+
+<div style="position: absolute; left: 69.1%; top: 54.8%; width: 11px; height: 11px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 69.1%; top: 54.8%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">NP4RLA</div>
+
+<div style="position: absolute; left: 32.4%; top: 56.4%; width: 11px; height: 11px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 32.4%; top: 56.4%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">KH6TU</div>
+
+<div style="position: absolute; left: 42.3%; top: 39.0%; width: 11px; height: 11px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 42.3%; top: 39.0%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">KL7DMN</div>
+
+<div style="position: absolute; left: 62.4%; top: 46.0%; width: 14px; height: 14px; transform: translate(-50%, -50%); border-radius: 50%; background: #003E73; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 62.4%; top: 46.0%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">W1FXO</div>
+
+<div style="position: absolute; left: 59.5%; top: 46.2%; width: 11px; height: 11px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 59.5%; top: 46.2%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">VE3KTN</div>
+
+<div style="position: absolute; left: 59.6%; top: 51.5%; width: 14px; height: 14px; transform: translate(-50%, -50%); border-radius: 50%; background: #003E73; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 59.6%; top: 51.5%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">K4ZZT</div>
+
+<div style="position: absolute; left: 52.4%; top: 55.9%; width: 11px; height: 11px; transform: translate(-50%, -50%); border-radius: 50%; background: #0078D4; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 52.4%; top: 55.9%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">XE2JTS</div>
+
+<div style="position: absolute; left: 55.2%; top: 53.5%; width: 14px; height: 14px; transform: translate(-50%, -50%); border-radius: 50%; background: #003E73; border: 1px solid #FFFFFF"></div>
+<div style="position: absolute; left: 55.2%; top: 53.5%; transform: translate(10px, -50%); font-size: 11px; color: #1A1A1A">KG5OWB</div>
+
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #5F5F5F">
+<div style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 14px; border-radius: 50%; background: #003E73"></span>Strong, -10 dB or better</div>
+<div style="display: flex; align-items: center; gap: 6px"><span style="width: 11px; height: 11px; border-radius: 50%; background: #0078D4"></span>Fair, -11 to -17</div>
+<div style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #7FB5E6"></span>Weak, -18 or below</div>
+<div>Centered on DN40. Rings every 2,000 miles.</div>
+</div>
+</section>
+
+<section aria-label="Reports" style="flex: 1 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+
+<div style="background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600">Who heard you on 20 m</h2>
+<div style="font-size: 12px; color: #5F5F5F">Sorted by distance</div>
+</div>
+<div style="overflow-x: auto">
+<div style="min-width: 540px">
+<div style="display: flex; gap: 12px; padding: 6px 14px; background: #FAFAFA; border-top: 1px solid #E0E0E0; border-bottom: 1px solid #E0E0E0; color: #5F5F5F; font-size: 12px">
+<div style="width: 74px">Station</div>
+<div style="flex: 1 1 0">Where</div>
+<div style="width: 50px; text-align: right">Miles</div>
+<div style="width: 50px; text-align: right">Bearing</div>
+<div style="width: 36px; text-align: right">dB</div>
+<div style="width: 56px; text-align: right">Age</div>
+<div style="width: 90px">In your log</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">ZL2RPA</div>
+<div style="flex: 1 1 0">New Zealand</div>
+<div style="width: 50px; text-align: right">7,180</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">229°</div>
+<div style="width: 36px; text-align: right; font-weight: 400">-22</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">6 min</div>
+<div style="width: 90px; font-weight: 600; color: #005FB8">Needed</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">PY2WRA</div>
+<div style="flex: 1 1 0">Brazil</div>
+<div style="width: 50px; text-align: right">6,120</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">123°</div>
+<div style="width: 36px; text-align: right; font-weight: 400">-21</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">13 min</div>
+<div style="width: 90px; font-weight: 600; color: #005FB8">Needed</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">LU8DCM</div>
+<div style="flex: 1 1 0">Argentina</div>
+<div style="width: 50px; text-align: right">5,930</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">137°</div>
+<div style="width: 36px; text-align: right; font-weight: 400">-20</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">12 min</div>
+<div style="width: 90px; font-weight: 600; color: #005FB8">Needed</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">JH4UTP</div>
+<div style="flex: 1 1 0">Japan</div>
+<div style="width: 50px; text-align: right">5,750</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">310°</div>
+<div style="width: 36px; text-align: right; font-weight: 400">-17</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">4 min</div>
+<div style="width: 90px; font-weight: 600; color: #005FB8">Needed</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">EA5HVK</div>
+<div style="flex: 1 1 0">Spain</div>
+<div style="width: 50px; text-align: right">5,290</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">48°</div>
+<div style="width: 36px; text-align: right; font-weight: 400">-19</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">11 min</div>
+<div style="width: 90px; font-weight: 400; color: #5F5F5F">Worked</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">G4HWT</div>
+<div style="flex: 1 1 0">England</div>
+<div style="width: 50px; text-align: right">4,780</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">37°</div>
+<div style="width: 36px; text-align: right; font-weight: 400">-18</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">9 min</div>
+<div style="width: 90px; font-weight: 400; color: #5F5F5F">Worked</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">NP4RLA</div>
+<div style="flex: 1 1 0">Puerto Rico</div>
+<div style="width: 50px; text-align: right">3,150</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">104°</div>
+<div style="width: 36px; text-align: right; font-weight: 400">-16</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">7 min</div>
+<div style="width: 90px; font-weight: 600; color: #005FB8">Needed</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">KH6TU</div>
+<div style="flex: 1 1 0">Hawaii</div>
+<div style="width: 50px; text-align: right">2,990</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">250°</div>
+<div style="width: 36px; text-align: right; font-weight: 400">-14</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">8 min</div>
+<div style="width: 90px; font-weight: 600; color: #005FB8">Needed</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">KL7DMN</div>
+<div style="flex: 1 1 0">Alaska</div>
+<div style="width: 50px; text-align: right">2,150</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">325°</div>
+<div style="width: 36px; text-align: right; font-weight: 400">-11</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">5 min</div>
+<div style="width: 90px; font-weight: 400; color: #5F5F5F">Worked</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">W1FXO</div>
+<div style="flex: 1 1 0">Massachusetts, USA</div>
+<div style="width: 50px; text-align: right">2,090</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">72°</div>
+<div style="width: 36px; text-align: right; font-weight: 600">-09</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">6 min</div>
+<div style="width: 90px; font-weight: 400; color: #5F5F5F">Worked</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">VE3KTN</div>
+<div style="flex: 1 1 0">Ontario, Canada</div>
+<div style="width: 50px; text-align: right">1,640</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">68°</div>
+<div style="width: 36px; text-align: right; font-weight: 400">-15</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">3 min</div>
+<div style="width: 90px; font-weight: 400; color: #5F5F5F">Worked</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">K4ZZT</div>
+<div style="flex: 1 1 0">Georgia, USA</div>
+<div style="width: 50px; text-align: right">1,560</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">99°</div>
+<div style="width: 36px; text-align: right; font-weight: 600">-07</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">2 min</div>
+<div style="width: 90px; font-weight: 400; color: #5F5F5F">Worked</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">XE2JTS</div>
+<div style="flex: 1 1 0">Mexico</div>
+<div style="width: 50px; text-align: right">1,020</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">158°</div>
+<div style="width: 36px; text-align: right; font-weight: 400">-12</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">4 min</div>
+<div style="width: 90px; font-weight: 400; color: #5F5F5F">Worked</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; font-variant-numeric: tabular-nums">
+<div style="width: 74px; font-weight: 600">KG5OWB</div>
+<div style="flex: 1 1 0">Texas, USA</div>
+<div style="width: 50px; text-align: right">1,010</div>
+<div style="width: 50px; text-align: right; color: #5F5F5F">124°</div>
+<div style="width: 36px; text-align: right; font-weight: 600">-03</div>
+<div style="width: 56px; text-align: right; color: #5F5F5F">2 min</div>
+<div style="width: 90px; font-weight: 400; color: #5F5F5F">Worked</div>
+</div>
+
+</div>
+</div>
+</div>
+
+<div style="background: #FFFFFF; border: 1px solid #E0E0E0; border-radius: 8px">
+<h2 style="margin: 0; padding: 10px 14px; font-size: 14px; font-weight: 600">By band, last 24 hours</h2>
+<div style="display: flex; gap: 12px; padding: 6px 14px; background: #FAFAFA; border-top: 1px solid #E0E0E0; border-bottom: 1px solid #E0E0E0; color: #5F5F5F; font-size: 12px">
+<div style="width: 60px">Band</div>
+<div style="flex: 1 1 0">Stations that heard you</div>
+<div style="flex: 1 1 0">Farthest</div>
+<div style="flex: 1 1 0">Median report</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: center; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0">
+<div style="width: 60px; font-weight: 600">40 m</div>
+<div style="flex: 1 1 0">31</div>
+<div style="flex: 1 1 0">5,750 mi</div>
+<div style="flex: 1 1 0">-13 dB</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: center; padding: 0 14px; height: 30px; border-bottom: 1px solid #F0F0F0; background: #E5F1FB">
+<div style="width: 60px; font-weight: 600">20 m</div>
+<div style="flex: 1 1 0">58</div>
+<div style="flex: 1 1 0">7,180 mi</div>
+<div style="flex: 1 1 0">-15 dB</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: center; padding: 0 14px; height: 30px">
+<div style="width: 60px; font-weight: 600">15 m</div>
+<div style="flex: 1 1 0">22</div>
+<div style="flex: 1 1 0">6,120 mi</div>
+<div style="flex: 1 1 0">-17 dB</div>
+</div>
+</div>
+</section>
+</main>
+
+</div>
+</body>
+</html>

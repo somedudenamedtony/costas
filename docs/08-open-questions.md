@@ -1,0 +1,57 @@
+# 08 · Open questions
+
+## Decisions assumed (owner to confirm or change)
+
+| # | Decision | Assumed | If changed |
+| --- | --- | --- | --- |
+| D1 | Licence | GPLv3, open source | A closed build cannot ship or run `jt9`; it would need `ft8_lib` (weaker decoding) or a new decoder |
+| D2 | Stack | C# on .NET 10, Avalonia 12 | The owner raised C# and MAUI; Avalonia was recommended for desktop grids and Linux. WinUI 3 is the alternative if Windows-only is acceptable |
+| D3 | Product name | Not chosen; working name "FT8 Client" | Needed for the installer, the QRZ User-Agent and the PSK Reporter software ID |
+| D4 | Decoder packaging | Run `jt9` in place from an installed WSJT-X during development; bundle for release | Bundling needs the dependent DLL set and licence notices |
+| D5 | Units | Miles by default, km as a setting | |
+| D6 | "Confirmed" in need tiers | Tiers use worked, not confirmed; setting to switch | |
+| D7 | Uploading spots to PSK Reporter | Off until the operator turns it on | WSJT-X has it on by default for most users |
+| D8 | Split operation | Off in v1 | Enable "Fake it" later if Tx audio purity matters on the owner's radio |
+
+## Facts to verify (marked VERIFY in the docs)
+
+| # | Item | Where it matters | How to verify |
+| --- | --- | --- | --- |
+| V1 | `jt9` stdout line format for FT8 and FT4 | M0 parser | Run on samples, save golden output |
+| V2 | Files `jt9.exe` needs beside it | M0, release | Run from a clean folder; note missing-DLL errors |
+| V3 | Hashed callsigns across separate `jt9` runs | M0 | Decode two consecutive sample slots containing a nonstandard call |
+| V4 | FT4 `-p` value and sample count | M8 | WSJT-X source and a sample FT4 WAV |
+| V5 | `rigctld` reply shapes | M4 | Dummy rig, `rigctld -m 1` |
+| V6 | QRZ FETCH response encoding and confirmation fields | M2 | One real fetch with the owner's key; redact and save |
+| V7 | MQTT topic form for callsigns containing `/` | M6 | mqtt.pskreporter.info page or a live subscription |
+| V8 | PSK Reporter query attribute names and published limit | M6 | A live query for a busy callsign; pskreporter.info developer notes |
+| V9 | PSK Reporter IPFIX template layout | M6 | pskdev.html IPFIX section; WSJT-X `Network/PSKReporter.cpp` and its IPFIX helper |
+| V10 | `QDateTime` wire format in the UDP protocol | M7 | Qt documentation; compare with a datagram captured from WSJT-X |
+| V11 | Encoder coverage of nonstandard-call messages in `ft8_lib` | M4 | `ft8code` vectors |
+| V12 | Default dial frequencies for FT8 and FT4 | M3 | WSJT-X frequency list (Settings, Frequencies) |
+| V13 | Stable download URL for `cty.dat` | M7 | country-files.com |
+| V14 | Current stable versions of Avalonia, NAudio, MQTTnet and their .NET 10 support | M0 | NuGet |
+
+Confirmed from primary sources while writing this package: the `jt9` option table and `<DecodeFinished>` format; the WSJT-X UDP message types and fields; the QRZ Logbook API actions, parameters, responses and User-Agent rule; the QRZ XML login and lookup flow; the PSK Reporter upload rules (host, port, timing); the MQTT broker, ports, topic structure and payload fields; and that the PSK Reporter query endpoint answers with `<receptionReports>` XML.
+
+## Risks
+
+| Risk | Effect | Mitigation |
+| --- | --- | --- |
+| `jt9` interface changes between WSJT-X releases | Decoder breaks after an upgrade | Pin the version; golden-file tests in CI; upgrade on purpose |
+| File-mode decode is too slow on busy bands | Late decodes, skipped transmit slots | Multithreaded option; earlier capture cut-off; streaming mode after v1 |
+| The MQTT feed is a volunteer service | "Hears you" goes blank | Query fallback; chance computed from SNR alone; clear status |
+| QRZ or PSK Reporter rate limiting | Sync or reports stall | Identify the app, back off, cache, keep requests minimal |
+| Sequencer edge cases cause bad on-air behaviour | Repeated or mistimed transmissions | Pure state machine with exhaustive tests; simulated partner; owner sign-off on any behaviour change |
+| Radio-specific CAT quirks | Setup fails for some radios | Hamlib, port scan, diagnostics bundle, audio-only fallback |
+| USB audio device re-enumeration on Windows | Silent receive | Devices by ID, auto-reopen, visible level and status |
+| Unsigned installer | SmartScreen warnings | Code-signing certificate in M8 |
+| Ranking feels wrong to the operator | The core idea fails | Tier order and filters are settings; the raw decode tab remains; tune thresholds with real use |
+
+## Questions for the owner
+
+1. Which radio and audio interface is the primary test station? (Assumed IC-7300 over USB.)
+2. Do you have QRZ XML Logbook Data subscription or higher? Sync and upload need it.
+3. Should the app upload your reception spots to PSK Reporter by default?
+4. Any preference for the product name?
+5. Is the app for your own station first, or for public release from the start? That decides how early the installer, signing and user guide matter.
