@@ -6,7 +6,13 @@
         x:DataType="vm:MainViewModel"
         Title="{Binding Title}"
         Width="1440" Height="900" MinWidth="1100" MinHeight="720">
-  <Grid RowDefinitions="Auto,Auto,*,Auto">
+  <!-- The whole window is outlined in red while the radio is keyed. -->
+  <Border Classes="frame" Classes.onair="{Binding Transmitting}" BorderThickness="4">
+    <Border.Styles>
+      <Style Selector="Border.frame"><Setter Property="BorderBrush" Value="Transparent" /></Style>
+      <Style Selector="Border.frame.onair"><Setter Property="BorderBrush" Value="{DynamicResource OnAirBrush}" /></Style>
+    </Border.Styles>
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
     <!-- Top bar -->
     <DockPanel Grid.Row="0" Margin="16,8,16,8" LastChildFill="False">
       <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -22,13 +28,13 @@
       </StackPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}"
-                Content="Operate" Command="{Binding SelectTabCommand}" CommandParameter="0" ToolTip.Tip="Who to call next, ranked by what you need, and the contact in progress" />
+                Content="Operate" Command="{Binding ShowTabCommand}" CommandParameter="0" ToolTip.Tip="Who to call next, ranked by what you need, and the contact in progress" />
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}"
-                Content="Raw decodes" Command="{Binding SelectTabCommand}" CommandParameter="1" ToolTip.Tip="Every decoded message, as the decoder printed it" />
+                Content="Raw decodes" Command="{Binding ShowTabCommand}" CommandParameter="1" ToolTip.Tip="Every decoded message, as the decoder printed it" />
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}"
-                Content="Reach" Command="{Binding SelectTabCommand}" CommandParameter="2" ToolTip.Tip="Who is hearing your signal, from PSK Reporter" />
+                Content="Reach" Command="{Binding ShowTabCommand}" CommandParameter="2" ToolTip.Tip="Who is hearing your signal, from PSK Reporter" />
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}"
-                Content="Log" Command="{Binding SelectTabCommand}" CommandParameter="3" ToolTip.Tip="Your contacts: search, edit, import and export" />
+                Content="Log" Command="{Binding ShowTabCommand}" CommandParameter="3" ToolTip.Tip="Your contacts: search, edit, import and export" />
         <TextBlock Text="{Binding ClockText}" FontSize="16" FontWeight="SemiBold" Classes="num" Margin="12,0,4,0" VerticalAlignment="Center"
                    Foreground="{Binding ClockKind, Converter={x:Static v:Converters.KindBrush}}" ToolTip.Tip="{Binding ClockTip}"
                    AutomationProperties.Name="UTC clock" />
@@ -48,7 +54,27 @@
 
     <!-- Views -->
     <!-- Update bar -->
-    <Border Grid.Row="1" IsVisible="{Binding Update.Visible}" Margin="16,0,16,8" Padding="12,8" CornerRadius="6"
+    <!-- Radio state: red while keyed, yellow when no radio is connected. -->
+    <Border Grid.Row="1" IsVisible="{Binding Transmitting}" Background="{DynamicResource OnAirBrush}" Padding="16,10"
+            AutomationProperties.Name="On air" AutomationProperties.LiveSetting="Assertive">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="Halt (Esc)" Command="{Binding HaltCommand}" Background="White" Foreground="#D11F1F"
+                FontWeight="SemiBold" Padding="14,4" />
+        <TextBlock Text="{Binding OnAirText}" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" />
+      </DockPanel>
+    </Border>
+    <Border Grid.Row="1" IsVisible="{Binding NoRadio}" Background="{DynamicResource NoRadioBrush}" Padding="16,8"
+            AutomationProperties.Name="No radio connected">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="Station setup" Command="{Binding OpenCommand}" CommandParameter="setup"
+                Background="#1A1A1A" Foreground="White" Padding="12,4" />
+        <TextBlock Text="{Binding NoRadioText}" Foreground="#1A1A1A" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding NoRadioText}" />
+      </DockPanel>
+    </Border>
+
+    <Border Grid.Row="2" IsVisible="{Binding Update.Visible}" Margin="16,0,16,8" Padding="12,8" CornerRadius="6"
             Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
@@ -64,7 +90,7 @@
       </DockPanel>
     </Border>
 
-    <Panel Grid.Row="2">
+    <Panel Grid.Row="3">
       <v:OperateView DataContext="{Binding Operate}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}" />
       <v:RawDecodesView DataContext="{Binding Raw}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}" />
       <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
@@ -72,7 +98,7 @@
     </Panel>
 
     <!-- Bottom bar -->
-    <Border Grid.Row="3" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource CardBackgroundBrush}">
+    <Border Grid.Row="4" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource CardBackgroundBrush}">
       <DockPanel Margin="16,8">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <Button Classes="link" AutomationProperties.Name="Transmit offset" VerticalAlignment="Center">
@@ -126,4 +152,5 @@
       </DockPanel>
     </Border>
   </Grid>
+  </Border>
 </Window>
