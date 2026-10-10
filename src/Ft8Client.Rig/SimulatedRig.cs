@@ -7,6 +7,7 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Ft8Client.Core.Time;
+using Ft8Client.Core.Transmit;
 
 namespace Ft8Client.Rig;
 
@@ -27,6 +28,9 @@ public sealed class SimulatedRig(IClock clock, long frequencyHz = 14_074_000) : 
 
     /// <summary>When set, the next command throws and <see cref="Faulted"/> is raised.</summary>
     public string? FailNext { get; set; }
+
+    /// <summary>What the transmit meters read while PTT is asserted; nothing is read with PTT off.</summary>
+    public TxMeterReading TxMeters { get; set; } = TxMeterReading.None;
 
     /// <summary>True when PTT is asserted.</summary>
     public bool Ptt
@@ -74,6 +78,12 @@ public sealed class SimulatedRig(IClock clock, long frequencyHz = 14_074_000) : 
             _ptt = on;
         }
         return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task<TxMeterReading> ReadTxMetersAsync(CancellationToken ct)
+    {
+        lock (_gate) return Task.FromResult(_ptt ? TxMeters : TxMeterReading.None);
     }
 
     /// <inheritdoc />

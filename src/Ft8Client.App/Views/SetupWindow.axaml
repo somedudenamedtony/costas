@@ -85,6 +85,13 @@
           </StackPanel>
           <TextBlock Classes="secondary" TextWrapping="Wrap" Text="With it, the app knows what you have worked and confirmed, and uploads new contacts. Find it in your QRZ Logbook: open the logbook's Settings and copy its API access key." />
           <Button Classes="link" Command="{Binding OpenQrzCommand}" Padding="0"><TextBlock Text="Open the QRZ Logbook" /></Button>
+          <TextBlock Text="QRZ username and password for callsign lookups (optional)" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <TextBox Text="{Binding QrzUser}" Width="260" HorizontalAlignment="Left" PlaceholderText="QRZ username" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBox Text="{Binding QrzPassword}" Width="260" PasswordChar="•" PlaceholderText="QRZ password" />
+            <Button Content="Test login" Command="{Binding TestLookupCommand}" />
+          </StackPanel>
+          <TextBlock Classes="secondary" TextWrapping="Wrap" Text="Shows the name, city and state of the stations you work. The API key above opens your logbook only; QRZ's callsign lookups need you to sign in with your username and password." />
           <CheckBox Content="Upload the stations I hear to PSK Reporter" IsChecked="{Binding UploadSpots}" />
           <TextBlock Text="{Binding SyncProgress}" Classes="secondary" />
         </StackPanel>

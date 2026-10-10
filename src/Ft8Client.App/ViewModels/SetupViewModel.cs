@@ -45,6 +45,8 @@ public sealed partial class SetupViewModel : ObservableObject
         Input = Inputs.FirstOrDefault(d => d.Id == s.Profile.Audio.InputId);
         Output = Outputs.FirstOrDefault(d => d.Id == s.Profile.Audio.OutputId);
         LogbookKey = host.Secrets.Get(SecretNames.QrzLogbookKey(s.Profile.Id)) ?? string.Empty;
+        QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
+        QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
         UploadSpots = s.PskReporter.UploadSpots;
         _ = LoadModelsAsync(s.Profile.Rig.Model);
     }
@@ -194,7 +196,13 @@ public sealed partial class SetupViewModel : ObservableObject
     [ObservableProperty]
     public partial string LogbookKey { get; set; }
 
+    /// <summary>QRZ username, for callsign lookups.</summary>
+    [ObservableProperty]
+    public partial string QrzUser { get; set; }
 
+    /// <summary>QRZ password, for callsign lookups.</summary>
+    [ObservableProperty]
+    public partial string QrzPassword { get; set; }
 
     /// <summary>Upload my reception spots to PSK Reporter.</summary>
     [ObservableProperty]
@@ -305,7 +313,16 @@ public sealed partial class SetupViewModel : ObservableObject
         var s = _host.Session.Snapshot;
         var why = await _host.Transmitter.TuneAsync(1500, 2.0,
             new Engine.TxGuardInput(s.Band, s.DialHz, s.ClockOffsetSeconds, 100, null, true));
-        Message = why ?? "Sending a 2-second tone at 1500 Hz. Did the radio transmit?";
+        if (why is not null)
+        {
+            Message = why;
+            return;
+        }
+        Message = "Sending a 2-second tone at 1500 Hz. Did the radio transmit?";
+        var meters = await _host.TxMeters.Idle;
+        if (meters is null) return;
+        Message = $"Meters during the tone: {TxMeterText.Summary(meters)}. "
+                  + (meters.Warning ?? "Within limits. Did the radio transmit?");
     }
 
     /// <summary>Tests the logbook key.</summary>
@@ -319,6 +336,19 @@ public sealed partial class SetupViewModel : ObservableObject
         }
         var (ok, msg) = await _host.Qrz.TestKeyAsync(LogbookKey.Trim(), CancellationToken.None);
         Message = ok ? "Key works. " + msg : msg;
+    }
+
+    /// <summary>Tests the QRZ username and password used for callsign lookups.</summary>
+    [RelayCommand]
+    private async Task TestLookupAsync()
+    {
+        if (string.IsNullOrWhiteSpace(QrzUser) || string.IsNullOrEmpty(QrzPassword))
+        {
+            Message = "Enter your QRZ username and password first.";
+            return;
+        }
+        var (_, msg) = await _host.Qrz.TestLookupAsync(QrzUser.Trim(), QrzPassword, CancellationToken.None);
+        Message = msg;
     }
 
     /// <summary>Opens the QRZ Logbook, where the API key is shown.</summary>
@@ -366,13 +396,13 @@ public sealed partial class SetupViewModel : ObservableObject
             s.Profile.Audio.InputId = Input?.Id;
             s.Profile.Audio.OutputId = Output?.Id;
             s.PskReporter.UploadSpots = UploadSpots;
+            s.Qrz.LookupEnabled = !string.IsNullOrWhiteSpace(QrzUser) && !string.IsNullOrEmpty(QrzPassword);
             s.SetupComplete = true;
         });
         var id = _host.Settings.Current.Profile.Id;
         SetOrDelete(SecretNames.QrzLogbookKey(id), LogbookKey.Trim());
-        // Lookups needed the QRZ login, which the app no longer asks for; drop any stored login.
-        _host.Secrets.Delete(SecretNames.QrzUsername);
-        _host.Secrets.Delete(SecretNames.QrzPassword);
+        SetOrDelete(SecretNames.QrzUsername, QrzUser.Trim());
+        SetOrDelete(SecretNames.QrzPassword, QrzPassword);
         _host.RebuildLogIndex();
         await _host.ReopenDevicesAsync();
         if (!string.IsNullOrWhiteSpace(LogbookKey))

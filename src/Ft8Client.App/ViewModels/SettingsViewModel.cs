@@ -48,6 +48,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         UploadOnComplete = s.Qrz.UploadOnComplete;
         SyncMinutes = s.Qrz.SyncMinutes.ToString(CultureInfo.InvariantCulture);
         LogbookKey = host.Secrets.Get(SecretNames.QrzLogbookKey(s.Profile.Id)) ?? string.Empty;
+        QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
+        QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
         FeedEnabled = s.PskReporter.FeedEnabled;
         UploadSpots = s.PskReporter.UploadSpots;
         UdpEnabled = s.Udp.Enabled;
@@ -65,8 +67,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         ReplaySamples = s.Developer.ReplaySamples;
         SimulatedPartner = s.Developer.SimulatedPartner;
         SecretsNote = host.Secrets.IsPersistent
-            ? "The API key is kept in the Windows credential store, not in the settings file."
-            : "No system credential store is available here: the API key is kept only until the app closes.";
+            ? "The API key and password are kept in the system credential store, not in the settings file."
+            : "No system credential store is available here: the API key and password are kept only until the app closes.";
     }
 
     /// <summary>Raised when the window should close.</summary>
@@ -95,6 +97,24 @@ public sealed partial class SettingsViewModel : ObservableObject
         KeyStatus = "Testing…";
         var (_, msg) = await _host.Qrz.TestKeyAsync(LogbookKey.Trim(), CancellationToken.None);
         KeyStatus = msg;
+    }
+
+    /// <summary>Result of "Test login".</summary>
+    [ObservableProperty]
+    public partial string LookupStatus { get; set; } = string.Empty;
+
+    /// <summary>Tests the QRZ username and password used for callsign lookups.</summary>
+    [RelayCommand]
+    private async Task TestLookup()
+    {
+        if (string.IsNullOrWhiteSpace(QrzUser) || string.IsNullOrEmpty(QrzPassword))
+        {
+            LookupStatus = "Enter your QRZ username and password first.";
+            return;
+        }
+        LookupStatus = "Testing…";
+        var (_, msg) = await _host.Qrz.TestLookupAsync(QrzUser.Trim(), QrzPassword, CancellationToken.None);
+        LookupStatus = msg;
     }
 
     /// <summary>Opens the QRZ Logbook, where the API key is shown.</summary>
@@ -191,7 +211,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string LogbookKey { get; set; }
 
+    /// <summary>QRZ username, for callsign lookups.</summary>
+    [ObservableProperty]
+    public partial string QrzUser { get; set; }
 
+    /// <summary>QRZ password, for callsign lookups.</summary>
+    [ObservableProperty]
+    public partial string QrzPassword { get; set; }
 
     /// <summary>Where secrets are kept.</summary>
     public string SecretsNote { get; }
@@ -339,7 +365,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
             s.Qrz.LogbookEnabled = LogbookEnabled;
-            s.Qrz.LookupEnabled = false; // lookups needed the QRZ login, which the app no longer asks for
+            s.Qrz.LookupEnabled = !string.IsNullOrWhiteSpace(QrzUser) && !string.IsNullOrEmpty(QrzPassword);
             s.Qrz.UploadOnComplete = UploadOnComplete;
             s.Qrz.SyncMinutes = Int(SyncMinutes, 5, 1440, 15);
             s.PskReporter.FeedEnabled = FeedEnabled;
@@ -363,8 +389,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         });
         var id = _host.Settings.Current.Profile.Id;
         Set(SecretNames.QrzLogbookKey(id), LogbookKey.Trim());
-        _host.Secrets.Delete(SecretNames.QrzUsername);
-        _host.Secrets.Delete(SecretNames.QrzPassword);
+        Set(SecretNames.QrzUsername, QrzUser.Trim());
+        Set(SecretNames.QrzPassword, QrzPassword);
         _host.Transmitter.GainDb = _host.Settings.Current.Profile.Audio.TxGainDb;
         _host.RebuildLogIndex();
         Close?.Invoke();

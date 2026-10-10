@@ -11,6 +11,7 @@ using System.Net;
 using System.Net.Sockets;
 using Ft8Client.Core.Processes;
 using Ft8Client.Core.Time;
+using Ft8Client.Core.Transmit;
 
 namespace Ft8Client.Rig;
 
@@ -28,6 +29,7 @@ public sealed class RigctldRig : IRig
     private Process? _process;
     private Process? _live;
     private RigctldClient? _client;
+    private RigctldClient? _meters;
     private int _port;
     private int _restarts;
     private bool _modeFallback;
@@ -149,6 +151,24 @@ public sealed class RigctldRig : IRig
     }
 
     /// <inheritdoc />
+    public async Task<TxMeterReading> ReadTxMetersAsync(CancellationToken ct)
+    {
+        // Its own connection, so a slow meter reply never holds up a PTT command waiting on the main client's lock.
+        var m = _meters;
+        if (m is null || !ProcessRunning) return TxMeterReading.None;
+        try
+        {
+            var alc = await m.GetLevelAsync("ALC", ct).ConfigureAwait(false);
+            var swr = await m.GetLevelAsync("SWR", ct).ConfigureAwait(false);
+            return new TxMeterReading(alc, swr);
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return TxMeterReading.None;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task SetSplitAsync(bool on, long txHz, CancellationToken ct)
     {
         if (on)
@@ -173,6 +193,7 @@ public sealed class RigctldRig : IRig
         {
         }
         await StopProcessAsync().ConfigureAwait(false);
+        if (_meters is not null) await _meters.DisposeAsync().ConfigureAwait(false);
         _restartLock.Dispose();
     }
 
@@ -248,6 +269,8 @@ public sealed class RigctldRig : IRig
 
         if (_client is not null) await _client.DisposeAsync().ConfigureAwait(false);
         _client = new RigctldClient("127.0.0.1", _port);
+        if (_meters is not null) await _meters.DisposeAsync().ConfigureAwait(false);
+        _meters = new RigctldClient("127.0.0.1", _port, TimeSpan.FromSeconds(1));
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(3);
         while (true)
         {

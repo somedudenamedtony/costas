@@ -58,6 +58,7 @@ public sealed class Session
     private double? _medianDt;
     private double? _sntpOffset;
     private string? _fault;
+    private TxMeterResult? _txMeters;
     private Task _decodeTask = Task.CompletedTask;
     private DateTime? _recordingSlot;
     private DateTime? _finishedShownAt;
@@ -482,6 +483,7 @@ public sealed class Session
             _hearsMe = new HearsMe(band, _hearsMe.Available);
             _recentOffsets.Clear();
             _slotCounts.Clear();
+            _txMeters = null; // SWR belongs to the antenna on the old band
         }
         BandChanged?.Invoke();
         Publish();
@@ -522,6 +524,13 @@ public sealed class Session
     public void SetService(string name, ServiceStatus status)
     {
         lock (_gate) _services[name] = status;
+        Publish();
+    }
+
+    /// <summary>Records the ALC and SWR meters from the latest transmission.</summary>
+    public void SetTxMeters(TxMeterResult result)
+    {
+        lock (_gate) _txMeters = result;
         Publish();
     }
 
@@ -613,6 +622,7 @@ public sealed class Session
                 Fault = _fault ?? _engine.StopReason,
                 ClockOffsetSeconds = _sntpOffset ?? _medianDt,
                 Waiting = _engine.Waiting.ToList(),
+                TxMeters = _txMeters,
             };
             _snapshot = snap;
         }

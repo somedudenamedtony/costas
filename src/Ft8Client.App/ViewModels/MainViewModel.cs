@@ -138,6 +138,18 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial string TxOffsetText { get; set; } = string.Empty;
 
+    /// <summary>ALC or SWR warning from the last transmission ("SWR 3.4 · ALC 70%"), or empty.</summary>
+    [ObservableProperty]
+    public partial string MeterText { get; set; } = string.Empty;
+
+    /// <summary>The full ALC or SWR advice, for the tooltip.</summary>
+    [ObservableProperty]
+    public partial string MeterTip { get; set; } = string.Empty;
+
+    /// <summary>Colour of the meter warning.</summary>
+    [ObservableProperty]
+    public partial TextKind MeterKind { get; set; }
+
     /// <summary>Manual offset entry.</summary>
     [ObservableProperty]
     public partial string ManualOffset { get; set; } = "1500";
@@ -192,6 +204,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
         (StatusText, StatusKind) = Status(s);
+        (MeterText, MeterTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
         Indicators.Clear();
         Indicators.Add(Indicator("Radio", s, ServiceNames.Radio));
         Indicators.Add(Indicator("Audio", s, ServiceNames.Audio));

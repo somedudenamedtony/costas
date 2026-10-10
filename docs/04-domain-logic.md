@@ -195,3 +195,15 @@ After each received slot, estimate occupancy across 200 to 2800 Hz from the last
 ## 10. Clock
 
 `SlotClock` derives slot boundaries from system UTC, driven by a monotonic timer so that system time adjustments do not cause double or missed slots mid-slot. Offset is measured against SNTP at start and hourly, and estimated continuously as the median DT of the decodes in each slot (`jt9` reports DT relative to the nominal start, so a correct clock gives a median near zero). Warn above 0.5 s, block transmit above 2 s (overridable in settings). The app never sets the system clock.
+
+## 11. Transmit meters (ALC and SWR)
+
+While a transmission or test tone is on the air, the app reads the radio's ALC and SWR meters through Hamlib (`l ALC`, `l SWR`) every 0.5 s, starting 0.5 s after the audio starts and stopping 0.5 s before it ends, over a second `rigctld` connection so a meter read never delays a PTT command. A meter that cannot be read is not a fault: it never stops a transmission. `TxMeterCheck` (Core) summarises one transmission by the median of each meter, ignoring SWR below 1 (the radio reports 0 when it measured no forward power):
+
+| Condition | Level | Text |
+| --- | --- | --- |
+| SWR ≥ 3.0 | Critical | "SWR 3.4 on the last transmission. Check the antenna and tuner before sending again." |
+| SWR ≥ 2.0 | Caution | "SWR 2.3 on the last transmission. Check the antenna or tuner." |
+| ALC ≥ 0.5 (half of Hamlib's 0 to 1 scale) | Caution | "ALC 70% on the last transmission: the audio is overdriving the radio. Lower Transmit level in Settings or the radio's USB audio level." |
+
+The result stays until a later transmission on the same band reads the meters again, and is cleared on a band change. A transmission whose radio reports neither meter leaves the previous result in place. The readings and warnings are displayed only: the app never stops, refuses or changes a transmission because of them (owner decision D13). **VERIFY** the ALC threshold on the IC-7300 and FT-710: Hamlib scales ALC differently per radio (on the FT-710 it reads 1.0 at a quarter of the radio's own meter).
