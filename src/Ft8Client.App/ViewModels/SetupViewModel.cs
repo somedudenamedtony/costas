@@ -10,7 +10,9 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Ft8Client.App.Services;
 using Ft8Client.Audio.Backends;
+using Ft8Client.Audio.Dsp;
 using Ft8Client.Core.Messages;
 using Ft8Client.Data.Secrets;
 using Ft8Client.Data.Settings;
@@ -26,6 +28,8 @@ public sealed partial class SetupViewModel : ObservableObject
 
     private readonly AppHost _host;
     private IReadOnlyList<HamlibModel> _allModels = [];
+    private CancellationTokenSource? _scan;
+    private InputLevelMonitor? _monitor;
 
     /// <summary>Creates the wizard from current settings.</summary>
     public SetupViewModel(AppHost host)
@@ -158,6 +162,9 @@ public sealed partial class SetupViewModel : ObservableObject
     [ObservableProperty]
     public partial bool Busy { get; set; }
 
+    /// <summary>The result of each step of the connection test.</summary>
+    public ObservableCollection<CheckLine> RadioChecks { get; } = [];
+
     // Step 3 ---------------------------------------------------------------
 
     /// <summary>Input devices.</summary>
@@ -177,6 +184,18 @@ public sealed partial class SetupViewModel : ObservableObject
     /// <summary>Input level in dBFS (meter).</summary>
     [ObservableProperty]
     public partial double LevelDb { get; set; } = -120;
+
+    /// <summary>What the input level means and what to change.</summary>
+    [ObservableProperty]
+    public partial string LevelText { get; set; } = string.Empty;
+
+    /// <summary>The input level has been in the good band for 5 seconds.</summary>
+    [ObservableProperty]
+    public partial bool InputPassed { get; set; }
+
+    /// <summary>The result of the output check.</summary>
+    [ObservableProperty]
+    public partial string OutputResult { get; set; } = string.Empty;
 
     // Step 4 ---------------------------------------------------------------
 
@@ -224,7 +243,18 @@ public sealed partial class SetupViewModel : ObservableObject
         Readback = string.Empty;
     }
 
-    partial void OnModelChanged(HamlibModel? value) => Readback = string.Empty;
+    partial void OnModelChanged(HamlibModel? value)
+    {
+        Readback = string.Empty;
+        RadioChecks.Clear();
+    }
+
+    partial void OnInputChanged(AudioDevice? value)
+    {
+        if (Step == 2) StartMonitor();
+    }
+
+    partial void OnOutputChanged(AudioDevice? value) => OutputResult = string.Empty;
 
     partial void OnBaudChanged(string value) => OnPropertyChanged(nameof(BaudChoice));
 
@@ -240,6 +270,8 @@ public sealed partial class SetupViewModel : ObservableObject
     partial void OnStepChanged(int value)
     {
         Message = string.Empty;
+        if (value == 2) StartMonitor();
+        else StopMonitor();
         if (value == 3) DescribeTestRadio();
         if (value == 4) _ = MeasureClockAsync();
     }
@@ -279,54 +311,123 @@ public sealed partial class SetupViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Test connection: finds the port and baud rate when they are not set, opens the radio with the chosen settings
-    /// (the same connection the transmit test and operating use) and reads its dial and mode back.
+    /// Test connection: checks each link in turn (rigctld, the serial port, the radio's answer) and lists a ✓ or ✗ line
+    /// for each, with what to fix. Finds the port and baud rate when they are not set, then opens the radio with the
+    /// chosen settings (the same connection the transmit test and operating use) and reads its dial and mode back.
+    /// Never keys the radio.
     /// </summary>
     [RelayCommand]
     private async Task ScanAsync()
     {
-        var exe = HamlibModels.Find("rigctld", _host.Settings.Current.Paths.HamlibDir);
-        if (exe is null || Model is null)
+        if (Model is null)
         {
-            Message = exe is null ? "rigctld was not found. Run third_party/fetch or set the Hamlib folder in Settings." : "Choose your radio first.";
+            Message = "Choose your radio first.";
             return;
         }
+        RadioChecks.Clear();
+        Message = string.Empty;
+        var exe = HamlibModels.Find("rigctld", _host.Settings.Current.Paths.HamlibDir);
+        if (exe is null)
+        {
+            Check(false, "rigctld (Hamlib) was not found. Run third_party/fetch or set the Hamlib folder in Settings.");
+            return;
+        }
+        Check(true, "Found rigctld (Hamlib).");
         Busy = true;
         Readback = string.Empty;
+        _scan = new CancellationTokenSource();
+        var ct = _scan.Token;
         try
         {
+            if (!string.IsNullOrEmpty(Port) && !await CheckPortAsync())
+            {
+                await ApplyDevicesAsync();
+                return;
+            }
             if (string.IsNullOrEmpty(Port) || string.IsNullOrEmpty(Baud))
             {
-                Message = "Scanning ports…";
                 await _host.ReleaseRigAsync(); // the open radio would hold its serial port
                 int[] bauds = int.TryParse(Baud, out var b) ? [b] : [115200, 38400, 19200, 9600, 4800];
                 var ports = string.IsNullOrEmpty(Port) ? Ports.ToList() : [Port];
-                var hit = await RigctldRig.ScanAsync(exe, Model.Number, ports, bauds, _host.Guard, _host.Clock, CancellationToken.None);
+                var progress = new Progress<(string Port, int Baud)>(t => Message = $"Trying {t.Port} at {t.Baud} baud…");
+                var hit = await RigctldRig.ScanAsync(exe, Model.Number, ports, bauds, _host.Guard, _host.Clock, ct, progress);
+                Message = string.Empty;
                 if (hit is not { } h)
                 {
                     await ApplyDevicesAsync();
-                    Message = "No answer from the radio on any port. Check the cable, the radio's CI-V or CAT settings, and the model.";
+                    Check(false, (ports.Count == 0 ? "No serial ports were found. Check the radio's USB cable and its driver. " : "No answer from the radio on any port. ") + NoAnswerAdvice);
                     return;
                 }
                 Port = h.Port;
                 Baud = h.Baud.ToString(CultureInfo.InvariantCulture);
+                Check(true, $"Found the radio on {h.Port} at {h.Baud} baud.");
             }
             Message = $"Connecting to the radio on {Port}…";
             await ApplyDevicesAsync();
-            var (state, problem) = await _host.CheckRigAsync(CancellationToken.None);
+            var (state, problem) = await _host.CheckRigAsync(ct);
+            Message = string.Empty;
             if (state is null)
             {
-                Message = $"The radio did not answer on {Port} at {Baud} baud. {problem}";
+                Check(false, $"The radio did not answer on {Port} at {Baud} baud. {problem} {NoAnswerAdvice}");
                 return;
             }
             Readback = $"{MainViewModel.FormatFrequency(state.FrequencyHz)} MHz {state.Mode}";
-            Message = $"Connected to the radio on {Port} at {Baud} baud.";
+            Check(true, $"The radio answered: {Readback}.");
+            Check(null, "Keying (PTT) is checked on the Transmit test step.");
+        }
+        catch (OperationCanceledException)
+        {
+            Message = string.Empty;
+            Check(false, "Test stopped.");
+            await ApplyDevicesAsync();
         }
         finally
         {
+            _scan.Dispose();
+            _scan = null;
             Busy = false;
         }
     }
+
+    /// <summary>Stops a running connection test.</summary>
+    [RelayCommand]
+    private void CancelScan() => _scan?.Cancel();
+
+    // Opens the chosen port on its own before rigctld is started, so a missing port or one held by another program is
+    // reported as such instead of as "the radio does not answer".
+    private async Task<bool> CheckPortAsync()
+    {
+        var present = RigctldRig.SerialPorts();
+        foreach (var p in present.Where(p => !Ports.Contains(p))) Ports.Add(p);
+        if (!present.Contains(Port, StringComparer.OrdinalIgnoreCase))
+        {
+            Check(false, $"{Port} is not on this computer now. Check the radio's USB cable and that it is switched on, then choose the port again.");
+            return false;
+        }
+        await _host.ReleaseRigAsync(); // the app's own radio connection would hold the port
+        var port = Port;
+        var (result, detail) = await Task.Run(() => SerialPortProbe.TryOpen(port));
+        switch (result)
+        {
+            case PortOpenResult.Opened:
+                Check(true, $"{Port} opens.");
+                return true;
+            case PortOpenResult.InUse:
+                Check(false, $"{Port} is in use by another program. Close WSJT-X, JTDX, Flrig, OmniRig or the radio's own software, then test again.");
+                return false;
+            case PortOpenResult.Missing:
+                Check(false, $"{Port} is not on this computer now. Check the radio's USB cable and that it is switched on, then choose the port again.");
+                return false;
+            default:
+                Check(false, $"{Port} could not be opened: {detail}");
+                return false;
+        }
+    }
+
+    private const string NoAnswerAdvice =
+        "Check that the radio is on, the model is right, and the radio's CAT (CI-V) baud rate matches. On Icom radios also check the CI-V address and that CI-V USB Echo Back is off.";
+
+    private void Check(bool? ok, string text) => RadioChecks.Add(new CheckLine(ok, text));
 
     /// <summary>
     /// Two-second test tone through the radio chosen on the Radio step. Afterwards it says whether the radio reported
@@ -481,7 +582,93 @@ public sealed partial class SetupViewModel : ObservableObject
             _host.Qrz.SyncProgress += n => MainViewModel.Dispatch(() => SyncProgress = $"{n} contacts fetched");
             Message = await _host.Qrz.SyncNowAsync(CancellationToken.None);
         }
+        StopMonitor();
         Close?.Invoke();
+    }
+
+    /// <summary>Stops the input meter; called when the window closes by any route.</summary>
+    public void Closed() => StopMonitor();
+
+    /// <summary>
+    /// Plays one second of silence to the chosen output and checks the device consumed it. Silence, so it cannot trip
+    /// the radio's VOX or put anything on the air; whether audio reaches the radio is shown by the transmit test's ALC.
+    /// </summary>
+    [RelayCommand]
+    private async Task CheckOutputAsync()
+    {
+        if (Output is null)
+        {
+            OutputResult = "Choose an output first.";
+            return;
+        }
+        if (_host.AudioBackend is NullAudioBackend)
+        {
+            OutputResult = "There is no audio hardware in simulation.";
+            return;
+        }
+        OutputResult = "Checking…";
+        try
+        {
+            using var output = _host.AudioBackend.OpenOutput(Output.Id, 48_000);
+            string? fault = null;
+            output.Faulted += (_, why) => fault = why;
+            output.Play(new float[output.SampleRate]);
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(3);
+            while (output.IsPlaying && fault is null && DateTime.UtcNow < deadline) await Task.Delay(50);
+            OutputResult = fault is not null ? $"✗ The output stopped: {fault}"
+                : output.IsPlaying ? "✗ The output device opened but did not play. Another program may be using it exclusively."
+                : "✓ The output device opens and plays. The transmit test checks that the audio reaches the radio.";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+        {
+            OutputResult = $"✗ The output device could not be opened: {ex.Message}";
+        }
+    }
+
+    private void StartMonitor()
+    {
+        StopMonitor();
+        InputPassed = false;
+        LevelDb = -120;
+        if (Input is null)
+        {
+            LevelText = string.Empty;
+            return;
+        }
+        LevelText = "Listening…";
+        try
+        {
+            _monitor = InputLevelMonitor.Start(_host.AudioBackend, Input.Id, _host.Clock, r => MainViewModel.Dispatch(() => ShowLevel(r)));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+        {
+            LevelText = $"The input device could not be opened: {ex.Message}";
+        }
+    }
+
+    private void StopMonitor()
+    {
+        var m = _monitor;
+        _monitor = null;
+        m?.Dispose();
+    }
+
+    private void ShowLevel(InputLevelReading r)
+    {
+        if (_monitor is null) return; // a late update after the meter stopped
+        LevelDb = r.RmsDbfs;
+        InputPassed = r.Passed;
+        LevelText = r.State switch
+        {
+            InputLevelState.Waiting => "Listening…",
+            InputLevelState.NoAudio => "No audio is arriving from this device. It may be unplugged, or another program may be using it exclusively."
+                                       + (r.StoppedReason is null ? string.Empty : $" ({r.StoppedReason})"),
+            InputLevelState.Silence => "The device sends only silence. Check that this is the radio's USB audio device and that the radio's USB audio output is turned up.",
+            InputLevelState.TooQuiet => $"Too quiet ({r.RmsDbfs:0} dBFS). Turn up the radio's USB audio output level or the Windows recording level.",
+            InputLevelState.TooLoud => $"Too loud ({r.RmsDbfs:0} dBFS). Turn down the radio's USB audio output level or the Windows recording level.",
+            InputLevelState.Clipping => "Clipping: the audio is being cut off. Turn down the radio's USB audio output level or the Windows recording level.",
+            _ => $"Good level ({r.RmsDbfs:0} dBFS)." + (r.Passed ? " The input passes." : " Hold it there for 5 seconds."),
+        };
     }
 
     private void SetOrDelete(string name, string value)

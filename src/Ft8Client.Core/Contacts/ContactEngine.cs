@@ -109,6 +109,7 @@ public sealed class ContactEngine
         OperatorActivity(nowUtc);
         call = Callsign.Normalize(call);
         _finished = null;
+        _extraMessage = null;
         _c = new Contact(ContactFlow.AnswerCq, call, Grid.Grid4(grid), SlotMath.Opposite(dxParity), Report.Clamp(snr), dxOffsetHz);
         _c.Steps.AddRange(StepsFor(_c));
         RemoveWaiting(call);
@@ -322,7 +323,14 @@ public sealed class ContactEngine
         else if (IsFinalCourtesy(_c, _c.Phase))
         {
             _c.Steps[_c.Phase] = _c.Steps[_c.Phase] with { State = StepState.Done };
+            var parity = _c.MyParity;
             End(ContactOutcome.Logged, startedUtc);
+            if (_c is null && OutgoingMessages.FreeTextAfter(_settings) is { } free)
+            {
+                // The operator's free text goes once, in my next slot, unless another contact has started.
+                _extraMessage = free;
+                _extraParity = parity;
+            }
         }
     }
 
@@ -391,7 +399,9 @@ public sealed class ContactEngine
         foreach (var (_, m) in toMe)
         {
             if (!Callsign.EqualsCall(m.SenderCall, l.DxCall)) continue;
-            if (l.Flow != ContactFlow.CalledCq && m.Kind is MessageKind.RogerBye or MessageKind.Bye or MessageKind.Roger)
+            // After my RR73, their 73 is the normal answer, not a repeat.
+            var signedOffRr73 = Format(l.Contact, 4).EndsWith(" RR73", StringComparison.Ordinal);
+            if (l.Flow != ContactFlow.CalledCq && (m.Kind is MessageKind.RogerBye or MessageKind.Roger || (m.Kind == MessageKind.Bye && !signedOffRr73)))
             {
                 _extraMessage = Format(l.Contact, 4);
                 _extraParity = l.MyParity;
@@ -407,6 +417,7 @@ public sealed class ContactEngine
     private void StartFromCaller(WaitingCaller w)
     {
         var parity = SlotMath.Opposite(w.Parity);
+        _extraMessage = null;
         if (w.Kind == MessageKind.Report)
         {
             var c = new Contact(ContactFlow.CalledCqSkippedGrid, w.Call, w.Grid, parity, Report.Clamp(w.Snr), w.OffsetHz) { ReportReceived = w.Report };
@@ -486,34 +497,36 @@ public sealed class ContactEngine
 
     private void RemoveWaiting(string call) => _waiting.RemoveAll(x => Callsign.EqualsCall(x.Call, call));
 
-    private string CqMessage() => _myGrid.Length > 0 ? $"CQ {_myCall} {_myGrid}" : $"CQ {_myCall}";
+    private string CqMessage() => OutgoingMessages.Cq(_myCall, _myGrid, _settings);
 
     private static string Dx(string call) => MessagePacker.IsStandardCall(call) ? call : $"<{call}>";
 
-    private string Format(Contact c, int index) => c.Steps.Count > index ? c.Steps[index].Message : $"{Dx(c.DxCall)} {_myCall} 73";
+    private string Format(Contact c, int index) => c.Steps.Count > index ? c.Steps[index].Message : OutgoingMessages.Final(Dx(c.DxCall), _myCall, _settings);
 
     private List<ContactStep> StepsFor(Contact c)
     {
         var dx = Dx(c.DxCall);
         var me = _myCall;
         var rpt = Report.Format(c.ReportSent);
-        var grid = _myGrid.Length > 0 ? $" {_myGrid}" : string.Empty;
+        var cq = CqMessage();
+        var final = OutgoingMessages.Final(dx, me, _settings);
         ContactStep Mine(string m) => new(true, m, StepState.Upcoming, 0, null);
         ContactStep Theirs(string m) => new(false, m, StepState.Upcoming, 0, null);
         return c.Flow switch
         {
             ContactFlow.AnswerCq =>
             [
-                Mine($"{dx} {me}{grid}"), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"), Mine($"{dx} {me} 73"),
+                Mine(OutgoingMessages.Reply(dx, me, _myGrid, _settings)), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"),
+                Mine(final),
             ],
             ContactFlow.CalledCq =>
             [
-                Mine($"CQ {me}{grid}"), Theirs($"{me} {dx} {c.DxGrid}".TrimEnd()), Mine($"{dx} {me} {rpt}"), Theirs($"{me} {dx} R±NN"),
+                Mine(cq), Theirs($"{me} {dx} {c.DxGrid}".TrimEnd()), Mine($"{dx} {me} {rpt}"), Theirs($"{me} {dx} R±NN"),
                 Mine($"{dx} {me} {_settings.Signoff}"), Theirs($"{me} {dx} 73"),
             ],
             _ =>
             [
-                Mine($"CQ {me}{grid}"), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"), Mine($"{dx} {me} 73"),
+                Mine(cq), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"), Mine(final),
             ],
         };
     }

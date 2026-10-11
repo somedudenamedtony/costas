@@ -115,6 +115,7 @@ A grid with a header row. One row per station that is needed (tiers 1 to 4), cal
 | Where | Country, or "State, USA" / "Province, Canada" when known, then distance |
 | Why | Need tag: New country (caution, bold), New band (accent, bold), New grid (accent, bold), New call (plain) |
 | Doing now | "Calling CQ, 6 slots" · "Calling CQ DX, 2 slots" · "Calling CQ, 4 slots, fading" · "Calling you" |
+| Last heard | Time since the station was last decoded: "45 seconds ago", "2 minutes ago". Counts up between slots, secondary text |
 | Hears you | "Yes, -22" (direct report in the last 15 min) · "Japan does, at -17" (best report from the same entity) · "No reports yet" |
 | dB | Their latest SNR at my station |
 | Signal | Sparkline of their SNR over their last 6 own slots, oldest on the left, gaps where they were not decoded. The scale fits the station's readings but spans at least 12 dB. Tooltip and screen reader text give the values |
@@ -160,7 +161,7 @@ Below the map, **Band activity, last hour**: one bar per minute with the average
 
 ## Raw decodes view
 
-The classic list for operators who want it. Columns: UTC, dB, DT, Hz, message, country. Newest slot at the bottom, blank line between slots, keeps scroll position when scrolled up with a "Jump to live" button. Messages to me in critical colour, CQ in accent. Double-click calls the sender. A filter box matches callsign or text.
+The classic list for operators who want it. Columns: UTC, local time, dB, DT, Hz, message, country. Newest slot at the top (owner request, replacing newest at the bottom), blank line between slots, keeps scroll position when scrolled down away from the newest lines, with a "Jump to live" button. Messages to me in critical colour, CQ in accent. Double-click calls the sender. A filter box matches callsign or text.
 
 ## Reach view
 
@@ -183,15 +184,15 @@ Mockup: `setup` (step 2). A left rail lists the six steps; the right pane holds 
 | Step | Content | Passes when |
 | --- | --- | --- |
 | 1 Station | Callsign, grid (4 or 6 characters), distance units | Callsign and grid are valid |
-| 2 Radio | Model (searchable list from Hamlib), port (auto-scan), baud (auto), PTT method. Live frequency readback. Link "No radio control? Use audio and VOX only" | Frequency is read back, or audio-only is chosen |
-| 3 Audio | Input and output device by name, live input level meter with a "good" band | Input level is in range for 5 seconds |
+| 2 Radio | Model (searchable list from Hamlib), port (auto-scan), baud (auto), PTT method. "Test connection" lists a ✓ or ✗ line for each check (rigctld found, port present and opens, radio answers with dial and mode) with what to fix, and never keys the radio. Link "No radio control? Use audio and VOX only" | Frequency is read back, or audio-only is chosen |
+| 3 Audio | Input and output device by name, live input level meter with a "good" band (-40 to -10 dBFS) that names no audio, silence, too quiet, too loud and clipping. "Check output" plays one second of silence to the output and confirms the device played it | Input level is in range for 5 seconds |
 | 4 Transmit test | Explains what will happen, asks for a dummy load or low power, a "Send test tone" button (2 seconds). After the tone, the ALC and SWR read during it, with any warning | Operator confirms the radio transmitted. Skippable |
 | 5 Clock check | Measured offset against internet time, pass under 0.5 s, link to Windows time settings | Offset measured. Skippable when offline |
 | 6 QRZ | Logbook API key, optional QRZ username and password for lookups, "Test" buttons, and a line saying why each is needed (`05-integrations.md` section 4). Then first sync with a progress count | Skippable |
 
 ## Settings
 
-Sections: Station profiles · Radio · Audio · Transmit (power, watchdog minutes, retry limit, RR73 or RRR, auto-log on or off) · Ranking · QRZ · PSK Reporter (receive feed on or off, upload my spots on or off) · Interop (UDP address and port) · Files (WAV saving: none, decoded, all; retention days) · Appearance (theme, units).
+Sections: Station profiles · Radio · Audio · Transmit (power, watchdog minutes, retry limit, RR73 or RRR, CQ modifier, my grid in my answer to a CQ on or off, `73` or `RR73` as my last message when answering, optional free text up to 13 characters sent after it, a preview of every message as it will be sent, auto-log on or off) · Ranking · QRZ · PSK Reporter (receive feed on or off, upload my spots on or off) · Interop (UDP address and port) · Files (WAV saving: none, decoded, all; retention days) · Appearance (theme, units).
 
 ## Diagnostics
 

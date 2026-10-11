@@ -183,6 +183,7 @@ Plain text, one line per event, monthly files. Compatible in spirit with WSJT-X 
   "operating": {
     "band": "20m", "mode": "FT8", "cqParity": "even",
     "retryLimit": 4, "watchdogMinutes": 6, "signoff": "RR73", "autoLog": true,
+    "cqModifier": "", "gridInReply": true, "answerSignoff": "73", "freeTextAfter": "",
     "txOffset": "auto", "lateStartLimitMs": 1000, "pttLeadMs": 200
   },
   "ranking": {
