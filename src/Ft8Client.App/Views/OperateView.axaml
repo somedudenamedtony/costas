@@ -101,28 +101,53 @@
                 <TextBlock Text="{Binding Subline}" FontSize="15" />
               </StackPanel>
             </DockPanel>
-            <ItemsControl ItemsSource="{Binding Steps}" Margin="0,4,0,0">
+            <!-- The conversation strip: a progress track with one marker per step, and the boxes below it, mine raised and theirs lowered. -->
+            <ItemsControl ItemsSource="{Binding Steps}" Margin="0,8,0,0" AutomationProperties.Name="Conversation">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:StepViewModel">
-                  <Button Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                          Margin="{Binding Offset, Converter={x:Static v:Converters.StepMargin}}" IsHitTestVisible="{Binding CanJump}"
-                          Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).JumpCommand}" CommandParameter="{Binding}"
-                          ToolTip.Tip="Click to send this next">
-                    <Panel>
-                      <Rectangle RadiusX="4" RadiusY="4" Stroke="{DynamicResource ControlBorderBrush}" StrokeThickness="1"
-                                 StrokeDashArray="{Binding Look, Converter={x:Static v:Converters.StepDash}}"
-                                 IsVisible="{Binding Look, Converter={x:Static v:Converters.IsUpcoming}}" />
-                      <Border CornerRadius="4" BorderThickness="1" Padding="10,6"
-                              Background="{Binding Look, Converter={x:Static v:Converters.StepBackground}}"
-                              BorderBrush="{Binding Look, Converter={x:Static v:Converters.StepBorder}}">
-                        <StackPanel>
-                          <TextBlock Text="{Binding Header}" FontSize="12" Foreground="{Binding Look, Converter={x:Static v:Converters.StepForeground}}" TextTrimming="CharacterEllipsis" />
-                          <TextBlock Text="{Binding Message}" Classes="message" Foreground="{Binding Look, Converter={x:Static v:Converters.StepForeground}}" TextTrimming="CharacterEllipsis" />
-                        </StackPanel>
+                  <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto,*" Margin="0,0,6,6">
+                      <Rectangle Height="2" VerticalAlignment="Center" IsVisible="{Binding !First}"
+                                 Fill="{Binding Reached, Converter={x:Static v:Converters.TrackBrush}}" />
+                      <Border Grid.Column="1" Width="22" Height="22" CornerRadius="11" BorderThickness="2" Margin="4,0"
+                              Background="{Binding Look, Converter={x:Static v:Converters.MarkerFill}}"
+                              BorderBrush="{Binding Look, Converter={x:Static v:Converters.MarkerStroke}}">
+                        <TextBlock Text="{Binding Marker}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{Binding Look, Converter={x:Static v:Converters.MarkerForeground}}" />
                       </Border>
-                    </Panel>
-                  </Button>
+                      <Rectangle Grid.Column="2" Height="2" VerticalAlignment="Center" IsVisible="{Binding !Last}"
+                                 Fill="{Binding NextReached, Converter={x:Static v:Converters.TrackBrush}}" />
+                    </Grid>
+                    <Button Padding="0" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                            Margin="{Binding Offset, Converter={x:Static v:Converters.StepMargin}}" IsHitTestVisible="{Binding CanJump}"
+                            Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).JumpCommand}" CommandParameter="{Binding}"
+                            ToolTip.Tip="Click to send this next">
+                      <Panel>
+                        <Rectangle RadiusX="6" RadiusY="6" Stroke="{DynamicResource ControlBorderBrush}" StrokeThickness="1"
+                                   StrokeDashArray="{Binding Look, Converter={x:Static v:Converters.StepDash}}"
+                                   IsVisible="{Binding Look, Converter={x:Static v:Converters.IsUpcoming}}" />
+                        <Border CornerRadius="6" Padding="10,6"
+                                Background="{Binding Look, Converter={x:Static v:Converters.StepBackground}}"
+                                BorderBrush="{Binding Look, Converter={x:Static v:Converters.StepBorder}}"
+                                BorderThickness="{Binding Look, Converter={x:Static v:Converters.StepBorderThickness}}">
+                          <StackPanel Spacing="2">
+                            <DockPanel>
+                              <TextBlock DockPanel.Dock="Right" Text="{Binding Time}" Classes="num" FontSize="12"
+                                         Foreground="{Binding Look, Converter={x:Static v:Converters.StepStatusForeground}}" />
+                              <TextBlock Text="{Binding Who}" FontSize="13" TextTrimming="CharacterEllipsis"
+                                         FontWeight="{Binding Mine, Converter={x:Static v:Converters.NotBold}}"
+                                         Foreground="{Binding Look, Converter={x:Static v:Converters.StepForeground}}" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding Message}" Classes="message" TextTrimming="CharacterEllipsis"
+                                       Foreground="{Binding Look, Converter={x:Static v:Converters.StepForeground}}" />
+                            <TextBlock Text="{Binding Status}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                       Foreground="{Binding Look, Converter={x:Static v:Converters.StepStatusForeground}}" />
+                          </StackPanel>
+                        </Border>
+                      </Panel>
+                    </Button>
+                  </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
