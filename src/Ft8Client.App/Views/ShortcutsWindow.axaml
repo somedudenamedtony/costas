@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Ft8Client.App.Views.ShortcutsWindow"
+        Icon="/Assets/costas.ico"
         Title="Keyboard shortcuts" Width="460" Height="360" WindowStartupLocation="CenterOwner">
   <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="20">
     <TextBlock Grid.Row="0" Text="Enter" FontWeight="SemiBold" /><TextBlock Grid.Row="0" Grid.Column="1" Text="Call the selected station" Margin="0,0,0,8" />

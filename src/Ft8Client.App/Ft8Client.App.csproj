@@ -6,6 +6,7 @@
     <Product>Costas</Product>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\costas.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
@@ -15,6 +16,9 @@
     <ProjectReference Include="..\Ft8Client.Rig\Ft8Client.Rig.csproj" />
     <ProjectReference Include="..\Ft8Client.Data\Ft8Client.Data.csproj" />
     <ProjectReference Include="..\Ft8Client.Integrations\Ft8Client.Integrations.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\costas.ico" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Ft8Client.App.Tests" />
