@@ -6,13 +6,20 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using System.Globalization;
 using Ft8Client.Core;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Ranking;
+using Ft8Client.Core.Stations;
+using Ft8Client.Core.Time;
+using Ft8Client.Data.Log;
 
 namespace Ft8Client.App.ViewModels;
 
-/// <summary>The station details flyout.</summary>
+/// <summary>
+/// What is known about one station: the details flyout for the selected station, and the "Who you're calling" card in a
+/// contact. Location and grid come from its messages and the country file; the rest from a QRZ lookup when there is one.
+/// </summary>
 public sealed class StationDetailsViewModel
 {
     private StationDetailsViewModel()
@@ -22,11 +29,14 @@ public sealed class StationDetailsViewModel
     /// <summary>Call.</summary>
     public string Call { get; private init; } = string.Empty;
 
-    /// <summary>Name from QRZ, or "—".</summary>
+    /// <summary>Name from QRZ ("Robert “Bob” Smith"), or "—".</summary>
     public string Name { get; private init; } = "—";
 
-    /// <summary>Location.</summary>
+    /// <summary>Place and distance.</summary>
     public string Location { get; private init; } = string.Empty;
+
+    /// <summary>"Cook County" (US), blank when not known.</summary>
+    public string County { get; private init; } = string.Empty;
 
     /// <summary>Grid.</summary>
     public string Grid { get; private init; } = "—";
@@ -34,26 +44,111 @@ public sealed class StationDetailsViewModel
     /// <summary>Bearing.</summary>
     public string Bearing { get; private init; } = "—";
 
+    /// <summary>"15:42 local (UTC−5)", blank when not known.</summary>
+    public string LocalTime { get; private init; } = string.Empty;
+
+    /// <summary>"Extra class", blank when not known.</summary>
+    public string LicenseClass { get; private init; } = string.Empty;
+
+    /// <summary>"LoTW · eQSL · paper", with the QSL manager when there is one; blank when not known.</summary>
+    public string Qsl { get; private init; } = string.Empty;
+
+    /// <summary>"CQ 5 · ITU 8", blank when not known.</summary>
+    public string Zones { get; private init; } = string.Empty;
+
+    /// <summary>"No QRZ details" hint when nothing was looked up.</summary>
+    public string LookupNote { get; private init; } = string.Empty;
+
+    /// <summary>The station's QRZ page.</summary>
+    public string QrzUrl { get; private init; } = string.Empty;
+
+    /// <summary>Photo URL from QRZ, if any (opened in the browser).</summary>
+    public string? PhotoUrl { get; private init; }
+
+    /// <summary>A photo link is shown.</summary>
+    public bool HasPhoto => PhotoUrl is not null;
+
+    /// <summary>Visibility helpers.</summary>
+    public bool HasCounty => County.Length > 0;
+
+    /// <inheritdoc cref="HasCounty" />
+    public bool HasLocalTime => LocalTime.Length > 0;
+
+    /// <inheritdoc cref="HasCounty" />
+    public bool HasLicenseClass => LicenseClass.Length > 0;
+
+    /// <inheritdoc cref="HasCounty" />
+    public bool HasQsl => Qsl.Length > 0;
+
+    /// <inheritdoc cref="HasCounty" />
+    public bool HasZones => Zones.Length > 0;
+
+    /// <inheritdoc cref="HasCounty" />
+    public bool HasLookupNote => LookupNote.Length > 0;
+
     /// <summary>Past contacts.</summary>
     public IReadOnlyList<PastContactViewModel> Past { get; private init; } = [];
 
     /// <summary>"No contacts with this call yet" when empty.</summary>
     public bool NoPast => Past.Count == 0;
 
-    /// <summary>Builds the flyout.</summary>
-    public static StationDetailsViewModel From(RankedStation r, LogIndex? log, string? name, DistanceUnit units)
+    /// <summary>Builds the details from whatever is known: the heard station, a QRZ lookup, or both.</summary>
+    public static StationDetailsViewModel From(string call, Station? s, CallsignCacheEntry? q, LogIndex? log, DistanceUnit units, DateTime nowUtc,
+                                               string? name = null)
     {
-        var s = r.Station;
+        var offset = q is null ? null : StationClock.Offset(q.GmtOffset, q.ObservesDst, s?.EntityKey, s?.Continent, nowUtc);
         return new StationDetailsViewModel
         {
-            Call = s.Call,
-            Name = name ?? "—",
-            Location = StationText.Where(s, units),
-            Grid = s.Grid ?? "—",
-            Bearing = s.Bearing is { } b ? $"{b}°" : "—",
-            Past = (log?.ContactsWith(s.Call) ?? []).OrderByDescending(c => c.DateUtc)
-                .Select(c => new PastContactViewModel(c.DateUtc.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), c.Band, c.ModeKey,
+            Call = call,
+            Name = FullName(q?.Name ?? name, q?.Nickname) ?? "—",
+            Location = s is not null ? StationText.Where(s, units) : Join(", ", q?.City, q?.State, q?.Country),
+            County = string.IsNullOrWhiteSpace(q?.County) ? string.Empty : CountyText(q.County),
+            Grid = s?.Grid ?? q?.Grid ?? "—",
+            Bearing = s?.Bearing is { } b ? $"{b}°" : "—",
+            LocalTime = StationClock.Describe(offset, nowUtc) ?? string.Empty,
+            LicenseClass = LicenseText(q?.LicenseClass),
+            Qsl = QslText(q),
+            Zones = Join(" · ", q?.CqZone is { } cq ? $"CQ {cq}" : null, q?.ItuZone is { } itu ? $"ITU {itu}" : null),
+            LookupNote = q is null && name is null ? "No QRZ details yet. They appear here when QRZ lookups are set up." : string.Empty,
+            QrzUrl = "https://www.qrz.com/db/" + Uri.EscapeDataString(call),
+            PhotoUrl = q?.ImageUrl,
+            Past = (log?.ContactsWith(call) ?? []).OrderByDescending(c => c.DateUtc)
+                .Select(c => new PastContactViewModel(c.DateUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), c.Band, c.ModeKey,
                     c.Confirmed ? "Confirmed" : string.Empty)).ToList(),
         };
     }
+
+    private static string? FullName(string? name, string? nick)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return string.IsNullOrWhiteSpace(nick) ? null : nick.Trim();
+        if (string.IsNullOrWhiteSpace(nick) || name.Contains(nick.Trim(), StringComparison.OrdinalIgnoreCase)) return name.Trim();
+        return $"{name.Trim()} (“{nick.Trim()}”)";
+    }
+
+    private static string CountyText(string county) =>
+        county.EndsWith("county", StringComparison.OrdinalIgnoreCase) || county.EndsWith("parish", StringComparison.OrdinalIgnoreCase)
+            ? county.Trim()
+            : $"{county.Trim()} County";
+
+    // QRZ gives US classes as a letter (E, A, G, T, N); anything else is shown as given.
+    private static string LicenseText(string? c) => c?.Trim().ToUpperInvariant() switch
+    {
+        null or "" => string.Empty,
+        "E" => "Amateur Extra class",
+        "A" => "Advanced class",
+        "G" => "General class",
+        "T" => "Technician class",
+        "N" => "Novice class",
+        _ => $"Licence class {c.Trim()}",
+    };
+
+    private static string QslText(CallsignCacheEntry? q)
+    {
+        if (q is null) return string.Empty;
+        var ways = Join(" · ", q.Lotw == true ? "LoTW" : null, q.Eqsl == true ? "eQSL" : null, q.PaperQsl == true ? "paper" : null);
+        var mgr = string.IsNullOrWhiteSpace(q.QslManager) ? null : $"via {q.QslManager.Trim()}";
+        return Join(" · ", ways.Length == 0 ? null : ways, mgr);
+    }
+
+    private static string Join(string sep, params string?[] parts) => string.Join(sep, parts.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!.Trim()));
 }

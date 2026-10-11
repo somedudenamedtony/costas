@@ -214,9 +214,7 @@
                           Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CloseDetailsCommand}" />
                   <TextBlock Text="{Binding Call}" Classes="title" />
                 </DockPanel>
-                <TextBlock Text="{Binding Name}" />
-                <TextBlock Text="{Binding Location}" Classes="secondary" />
-                <TextBlock Classes="secondary"><Run Text="Grid " /><Run Text="{Binding Grid}" /><Run Text=" · bearing " /><Run Text="{Binding Bearing}" /></TextBlock>
+                <v:StationFacts />
                 <TextBlock Text="Your contacts" FontWeight="SemiBold" Margin="0,8,0,0" />
                 <TextBlock Text="No contacts with this call yet." Classes="secondary" IsVisible="{Binding NoPast}" />
                 <ItemsControl ItemsSource="{Binding Past}">
@@ -289,6 +287,15 @@
     <!-- Right column -->
     <ScrollViewer Grid.Column="1" Grid.Row="0" x:Name="RightColumn" VerticalScrollBarVisibility="Auto">
       <StackPanel Spacing="12">
+        <!-- Who you're calling: QRZ details of the station in the current contact. -->
+        <Border Classes="card" Padding="14,12" IsVisible="{Binding Calling, Converter={x:Static ObjectConverters.IsNotNull}}"
+                AutomationProperties.Name="Who you're calling">
+          <StackPanel DataContext="{Binding Calling}" x:DataType="vm:StationDetailsViewModel" Spacing="4">
+            <TextBlock Classes="title"><Run Text="About " /><Run Text="{Binding Call}" /></TextBlock>
+            <v:StationFacts />
+          </StackPanel>
+        </Border>
+
         <!-- Heard here: map and band activity -->
         <Border Classes="card" Padding="14,12">
           <StackPanel Spacing="8" DataContext="{Binding Map}" x:DataType="vm:HeardMapViewModel">

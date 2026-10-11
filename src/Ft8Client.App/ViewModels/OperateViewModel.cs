@@ -18,6 +18,8 @@ using Ft8Client.Core.Geo;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Ranking;
+using Ft8Client.Core.Stations;
+using Ft8Client.Data.Log;
 
 namespace Ft8Client.App.ViewModels;
 
@@ -59,6 +61,9 @@ public sealed partial class OperateViewModel : ObservableObject
 
     /// <summary>QRZ name provider.</summary>
     public Func<string, string?>? QrzName { get; set; }
+
+    /// <summary>QRZ lookup data provider (held in memory; never goes to the network).</summary>
+    public Func<string, CallsignCacheEntry?>? QrzLookup { get; set; }
 
     /// <summary>Line rows.</summary>
     public ObservableCollection<StationRowViewModel> Line { get; } = [];
@@ -172,6 +177,10 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial StationDetailsViewModel? Details { get; set; }
 
+    /// <summary>"Who you're calling": what is known about the station in the current contact; null outside a contact.</summary>
+    [ObservableProperty]
+    public partial StationDetailsViewModel? Calling { get; set; }
+
     /// <summary>The list stabiliser (for pointer events and tests).</summary>
     public LineStabilizer<IReadOnlyList<RankedStation>> Stabilizer => _line;
 
@@ -204,6 +213,9 @@ public sealed partial class OperateViewModel : ObservableObject
         Summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty);
         Contact = s.Contact is null ? null : ContactPanelViewModel.From(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall));
         OnPropertyChanged(nameof(InContact));
+        Calling = s.Contact is null ? null : DetailsFor(s.Contact.DxCall, s, now);
+        // A lookup may have arrived since the flyout opened.
+        if (Details is not null) Details = DetailsFor(Details.Call, s, now);
 
         WaitingRows.Clear();
         foreach (var w in s.Waiting)
@@ -212,7 +224,7 @@ public sealed partial class OperateViewModel : ObservableObject
             var ranked = s.Rank.CallingMe.FirstOrDefault(x => Callsign.EqualsCall(x.Station.Call, w.Call));
             var need = ranked?.Need.Tag;
             var verb = w.AfterStop ? "Resume" : "Answer";
-            WaitingRows.Add(new WaitingRowViewModel(w.Call, st is null ? string.Empty : StationText.Place(st.Entity, st.Region),
+            WaitingRows.Add(new WaitingRowViewModel(w.Call, st is null ? string.Empty : StationText.Place(st.Entity, st.Region, st.City),
                 need is { } n ? StationText.Need(n) : string.Empty, need is { } n2 ? StationRowViewModel.KindOf(n2) : TextKind.Normal,
                 w.AfterStop ? $"Last heard at {w.LastCalledUtc:HH:mm:ss} · {Report.Format(w.Snr)}" : $"Called you at {w.FirstCalledUtc:HH:mm:ss} · {Report.Format(w.Snr)}",
                 s.Contact?.Outcome == ContactOutcome.InProgress
@@ -283,7 +295,29 @@ public sealed partial class OperateViewModel : ObservableObject
             return;
         }
         _commands.Lookup(row.Call);
-        Details = StationDetailsViewModel.From(row.Source, Log?.Invoke(), QrzName?.Invoke(row.Call), Units);
+        Details = _snap is null
+            ? StationDetailsViewModel.From(row.Call, row.Source.Station, QrzLookup?.Invoke(row.Call), Log?.Invoke(), Units, _now())
+            : DetailsFor(row.Call, _snap, _now(), row.Source.Station);
+    }
+
+    private StationDetailsViewModel DetailsFor(string call, SessionSnapshot s, DateTime now, Station? fallback = null)
+    {
+        var station = s.Stations.FirstOrDefault(x => Callsign.EqualsCall(x.Call, call)) ?? fallback;
+        return StationDetailsViewModel.From(call, station, QrzLookup?.Invoke(call), Log?.Invoke(), Units, now, QrzName?.Invoke(call));
+    }
+
+    /// <summary>Opens the station's QRZ page.</summary>
+    [RelayCommand]
+    private void OpenQrz(StationDetailsViewModel? d)
+    {
+        if (d is not null) Services.Browser.Open(d.QrzUrl);
+    }
+
+    /// <summary>Opens the station's QRZ photo.</summary>
+    [RelayCommand]
+    private void OpenPhoto(StationDetailsViewModel? d)
+    {
+        if (d?.PhotoUrl is { } url) Services.Browser.Open(url);
     }
 
     /// <summary>Moves the selection (Up/Down).</summary>

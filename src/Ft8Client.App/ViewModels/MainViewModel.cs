@@ -30,6 +30,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 {
     private readonly AppHost _host;
     private readonly CallerAlert _callers = new();
+    private readonly HashSet<string> _cacheChecked = new(StringComparer.Ordinal);
+    private string? _lookedUpContact;
     private bool _escArmed;
     private bool _updatingBand;
 
@@ -42,6 +44,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             Countries = host.Countries,
             Log = () => host.Session.LogIndex,
             QrzName = host.Session.NameOf,
+            QrzLookup = host.Session.LookupOf,
         };
         LoadMapChoices(host.Settings.Current.Map);
         Operate.Map.ChoicesChanged += SaveMapChoices;
@@ -197,6 +200,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
         Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current.Ranking);
         Operate.Apply(s, tonight.Rows, tonight.Total);
+        FillLookups(s);
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
         Raw.Apply(s.RawDecodes);
         Frequency = FormatFrequency(s.DialHz);
@@ -320,6 +324,17 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         Activity();
         _host.Session.JumpTo(step);
+    }
+
+    // Stations newly heard get their place from earlier QRZ lookups kept in the local cache (a database read off the UI
+    // thread, never the network); the station in a contact is looked up on QRZ like a selected one.
+    private void FillLookups(SessionSnapshot s)
+    {
+        var fresh = s.Stations.Select(x => x.Call).Where(c => _cacheChecked.Add(c) && !_host.Session.HasLookup(c)).ToList();
+        if (fresh.Count > 0) _ = Task.Run(() => _host.Qrz.FillFromCache(fresh));
+        var dx = s.Contact?.DxCall;
+        if (dx is not null && dx != _lookedUpContact) Lookup(dx);
+        _lookedUpContact = dx;
     }
 
     /// <inheritdoc />
