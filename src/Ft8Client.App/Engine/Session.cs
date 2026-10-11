@@ -41,6 +41,7 @@ public sealed class Session
     private readonly ContactEngine _engine;
     private readonly List<RawDecodeLine> _raw = [];
     private readonly List<(DateTime Slot, int Decodes)> _slotCounts = [];
+    private readonly List<SlotActivity> _activity = [];
     private readonly List<(DateTime Slot, SlotParity Parity, List<int> Offsets)> _recentOffsets = [];
     private readonly Dictionary<string, ServiceStatus> _services = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (string? Name, string? State)> _lookups = new(StringComparer.Ordinal);
@@ -233,6 +234,11 @@ public sealed class Session
 
             _slotCounts.Add((slot, result.Decodes.Count));
             _slotCounts.RemoveAll(x => now - x.Slot > TimeSpan.FromHours(1));
+            var modeKey = ModeInfo.Name(_config.Mode);
+            var needed = _tracker.Stations.Where(st => st.LastHeardUtc == slot)
+                .Count(st => _logIndex.Need(st.Call, st.EntityKey, st.Grid, _config.Band, modeKey, _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly).Tag != NeedTag.Worked);
+            _activity.Add(new SlotActivity(slot, result.Decodes.Count, needed));
+            _activity.RemoveAll(x => now - x.SlotStartUtc > TimeSpan.FromHours(1));
             _lastDecodedSlot = slot;
             _lastDecodeTime = result.Elapsed;
             _medianDt = ClockEstimate.MedianDt(result.Decodes.Select(d => d.Dt)) ?? _medianDt;
@@ -483,6 +489,7 @@ public sealed class Session
             _hearsMe = new HearsMe(band, _hearsMe.Available);
             _recentOffsets.Clear();
             _slotCounts.Clear();
+            _activity.Clear();
             _txMeters = null; // SWR belongs to the antenna on the old band
         }
         BandChanged?.Invoke();
@@ -623,6 +630,7 @@ public sealed class Session
                 ClockOffsetSeconds = _sntpOffset ?? _medianDt,
                 Waiting = _engine.Waiting.ToList(),
                 TxMeters = _txMeters,
+                Activity = _activity.ToList(),
             };
             _snapshot = snap;
         }

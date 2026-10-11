@@ -31,8 +31,21 @@ public sealed partial class StationRowViewModel : ObservableObject
         Db = Report.Format(r.Station.LastSnr);
         Chance = StationText.Chance(r.Chance);
         ChanceBold = r.Chance == Core.Ranking.Chance.Good;
+        History = r.Station.SnrHistory;
+        HistoryTip = HistoryText(r.Station.SnrHistory);
         Refresh(nowUtc);
     }
+
+    /// <summary>SNR in the station's last few own slots, oldest first, for the sparkline.</summary>
+    public IReadOnlyList<int?> History { get; }
+
+    /// <summary>The sparkline in words: "Last 6 slots: -12, -10, missed, -8 dB".</summary>
+    public string HistoryTip { get; }
+
+    /// <summary>The sparkline in words.</summary>
+    public static string HistoryText(IReadOnlyList<int?> history) =>
+        history.Count == 0 ? "No signal history yet"
+            : $"Last {history.Count} slots: {string.Join(", ", history.Select(h => h is { } v ? Report.Format(v) : "missed"))} dB";
 
     /// <summary>The ranked station.</summary>
     public RankedStation Source { get; }

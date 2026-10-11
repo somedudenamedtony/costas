@@ -26,6 +26,12 @@ public sealed class WatchRowViewModel(RankedStation r, DateTime nowUtc, Distance
     /// <summary>Need tag colour.</summary>
     public TextKind WhyKind { get; } = StationRowViewModel.KindOf(r.Need.Tag);
 
+    /// <summary>SNR in the station's last few own slots, for the sparkline.</summary>
+    public IReadOnlyList<int?> History { get; } = r.Station.SnrHistory;
+
+    /// <summary>The sparkline in words.</summary>
+    public string HistoryTip { get; } = StationRowViewModel.HistoryText(r.Station.SnrHistory);
+
     /// <summary>Why it is not callable.</summary>
     public string Reason { get; } = r.Reason is null ? string.Empty : StationText.Watch(r.Reason, nowUtc);
 }

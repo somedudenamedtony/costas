@@ -26,7 +26,7 @@ Colour is never the only signal: every state also has text.
 
 ## Window
 
-One window, minimum 1100 × 720, default 1440 × 900, remembers size and position. Layout from top to bottom: top bar, main area, bottom bar. The main area has a wide left column and a right column of about 300 px. Below 1100 px wide the right column drops under the left.
+One window, minimum 1100 × 720, default 1440 × 900, remembers size and position. Layout from top to bottom: top bar, main area, bottom bar. The main area has a wide left column and a right column of about 300 px, widening to 460 px when the window is 1600 px or wider so the map has room. Below 1100 px wide the right column drops under the left.
 
 ### Top bar
 
@@ -118,6 +118,7 @@ A grid with a header row. One row per station that is needed (tiers 1 to 4), cal
 | Last heard | Time since the station was last decoded: "45 seconds ago", "2 minutes ago". Counts up between slots, secondary text |
 | Hears you | "Yes, -22" (direct report in the last 15 min) · "Japan does, at -17" (best report from the same entity) · "No reports yet" |
 | dB | Their latest SNR at my station |
+| Signal | Sparkline of their SNR over their last 6 own slots, oldest on the left, gaps where they were not decoded. The scale fits the station's readings but spans at least 12 dB. Tooltip and screen reader text give the values |
 | Chance | Good (bold), Fair, Long shot |
 | Call | Button. Calls that station |
 
@@ -130,11 +131,25 @@ Behaviour:
 
 ### Watching
 
-Stations that are needed but not callable now. Columns: Call, Where, Why, reason. Reasons: "Went quiet 45 seconds ago", "In a contact with EA5HVK", "Finishing a contact with K7RGB". Rows are secondary text. Maximum 8 rows.
+Stations that are needed but not callable now. Columns: Call, Where, Why, signal sparkline (as in Next in line), reason. Reasons: "Went quiet 45 seconds ago", "In a contact with EA5HVK", "Finishing a contact with K7RGB". Rows are secondary text. Maximum 8 rows.
 
 Footer: "N stations you have already worked on 20 m are hidden. Show them" toggles a third section, "Already worked", with the same columns as Next in line.
 
 ### Right column
+
+**Heard here** (first card): a map of the stations I decoded in the last 15 minutes, with choices that are remembered in settings (`Map`):
+
+| Choice | Options |
+| --- | --- |
+| View | Around me (azimuthal, centred on my grid, rings as in Reach) · World (flat map) |
+| Show | Everyone heard · Needed only · Calling CQ |
+| Colour by | Need (new country caution, new band or grid accent, new call primary, worked grey) · Signal (strong, fair, weak by size and shade, as in Reach) · Last heard (in the last minute, 1 to 5 minutes, 5 to 15 minutes, by shade) |
+| Who heard you | Adds a hollow ring for each PSK Reporter receiver that heard me in the last 15 minutes. A station I hear that also hears me shows as a dot inside a ring |
+| Day and night | World view only: shades the night side of the earth (greyline) |
+
+A legend under the map says in words what each colour means. Labels are placed as in Reach (overlaps dropped, shown on hover); hover shows call, place, need, report and when heard. Without a grid the map falls back to the world view with "Set your grid in Settings to centre the map on you."
+
+Below the map, **Band activity, last hour**: one bar per minute with the average decodes per slot (grey) and the average needed stations per slot (accent) drawn over it, then one sentence: "About 34 decodes and 5 needed stations per slot. Busier than half an hour ago." (busier or quieter when the last 10 minutes differ from 30 to 40 minutes ago by 25% or more).
 
 **Waiting for you** (only when someone has called me and I have not answered): callsign, where, need tag, "Called you at HH:MM:SS · SNR", and a button "Answer after this contact" (or "Answer" when idle). Up to 5 callers, oldest first.
 
@@ -153,7 +168,7 @@ The classic list for operators who want it. Columns: UTC, local time, dB, DT, Hz
 Mockup: `reach`. Band dropdown and time-window dropdown (15 minutes, 1 hour, 24 hours).
 
 - **Headline**: heard by N stations, countries, farthest distance, best report.
-- **Plot**: azimuthal equidistant, centred on my grid, north up, rings every 2,000 miles (or 3,000 km), scale to the farthest report rounded up to the next ring. One dot per reporting station at its bearing and distance. Three strength classes by size and shade: strong (-10 or better), fair (-11 to -17), weak (-18 or below). Label dots with callsigns, with collision avoidance: drop labels that would overlap, show them on hover. This fixes the overlap visible in the mockup.
+- **Plot**: azimuthal equidistant, centred on my grid, north up, rings every 2,000 miles (or 3,000 km), scale to the farthest report rounded up to the next ring. One dot per reporting station at its bearing and distance. Three strength classes by size and shade: strong (-10 or better), fair (-11 to -17), weak (-18 or below). Label dots with callsigns, with collision avoidance: drop labels that would overlap, show them on hover. This fixes the overlap visible in the mockup. When my grid is known, land and country borders (Natural Earth 1:110m, public domain, bundled) are drawn faintly behind the rings in the same projection, on both the full plot and the compact one.
 - **Who heard you**: grid of station, where, miles, bearing, dB, age, "In your log" (Needed in accent, or Worked). Sortable; default by distance. Double-click a row opens that station's details.
 - **By band, last 24 hours**: band, stations that heard you, farthest, median report. Current band highlighted.
 - Empty state: "No reports yet. Reports appear a few minutes after you transmit."
