@@ -77,6 +77,15 @@ above → 1.0), and SWR rises from 1.12 at raw 16 to 2.30 at raw 100. So Hamlib'
 scale, and the 0.5 warning threshold still has to be checked on both real radios (how ALC reads on the radio when the
 warning appears).
 
+Transmit power for the log: confirmed with Hamlib 4.5.5 `rigctld -m 1`. `+l RFPOWER` reads the power setting as a
+fraction of full power (value on its own line, like ALC); `+\power2mW 0.5 14074000 PKTUSB` answers
+`power2mW: 0.5 14074000 PKTUSB`, `Power mW: 50000`, `RPRT 0`. The dummy rig takes 100 W as full power. This is the
+setting, not measured output. FT-710: Hamlib 4.6.5's `newcat.c` scales `PC` by its level step of 1/100, so `PC050;`
+reads 0.50 and power2mW gives 50 W. Hamlib 4.5.5 divides by 255 instead, so the same radio reads 0.196 and 20 W
+(seen against the CAT emulator); only the 4.6.5 build the Windows fetch script installs gets the FT-710 right. Not
+yet tried on the real radio or the IC-7300. The app reads power once per transmission on the meter connection and
+logs it; a radio that reports nothing (or a value outside 1 to 2000 W) falls back to the power in Settings.
+
 Other notes from M2:
 
 - 60 m transmit limits in `frequencies.json` use the ITU WRC-15 range 5351.5 to 5366.5 kHz. US 60 m rules are channelised; the owner should check the limits for his licence before transmitting on 60 m.

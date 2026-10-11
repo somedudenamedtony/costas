@@ -32,6 +32,9 @@ public sealed class SimulatedRig(IClock clock, long frequencyHz = 14_074_000) : 
     /// <summary>What the transmit meters read while PTT is asserted; nothing is read with PTT off.</summary>
     public TxMeterReading TxMeters { get; set; } = TxMeterReading.None;
 
+    /// <summary>The power setting the radio reports, in watts; null for a radio that cannot report it.</summary>
+    public int? PowerWatts { get; set; }
+
     /// <summary>True when PTT is asserted.</summary>
     public bool Ptt
     {
@@ -91,6 +94,9 @@ public sealed class SimulatedRig(IClock clock, long frequencyHz = 14_074_000) : 
     {
         lock (_gate) return Task.FromResult<bool?>(_ptt);
     }
+
+    /// <inheritdoc />
+    public Task<int?> ReadPowerWattsAsync(CancellationToken ct) => Task.FromResult(PowerWatts);
 
     /// <inheritdoc />
     public Task SetSplitAsync(bool on, long txHz, CancellationToken ct)

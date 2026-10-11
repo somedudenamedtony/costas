@@ -191,6 +191,29 @@ public sealed class RigctldRig : IRig
     }
 
     /// <inheritdoc />
+    public async Task<int?> ReadPowerWattsAsync(CancellationToken ct)
+    {
+        // The meter connection, for the same reason as the meters. RFPOWER is the power setting as a fraction of the
+        // radio's maximum; power2mW turns it into milliwatts using the driver's table for the frequency and mode.
+        var m = _meters;
+        if (m is null || !ProcessRunning) return null;
+        try
+        {
+            var level = await m.GetLevelAsync("RFPOWER", ct).ConfigureAwait(false);
+            if (level is not > 0) return null;
+            var hz = await m.GetFrequencyAsync(ct).ConfigureAwait(false);
+            var mode = (await m.SendAsync("m", ct).ConfigureAwait(false))["Mode"];
+            if (string.IsNullOrEmpty(mode)) return null;
+            var mw = await m.PowerToMilliwattsAsync(level.Value, hz, mode, ct).ConfigureAwait(false);
+            return TxPower.Watts(mw);
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task SetSplitAsync(bool on, long txHz, CancellationToken ct)
     {
         if (on)

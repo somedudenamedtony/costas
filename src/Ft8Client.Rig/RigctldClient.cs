@@ -101,6 +101,19 @@ public sealed class RigctldClient : IAsyncDisposable
         return double.TryParse(r.BareValues[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
     }
 
+    /// <summary>
+    /// Converts a power level (0 to 1, as <c>l RFPOWER</c> reads it) to milliwatts for a frequency and mode
+    /// (<c>\power2mW</c>; the reply is the echo, <c>Power mW: n</c>, then RPRT). Returns null when the radio's driver
+    /// does not support the conversion.
+    /// </summary>
+    public async Task<long?> PowerToMilliwattsAsync(double level, long hz, string mode, CancellationToken ct)
+    {
+        var command = string.Create(CultureInfo.InvariantCulture, $"\\power2mW {level:0.######} {hz} {mode}");
+        var r = await SendAsync(command, ct).ConfigureAwait(false);
+        if (!r.Ok) return null;
+        return long.TryParse(r["Power mW"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var mw) ? mw : null;
+    }
+
     private async Task EnsureConnectedAsync(CancellationToken ct)
     {
         if (_tcp is { Connected: true }) return;

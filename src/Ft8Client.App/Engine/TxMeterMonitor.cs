@@ -16,12 +16,14 @@ namespace Ft8Client.App.Engine;
 /// Reads the radio's ALC and SWR meters while a transmission or test tone is on the air and reports the result when
 /// it ends. Readings start once the radio has settled and stop shortly before the audio ends, so no meter command is
 /// in flight when PTT is released. Display only (owner decision D13): it never stops, refuses or changes a transmission.
+/// It also reads the radio's power setting once per transmission, for the log.
 /// </summary>
 public sealed class TxMeterMonitor
 {
     private readonly Func<IRig> _rig;
     private readonly object _gate = new();
     private CancellationTokenSource? _cts;
+    private int _powerWatts;
 
     /// <summary>Watches <paramref name="tx"/>'s transmissions and tones, reading meters from the current rig.</summary>
     public TxMeterMonitor(Transmitter tx, Func<IRig> rig)
@@ -47,6 +49,12 @@ public sealed class TxMeterMonitor
     /// meters, so an earlier warning stays until a transmission actually reads well.
     /// </summary>
     public event Action<TxMeterResult>? Measured;
+
+    /// <summary>
+    /// The power setting the radio reported during the most recent transmission or tone that read it, in watts. Null
+    /// when that reading failed or nothing has been sent yet, so the log falls back to the power in Settings.
+    /// </summary>
+    public int? PowerWatts => Volatile.Read(ref _powerWatts) is var w and > 0 ? w : null;
 
     /// <summary>Completes when the current watch (if any) has reported, with its result (null when no meter was read).</summary>
     public Task<TxMeterResult?> Idle { get; private set; } = Task.FromResult<TxMeterResult?>(null);
@@ -75,6 +83,8 @@ public sealed class TxMeterMonitor
         try
         {
             await Task.Delay(Settle, ct).ConfigureAwait(false);
+            // Kept until the next reading completes, so a contact logged as its last transmission starts still gets it.
+            Volatile.Write(ref _powerWatts, await _rig().ReadPowerWattsAsync(ct).ConfigureAwait(false) ?? 0);
             while (sw.Elapsed <= last)
             {
                 readings.Add(await _rig().ReadTxMetersAsync(ct).ConfigureAwait(false));

@@ -48,6 +48,9 @@ public sealed class VoxRig(long frequencyHz) : IRig
     public Task<bool?> ReadPttAsync(CancellationToken ct) => Task.FromResult<bool?>(null);
 
     /// <inheritdoc />
+    public Task<int?> ReadPowerWattsAsync(CancellationToken ct) => Task.FromResult<int?>(null);
+
+    /// <inheritdoc />
     public Task SetSplitAsync(bool on, long txHz, CancellationToken ct) => Task.CompletedTask;
 
     /// <inheritdoc />

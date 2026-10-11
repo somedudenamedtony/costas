@@ -84,4 +84,20 @@ public class TxMeterMonitorTests
         TxMeterText.Summary(null).Should().Be("—");
         TxMeterText.Summary(new TxMeterResult(0.25, null, TxMeterLevel.Ok, null)).Should().Be("ALC 25% · SWR not reported");
     }
+
+    [Fact]
+    public async Task Tone_RadioReportsPower_KeptForTheLog()
+    {
+        var s = new Station(TxMeterReading.None);
+        s.Monitor.PowerWatts.Should().BeNull();
+        s.Radio.PowerWatts = 40;
+        await s.Tone();
+        await s.Monitor.Idle;
+        s.Monitor.PowerWatts.Should().Be(40);
+
+        s.Radio.PowerWatts = null;
+        await s.Tone();
+        await s.Monitor.Idle;
+        s.Monitor.PowerWatts.Should().BeNull("a transmission whose power could not be read falls back to Settings");
+    }
 }

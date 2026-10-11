@@ -36,6 +36,74 @@ public class RigTests
     }
 
     [Fact]
+    public void Reply_Power2mW_MilliwattsByKey()
+    {
+        // Captured from rigctld 4.5.5 (-m 1): "+\power2mW 0.5 14074000 PKTUSB".
+        var r = RigctldReply.Parse(["power2mW: 0.5 14074000 PKTUSB", "Power mW: 50000", "RPRT 0"]);
+        r.Ok.Should().BeTrue();
+        r["Power mW"].Should().Be("50000");
+    }
+
+    [Theory]
+    [InlineData(50000L, 50)]
+    [InlineData(24600L, 25)]
+    [InlineData(500L, 1)]
+    [InlineData(400L, null)]
+    [InlineData(0L, null)]
+    [InlineData(2_500_000L, null)]
+    [InlineData(null, null)]
+    public void Watts_Milliwatts_RoundedOrNullOutsideRange(long? milliwatts, int? watts)
+    {
+        TxPower.Watts(milliwatts).Should().Be(watts);
+    }
+
+    [Fact]
+    public async Task PowerToMilliwatts_DummyRig_ConvertsTheRfPowerLevel()
+    {
+        var exe = HamlibModels.Find("rigctld", null);
+        Assert.SkipWhen(exe is null, "rigctld is not installed.");
+        var ct = TestContext.Current.CancellationToken;
+        var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        l.Start();
+        var port = ((System.Net.IPEndPoint)l.LocalEndpoint).Port;
+        l.Stop();
+        using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe!, ["-m", "1", "-T", "127.0.0.1", "-t", port.ToString(System.Globalization.CultureInfo.InvariantCulture)]))!;
+        try
+        {
+            await using var c = new RigctldClient("127.0.0.1", port);
+            for (var i = 0; ; i++)
+            {
+                try
+                {
+                    await c.SetAsync("L RFPOWER 0.25", ct);
+                    break;
+                }
+                catch (RigException) when (i < 20)
+                {
+                    await Task.Delay(100, ct);
+                }
+            }
+            (await c.GetLevelAsync("RFPOWER", ct)).Should().Be(0.25);
+            // The dummy rig takes 100 W as full power.
+            (await c.PowerToMilliwattsAsync(0.25, 14_074_000, "PKTUSB", ct)).Should().Be(25_000);
+        }
+        finally
+        {
+            p.Kill();
+            await p.WaitForExitAsync(ct);
+        }
+    }
+
+    [Fact]
+    public async Task ReadPowerWatts_SimulatedAndAudioOnly_WhatTheyReport()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        (await new SimulatedRig(SystemClock.Instance) { PowerWatts = 40 }.ReadPowerWattsAsync(ct)).Should().Be(40);
+        (await new SimulatedRig(SystemClock.Instance).ReadPowerWattsAsync(ct)).Should().BeNull();
+        (await new VoxRig(14_074_000).ReadPowerWattsAsync(ct)).Should().BeNull();
+    }
+
+    [Fact]
     public async Task SimulatedRig_TxMeters_ReadOnlyWhileKeyed()
     {
         var rig = new SimulatedRig(new ManualClock(new DateTime(2026, 1, 4, 2, 54, 0, DateTimeKind.Utc)))
@@ -128,6 +196,8 @@ public class RigTests
         var meterFaults = new List<RigFault>();
         rig.Faulted += (_, f) => meterFaults.Add(f);
         (await rig.ReadTxMetersAsync(ct)).Should().Be(new Core.Transmit.TxMeterReading(0, 0));
+        // The dummy rig's power setting starts at 0, which is no reading; still no fault.
+        (await rig.ReadPowerWattsAsync(ct)).Should().BeNull();
         meterFaults.Should().BeEmpty();
 
         // Kill rigctld behind the client's back: the next command faults, then the supervisor restarts it.
