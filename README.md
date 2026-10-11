@@ -50,7 +50,7 @@ log, whether the station is free to call, and whether it can hear you.
    QRZ.
 
 Requires 64-bit Windows 10 (1809) or later. The decoder (`jt9` from WSJT-X) and radio control (Hamlib) are
-bundled; you do not need WSJT-X installed. Costas checks for new builds daily and offers to install them, keeping
+bundled; you do not need WSJT-X installed. Costas checks for new builds at start and daily and offers to install them, keeping
 your log and settings.
 
 ## Use it

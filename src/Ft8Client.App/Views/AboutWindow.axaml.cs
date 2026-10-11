@@ -18,24 +18,42 @@ public partial class AboutWindow : Window
 {
     private const int TapsToToggle = 7;
     private readonly AppSettingsAccessor? _settings;
+    private readonly UpdateService? _updates;
     private int _taps;
     private DateTime _lastTap;
 
     /// <summary>Creates the window (for the designer).</summary>
     public AboutWindow()
-        : this(null)
+        : this(null, null)
     {
     }
 
     /// <summary>
     /// Creates the window. Clicking the product name seven times in a row toggles developer mode (the easter egg).
     /// </summary>
-    public AboutWindow(AppSettingsAccessor? settings)
+    public AboutWindow(AppSettingsAccessor? settings, UpdateService? updates)
     {
         InitializeComponent();
         _settings = settings;
+        _updates = updates;
         Product.Text = $"{AppInfo.ProductName} {AppInfo.Version}";
         Product.PointerPressed += OnProductPressed;
+        CheckUpdates.IsEnabled = updates is not null;
+        CheckUpdates.Click += OnCheckUpdates;
+    }
+
+    // Checks even when the daily check is off, and offers a build that was skipped before: the operator asked.
+    private async void OnCheckUpdates(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (_updates is null) return;
+        CheckUpdates.IsEnabled = false;
+        UpdateStatus.Text = "Checking…";
+        _settings?.Update(s => s.Updates.SkippedTag = null);
+        var r = await _updates.CheckAsync(CancellationToken.None, manual: true);
+        UpdateStatus.Text = r is not null ? $"{AppInfo.ProductName} {r.Version} is available: see the bar at the top of the main window."
+            : _updates.LastError is { } err ? $"Could not check: {err}"
+            : $"You have the latest build ({AppInfo.Version}).";
+        CheckUpdates.IsEnabled = true;
     }
 
     private void OnProductPressed(object? sender, PointerPressedEventArgs e)

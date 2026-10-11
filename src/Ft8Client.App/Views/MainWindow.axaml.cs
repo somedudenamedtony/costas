@@ -72,7 +72,7 @@ public partial class MainWindow : Window
             "settings" or "ranking" => new SettingsWindow { DataContext = new SettingsViewModel(vm.Host, name == "ranking") },
             "diagnostics" => new DiagnosticsWindow { DataContext = new DiagnosticsViewModel(vm.Host) },
             "shortcuts" => new ShortcutsWindow(),
-            _ => new AboutWindow(vm.Host.Settings),
+            _ => new AboutWindow(vm.Host.Settings, vm.Host.Updates),
         };
         w.ShowDialog(this);
     }

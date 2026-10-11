@@ -18,7 +18,7 @@ Requirements: 64-bit Windows 10 (version 1809) or later, or Windows 11.
 
 ## Updates
 
-Costas checks GitHub for a newer build a minute after it starts and then once a day. When one is available, a bar
+Costas checks GitHub for a newer build when it starts and then once a day. When one is available, a bar
 appears at the top of the main window:
 
 ![The update bar](images/update-bar.png)
@@ -28,7 +28,7 @@ appears at the top of the main window:
 - **Release notes** opens the release on GitHub.
 - **Skip this version** hides the bar until a newer build comes out.
 
-You can turn the daily check off, or check by hand, in **Settings › Updates**.
+You can turn the daily check off, or check by hand, in **Settings › Updates**. **☰ › About** also has a **Check for updates** button, which checks even when the daily check is off.
 
 Upgrading keeps your log and settings. An install from before the rename (when the app was called "FT8 Client") is
 upgraded too, and its data is moved to the Costas data folder on first start.
