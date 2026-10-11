@@ -130,4 +130,12 @@ public class DatabaseAndSettingsTests
         f!.Entities.Count.Should().BeGreaterThan(300);
         ReferenceData.LoadCountries(paths).Version.Should().Be(f.Version);
     }
+
+    [Fact]
+    public void ReferenceData_WorldOutline_LoadsBundledLandAndBorders()
+    {
+        var o = ReferenceData.LoadWorldOutline();
+        o.Land.Count.Should().BeGreaterThan(100);
+        o.Borders.Count.Should().BeGreaterThan(100);
+    }
 }

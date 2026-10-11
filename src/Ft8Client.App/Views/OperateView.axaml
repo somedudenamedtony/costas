@@ -279,7 +279,7 @@
             <TextBlock Text="{Binding SignalTitle}" Classes="title" />
             <TextBlock Text="{Binding SignalSource}" Classes="secondary" FontSize="12" Margin="0,-4,0,0" />
             <Grid ColumnDefinitions="128,*">
-              <v:ReachPlot Width="124" Height="124" Points="{Binding ReachPoints}" Compact="True" />
+              <v:ReachPlot Width="124" Height="124" Points="{Binding ReachPoints}" Centre="{Binding ReachCentre}" Compact="True" />
               <StackPanel Grid.Column="1" Spacing="4" Margin="8,0,0,0">
                 <TextBlock Text="{Binding SignalHeadline}" TextWrapping="Wrap" />
                 <TextBlock Text="Farthest" Classes="secondary" FontSize="12" />

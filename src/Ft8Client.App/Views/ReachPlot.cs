@@ -15,13 +15,15 @@ using Ft8Client.App.ViewModels;
 using Ft8Client.Core;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Ranking;
+using Ft8Client.Data.Reference;
 
 namespace Ft8Client.App.Views;
 
 /// <summary>
 /// Azimuthal equidistant plot centred on my grid, north up. Rings every 2,000 miles (or 3,000 km); the scale is the
 /// farthest report rounded up to the next ring. Dots: strong, fair, weak by size and shade. Labels that would overlap
-/// are dropped and shown on hover instead.
+/// are dropped and shown on hover instead. When my position is known, land and country borders are drawn behind the
+/// rings in the same projection, so the dots sit on a map.
 /// </summary>
 public sealed class ReachPlot : Control
 {
@@ -34,11 +36,19 @@ public sealed class ReachPlot : Control
     /// <summary>Units.</summary>
     public static readonly StyledProperty<DistanceUnit> UnitsProperty = AvaloniaProperty.Register<ReachPlot, DistanceUnit>(nameof(Units));
 
+    /// <summary>My position, the centre of the map. Null draws the plot without a map.</summary>
+    public static readonly StyledProperty<LatLon?> CentreProperty = AvaloniaProperty.Register<ReachPlot, LatLon?>(nameof(Centre));
+
+    private static readonly Lazy<WorldOutline> Outline = new(ReferenceData.LoadWorldOutline);
+
     private readonly List<(Point P, ReachPoint R)> _placed = [];
+    private (LatLon Centre, double ScaleKm, Rect Disc)? _mapKey;
+    private Geometry? _land;
+    private Geometry? _borders;
 
     static ReachPlot()
     {
-        AffectsRender<ReachPlot>(PointsProperty, CompactProperty, UnitsProperty);
+        AffectsRender<ReachPlot>(PointsProperty, CompactProperty, UnitsProperty, CentreProperty);
     }
 
     /// <summary>Points.</summary>
@@ -60,6 +70,13 @@ public sealed class ReachPlot : Control
     {
         get => GetValue(UnitsProperty);
         set => SetValue(UnitsProperty, value);
+    }
+
+    /// <summary>Centre.</summary>
+    public LatLon? Centre
+    {
+        get => GetValue(CentreProperty);
+        set => SetValue(CentreProperty, value);
     }
 
     /// <summary>Ring spacing in km for the units.</summary>
@@ -104,7 +121,9 @@ public sealed class ReachPlot : Control
         var scale = ScaleKm(pts, Units);
         var rings = (int)Math.Round(scale / RingKm(Units));
 
-        ctx.DrawEllipse(Brush("CardBackgroundBrush"), line, c, r, r);
+        ctx.DrawEllipse(Brush("CardBackgroundBrush"), null, c, r, r);
+        if (Centre is { } centre) DrawMap(ctx, centre, scale, c, r);
+        ctx.DrawEllipse(null, line, c, r, r);
         for (var i = 1; i < rings; i++) ctx.DrawEllipse(null, line, c, r * i / rings, r * i / rings);
         ctx.DrawLine(line, new Point(c.X, c.Y - r), new Point(c.X, c.Y + r));
         ctx.DrawLine(line, new Point(c.X - r, c.Y), new Point(c.X + r, c.Y));
@@ -135,6 +154,49 @@ public sealed class ReachPlot : Control
         var boxes = _placed.Select(x => new Rect(x.P.X + 6, x.P.Y - 7, x.R.Call.Length * 6.6 + 2, 14)).ToList();
         var order = Enumerable.Range(0, _placed.Count).OrderByDescending(i => _placed[i].R.Snr).ToList();
         foreach (var i in PlaceLabels(boxes, order)) DrawText(ctx, _placed[i].R.Call, boxes[i].TopLeft, Brush("TextPrimaryBrush") ?? Brushes.Black, 11);
+    }
+
+    private void DrawMap(DrawingContext ctx, LatLon centre, double scaleKm, Point c, double r)
+    {
+        var disc = new Rect(c.X - r, c.Y - r, 2 * r, 2 * r);
+        if (_mapKey != (centre, scaleKm, disc))
+        {
+            _mapKey = (centre, scaleKm, disc);
+            Point ToScreen((double X, double Y) p) => new(c.X + p.X * r, c.Y - p.Y * r);
+            var land = new StreamGeometry();
+            using (var g = land.Open())
+            {
+                foreach (var ring in Outline.Value.Land)
+                {
+                    if (AzimuthalProjection.ProjectRing(centre, ring, scaleKm) is not { } pts) continue;
+                    g.BeginFigure(ToScreen(pts[0]), true);
+                    for (var i = 1; i < pts.Count; i++) g.LineTo(ToScreen(pts[i]));
+                    g.EndFigure(true);
+                }
+            }
+            var borders = new StreamGeometry();
+            using (var g = borders.Open())
+            {
+                foreach (var shape in Outline.Value.Land.Concat(Outline.Value.Borders))
+                {
+                    foreach (var piece in AzimuthalProjection.ProjectLine(centre, shape, scaleKm))
+                    {
+                        g.BeginFigure(ToScreen(piece[0]), false);
+                        for (var i = 1; i < piece.Count; i++) g.LineTo(ToScreen(piece[i]));
+                        g.EndFigure(false);
+                    }
+                }
+            }
+            _land = land;
+            _borders = borders;
+        }
+
+        var shade = Brush("TextSecondaryBrush") ?? Brushes.Gray;
+        using (ctx.PushGeometryClip(new EllipseGeometry(disc)))
+        {
+            using (ctx.PushOpacity(0.12)) ctx.DrawGeometry(shade, null, _land!);
+        }
+        using (ctx.PushOpacity(0.35)) ctx.DrawGeometry(null, new Pen(shade, Compact ? 0.5 : 0.75), _borders!);
     }
 
     /// <inheritdoc />

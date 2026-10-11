@@ -23,6 +23,9 @@ public static class ReferenceData
     /// <summary>The bundled <c>cty.dat</c> text.</summary>
     public static string BundledCountryText() => ReadResource("cty.dat");
 
+    /// <summary>The bundled world outline for the reach map (Natural Earth 1:110m, public domain).</summary>
+    public static WorldOutline LoadWorldOutline() => WorldOutline.Parse(ReadResource("world-outline.txt"));
+
     /// <summary>Loads <c>cache/cty.dat</c> if present and valid, else the bundled copy.</summary>
     public static CountryFile LoadCountries(AppPaths? paths = null)
     {

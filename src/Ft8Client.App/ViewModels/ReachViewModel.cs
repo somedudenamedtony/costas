@@ -54,6 +54,10 @@ public sealed partial class ReachViewModel : ObservableObject
     [ObservableProperty]
     public partial IReadOnlyList<ReachPoint> Points { get; set; } = [];
 
+    /// <summary>My position, the centre of the map.</summary>
+    [ObservableProperty]
+    public partial LatLon? Centre { get; set; }
+
     /// <summary>Headline.</summary>
     [ObservableProperty]
     public partial string Headline { get; set; } = string.Empty;
@@ -92,6 +96,7 @@ public sealed partial class ReachViewModel : ObservableObject
         var all = _spots.Since(now.AddHours(-24)).Where(s => Callsign.EqualsCall(s.MyCall, MyCall)).Select(ToReport).ToList();
         var pts = ReachPoint.From(all.Where(r => r.Band == Band), now, window, MyGrid, _countries, _log(), Band, Mode);
         Points = pts;
+        Centre = Grid.ToLatLon(MyGrid);
         Empty = pts.Count == 0;
         var countries = pts.Select(p => p.EntityKey).Where(k => k is not null).Distinct().Count();
         var far = pts.MaxBy(p => p.Km);
