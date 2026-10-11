@@ -138,6 +138,9 @@ public static class Converters
     /// <summary>Transmitting colours the Halt button.</summary>
     public static readonly IValueConverter CriticalWhen = new FuncValueConverter<bool, IBrush?>(b => b ? Brush("CriticalBrush") : null);
 
+    /// <summary>Critical text while transmitting, primary otherwise.</summary>
+    public static readonly IValueConverter TransmittingText = new FuncValueConverter<bool, IBrush?>(b => Brush(b ? "CriticalBrush" : "TextPrimaryBrush"));
+
     /// <summary>Progress bar colour.</summary>
     public static readonly IValueConverter ProgressBrush = new FuncValueConverter<bool, IBrush?>(b => Brush(b ? "CriticalBrush" : "AccentBrush"));
 

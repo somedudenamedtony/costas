@@ -19,6 +19,9 @@ namespace Ft8Client.App.ViewModels;
 /// <summary>The top slot while in a contact.</summary>
 public sealed class ContactPanelViewModel
 {
+    /// <summary>Shown in place of a report not exchanged yet.</summary>
+    public const string NotYet = "--";
+
     private ContactPanelViewModel()
     {
     }
@@ -38,10 +41,10 @@ public sealed class ContactPanelViewModel
     /// <summary>Name · place · distance.</summary>
     public string Subline { get; private init; } = string.Empty;
 
-    /// <summary>Report sent, blank until sent.</summary>
+    /// <summary>Report sent in dB, "--" until sent.</summary>
     public string Sent { get; private init; } = string.Empty;
 
-    /// <summary>Report received, blank until received.</summary>
+    /// <summary>Report received in dB, "--" until received.</summary>
     public string Received { get; private init; } = string.Empty;
 
     /// <summary>Log now is enabled.</summary>
@@ -78,7 +81,7 @@ public sealed class ContactPanelViewModel
                 // The engine counts a message as sent when it starts, so a step on the air now is marked done; show it as sending.
                 look = StepLook.Transmitting;
                 time = Time(st.TimeUtc ?? currentSlot);
-                var left = currentSlot + TxEnd(s.Mode) - nowUtc;
+                var left = currentSlot + ModeInfo.TxEnd(s.Mode) - nowUtc;
                 status = $"Sending{count} · {Math.Max(0, (int)Math.Ceiling(left.TotalSeconds))} s left";
             }
             else
@@ -119,8 +122,8 @@ public sealed class ContactPanelViewModel
             Need = need is { } n ? StationText.Need(n.Tag) : string.Empty,
             NeedKind = need is { } n2 ? StationRowViewModel.KindOf(n2.Tag) : TextKind.Normal,
             Subline = string.Join(" · ", parts),
-            Sent = c.ReportSent is { } rs ? Report.Format(rs) : string.Empty,
-            Received = c.ReportReceived is { } rr ? Report.Format(rr) : string.Empty,
+            Sent = c.ReportSent is { } rs ? Report.Format(rs) : NotYet,
+            Received = c.ReportReceived is { } rr ? Report.Format(rr) : NotYet,
             CanLogNow = c.CanLogNow,
             Active = c.Outcome == ContactOutcome.InProgress,
             Steps = [.. steps.Select((x, i) => x with
@@ -154,10 +157,6 @@ public sealed class ContactPanelViewModel
         }
         return currentSlot + slotLen;
     }
-
-    // When a transmission ends, from the start of its slot: FT8 is 79 symbols of 160 ms, FT4 is 105 symbols of 48 ms.
-    private static TimeSpan TxEnd(Mode mode) =>
-        TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode) + (mode == Mode.Ft8 ? 12_640 : 5_040));
 
     private static string Time(DateTime? t) => t?.ToString("HH:mm:ss", CultureInfo.InvariantCulture) ?? string.Empty;
 }

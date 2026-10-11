@@ -19,6 +19,7 @@ using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Stations;
+using Ft8Client.Core.Time;
 using Ft8Client.Data.Log;
 
 namespace Ft8Client.App.ViewModels;
@@ -179,6 +180,26 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial string TonightLink { get; set; } = string.Empty;
 
+    /// <summary>"Call CQ" or "Stop CQ", for the contact card.</summary>
+    [ObservableProperty]
+    public partial string CqText { get; set; } = "Call CQ";
+
+    /// <summary>True while transmitting.</summary>
+    [ObservableProperty]
+    public partial bool Transmitting { get; set; }
+
+    /// <summary>"Transmitting" or "Receiving".</summary>
+    [ObservableProperty]
+    public partial string SlotLabel { get; set; } = "Receiving";
+
+    /// <summary>Seconds left in this slot: "9 s".</summary>
+    [ObservableProperty]
+    public partial string SlotLeft { get; set; } = string.Empty;
+
+    /// <summary>Slot progress 0 to 1.</summary>
+    [ObservableProperty]
+    public partial double SlotProgress { get; set; }
+
     /// <summary>How the line is ordered.</summary>
     [ObservableProperty]
     public partial string OrderText { get; set; } = string.Empty;
@@ -199,6 +220,9 @@ public sealed partial class OperateViewModel : ObservableObject
     {
         _snap = s;
         var now = _now();
+        CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
+        Transmitting = s.Transmitting;
+        UpdateSlot(now);
 
         // Re-rank only when a new slot has been decoded.
         if (_lastRankedSlot != s.LastDecodedSlot || _line.Applied is null)
@@ -272,6 +296,18 @@ public sealed partial class OperateViewModel : ObservableObject
         var now = _now();
         foreach (var r in Line) r.Refresh(now);
         foreach (var r in Repeats) r.Refresh(now);
+        UpdateSlot(now);
+    }
+
+    private void UpdateSlot(DateTime now)
+    {
+        var mode = _snap?.Mode ?? Mode.Ft8;
+        // While transmitting, count down to the end of the transmission (as the conversation strip does), not the slot.
+        var len = Transmitting ? ModeInfo.TxEnd(mode) : ModeInfo.SlotLength(mode);
+        var into = now - SlotMath.SlotStart(now, mode);
+        SlotProgress = Math.Clamp(into / len, 0, 1);
+        SlotLeft = $"{Math.Max(0, (int)Math.Ceiling((len - into).TotalSeconds))} s";
+        SlotLabel = Transmitting ? "Transmitting" : "Receiving";
     }
 
     /// <summary>Pointer entered Repeats: hold its order still.</summary>
@@ -389,6 +425,10 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>Log now.</summary>
     [RelayCommand]
     private void LogNow() => _commands.LogNow();
+
+    /// <summary>Call CQ, or stop.</summary>
+    [RelayCommand]
+    private void ToggleCq() => _commands.ToggleCq();
 
     /// <summary>Abandon.</summary>
     [RelayCommand]

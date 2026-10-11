@@ -84,13 +84,45 @@
         <Border Classes="card" Padding="18,12" IsVisible="{Binding InContact}">
           <StackPanel DataContext="{Binding Contact}" x:DataType="vm:ContactPanelViewModel" Spacing="4">
             <DockPanel>
-              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="18" VerticalAlignment="Top">
-                <StackPanel><TextBlock Text="You sent" Classes="secondary" /><TextBlock Text="{Binding Sent}" FontSize="24" FontWeight="SemiBold" Classes="num" /></StackPanel>
-                <StackPanel><TextBlock Text="You received" Classes="secondary" /><TextBlock Text="{Binding Received}" FontSize="24" FontWeight="SemiBold" Classes="num" /></StackPanel>
-                <Button Content="Resend" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ResendCommand}" IsEnabled="{Binding Active}" VerticalAlignment="Center" />
-                <Button Content="Log now" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).LogNowCommand}" IsEnabled="{Binding CanLogNow}" VerticalAlignment="Center" />
-                <Button Content="Abandon (Esc)" Classes="critical" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).AbandonCommand}" IsEnabled="{Binding Active}" VerticalAlignment="Center" />
-              </StackPanel>
+              <!-- On-air panel: the reports, the slot countdown and every control that acts on this contact or the next transmission, together. -->
+              <Border DockPanel.Dock="Right" VerticalAlignment="Top" CornerRadius="8" Padding="14,10" BorderThickness="1"
+                      BorderBrush="{DynamicResource ControlBorderBrush}" AutomationProperties.Name="On air">
+                <StackPanel Spacing="10">
+                  <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="24">
+                    <StackPanel>
+                      <TextBlock Text="You sent" Classes="secondary" />
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding Sent}" FontSize="24" FontWeight="SemiBold" Classes="num" />
+                        <TextBlock Text="dB" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5" />
+                      </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Text="You received" Classes="secondary" />
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding Received}" FontSize="24" FontWeight="SemiBold" Classes="num" />
+                        <TextBlock Text="dB" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5" />
+                      </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" MinWidth="150" AutomationProperties.LiveSetting="Polite">
+                      <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLabel}" Classes="secondary" />
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLeft}" FontSize="24" FontWeight="SemiBold" Classes="num"
+                                   Foreground="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).Transmitting, Converter={x:Static v:Converters.TransmittingText}}" />
+                        <TextBlock Text="left" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5" />
+                      </StackPanel>
+                      <ProgressBar Value="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotProgress}" Maximum="1" Height="4" MinHeight="4" Margin="0,2,0,0"
+                                   Foreground="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).Transmitting, Converter={x:Static v:Converters.ProgressBrush}}" />
+                    </StackPanel>
+                  </Grid>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CqText}"
+                            Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ToggleCqCommand}" MinWidth="80" />
+                    <Button Content="Resend" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ResendCommand}" IsEnabled="{Binding Active}" />
+                    <Button Content="Log now" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).LogNowCommand}" IsEnabled="{Binding CanLogNow}" />
+                    <Button Content="Abandon (Esc)" Classes="critical" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).AbandonCommand}" IsEnabled="{Binding Active}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
               <StackPanel>
                 <TextBlock Text="{Binding Caption}" Classes="secondary" />
                 <StackPanel Orientation="Horizontal" Spacing="10">

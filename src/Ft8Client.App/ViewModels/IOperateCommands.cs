@@ -39,6 +39,9 @@ public interface IOperateCommands
     /// <summary>Log now.</summary>
     void LogNow();
 
+    /// <summary>Call CQ, or stop calling CQ.</summary>
+    void ToggleCq();
+
     /// <summary>Abandon the contact.</summary>
     void Abandon();
 
