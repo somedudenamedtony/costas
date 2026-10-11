@@ -18,19 +18,19 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
 {
     private IReadOnlyList<RawDecodeLine> _all = [];
 
-    /// <summary>Lines, oldest first, with a blank line between slots.</summary>
+    /// <summary>Lines, newest slot first, with a blank line between slots.</summary>
     public ObservableCollection<RawLineViewModel> Lines { get; } = [];
 
     /// <summary>Filter text: callsign or message text.</summary>
     [ObservableProperty]
     public partial string Filter { get; set; } = string.Empty;
 
-    /// <summary>True when the operator scrolled up (the view keeps position and shows Jump to live).</summary>
+    /// <summary>True when the operator scrolled away from the newest lines (the view keeps position and shows Jump to live).</summary>
     [ObservableProperty]
-    public partial bool ScrolledUp { get; set; }
+    public partial bool ScrolledAway { get; set; }
 
-    /// <summary>Raised when the view should scroll to the newest line.</summary>
-    public event Action? ScrollToEnd;
+    /// <summary>Raised when the view should scroll to the newest line, at the top.</summary>
+    public event Action? ScrollToNewest;
 
     /// <summary>Applies new decodes.</summary>
     public void Apply(IReadOnlyList<RawDecodeLine> lines)
@@ -46,8 +46,8 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
     [RelayCommand]
     private void JumpToLive()
     {
-        ScrolledUp = false;
-        ScrollToEnd?.Invoke();
+        ScrolledAway = false;
+        ScrollToNewest?.Invoke();
     }
 
     /// <summary>Double-click: call the sender.</summary>
@@ -61,13 +61,14 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
         var f = Filter.Trim();
         Lines.Clear();
         DateTime? slot = null;
-        foreach (var l in _all)
+        // Newest slot first; within a slot, lines keep the order they arrived in.
+        foreach (var l in _all.OrderByDescending(x => x.Decode.SlotStartUtc))
         {
             if (f.Length > 0 && !l.Decode.Text.Contains(f, StringComparison.OrdinalIgnoreCase)) continue;
             if (slot is not null && slot != l.Decode.SlotStartUtc) Lines.Add(RawLineViewModel.Blank);
             slot = l.Decode.SlotStartUtc;
             Lines.Add(new RawLineViewModel(l));
         }
-        if (!ScrolledUp) ScrollToEnd?.Invoke();
+        if (!ScrolledAway) ScrollToNewest?.Invoke();
     }
 }
