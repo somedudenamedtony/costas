@@ -1,0 +1,113 @@
+# Troubleshooting
+
+Start with the four indicators at the bottom right (**Radio**, **Audio**, **QRZ**, **PSK Reporter**). Hover for the
+detail; click to open **Diagnostics**.
+
+## Diagnostics
+
+**☰ › Diagnostics** shows what Costas is doing right now: version, data folder, the decoder in use, decode time and
+median DT of the last slot, clock offset, audio dropouts, input level, the radio and its last transmit meters, the
+state of each service, the QRZ upload queue and the country file version.
+
+![Diagnostics](images/diagnostics.png)
+
+**Save diagnostics bundle** writes a zip of the logs and settings, with your QRZ key and password removed. Attach
+it when you report a problem on [GitHub Issues](https://github.com/somedudenamedtony/costas/issues).
+
+## The radio
+
+### "Radio not connected · No radio set up"
+
+![No radio set up](images/no-radio.png)
+
+Costas has no radio configured, so it receives nothing and refuses to transmit. Click **Station setup** in the
+banner and go through the [Radio step](setup.md#2-radio-cat-and-ptt).
+
+### Test connection says "No serial ports were found"
+
+Windows does not see the radio's USB serial port. Check the USB cable, that the radio is on, and that the radio's USB
+driver is installed (for Icom, the *Icom USB driver*; for Yaesu, the *Virtual COM port driver*). In Windows Device
+Manager the radio should appear under **Ports (COM & LPT)**.
+
+### Test connection says "No answer from the radio"
+
+The port opens but the radio does not reply.
+
+- Check the **Model** is right.
+- Set **Speed (baud)** to match the radio's CAT/CI-V baud rate menu, or leave it on **Automatic**.
+- Icom: check the CI-V address matches the model's default, and **CI-V USB Echo Back** is **OFF**.
+- Close any other program that uses the port: WSJT-X, JTDX, Flrig, N1MM+, the radio maker's utility. Only one
+  program can open a COM port.
+
+### The radio does not key, or keys but sends nothing
+
+Use [Station setup › Transmit test](setup.md#4-transmit-test) into a dummy load:
+
+- **No TX at all**: check **Transmit (PTT)**. Most USB radios want **CAT command**. If your interface keys with a
+  serial line, choose **RTS** or **DTR**. With **VOX**, VOX must be on in the radio.
+- **TX light on, no power out**: the audio is not reaching the radio. Check **Output (audio to the radio)** is the
+  radio's USB audio device. Set the radio's data mode input to USB (on an IC-7300: *DATA MOD* = *USB*) and use USB-D
+  mode.
+- **"The radio cannot report whether it transmitted"**: some radios do not report PTT state over CAT. Watch the TX
+  light instead.
+
+### SWR or ALC warning after a transmission
+
+The bottom bar shows, for example, *SWR 3.4 · ALC 70%*. Hover for advice.
+
+- **SWR 2 or more**: check the antenna and tuner. At 3 or more, fix it before sending again.
+- **ALC 50% or more**: the audio is overdriving the radio and the signal will be distorted. Lower
+  **Settings › Transmitting › Audio level** or the radio's USB audio input level until ALC barely moves.
+
+## Receiving
+
+### No decodes
+
+1. Check **Audio** is green and the input is the radio's USB audio device (Station setup › Audio). The input meter
+   should sit in the shaded band.
+2. Check the radio is on an FT8 frequency (14.074 MHz on 20 m) in USB or USB-D, with a wide enough filter (about
+   3 kHz).
+3. Check your clock. **Raw decodes › DT** should be near 0. If decodes appear but DT is large, or nothing decodes on
+   a busy band, sync the Windows clock (**Settings › Time & language › Date & time › Sync now**).
+4. If another program has the audio device in exclusive mode, close it. In Windows sound settings you can also untick
+   *Allow applications to take exclusive control of this device* for the radio's device.
+
+### Everyone shows as "New call"
+
+Costas does not know your log yet. Add your QRZ logbook API key in [Settings › QRZ](settings.md#qrz) and press
+**Sync with QRZ now** in the Log view, or import an ADIF file from your previous logger.
+
+## Transmitting is refused
+
+| Message | Cause and fix |
+| --- | --- |
+| *Your clock is off by 2.4 s. Transmitting is blocked above 2 s.* | Sync the Windows clock. The limit is in Settings › Transmitting › Clock limit |
+| *Stopped by watchdog* | You had not touched the app for 6 minutes. Click Call or Call CQ again |
+| *… cannot be sent …* | The message cannot be encoded exactly as shown, for example a callsign or free text FT8 cannot carry. Costas never changes a message silently; shorten or change it |
+| No radio set up | See *Radio not connected* above |
+
+## QRZ
+
+| Problem | Fix |
+| --- | --- |
+| *The QRZ logbook key was refused* | Copy the API key again from your QRZ Logbook's Settings. It belongs to one logbook; check it is the logbook for your current callsign |
+| Names and locations never appear | Lookups need your QRZ **username and password**, not the API key. Full details need a QRZ XML subscription |
+| *Upload failed · Retry* | Click **Retry** in Worked tonight. *Waiting to upload · retrying* means Costas is still retrying by itself |
+| *QRZ refused the contact* | Diagnostics shows the reason QRZ gave. A contact already in your QRZ logbook is one common cause |
+
+Costas works fine without QRZ: the list then ranks by signal only.
+
+## PSK Reporter shows "unavailable"
+
+The live feed uses MQTT over TLS on TCP port 1884 (`mqtt.pskreporter.info`). Some networks and firewalls block it.
+Costas then falls back to querying PSK Reporter every 5 minutes, shown as *PSK Reporter · updated 6 min ago*. If both fail, *Hears you* and
+Reach stay empty; everything else still works.
+
+## Windows says "Windows protected your PC"
+
+The installer is not code-signed yet. Click **More info**, then **Run anyway**. See [Install](install.md).
+
+## Still stuck
+
+Open an issue on [GitHub](https://github.com/somedudenamedtony/costas/issues) with what you did, what you expected,
+what happened, your radio model, and the diagnostics bundle.
