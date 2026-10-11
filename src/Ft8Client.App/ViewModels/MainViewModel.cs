@@ -327,7 +327,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     // Stations newly heard get their place from earlier QRZ lookups kept in the local cache (a database read off the UI
     // thread, never the network). Then the stations on screen are queued for QRZ: the one in a contact and those calling
-    // me first, then Next in line and Watching. The queue asks QRZ about each call at most once per run, and the cache
+    // me first, then Next in line, Watching and the stations already worked. The queue asks QRZ about each call at most once per run, and the cache
     // keeps the answer across runs.
     private void FillLookups(SessionSnapshot s)
     {
@@ -337,6 +337,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         foreach (var w in s.Waiting) _host.Qrz.RequestLookup(w.Call, urgent: true);
         foreach (var r in s.Rank.Line.Take(OperateViewModel.MaxLine)) _host.Qrz.RequestLookup(r.Station.Call, urgent: false);
         foreach (var r in s.Rank.Watching.Take(OperateViewModel.MaxWatching)) _host.Qrz.RequestLookup(r.Station.Call, urgent: false);
+        foreach (var r in s.Rank.Worked.Take(OperateViewModel.MaxWatching)) _host.Qrz.RequestLookup(r.Station.Call, urgent: false);
     }
 
     /// <inheritdoc />
