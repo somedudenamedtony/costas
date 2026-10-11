@@ -66,16 +66,19 @@ public sealed class RigctldRig : IRig
 
     /// <summary>
     /// Port auto-scan: tries each port and baud rate, starting rigctld and asking for the frequency, 2 s per attempt.
-    /// Returns the first combination that reads back a plausible frequency.
+    /// Returns the first combination that reads back a plausible frequency. <paramref name="progress"/> hears each port
+    /// and baud rate before it is tried.
     /// </summary>
     public static async Task<(string Port, int Baud, long Hz)?> ScanAsync(string rigctldPath, int model, IEnumerable<string> ports, IEnumerable<int> bauds,
-                                                                     IProcessGuard guard, IClock clock, CancellationToken ct)
+                                                                     IProcessGuard guard, IClock clock, CancellationToken ct,
+                                                                     IProgress<(string Port, int Baud)>? progress = null)
     {
         foreach (var port in ports)
         {
             foreach (var baud in bauds)
             {
                 ct.ThrowIfCancellationRequested();
+                progress?.Report((port, baud));
                 try
                 {
                     await using var rig = await StartAsync(new RigctldOptions(rigctldPath, model, port, baud), guard, clock, ct).ConfigureAwait(false);
