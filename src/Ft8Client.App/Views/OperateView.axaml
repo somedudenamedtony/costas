@@ -5,7 +5,32 @@
              x:Class="Ft8Client.App.Views.OperateView"
              x:DataType="vm:OperateViewModel">
   <Grid x:Name="Root" ColumnDefinitions="*,300" RowDefinitions="*,Auto" Margin="16,0,16,12">
-    <ScrollViewer Grid.Column="0" Grid.Row="0" x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
+    <DockPanel Grid.Column="0" Grid.Row="0">
+    <!-- Calling you: pinned above everything else whenever a station is calling me, so it is never scrolled away. -->
+    <Border DockPanel.Dock="Top" Classes="card" Padding="14,10" Margin="0,0,12,12" IsVisible="{Binding HasWaiting}"
+            BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2" AutomationProperties.Name="Calling you">
+      <StackPanel Spacing="6">
+        <TextBlock Text="{Binding WaitingTitle}" Classes="title" />
+        <ItemsControl ItemsSource="{Binding WaitingRows}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="24" LineSpacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:WaitingRowViewModel">
+              <Grid ColumnDefinitions="Auto,Auto" MaxWidth="460">
+                <StackPanel Spacing="1" Margin="0,0,12,0">
+                  <TextBlock><Run Text="{Binding Call}" FontWeight="SemiBold" /><Run Text="  " /><Run Text="{Binding Where}" /><Run Text=" " /><Run Text="{Binding Need}" /></TextBlock>
+                  <TextBlock Text="{Binding Note}" IsVisible="{Binding AfterStop}" Foreground="{DynamicResource CautionBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding Detail}" Classes="secondary num" TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="{Binding ButtonText}" VerticalAlignment="Center" IsEnabled="{Binding !Queued}"
+                        Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).AnswerRowCommand}" CommandParameter="{Binding}"
+                        AutomationProperties.Name="{Binding Call, StringFormat='Answer {0}'}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+    <ScrollViewer x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
       <StackPanel Spacing="12" Margin="0,0,12,0">
 
         <!-- Top slot: band summary (idle) -->
@@ -168,9 +193,9 @@
                         <v:SignalSparkline Grid.Column="9" Values="{Binding History}" Width="52" Height="24" HorizontalAlignment="Left" VerticalAlignment="Center"
                                            ToolTip.Tip="{Binding HistoryTip}" AutomationProperties.Name="{Binding HistoryTip}" />
                         <TextBlock Grid.Column="10" Text="{Binding Chance}" VerticalAlignment="Center" FontWeight="{Binding ChanceBold, Converter={x:Static v:Converters.Bold}}" />
-                        <Button Grid.Column="11" Content="Call" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0"
+                        <Button Grid.Column="11" Content="{Binding CallText}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0"
                                 Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CallRowCommand}" CommandParameter="{Binding}"
-                                AutomationProperties.Name="{Binding Call, StringFormat='Call {0}'}" />
+                                AutomationProperties.Name="{Binding Call, StringFormat='Call or answer {0}'}" />
                       </Grid>
                     </Border>
                   </DataTemplate>
@@ -259,6 +284,7 @@
         </Border>
       </StackPanel>
     </ScrollViewer>
+    </DockPanel>
 
     <!-- Right column -->
     <ScrollViewer Grid.Column="1" Grid.Row="0" x:Name="RightColumn" VerticalScrollBarVisibility="Auto">
@@ -306,25 +332,6 @@
                 <TextBlock Text="Needed stations" Classes="secondary" FontSize="12" />
               </StackPanel>
             </StackPanel>
-          </StackPanel>
-        </Border>
-
-        <Border Classes="card" Padding="14,12" IsVisible="{Binding HasWaiting}">
-          <StackPanel Spacing="6">
-            <TextBlock Text="{Binding WaitingTitle}" Classes="title" />
-            <ItemsControl ItemsSource="{Binding WaitingRows}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:WaitingRowViewModel">
-                  <StackPanel Margin="0,4">
-                    <TextBlock Text="{Binding Call}" FontWeight="SemiBold" />
-                    <TextBlock><Run Text="{Binding Where}" /><Run Text=" · " /><Run Text="{Binding Need}" /></TextBlock>
-                    <TextBlock Text="{Binding Detail}" Classes="secondary num" />
-                    <Button Content="{Binding ButtonText}" Margin="0,4,0,0" IsEnabled="{Binding !Queued}"
-                            Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).AnswerRowCommand}" CommandParameter="{Binding}" />
-                  </StackPanel>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
           </StackPanel>
         </Border>
 

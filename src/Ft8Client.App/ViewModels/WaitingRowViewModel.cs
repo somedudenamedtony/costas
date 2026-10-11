@@ -14,6 +14,9 @@ namespace Ft8Client.App.ViewModels;
 /// <param name="Need">Need tag.</param>
 /// <param name="NeedKind">Need colour.</param>
 /// <param name="Detail">"Called you at 02:54:15 · -10".</param>
-/// <param name="ButtonText">"Answer" or "Answer after this contact".</param>
+/// <param name="ButtonText">"Answer", "Resume", or "… after this contact".</param>
 /// <param name="Queued">Already queued.</param>
-public sealed record WaitingRowViewModel(string Call, string Where, string Need, TextKind NeedKind, string Detail, string ButtonText, bool Queued);
+/// <param name="AfterStop">It replied after I stopped its contact.</param>
+/// <param name="Note">"Replied after you stopped: W7LIT ZL2RPA RR73", when <paramref name="AfterStop"/>.</param>
+public sealed record WaitingRowViewModel(string Call, string Where, string Need, TextKind NeedKind, string Detail, string ButtonText, bool Queued,
+                                         bool AfterStop = false, string Note = "");

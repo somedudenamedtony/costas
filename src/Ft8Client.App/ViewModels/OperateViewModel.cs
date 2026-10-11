@@ -211,14 +211,17 @@ public sealed partial class OperateViewModel : ObservableObject
             var st = s.Stations.FirstOrDefault(x => Callsign.EqualsCall(x.Call, w.Call));
             var ranked = s.Rank.CallingMe.FirstOrDefault(x => Callsign.EqualsCall(x.Station.Call, w.Call));
             var need = ranked?.Need.Tag;
+            var verb = w.AfterStop ? "Resume" : "Answer";
             WaitingRows.Add(new WaitingRowViewModel(w.Call, st is null ? string.Empty : StationText.Place(st.Entity, st.Region),
                 need is { } n ? StationText.Need(n) : string.Empty, need is { } n2 ? StationRowViewModel.KindOf(n2) : TextKind.Normal,
-                $"Called you at {w.FirstCalledUtc:HH:mm:ss} · {Report.Format(w.Snr)}",
-                s.Contact?.Outcome == ContactOutcome.InProgress ? (w.AnswerAfter ? "Will answer after this contact" : "Answer after this contact") : "Answer",
-                w.AnswerAfter));
+                w.AfterStop ? $"Last heard at {w.LastCalledUtc:HH:mm:ss} · {Report.Format(w.Snr)}" : $"Called you at {w.FirstCalledUtc:HH:mm:ss} · {Report.Format(w.Snr)}",
+                s.Contact?.Outcome == ContactOutcome.InProgress
+                    ? (w.AnswerAfter ? $"Will {verb.ToLowerInvariant()} after this contact" : $"{verb} after this contact")
+                    : verb,
+                w.AnswerAfter, w.AfterStop, w.AfterStop ? $"Replied after you stopped: {w.LastMessage}" : string.Empty));
         }
         HasWaiting = WaitingRows.Count > 0;
-        WaitingTitle = $"Waiting for you · {WaitingRows.Count}";
+        WaitingTitle = $"Calling you · {WaitingRows.Count}";
 
         ApplySignal(s, now, band);
         Map.Units = Units;
