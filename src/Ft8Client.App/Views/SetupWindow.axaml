@@ -45,11 +45,21 @@
             <TextBlock Grid.Row="4" Text="Transmit (PTT)" VerticalAlignment="Center" />
             <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding PttChoices}" SelectedItem="{Binding PttChoice}" Width="300" />
           </Grid>
-          <StackPanel Orientation="Horizontal" Spacing="12" IsEnabled="{Binding !AudioOnly}">
-            <Button Content="Test connection" Command="{Binding ScanCommand}" IsEnabled="{Binding !Busy}" Margin="130,0,0,0" />
-            <TextBlock VerticalAlignment="Center" IsVisible="{Binding Readback, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-              <Run Text="Connected: the radio is on " /><Run Text="{Binding Readback}" FontWeight="SemiBold" />
-            </TextBlock>
+          <StackPanel Spacing="8" IsEnabled="{Binding !AudioOnly}" Margin="130,0,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Test connection" Command="{Binding ScanCommand}" IsEnabled="{Binding !Busy}" />
+              <Button Content="Stop" Command="{Binding CancelScanCommand}" IsVisible="{Binding Busy}" />
+            </StackPanel>
+            <ItemsControl ItemsSource="{Binding RadioChecks}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CheckLine">
+                  <Grid ColumnDefinitions="20,*" Margin="0,2">
+                    <TextBlock Text="{Binding Mark}" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </StackPanel>
         </StackPanel>
         <!-- 3 Audio -->
@@ -60,6 +70,22 @@
           <TextBlock Text="Output (audio to the radio)" />
           <ComboBox ItemsSource="{Binding Outputs}" SelectedItem="{Binding Output}" MinWidth="320" />
           <TextBlock Text="Choose the radio's USB audio device, not the computer's speakers. The app never uses the default device by itself." Classes="secondary" TextWrapping="Wrap" />
+          <TextBlock Text="Input level" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <TextBlock Classes="secondary" TextWrapping="Wrap" Text="Tune the radio to an FT8 frequency (for example 14.074 MHz) so there is band noise or signals to measure. Aim for the shaded band." />
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <!-- -60 to 0 dBFS; the shaded band is the good range, -40 to -10 dBFS. -->
+            <Grid Width="320" Height="16" ColumnDefinitions="20*,30*,10*">
+              <ProgressBar Grid.ColumnSpan="3" Minimum="-60" Maximum="0" Value="{Binding LevelDb}" Height="16" MinWidth="0" />
+              <Border Grid.Column="1" Background="{DynamicResource SuccessBrush}" Opacity="0.3" IsHitTestVisible="False" />
+            </Grid>
+            <TextBlock Text="✓ Input passes" FontWeight="SemiBold" VerticalAlignment="Center" IsVisible="{Binding InputPassed}" />
+          </StackPanel>
+          <TextBlock Text="{Binding LevelText}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0">
+            <Button Content="Check output" Command="{Binding CheckOutputCommand}" />
+            <TextBlock Text="{Binding OutputResult}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="460" />
+          </StackPanel>
+          <TextBlock Classes="secondary" TextWrapping="Wrap" Text="Check output plays a second of silence to the output device, so nothing is sent. The transmit test is where the radio keys." />
           <TextBlock Classes="secondary" TextWrapping="Wrap" Text="Not ready? Press Next; audio can be chosen later from ☰ › Station setup." />
         </StackPanel>
         <!-- 4 Transmit test -->

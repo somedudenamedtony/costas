@@ -22,5 +22,6 @@ public partial class SetupWindow : Window
         {
             if (DataContext is SetupViewModel vm) vm.Close += Close;
         };
+        Closed += (_, _) => (DataContext as SetupViewModel)?.Closed();
     }
 }
