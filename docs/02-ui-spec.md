@@ -129,7 +129,7 @@ Behaviour:
 
 ### Watching
 
-Stations that are needed but not callable now. Columns: Call, Where, Why, reason. Reasons: "Went quiet 45 seconds ago", "In a contact with EA5HVK", "Finishing a contact with K7RGB". Rows are secondary text. Maximum 8 rows.
+Stations that are needed but not callable now. Columns: Call, Where, Why, reason. Reasons: "Last heard 45 seconds ago", "In a contact with EA5HVK", "Finishing a contact with K7RGB". Rows are secondary text. Maximum 8 rows.
 
 Footer: "N stations you have already worked on 20 m are hidden. Show them" toggles a third section, "Already worked", with the same columns as Next in line.
 

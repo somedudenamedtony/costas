@@ -69,7 +69,7 @@ public static class StationText
     /// <summary>The Watching reason.</summary>
     public static string Watch(WatchReason r, DateTime nowUtc) => r.Kind switch
     {
-        WatchReasonKind.WentQuiet => $"Went quiet {Ago(nowUtc - (r.SinceUtc ?? nowUtc))}",
+        WatchReasonKind.WentQuiet => $"Last heard {Ago(nowUtc - (r.SinceUtc ?? nowUtc))}",
         WatchReasonKind.InContact => r.OtherCall is null ? "In a contact" : $"In a contact with {r.OtherCall}",
         WatchReasonKind.Finishing => r.OtherCall is null ? "Finishing a contact" : $"Finishing a contact with {r.OtherCall}",
         WatchReasonKind.JustFinished => r.OtherCall is null ? "Just finished a contact" : $"Just finished with {r.OtherCall}",
