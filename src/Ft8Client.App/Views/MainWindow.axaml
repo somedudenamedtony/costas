@@ -3,6 +3,7 @@
         xmlns:vm="using:Ft8Client.App.ViewModels"
         xmlns:v="using:Ft8Client.App.Views"
         x:Class="Ft8Client.App.Views.MainWindow"
+        Icon="/Assets/costas.ico"
         x:DataType="vm:MainViewModel"
         Title="{Binding Title}"
         Width="1440" Height="900" MinWidth="1100" MinHeight="720">

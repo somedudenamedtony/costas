@@ -4,6 +4,7 @@
         xmlns:v="using:Ft8Client.App.Views"
         xmlns:rig="using:Ft8Client.Rig"
         x:Class="Ft8Client.App.Views.SetupWindow"
+        Icon="/Assets/costas.ico"
         x:DataType="vm:SetupViewModel"
         Title="Set up Costas" Width="860" Height="600" WindowStartupLocation="CenterOwner">
   <Grid ColumnDefinitions="200,*" RowDefinitions="*,Auto">

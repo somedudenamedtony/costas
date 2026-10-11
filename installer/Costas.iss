@@ -45,6 +45,7 @@ OutputBaseFilename=Costas-Setup-{#AppVersion}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\src\Ft8Client.App\Assets\costas.ico
 UninstallDisplayIcon={app}\Costas.exe
 UninstallDisplayName=Costas
 CloseApplications=yes
