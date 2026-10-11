@@ -122,10 +122,10 @@ public class RankerMockupScenarioTests
     {
         var result = Rank();
         result.Watching.Select(r => $"{r.Station.Call} | {StationText.Need(r.Need.Tag)} | {StationText.Watch(r.Reason!, Now)}").Should().Equal(
-            "CE3MPV | New country | Went quiet 45 seconds ago",
+            "CE3MPV | New country | Last heard 45 seconds ago",
             "JH4UTP | New band | Finishing a contact with K7RGB",
             "W9RDL | New call | In a contact with EA5HVK",
-            "OH2KQA | New call | Went quiet 1 minute ago");
+            "OH2KQA | New call | Last heard 1 minute ago");
         result.WorkedCount.Should().Be(5);
     }
 
