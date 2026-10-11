@@ -66,7 +66,7 @@ public sealed class UdpInteropService : IDisposable
         {
             TimeOnUtc = q.QsoDateOn, TimeOffUtc = q.QsoDateOff ?? q.QsoDateOn, DxCall = q.Call, DxGrid = q.Gridsquare ?? string.Empty,
             FrequencyHz = q.FreqHz ?? 0, Mode = q.Submode ?? q.Mode, ReportSent = q.RstSent ?? string.Empty,
-            ReportReceived = q.RstRcvd ?? string.Empty, TxPower = q.TxPwr ?? string.Empty, Name = q.Name ?? string.Empty,
+            ReportReceived = q.RstRcvd ?? string.Empty, TxPower = q.TxPwr ?? string.Empty, Comments = q.Comment ?? string.Empty, Name = q.Name ?? string.Empty,
             MyCall = q.StationCallsign ?? string.Empty, MyGrid = q.MyGridsquare ?? string.Empty,
         }));
         Send(WsjtxMessages.LoggedAdif(ClientId, AdifWriter.Document([AdifMapper.ToAdif(q)], DateTime.UtcNow)));

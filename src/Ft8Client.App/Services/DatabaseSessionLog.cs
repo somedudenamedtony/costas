@@ -45,6 +45,7 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
             StationCallsign = c.MyCall,
             MyGridsquare = c.MyGrid,
             TxPwr = c.PowerWatts.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Comment = LogComment.Format(c.Mode, e.ReportSent, e.ReportReceived),
             NeedTier = c.Need.Tier,
             Source = QsoSource.Local,
         };

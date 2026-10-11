@@ -165,7 +165,7 @@ The contact is **logged when step 5 has been transmitted**. Then CQ resumes, or 
 
 ### Logged fields
 
-Call, grid (if known), band, dial frequency plus my Tx offset, mode, report sent, report received, time on (start of my first transmission in the contact), time off (when logged), my call, my grid, Tx power, name and state and country from QRZ lookup if available, need tier at the time, DXCC entity key.
+Call, grid (if known), band, dial frequency plus my Tx offset, mode, report sent, report received, time on (start of my first transmission in the contact), time off (when logged), my call, my grid, Tx power, name and state and country from QRZ lookup if available, need tier at the time, DXCC entity key, and a comment with the mode and reports in the form other FT8 loggers use (`FT8 Sent: -01 Rcvd: -13`).
 
 ## 8. Transmit encoding
 

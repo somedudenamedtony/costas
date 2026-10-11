@@ -154,7 +154,7 @@ Writer and reader support ADIF 3.1 text (`<name:len>value`, `<eor>`, header endi
 | `my_gridsquare` | My grid |
 | `tx_pwr` | Watts |
 | `name`, `qth`, `state`, `country`, `dxcc` | From QRZ lookup when available |
-| `comment` | Empty by default |
+| `comment` | Mode and reports, e.g. `FT8 Sent: -01 Rcvd: -13` (Rcvd left out when none was received); the operator can edit it |
 | `app_qrzlog_logid` | On records fetched from QRZ |
 
 Import must tolerate unknown fields, junk between records and records with no call (skip them and count).
