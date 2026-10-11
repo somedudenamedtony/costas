@@ -62,4 +62,12 @@ public class OperateSlotTests
         Apply(false, true, Slot).CqText.Should().Be("Stop CQ");
         Apply(false, false, Slot).CqText.Should().Be("Call CQ");
     }
+
+    [Theory]
+    [InlineData(0, true, false)]
+    [InlineData(0, false, true)]
+    [InlineData(1, true, true)]
+    [InlineData(3, true, true)]
+    public void ShowCqAndSlotInBar_ContactCardOnScreen_HidesThemFromBar(int tab, bool inContact, bool expected) =>
+        MainViewModel.ShowCqAndSlotInBar(tab, inContact).Should().Be(expected);
 }

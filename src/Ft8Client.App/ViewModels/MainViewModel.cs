@@ -120,6 +120,13 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial int Tab { get; set; }
 
+    /// <summary>
+    /// The bottom bar shows Call CQ and the slot countdown unless the contact card is on screen, which has its own.
+    /// Halt Tx stays in the bar regardless.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool BarShowsCqAndSlot { get; set; } = true;
+
     /// <summary>UTC clock.</summary>
     [ObservableProperty]
     public partial string ClockText { get; set; } = string.Empty;
@@ -199,6 +206,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
         Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current.Ranking);
         Operate.Apply(s, tonight.Rows, tonight.Total);
+        BarShowsCqAndSlot = ShowCqAndSlotInBar(Tab, Operate.InContact);
         FillLookups(s);
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
         Raw.Apply(s.RawDecodes);
@@ -262,8 +270,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _updatingBand = false;
     }
 
+    /// <summary>False while the Operate view shows the contact card, whose on-air panel has Call CQ and the countdown.</summary>
+    public static bool ShowCqAndSlotInBar(int tab, bool inContact) => !(tab == 0 && inContact);
+
     partial void OnTabChanged(int value)
     {
+        BarShowsCqAndSlot = ShowCqAndSlotInBar(value, Operate.InContact);
         if (value == 2)
         {
             Reach.Band = _host.Session.Config.Band;
