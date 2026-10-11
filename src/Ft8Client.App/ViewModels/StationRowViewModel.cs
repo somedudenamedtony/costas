@@ -60,8 +60,12 @@ public sealed partial class StationRowViewModel : ObservableObject
     /// <summary>Call.</summary>
     public string Call { get; }
 
-    /// <summary>Place and distance.</summary>
-    public string Where { get; }
+    /// <summary>Place and distance; updated in place when a lookup arrives between re-ranks.</summary>
+    [ObservableProperty]
+    public partial string Where { get; private set; }
+
+    /// <summary>Shows the latest place for the station (a QRZ lookup may have filled in its city and state).</summary>
+    public void UpdatePlace(Core.Stations.Station s, DistanceUnit units) => Where = StationText.Where(s, units);
 
     /// <summary>Need tag text.</summary>
     public string Why { get; }
