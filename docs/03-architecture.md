@@ -82,6 +82,8 @@ For FT8 (15 s slots; FT4 uses the same pipeline with 7.5 s):
 
 The decision for the next slot must be made before it starts. If decodes arrive late, the contact engine may still start a transmission up to 1.0 s late (configurable); later than that, it skips the slot. Decodes belonging to an earlier slot never trigger a transmission.
 
+While a contact is in progress or CQ is running, a transmission is held back while the previous slot (the other station's) is still being decoded, because those decodes can change the message. It starts as soon as they are applied, with the message they lead to, or at the late-start limit with the message already prepared if they have not arrived by then. Without the hold, a slow decode lets the previous message go out again, and the other station has to repeat itself.
+
 When transmitting in a slot, nothing is recorded or decoded for that slot.
 
 ## Threads
