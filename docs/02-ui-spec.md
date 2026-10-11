@@ -84,7 +84,7 @@ Mockup: `main-in-contact`. Replaces the band summary from the moment the operato
 
 | Element | Content |
 | --- | --- |
-| Caption | "Contact in progress", or "Calling", "Logged", "No reply" |
+| Caption | "Contact in progress", or "Calling", "Logged", "No reply", "Answered someone else" |
 | Callsign | 40 px, with the need tag beside it |
 | Subline | Name from QRZ lookup (blank until it arrives) · country or state · distance |
 | On-air panel | A bordered panel on the right of the card that holds everything about the next transmission, described below |
@@ -127,8 +127,8 @@ A grid with a header row. One row per station that is needed (tiers 1 to 4), cal
 | Call | Callsign, semibold |
 | Where | Country, or "State, USA" / "Province, Canada" when known, then distance. With a city from QRZ: "Springfield, IL, USA", "Ottawa, ON, Canada", "Wellington, New Zealand". City and state come from QRZ: stations in the list are looked up once (see `05-integrations.md` §4) and the answer is kept in the local cache, so it shows again at once after a refresh or restart. A row updates as soon as its lookup arrives, without waiting for the next re-rank |
 | Why | Need tag: New country (caution, bold), New band (accent, bold), New grid (accent, bold), New call (plain) |
-| Doing now | "Calling CQ, 6 slots" · "Calling CQ DX, 2 slots" · "Calling CQ, 4 slots, fading" · "Calling you" |
-| Last heard | Time since the station was last decoded: "45 seconds ago", "2 minutes ago". Counts up between slots, secondary text |
+| Doing now | "Calling CQ, 6 slots" · "Calling CQ DX, 2 slots" · "Calling CQ, 4 slots, fading" · "Calling you" · "Calling CQ, missed last slot" / "Calling CQ, missed 3 slots" for a CQ caller kept listed after a miss |
+| Last heard | Time since the end of the station's last decoded transmission: "45 seconds ago", "2 minutes ago". Counts up between slots, also while the list is held, secondary text |
 | Hears you | "Yes, -22" (direct report in the last 15 min) · "Japan does, at -17" (best report from the same entity) · "No reports yet" |
 | dB | Their latest SNR at my station |
 | Signal | Sparkline of their SNR over their last 6 own slots, oldest on the left, gaps where they were not decoded. The scale fits the station's readings but spans at least 12 dB. Tooltip and screen reader text give the values |
@@ -213,7 +213,7 @@ Mockup: `setup` (step 2). A left rail lists the six steps; the right pane holds 
 
 ## Settings
 
-Sections: Station profiles · Radio · Audio · Transmit (power, watchdog minutes, retry limit, RR73 or RRR, CQ modifier, my grid in my answer to a CQ on or off, `73` or `RR73` as my last message when answering, optional free text up to 13 characters sent after it, a preview of every message as it will be sent, auto-log on or off) · Ranking · QRZ · PSK Reporter (receive feed on or off, upload my spots on or off) · Interop (UDP address and port) · Files (WAV saving: none, decoded, all; retention days) · Appearance (theme, units).
+Sections: Station profiles · Radio · Audio · Transmit (power, watchdog minutes, retry limit, RR73 or RRR, CQ modifier, my grid in my answer to a CQ on or off, `73` or `RR73` as my last message when answering, optional free text up to 13 characters sent after it, a preview of every message as it will be sent, auto-log on or off) · Ranking (also how long CQ callers stay in Next in line after they were last heard: only while heard every slot, or 1 to 15 minutes, default 2) · QRZ · PSK Reporter (receive feed on or off, upload my spots on or off) · Interop (UDP address and port) · Files (WAV saving: none, decoded, all; retention days) · Appearance (theme, units).
 
 ## Diagnostics
 

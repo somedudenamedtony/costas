@@ -145,17 +145,83 @@ public class ContactEngineTests
     }
 
     [Fact]
-    public void FlowA_DxWorksSomeoneElse_KeepsTryingThenNoReply()
+    public void FlowA_DxCallsCqAgain_KeepsTryingThenNoReply()
     {
         var s = new Sim();
         s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
         for (var i = 0; i < 6; i++)
         {
             s.Step();
-            s.Step("K1ABC ZL2RPA -10", "CQ ZL2RPA RF70");
+            s.Step("CQ ZL2RPA RF70");
         }
         s.Sent.Should().HaveCount(5);
         s.E.View!.Outcome.Should().Be(ContactOutcome.NoReply);
+    }
+
+    [Theory]
+    [InlineData("K1ABC ZL2RPA -10")]
+    [InlineData("K1ABC ZL2RPA R-10")]
+    [InlineData("K1ABC ZL2RPA FN42")]
+    public void FlowA_DxAnswersSomeoneElseBeforeMe_EndsAndStopsCalling(string heard)
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step().Should().Be("ZL2RPA W7LIT DN40");
+        s.Step(heard, "W9XYZ K1ABC EN52");
+
+        s.E.InContact.Should().BeFalse();
+        s.E.View!.Outcome.Should().Be(ContactOutcome.AnsweredOther);
+        s.E.View.Caption.Should().Be("Answered someone else");
+        s.E.View.StatusText.Should().Be("ZL2RPA answered K1ABC instead. Stopped calling.");
+        s.Steps(6);
+        s.Sent.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void FlowA_DxAnswersMeAndSomeoneElseInOneSlot_Continues()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("K1ABC ZL2RPA -10", "W7LIT ZL2RPA -22");
+        s.E.InContact.Should().BeTrue();
+        s.Step().Should().Be("ZL2RPA W7LIT R-19");
+    }
+
+    [Fact]
+    public void FlowA_DxSignsOffEarlierContact_KeepsCalling()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("K1ABC ZL2RPA RR73");
+        s.E.InContact.Should().BeTrue();
+        s.Step().Should().Be("ZL2RPA W7LIT DN40");
+    }
+
+    [Fact]
+    public void FlowA_DxWorksSomeoneElseAfterReplyingToMe_KeepsTrying()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step();
+        s.Step("K1ABC ZL2RPA -10");
+        s.E.InContact.Should().BeTrue();
+        s.Step().Should().Be("ZL2RPA W7LIT R-19");
+    }
+
+    [Fact]
+    public void FlowA_DxAnsweredSomeoneElseThenRepliesToMe_OfferedAsResume()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("K1ABC ZL2RPA -10");
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.E.Waiting.Should().ContainSingle(w => w.Call == "ZL2RPA" && w.AfterStop);
     }
 
     [Fact]
@@ -486,7 +552,7 @@ public class ContactEngineTests
         s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
         s.Step();
         var low = HeardMessage.From(new Decode(s.Start(1), -20, 0.1, 1500, "W7LIT ZL2RPA -22", LowConfidence: true));
-        var other = HeardMessage.From(new Decode(s.Start(1), -20, 0.1, 1500, "K1ABC ZL2RPA -22", false));
+        var other = HeardMessage.From(new Decode(s.Start(1), -20, 0.1, 1500, "K1ABC ZL2RPA RR73", false));
         var impostor = HeardMessage.From(new Decode(s.Start(1), -20, 0.1, 1500, "W7LIT ZL1XX -22", false));
         s.E.OnDecodes(s.Start(1), Mode.Ft8, [low, other, impostor], s.Start(1).AddSeconds(14.5));
         s.Slot = 2;
