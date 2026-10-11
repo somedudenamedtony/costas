@@ -47,6 +47,16 @@ public class Jt9OutputParserTests
     }
 
     [Fact]
+    public void ParseLine_APrioriMarkerA8_StripsItFromTheMessage()
+    {
+        // Real output from the operator's jt9 during a contact with W0OVX: the report must parse as a report.
+        var d = Jt9OutputParser.ParseLine("202515 -13  0.0 1927 ~  W7LIT W0OVX -08                     a8", Slot)!;
+        d.Text.Should().Be("W7LIT W0OVX -08");
+        d.APriori.Should().Be(8);
+        d.LowConfidence.Should().BeFalse();
+    }
+
+    [Fact]
     public void ParseLine_LowConfidenceAndAPriori_SetsBothFlags()
     {
         var d = Jt9OutputParser.ParseLine("000100 -22  0.0 1501 ~  W7LIT K1ABC FN42                    ? a3", Slot)!;

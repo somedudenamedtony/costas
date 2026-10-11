@@ -46,6 +46,13 @@ public sealed record SessionConfig
     /// <summary>Latest start after the slot's Tx start.</summary>
     public TimeSpan LateStartLimit { get; init; } = TimeSpan.FromSeconds(1);
 
+    /// <summary>
+    /// Latest start after the slot's Tx start for a transmission the operator has just asked for (calling a station or
+    /// CQ). Past the late-start limit the part of the message already past is left out; up to 3 s missing still decodes
+    /// at full sensitivity down to about -18 dB (measured with ft8sim and jt9).
+    /// </summary>
+    public TimeSpan CommandStartLimit { get; init; } = TimeSpan.FromSeconds(3);
+
     /// <summary>PTT lead.</summary>
     public TimeSpan PttLead { get; init; } = TimeSpan.FromMilliseconds(200);
 

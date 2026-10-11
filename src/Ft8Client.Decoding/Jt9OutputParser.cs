@@ -25,7 +25,7 @@ public static partial class Jt9OutputParser
     [GeneratedRegex(@"^<DecodeFinished>\s+(?<a>-?\d+)\s+(?<b>-?\d+)\s+(?<c>-?\d+)\s*$", RegexOptions.CultureInvariant)]
     private static partial Regex FinishedRegex();
 
-    [GeneratedRegex(@"^(?<msg>.*?)\s{2,}(?<flags>(?:a[1-7]|\?)(?:\s+(?:a[1-7]|\?))*)$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^(?<msg>.*?)\s{2,}(?<flags>(?:a\d{1,2}|\?)(?:\s+(?:a\d{1,2}|\?))*)$", RegexOptions.CultureInvariant)]
     private static partial Regex FlagsRegex();
 
     /// <summary>Parses one decode line. Returns null for lines that are not decodes.</summary>
@@ -49,7 +49,7 @@ public static partial class Jt9OutputParser
             foreach (var flag in fm.Groups["flags"].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
             {
                 if (flag == "?") low = true;
-                else ap = flag[1] - '0';
+                else ap = int.Parse(flag.AsSpan(1), NumberStyles.None, CultureInfo.InvariantCulture);
             }
         }
         else if (rest.EndsWith(" ?", StringComparison.Ordinal))

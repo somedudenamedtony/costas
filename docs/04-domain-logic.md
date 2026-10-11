@@ -26,7 +26,7 @@ Rules:
 - Suffixes `/P`, `/R`, `/M`, `/QRP` and prefixes like `PJ4/` are part of the call for display and logging. For country lookup use the country-file rules (prefix wins).
 - `RR73` in the grid position is a sign-off, never the grid RR73. `R` followed by a sign and digits is a roger-report.
 - Reports range from -30 to +49. Format with sign and two digits.
-- Trailing markers from the decoder (`?` for low confidence, `a1` to `a7` for a-priori decodes) are parsed off the end and kept as flags. Low-confidence decodes are shown in Raw decodes but never advance a contact or create a station.
+- Trailing markers from the decoder (`?` for low confidence, `a1` to `a8`, or any `a` and number, for a-priori decodes) are parsed off the end and kept as flags. Low-confidence decodes are shown in Raw decodes but never advance a contact or create a station.
 
 Callsign validity: 3 to 11 characters, letters, digits and `/`, at least one digit and one letter, not a grid, not `RR73`, `RRR`, `73`.
 
