@@ -188,7 +188,7 @@ public sealed partial class OperateViewModel : ObservableObject
         if (ShowWorked)
         {
             var i = 1;
-            foreach (var w in s.Rank.Worked) Worked.Add(new StationRowViewModel(w, i++, Units));
+            foreach (var w in s.Rank.Worked) Worked.Add(new StationRowViewModel(w, i++, Units, now));
         }
         var band = BandPlan.Display(s.Band);
         WorkedFooter = s.Rank.WorkedCount == 0 ? string.Empty
@@ -229,6 +229,9 @@ public sealed partial class OperateViewModel : ObservableObject
     {
         _line.Tick();
         ListUpdated = _line.HasPending;
+        var now = _now();
+        foreach (var r in Line) r.Refresh(now);
+        foreach (var r in Worked) r.Refresh(now);
     }
 
     /// <summary>Pointer entered the line.</summary>
@@ -353,9 +356,10 @@ public sealed partial class OperateViewModel : ObservableObject
     private void ApplyLine(IReadOnlyList<RankedStation> list)
     {
         var keep = Selected?.Call;
+        var now = _now();
         Line.Clear();
         var i = 1;
-        foreach (var r in list.Take(MaxLine)) Line.Add(new StationRowViewModel(r, i++, Units));
+        foreach (var r in list.Take(MaxLine)) Line.Add(new StationRowViewModel(r, i++, Units, now));
         MoreText = list.Count > MaxLine ? $"and {list.Count - MaxLine} more" : string.Empty;
         LineEmpty = Line.Count == 0;
         var sel = Line.FirstOrDefault(r => r.Call == keep) ?? Line.FirstOrDefault();

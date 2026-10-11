@@ -18,7 +18,7 @@ namespace Ft8Client.App.ViewModels;
 public sealed partial class StationRowViewModel : ObservableObject
 {
     /// <summary>Builds a row.</summary>
-    public StationRowViewModel(RankedStation r, int rank, DistanceUnit units)
+    public StationRowViewModel(RankedStation r, int rank, DistanceUnit units, DateTime nowUtc)
     {
         Source = r;
         Rank = rank;
@@ -31,6 +31,7 @@ public sealed partial class StationRowViewModel : ObservableObject
         Db = Report.Format(r.Station.LastSnr);
         Chance = StationText.Chance(r.Chance);
         ChanceBold = r.Chance == Core.Ranking.Chance.Good;
+        Refresh(nowUtc);
     }
 
     /// <summary>The ranked station.</summary>
@@ -57,6 +58,10 @@ public sealed partial class StationRowViewModel : ObservableObject
     /// <summary>Doing now.</summary>
     public string DoingNow { get; }
 
+    /// <summary>How long since the station was last decoded: "45 seconds ago".</summary>
+    [ObservableProperty]
+    public partial string LastHeard { get; private set; } = string.Empty;
+
     /// <summary>Hears you.</summary>
     public string HearsYou { get; }
 
@@ -72,6 +77,9 @@ public sealed partial class StationRowViewModel : ObservableObject
     /// <summary>Selected row.</summary>
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
+
+    /// <summary>Updates the age text. Called on every timer tick so a held list does not show a stale age.</summary>
+    public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - Source.Station.LastHeardUtc);
 
     /// <summary>Colour for a need tag.</summary>
     public static TextKind KindOf(NeedTag t) => t switch

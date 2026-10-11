@@ -115,6 +115,7 @@ A grid with a header row. One row per station that is needed (tiers 1 to 4), cal
 | Where | Country, or "State, USA" / "Province, Canada" when known, then distance |
 | Why | Need tag: New country (caution, bold), New band (accent, bold), New grid (accent, bold), New call (plain) |
 | Doing now | "Calling CQ, 6 slots" · "Calling CQ DX, 2 slots" · "Calling CQ, 4 slots, fading" · "Calling you" |
+| Last heard | Time since the station was last decoded: "45 seconds ago", "2 minutes ago". Counts up between slots, secondary text |
 | Hears you | "Yes, -22" (direct report in the last 15 min) · "Japan does, at -17" (best report from the same entity) · "No reports yet" |
 | dB | Their latest SNR at my station |
 | Chance | Good (bold), Fair, Long shot |
