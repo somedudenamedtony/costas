@@ -75,13 +75,33 @@ To call a station: click its **Call** button, double-click the row, or select it
     If PSK Reporter is off or unreachable, chance is worked out from their signal alone: Good at -10 dB or better,
     Fair at -18 or better, otherwise Long shot.
 
+## Repeats
+
+Directly under Next in line: stations you can hear now that are already in your log on this band and mode. Next in
+line leaves them out because you do not need them, but you may still want to work them again: a friend, a regular,
+or someone you owe a better report. At most 8 rows; the rest are counted underneath.
+
+| Column | Meaning |
+| --- | --- |
+| **Call** | Callsign |
+| **Where** | Country (or state, or province) and distance |
+| **Doing now** | As in Next in line. When they cannot be called right now it says why instead, in grey: *In a contact with EA5HVK*, *Went quiet 2 minutes ago* |
+| **Last heard** | How long ago they were last decoded |
+| **dB** | Their signal at your station |
+| **Signal** | A sparkline of their last 6 slots |
+| **Last worked** | When and on which band you last worked them, on any band or mode: *Today · 20 m*, *Yesterday · 40 m*, *2026-10-03 · 20 m*. Hover for the number of contacts, the exact time, the mode and whether it is confirmed |
+| button | **Call**, or **Answer** when they are calling you. Greyed out while they cannot be called |
+
+Stations you can call now come first, then the same order as Next in line. Like Next in line, the list holds still
+while your pointer is over it and catches up when you move away. When nobody you have worked on this band is on the
+air, it says so.
+
 ## Watching
 
 Stations you need that you cannot call yet: they went quiet, or are in a contact with someone else
 (*In a contact with EA5HVK*, *Finishing a contact with K7RGB*). They move into Next in line when that changes.
 
-Under Watching, a line counts the stations hidden because you have already worked them on this band. **Show them**
-lists them too.
+Stations you have already worked on this band are not in Watching; they are in [Repeats](#repeats).
 
 ## Right column
 

@@ -1,0 +1,86 @@
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
+//
+// This program is free software: you can redistribute it and/or modify it under the terms of the
+// GNU General Public License as published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
+// see the GNU General Public License in LICENSE for details.
+
+using System.Globalization;
+using CommunityToolkit.Mvvm.ComponentModel;
+using Ft8Client.Core;
+using Ft8Client.Core.Bands;
+using Ft8Client.Core.Logbook;
+using Ft8Client.Core.Messages;
+using Ft8Client.Core.Ranking;
+
+namespace Ft8Client.App.ViewModels;
+
+/// <summary>One row of Repeats: a station heard now that is already in the log on this band and mode.</summary>
+public sealed partial class RepeatRowViewModel : ObservableObject
+{
+    /// <summary>Builds a row.</summary>
+    /// <param name="r">The ranked station (tier 5, worked before).</param>
+    /// <param name="last">The most recent log contact with this call, if the log has it.</param>
+    /// <param name="contacts">How many log contacts there are with this call.</param>
+    /// <param name="units">Distance units.</param>
+    /// <param name="nowUtc">Now.</param>
+    public RepeatRowViewModel(RankedStation r, LogContact? last, int contacts, DistanceUnit units, DateTime nowUtc)
+    {
+        Source = r;
+        Call = r.Station.Call;
+        Where = StationText.Where(r.Station, units);
+        CanCall = r.Callable;
+        DoingNow = r.Callable || r.Reason is null ? StationText.DoingNow(r.Station) : StationText.Watch(r.Reason, nowUtc);
+        Db = Report.Format(r.Station.LastSnr);
+        History = r.Station.SnrHistory;
+        HistoryTip = StationRowViewModel.HistoryText(r.Station.SnrHistory);
+        LastWorked = StationText.LastWorked(last, nowUtc);
+        LastWorkedTip = last is null ? string.Empty
+            : $"{(contacts == 1 ? "1 contact" : $"{contacts} contacts")} in your log. Last: " +
+              $"{last.DateUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)} UTC on {BandPlan.Display(last.Band)} {last.ModeKey}" +
+              (last.Confirmed ? ", confirmed" : string.Empty);
+        CallText = r.CallingMe ? "Answer" : "Call";
+        Refresh(nowUtc);
+    }
+
+    /// <summary>The ranked station.</summary>
+    public RankedStation Source { get; }
+
+    /// <summary>Call.</summary>
+    public string Call { get; }
+
+    /// <summary>Place and distance.</summary>
+    public string Where { get; }
+
+    /// <summary>What the station is doing, or why it cannot be called right now.</summary>
+    public string DoingNow { get; }
+
+    /// <summary>True when the station can be called now (the button is enabled).</summary>
+    public bool CanCall { get; }
+
+    /// <summary>SNR at my station.</summary>
+    public string Db { get; }
+
+    /// <summary>SNR in the station's last few own slots, oldest first, for the sparkline.</summary>
+    public IReadOnlyList<int?> History { get; }
+
+    /// <summary>The sparkline in words.</summary>
+    public string HistoryTip { get; }
+
+    /// <summary>"Today · 20 m", "2026-10-03 · 40 m".</summary>
+    public string LastWorked { get; }
+
+    /// <summary>Tooltip for <see cref="LastWorked"/>: contact count, exact time, band, mode and confirmation.</summary>
+    public string LastWorkedTip { get; }
+
+    /// <summary>"Answer" for a station calling me, otherwise "Call".</summary>
+    public string CallText { get; }
+
+    /// <summary>How long since the station was last decoded: "45 seconds ago".</summary>
+    [ObservableProperty]
+    public partial string LastHeard { get; private set; } = string.Empty;
+
+    /// <summary>Updates the age text on every timer tick.</summary>
+    public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - Source.Station.LastHeardUtc);
+}

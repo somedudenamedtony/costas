@@ -112,7 +112,7 @@ A station is **callable** when all hold: state is `CallingCq` (or, with "Only st
 
 - **Next in line**: callable, tier 1 to 4, passing the filters. Order by tier (ascending), then chance (Good, Fair, Long shot), then report strength (direct or regional, stronger first, none last), then S's SNR (stronger first), then callsign.
 - **Watching**: tier 1 to 4 and not callable. Order by tier, then most recently heard. Reason text from state.
-- **Already worked**: tier 5, hidden by default, counted.
+- **Already worked**: tier 5, kept out of Next in line and Watching and shown in the Repeats panel (callable first).
 - **Calling me**: stations in state `CallingMe` go to "Waiting for you" and are shown in the line with "Calling you" in Doing now, ranked first within their tier.
 
 Filters (ranking settings): prefer stations that hear me (when off, chance is ignored in ordering), only stations calling CQ, hide stations worked on this band, skip long shots.

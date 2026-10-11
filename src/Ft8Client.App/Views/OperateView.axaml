@@ -259,6 +259,49 @@
           </Panel>
         </Border>
 
+        <!-- Repeats: stations heard now that are already in the log on this band and mode -->
+        <Border Classes="card" Padding="0,10,0,6" AutomationProperties.Name="Repeats">
+          <StackPanel>
+            <TextBlock Text="Repeats" Classes="title" Margin="14,0" />
+            <TextBlock Text="{Binding RepeatsSubtitle}" Classes="secondary" Margin="14,2,14,6" />
+            <Grid ColumnDefinitions="100,190,*,120,46,64,150,74" Margin="14,0,14,4" IsVisible="{Binding !!Repeats.Count}">
+              <TextBlock Grid.Column="0" Text="Call" Classes="secondary" />
+              <TextBlock Grid.Column="1" Text="Where" Classes="secondary" />
+              <TextBlock Grid.Column="2" Text="Doing now" Classes="secondary" />
+              <TextBlock Grid.Column="3" Text="Last heard" Classes="secondary" />
+              <TextBlock Grid.Column="4" Text="dB" Classes="secondary" HorizontalAlignment="Right" Margin="0,0,8,0" />
+              <TextBlock Grid.Column="5" Text="Signal" Classes="secondary" />
+              <TextBlock Grid.Column="6" Text="Last worked" Classes="secondary" />
+            </Grid>
+            <ItemsControl x:Name="RepeatList" ItemsSource="{Binding Repeats}" Background="Transparent">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:RepeatRowViewModel">
+                  <Border BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
+                    <Grid ColumnDefinitions="100,190,*,120,46,64,150,74" MinHeight="36" Margin="14,0">
+                      <TextBlock Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="2" Text="{Binding DoingNow}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                 Classes.secondary="{Binding !CanCall}" />
+                      <TextBlock Grid.Column="3" Text="{Binding LastHeard}" Classes="secondary" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="4" Text="{Binding Db}" Classes="num" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
+                      <v:SignalSparkline Grid.Column="5" Values="{Binding History}" Width="52" Height="20" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                         ToolTip.Tip="{Binding HistoryTip}" AutomationProperties.Name="{Binding HistoryTip}" />
+                      <TextBlock Grid.Column="6" Text="{Binding LastWorked}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                 ToolTip.Tip="{Binding LastWorkedTip}" />
+                      <Button Grid.Column="7" Content="{Binding CallText}" VerticalAlignment="Center" HorizontalAlignment="Right"
+                              IsEnabled="{Binding CanCall}"
+                              Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CallRepeatCommand}" CommandParameter="{Binding}"
+                              AutomationProperties.Name="{Binding Call, StringFormat='Call or answer {0} again'}" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding RepeatsEmptyText}" Classes="secondary" Margin="14,4,14,4" IsVisible="{Binding RepeatsEmptyText, Converter={x:Static v:Converters.NotEmpty}}" />
+            <TextBlock Text="{Binding RepeatsMoreText}" Classes="secondary" Margin="14,6,14,4" IsVisible="{Binding RepeatsMoreText, Converter={x:Static v:Converters.NotEmpty}}" />
+          </StackPanel>
+        </Border>
+
         <!-- Watching -->
         <Border Classes="card" Padding="0,10,0,6">
           <StackPanel>
@@ -277,29 +320,6 @@
                       <TextBlock Grid.Column="4" Text="{Binding Reason}" Classes="secondary" VerticalAlignment="Center" />
                     </Grid>
                   </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Border BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0" Padding="14,8,14,2"
-                    IsVisible="{Binding WorkedFooter, Converter={x:Static v:Converters.NotEmpty}}">
-              <StackPanel Orientation="Horizontal" Spacing="4">
-                <TextBlock Text="{Binding WorkedFooter}" Classes="secondary" />
-                <Button Classes="link" Command="{Binding ToggleWorkedCommand}"><TextBlock Text="{Binding ShowWorked, Converter={x:Static v:OperateView.ShowHide}}" /></Button>
-              </StackPanel>
-            </Border>
-            <ItemsControl ItemsSource="{Binding Worked}" IsVisible="{Binding ShowWorked}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:StationRowViewModel">
-                  <Grid ColumnDefinitions="100,180,130,*,120,140,46,80" MinHeight="32" Margin="14,0">
-                    <TextBlock Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Grid.Column="2" Text="{Binding Why}" Classes="secondary" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="3" Text="{Binding DoingNow}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="4" Text="{Binding LastHeard}" Classes="secondary" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="5" Text="{Binding HearsYou}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="6" Text="{Binding Db}" Classes="num" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="7" Text="{Binding Chance}" VerticalAlignment="Center" />
-                  </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
