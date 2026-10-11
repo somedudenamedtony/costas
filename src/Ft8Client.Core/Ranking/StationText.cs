@@ -53,6 +53,9 @@ public static class StationText
         {
             case StationState.CallingMe:
                 return "Calling you";
+            case StationState.CallingCq or StationState.Quiet when s.LastCalledCq && !s.HeardInLastOwnSlot:
+                var was = s.CqModifier is null ? "Calling CQ" : $"Calling CQ {s.CqModifier}";
+                return s.MissedSlots == 1 ? $"{was}, missed last slot" : $"{was}, missed {s.MissedSlots} slots";
             case StationState.CallingCq:
                 var cq = s.CqModifier is null ? "Calling CQ" : $"Calling CQ {s.CqModifier}";
                 var slots = s.CqStreak == 1 ? "1 slot" : $"{s.CqStreak} slots";

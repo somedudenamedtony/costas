@@ -36,6 +36,17 @@ public class RepeatRowViewModelTests
     }
 
     [Fact]
+    public void Constructor_SameColumnsAsNextInLine()
+    {
+        var row = new RepeatRowViewModel(Ranked("W1AW", true), Last, 2, DistanceUnit.Miles, Now, 3);
+        row.Rank.Should().Be(3);
+        row.Why.Should().Be("Worked before");
+        row.HearsYou.Should().Be(StationText.Hears(new HearsYou(HearsYouKind.None)));
+        row.Chance.Should().Be("Good");
+        row.ChanceBold.Should().BeTrue();
+    }
+
+    [Fact]
     public void Constructor_CallingMe_ButtonSaysAnswer()
     {
         new RepeatRowViewModel(Ranked("W1AW", true, StationState.CallingMe), Last, 1, DistanceUnit.Miles, Now)

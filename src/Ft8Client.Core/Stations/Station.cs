@@ -48,6 +48,19 @@ public sealed record Station
     /// <summary>Slot start of its latest decode.</summary>
     public DateTime LastHeardUtc { get; init; }
 
+    /// <summary>
+    /// When its latest decoded transmission ended (slot start plus the transmit length). "Last heard" ages count from
+    /// here, so a station decoded a moment ago reads "2 seconds ago" rather than the 14 s since its slot began.
+    /// Falls back to <see cref="LastHeardUtc"/> when not set.
+    /// </summary>
+    public DateTime LastHeardEndUtc
+    {
+        get => _lastHeardEndUtc == default ? LastHeardUtc : _lastHeardEndUtc;
+        init => _lastHeardEndUtc = value;
+    }
+
+    private readonly DateTime _lastHeardEndUtc;
+
     /// <summary>Its latest SNR at my station.</summary>
     public int LastSnr { get; init; }
 
@@ -89,4 +102,7 @@ public sealed record Station
 
     /// <summary>True if decoded in its most recent own slot.</summary>
     public bool HeardInLastOwnSlot => MissedSlots == 0;
+
+    /// <summary>True when its latest decoded message was a CQ (it has not since been heard working anyone).</summary>
+    public bool LastCalledCq => LastMessage?.Kind == MessageKind.Cq;
 }

@@ -62,7 +62,7 @@ State transitions, applied when a message from the station is decoded:
 | `GridReply`, `Report`, `RogerReport` to someone else | `InContact`, `Partner` = addressee; stage "just sent grid", "reports exchanged" |
 | `Roger`, `RogerBye`, `Bye` to someone else | `Finishing` |
 
-When one of the station's own-parity slots passes with no decode from it: `SnrHistory` gets a null; after 2 misses in a row the state becomes `Quiet`; after 5 minutes without a decode the station is removed. A station in `Finishing` that is silent for one own slot is treated as free but is not callable until it calls CQ again (it stays in Watching as "Just finished with X").
+When one of the station's own-parity slots passes with no decode from it: `SnrHistory` gets a null; after 2 misses in a row the state becomes `Quiet`; after 5 minutes without a decode the station is removed (or after the operator's "Keep CQ callers listed" time, when that is longer). `LastHeardEndUtc` is the slot start plus the transmit length (13.14 s for FT8); "last heard" ages count from it. A station in `Finishing` that is silent for one own slot is treated as free but is not callable until it calls CQ again (it stays in Watching as "Just finished with X").
 
 Trend, for "fading": compare the mean of the last two SNR values with the mean of the two before; a drop of 4 dB or more is "fading", a rise of 4 dB or more is "rising".
 
@@ -108,9 +108,9 @@ If PSK Reporter is unavailable, chance is computed from S's SNR alone: Good at -
 
 ## 6. Ranking
 
-A station is **callable** when all hold: state is `CallingCq` (or, with "Only stations calling CQ" off, also `Finishing`); it was decoded in its most recent own-parity slot; its call is resolved; its CQ modifier does not exclude me. A continent or country modifier that is not mine excludes me. I may answer `CQ DX` only if the caller is in a different entity from mine. Activity modifiers such as `POTA`, `SOTA` and `TEST` do not exclude.
+A station is **callable** when all hold: state is `CallingCq` (or, with "Only stations calling CQ" off, also `Finishing`); it was decoded in its most recent own-parity slot, or (owner request 2026-10-11) its latest message was a CQ and it was decoded within the operator's "Keep CQ callers listed" time (Ranking setting, default 2 minutes; 0 keeps the old rule); its call is resolved; its CQ modifier does not exclude me. A continent or country modifier that is not mine excludes me. I may answer `CQ DX` only if the caller is in a different entity from mine. Activity modifiers such as `POTA`, `SOTA` and `TEST` do not exclude.
 
-- **Next in line**: callable, tier 1 to 4, passing the filters. Order by tier (ascending), then chance (Good, Fair, Long shot), then report strength (direct or regional, stronger first, none last), then S's SNR (stronger first), then callsign.
+- **Next in line**: callable, tier 1 to 4, passing the filters. Order by tier (ascending), then calling me first, then stations decoded in their latest own slot before CQ callers kept after a miss, then chance (Good, Fair, Long shot), then report strength (direct or regional, stronger first, none last), then S's SNR (stronger first), then callsign.
 - **Watching**: tier 1 to 4 and not callable. Order by tier, then most recently heard. Reason text from state.
 - **Already worked**: tier 5, kept out of Next in line and Watching and shown in the Repeats panel (callable first).
 - **Calling me**: stations in state `CallingMe` go to "Waiting for you" and are shown in the line with "Calling you" in Doing now, ranked first within their tier.
@@ -155,7 +155,7 @@ The contact is **logged when step 5 has been transmitted**. Then CQ resumes, or 
 - Only messages from the DX station addressed to my call advance the contact. Everything else is ignored by the engine.
 - If the expected reply does not arrive, repeat my current step. After `RetryLimit` (default 4) repeats with no valid reply, end with outcome `NoReply` and stop transmitting.
 - If the DX station repeats an earlier step (it did not copy me), step back and resend the matching reply. Count it in the box's "×N".
-- If the DX answers a different station, or calls CQ again before the exchange completes, keep trying up to the retry limit, then end as `NoReply`. (No automatic re-calling beyond the limit.)
+- If the DX answers a different station (sends a `Report`, `RogerReport` or `GridReply` to another call) before it has replied to me, end at once as `AnsweredOther` and stop transmitting; the status says "<DX> answered <call> instead. Stopped calling." (owner request 2026-10-11). A late reply from it is offered with Resume like any stopped contact. A sign-off (`RR73`, `73`) to another call, a CQ, or anything after the DX has replied to me keeps trying up to the retry limit, then ends as `NoReply`. (No automatic re-calling beyond the limit.)
 - If a `Report` arrives instead of a `GridReply` in flow B (the caller skipped the grid), reply with `DX ME R±NN` and continue as flow A from step 3: the contact is logged when their `RR73` arrives.
 - After logging, a repeated `RR73` or `73` from the DX within 2 minutes triggers one more `73` and no second log entry.
 - Message options (owner choice "Plus free text", 2026-10-11): a CQ modifier (`CQ DX ME GRID`); my grid left out of Tx1 (`DX ME`); `DX ME 73` or `DX ME RR73` as my last message in flow A; and optional free text of up to 13 characters sent once in my next slot after that last message, dropped if another contact starts first. Free text that parses as a standard message is refused. After my `RR73`, the DX's `73` is the normal answer and gets no reply; a repeated `RR73` or `RRR` still gets one more. Settings refuses anything that would not encode exactly; the steps and their order never change.

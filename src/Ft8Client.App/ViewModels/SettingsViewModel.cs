@@ -50,6 +50,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         HideWorked = s.Ranking.HideWorked;
         SkipLongShots = s.Ranking.SkipLongShots;
         ConfirmedOnly = s.Ranking.ConfirmedOnly;
+        KeepCqCallers = KeepChoiceFor(s.Ranking.KeepCqCallersMinutes);
         LogbookEnabled = s.Qrz.LogbookEnabled;
         UploadOnComplete = s.Qrz.UploadOnComplete;
         SyncMinutes = s.Qrz.SyncMinutes.ToString(CultureInfo.InvariantCulture);
@@ -269,6 +270,34 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool ConfirmedOnly { get; set; }
 
+    /// <summary>Choices for how long a CQ caller stays in Next in line after it was last heard, with their minutes.</summary>
+    public static readonly IReadOnlyList<(string Text, int Minutes)> KeepCqChoices =
+    [
+        ("Only while heard every slot", 0), ("1 minute", 1), ("2 minutes", 2), ("3 minutes", 3), ("5 minutes", 5),
+        ("10 minutes", 10), ("15 minutes", 15),
+    ];
+
+    /// <summary>The keep-listed choices as shown.</summary>
+    public IReadOnlyList<string> KeepCqCallersChoices { get; } = KeepCqChoices.Select(c => c.Text).ToList();
+
+    /// <summary>How long a CQ caller stays in Next in line after it was last heard.</summary>
+    [ObservableProperty]
+    public partial string KeepCqCallers { get; set; }
+
+    /// <summary>The choice for a stored number of minutes (the nearest one not shorter, or the longest).</summary>
+    public static string KeepChoiceFor(int minutes)
+    {
+        foreach (var (text, m) in KeepCqChoices) if (m >= minutes) return text;
+        return KeepCqChoices[^1].Text;
+    }
+
+    /// <summary>Minutes for a shown choice; 2 when it is not one of the choices.</summary>
+    public static int KeepMinutesFor(string? choice)
+    {
+        foreach (var (text, m) in KeepCqChoices) if (text == choice) return m;
+        return 2;
+    }
+
     /// <summary>QRZ logbook.</summary>
     [ObservableProperty]
     public partial bool LogbookEnabled { get; set; }
@@ -435,6 +464,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Ranking.HideWorked = HideWorked;
             s.Ranking.SkipLongShots = SkipLongShots;
             s.Ranking.ConfirmedOnly = ConfirmedOnly;
+            s.Ranking.KeepCqCallersMinutes = KeepMinutesFor(KeepCqCallers);
             s.Profile.Callsign = Callsign.Trim().ToUpperInvariant();
             s.Profile.Grid = Grid.Trim().ToUpperInvariant();
             s.Profile.PowerWatts = Int(Power, 1, 2000, s.Profile.PowerWatts);

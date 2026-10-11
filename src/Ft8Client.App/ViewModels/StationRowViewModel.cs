@@ -6,8 +6,10 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ft8Client.Core;
+using Ft8Client.Core.Bands;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Ranking;
@@ -18,8 +20,16 @@ namespace Ft8Client.App.ViewModels;
 public sealed partial class StationRowViewModel : ObservableObject
 {
     /// <summary>Builds a row.</summary>
-    public StationRowViewModel(RankedStation r, int rank, DistanceUnit units, DateTime nowUtc)
+    /// <param name="r">The ranked station.</param>
+    /// <param name="rank">Rank from 1.</param>
+    /// <param name="units">Distance units.</param>
+    /// <param name="nowUtc">Now.</param>
+    /// <param name="last">The most recent log contact with this call on any band or mode, if any.</param>
+    /// <param name="contacts">How many log contacts there are with this call.</param>
+    public StationRowViewModel(RankedStation r, int rank, DistanceUnit units, DateTime nowUtc, LogContact? last = null, int contacts = 0)
     {
+        LastWorked = last is null ? "Never" : StationText.LastWorked(last, nowUtc);
+        LastWorkedTip = last is null ? "Not in your log yet" : LastWorkedText(last, contacts);
         Source = r;
         Rank = rank;
         Call = r.Station.Call;
@@ -33,6 +43,7 @@ public sealed partial class StationRowViewModel : ObservableObject
         ChanceBold = r.Chance == Core.Ranking.Chance.Good;
         History = r.Station.SnrHistory;
         HistoryTip = HistoryText(r.Station.SnrHistory);
+        _heardEndUtc = r.Station.LastHeardEndUtc;
         Refresh(nowUtc);
         CallText = r.CallingMe ? "Answer" : "Call";
     }
@@ -47,6 +58,18 @@ public sealed partial class StationRowViewModel : ObservableObject
     public static string HistoryText(IReadOnlyList<int?> history) =>
         history.Count == 0 ? "No signal history yet"
             : $"Last {history.Count} slots: {string.Join(", ", history.Select(h => h is { } v ? Report.Format(v) : "missed"))} dB";
+
+    /// <summary>"Today · 20 m", "2026-10-03 · 40 m" (any band or mode), or "Never".</summary>
+    public string LastWorked { get; }
+
+    /// <summary>Tooltip for <see cref="LastWorked"/>: contact count, exact time, band, mode and confirmation.</summary>
+    public string LastWorkedTip { get; }
+
+    /// <summary>"2 contacts in your log. Last: 2026-10-03 18:05 UTC on 20 m FT8, confirmed".</summary>
+    public static string LastWorkedText(LogContact last, int contacts) =>
+        $"{(contacts == 1 ? "1 contact" : $"{contacts} contacts")} in your log. Last: " +
+        $"{last.DateUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)} UTC on {BandPlan.Display(last.Band)} {last.ModeKey}" +
+        (last.Confirmed ? ", confirmed" : string.Empty);
 
     /// <summary>"Answer" for a station calling me (the button answers it from Waiting for you), otherwise "Call".</summary>
     public string CallText { get; }
@@ -65,7 +88,14 @@ public sealed partial class StationRowViewModel : ObservableObject
     public partial string Where { get; private set; }
 
     /// <summary>Shows the latest place for the station (a QRZ lookup may have filled in its city and state).</summary>
-    public void UpdatePlace(Core.Stations.Station s, DistanceUnit units) => Where = StationText.Where(s, units);
+    public void UpdatePlace(Core.Stations.Station s, DistanceUnit units)
+    {
+        Where = StationText.Where(s, units);
+        // A held list keeps its rows, but the age counts from the station's newest decode.
+        if (s.LastHeardEndUtc > _heardEndUtc) _heardEndUtc = s.LastHeardEndUtc;
+    }
+
+    private DateTime _heardEndUtc;
 
     /// <summary>Need tag text.</summary>
     public string Why { get; }
@@ -100,7 +130,7 @@ public sealed partial class StationRowViewModel : ObservableObject
     public partial bool IsSelected { get; set; }
 
     /// <summary>Updates the age text. Called on every timer tick so a held list does not show a stale age.</summary>
-    public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - Source.Station.LastHeardUtc);
+    public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - _heardEndUtc);
 
     /// <summary>Colour for a need tag.</summary>
     public static TextKind KindOf(NeedTag t) => t switch

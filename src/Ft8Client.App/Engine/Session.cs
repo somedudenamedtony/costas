@@ -301,6 +301,7 @@ public sealed class Session
             }
             if (_raw.Count > MaxRaw) _raw.RemoveRange(0, _raw.Count - MaxRaw);
 
+            _tracker.KeepFor = _config.Ranking.KeepCqCallers;
             _tracker.ApplySlot(slot, heard);
             FeedEngine(slot, mode, heard, now);
 

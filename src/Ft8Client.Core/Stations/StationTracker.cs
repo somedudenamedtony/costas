@@ -21,8 +21,14 @@ public sealed class StationTracker
     /// <summary>Own slots kept in <see cref="Station.SnrHistory"/>.</summary>
     public const int HistoryLength = 6;
 
-    /// <summary>A station silent this long is removed.</summary>
+    /// <summary>A station silent this long is removed (longer when <see cref="KeepFor"/> asks for it).</summary>
     public static readonly TimeSpan RemoveAfter = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// How long the operator keeps CQ callers listed after they were last heard. A station is kept at least this long
+    /// so the ranker can still list it.
+    /// </summary>
+    public TimeSpan KeepFor { get; set; }
 
     private readonly Dictionary<string, Station> _stations = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (string? Grid, string? Region, string? City)> _lookups = new(StringComparer.Ordinal);
@@ -112,7 +118,7 @@ public sealed class StationTracker
                 };
                 _stations[call] = s;
             }
-            if (slotStartUtc - s.LastHeardUtc >= RemoveAfter)
+            if (slotStartUtc - s.LastHeardUtc >= (KeepFor > RemoveAfter ? KeepFor + ModeInfo.SlotLength(_mode) : RemoveAfter))
             {
                 _stations.Remove(call);
                 _lastCqSlot.Remove(call);
@@ -144,6 +150,7 @@ public sealed class StationTracker
         {
             Parity = parity,
             LastHeardUtc = slot,
+            LastHeardEndUtc = slot + ModeInfo.TxEnd(_mode),
             LastSnr = bestSnr,
             OffsetHz = offset,
             SnrHistory = history,

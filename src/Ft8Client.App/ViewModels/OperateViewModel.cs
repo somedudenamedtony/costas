@@ -465,9 +465,11 @@ public sealed partial class OperateViewModel : ObservableObject
     {
         var keep = Selected?.Call;
         var now = _now();
+        var log = Log?.Invoke();
         Line.Clear();
         var i = 1;
-        foreach (var r in list.Take(MaxLine)) Line.Add(new StationRowViewModel(r, i++, Units, now));
+        foreach (var r in list.Take(MaxLine))
+            Line.Add(new StationRowViewModel(r, i++, Units, now, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0));
         MoreText = list.Count > MaxLine ? $"and {list.Count - MaxLine} more" : string.Empty;
         LineEmpty = Line.Count == 0;
         var sel = Line.FirstOrDefault(r => r.Call == keep) ?? Line.FirstOrDefault();
@@ -480,8 +482,9 @@ public sealed partial class OperateViewModel : ObservableObject
         var now = _now();
         var log = Log?.Invoke();
         Repeats.Clear();
+        var i = 1;
         foreach (var r in list.Take(MaxRepeats))
-            Repeats.Add(new RepeatRowViewModel(r, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0, Units, now));
+            Repeats.Add(new RepeatRowViewModel(r, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0, Units, now, i++));
         RepeatsMoreText = list.Count > MaxRepeats ? $"and {list.Count - MaxRepeats} more" : string.Empty;
         if (_snap is not null)
             RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {BandPlan.Display(_snap.Band)} is on the air right now.";
@@ -535,6 +538,9 @@ public sealed partial class OperateViewModel : ObservableObject
         if (!r.OnlyCallingCq) parts.Add("Stations finishing a contact are included.");
         if (r.SkipLongShots) parts.Add("Long shots are left out.");
         if (r.ConfirmedOnly) parts.Add("Only confirmed contacts count.");
+        if (r.KeepCqCallers > TimeSpan.Zero)
+            parts.Add(r.KeepCqCallers.TotalMinutes == 1 ? "CQ callers stay listed for 1 minute after they were last heard."
+                : $"CQ callers stay listed for {r.KeepCqCallers.TotalMinutes:0} minutes after they were last heard.");
         return string.Join(" ", parts);
     }
 

@@ -216,6 +216,14 @@
                 <CheckBox Content="Count a country or state as worked only when confirmed" IsChecked="{Binding ConfirmedOnly}" />
               </StackPanel>
             </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Keep CQ callers listed" />
+              <StackPanel Grid.Column="1">
+                <ComboBox ItemsSource="{Binding KeepCqCallersChoices}" SelectedItem="{Binding KeepCqCallers}" MinWidth="200"
+                          AutomationProperties.Name="Keep CQ callers listed" />
+                <TextBlock Classes="help" Text="How long a station calling CQ stays in Next in line after it was last heard, so a missed slot does not drop it. It leaves the list as soon as it is heard working someone else." />
+              </StackPanel>
+            </Grid>
           </StackPanel>
         </ScrollViewer>
       </TabItem>

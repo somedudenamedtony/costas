@@ -25,4 +25,7 @@ public enum ContactOutcome
 
     /// <summary>The Tx watchdog stopped it.</summary>
     Watchdog,
+
+    /// <summary>I answered its CQ, and before it replied to me it was heard answering another station.</summary>
+    AnsweredOther,
 }

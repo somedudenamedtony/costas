@@ -161,7 +161,7 @@ public sealed partial class HeardMapViewModel : ObservableObject
         foreach (var r in stations)
         {
             var st = r.Station;
-            var age = nowUtc - st.LastHeardUtc;
+            var age = nowUtc - st.LastHeardEndUtc;
             if (age > Window) continue;
             var needed = r.Need.Tag != NeedTag.Worked;
             if (show == "Needed only" && !needed) continue;

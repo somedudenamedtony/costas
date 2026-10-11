@@ -22,13 +22,14 @@ namespace Ft8Client.Core.Contacts;
 public sealed record ContactView(string DxCall, string? DxGrid, ContactFlow Flow, ContactOutcome Outcome, int? ReportSent, int? ReportReceived,
                                  IReadOnlyList<ContactStep> Steps, bool Logged, bool CanLogNow, string StatusText)
 {
-    /// <summary>"Contact in progress", "Calling", "Logged", "No reply", "Stopped by watchdog", "Abandoned".</summary>
+    /// <summary>"Contact in progress", "Calling", "Logged", "No reply", "Stopped by watchdog", "Abandoned", "Answered someone else".</summary>
     public string Caption => Outcome switch
     {
         ContactOutcome.Logged => Logged ? "Logged" : "Complete, not logged",
         ContactOutcome.NoReply => "No reply",
         ContactOutcome.Watchdog => "Stopped by watchdog",
         ContactOutcome.Abandoned => "Abandoned",
+        ContactOutcome.AnsweredOther => "Answered someone else",
         _ => Logged ? "Logged" : ReportReceived is null && Steps.Count(s => !s.Mine && s.State == StepState.Done) == 0 ? "Calling" : "Contact in progress",
     };
 }

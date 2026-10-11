@@ -32,6 +32,42 @@ public class StationRowViewModelTests
     }
 
     [Fact]
+    public void Constructor_JustDecoded_CountsFromEndOfTransmission()
+    {
+        var station = new Station { Call = "CE3MPV", LastHeardUtc = Heard, LastHeardEndUtc = Heard.AddSeconds(13.14), State = StationState.CallingCq };
+        var ranked = new RankedStation(station, new NeedResult(NeedTag.NewCountry, 1), new HearsYou(HearsYouKind.None), Chance.Good, true, null);
+        new StationRowViewModel(ranked, 1, DistanceUnit.Miles, Heard.AddSeconds(14.5)).LastHeard.Should().Be("1 second ago");
+    }
+
+    [Fact]
+    public void UpdatePlace_HeldRowHeardAgain_AgeCountsFromNewestDecode()
+    {
+        var row = Row(Heard.AddSeconds(15));
+        row.UpdatePlace(new Station { Call = "CE3MPV", LastHeardUtc = Heard.AddSeconds(30), LastHeardEndUtc = Heard.AddSeconds(43) }, DistanceUnit.Miles);
+        row.Refresh(Heard.AddSeconds(50));
+        row.LastHeard.Should().Be("7 seconds ago");
+    }
+
+    [Fact]
+    public void Constructor_NotInLog_LastWorkedNever()
+    {
+        var row = Row(Heard);
+        row.LastWorked.Should().Be("Never");
+        row.LastWorkedTip.Should().Be("Not in your log yet");
+    }
+
+    [Fact]
+    public void Constructor_WorkedOnAnotherBand_ShowsLastWorked()
+    {
+        var station = new Station { Call = "CE3MPV", LastHeardUtc = Heard, State = StationState.CallingCq, CqStreak = 2 };
+        var ranked = new RankedStation(station, new NeedResult(NeedTag.NewBand, 2), new HearsYou(HearsYouKind.None), Chance.Good, true, null);
+        var last = new LogContact("CE3MPV", "40m", "FT8", "FF46", "CE", null, false, new DateTime(2026, 10, 3, 18, 5, 0, DateTimeKind.Utc));
+        var row = new StationRowViewModel(ranked, 1, DistanceUnit.Miles, Heard, last, 1);
+        row.LastWorked.Should().Be("2026-10-03 · 40 m");
+        row.LastWorkedTip.Should().Be("1 contact in your log. Last: 2026-10-03 18:05 UTC on 40 m FT8");
+    }
+
+    [Fact]
     public void Refresh_TimePasses_AgeCountsUp()
     {
         var row = Row(Heard.AddSeconds(15));

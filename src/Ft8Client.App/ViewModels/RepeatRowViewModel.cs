@@ -6,10 +6,8 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ft8Client.Core;
-using Ft8Client.Core.Bands;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Ranking;
@@ -25,9 +23,15 @@ public sealed partial class RepeatRowViewModel : ObservableObject
     /// <param name="contacts">How many log contacts there are with this call.</param>
     /// <param name="units">Distance units.</param>
     /// <param name="nowUtc">Now.</param>
-    public RepeatRowViewModel(RankedStation r, LogContact? last, int contacts, DistanceUnit units, DateTime nowUtc)
+    /// <param name="rank">Position in Repeats, from 1.</param>
+    public RepeatRowViewModel(RankedStation r, LogContact? last, int contacts, DistanceUnit units, DateTime nowUtc, int rank = 1)
     {
         Source = r;
+        Rank = rank;
+        Why = StationText.Need(r.Need.Tag);
+        HearsYou = StationText.Hears(r.Hears);
+        Chance = StationText.Chance(r.Chance);
+        ChanceBold = r.Chance == Core.Ranking.Chance.Good;
         Call = r.Station.Call;
         Where = StationText.Where(r.Station, units);
         CanCall = r.Callable;
@@ -36,26 +40,46 @@ public sealed partial class RepeatRowViewModel : ObservableObject
         History = r.Station.SnrHistory;
         HistoryTip = StationRowViewModel.HistoryText(r.Station.SnrHistory);
         LastWorked = StationText.LastWorked(last, nowUtc);
-        LastWorkedTip = last is null ? string.Empty
-            : $"{(contacts == 1 ? "1 contact" : $"{contacts} contacts")} in your log. Last: " +
-              $"{last.DateUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)} UTC on {BandPlan.Display(last.Band)} {last.ModeKey}" +
-              (last.Confirmed ? ", confirmed" : string.Empty);
+        LastWorkedTip = last is null ? string.Empty : StationRowViewModel.LastWorkedText(last, contacts);
         CallText = r.CallingMe ? "Answer" : "Call";
+        _heardEndUtc = r.Station.LastHeardEndUtc;
         Refresh(nowUtc);
     }
 
     /// <summary>The ranked station.</summary>
     public RankedStation Source { get; }
 
+    /// <summary>Position in Repeats, from 1.</summary>
+    public int Rank { get; }
+
     /// <summary>Call.</summary>
     public string Call { get; }
+
+    /// <summary>Need tag text: "Worked before".</summary>
+    public string Why { get; }
+
+    /// <summary>Hears you, as in Next in line.</summary>
+    public string HearsYou { get; }
+
+    /// <summary>Chance, as in Next in line.</summary>
+    public string Chance { get; }
+
+    /// <summary>Good is bold.</summary>
+    public bool ChanceBold { get; }
 
     /// <summary>Place and distance; updated in place when a lookup arrives between re-orders.</summary>
     [ObservableProperty]
     public partial string Where { get; private set; }
 
     /// <summary>Shows the latest place for the station (a QRZ lookup may have filled in its city and state).</summary>
-    public void UpdatePlace(Core.Stations.Station s, DistanceUnit units) => Where = StationText.Where(s, units);
+    public void UpdatePlace(Core.Stations.Station s, DistanceUnit units)
+    {
+        Where = StationText.Where(s, units);
+        // A held list keeps its rows, but the age counts from the station's newest decode.
+        if (s.LastHeardEndUtc > _heardEndUtc) _heardEndUtc = s.LastHeardEndUtc;
+    }
+
+    private DateTime _heardEndUtc;
 
     /// <summary>What the station is doing, or why it cannot be called right now.</summary>
     public string DoingNow { get; }
@@ -86,5 +110,5 @@ public sealed partial class RepeatRowViewModel : ObservableObject
     public partial string LastHeard { get; private set; } = string.Empty;
 
     /// <summary>Updates the age text on every timer tick.</summary>
-    public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - Source.Station.LastHeardUtc);
+    public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - _heardEndUtc);
 }

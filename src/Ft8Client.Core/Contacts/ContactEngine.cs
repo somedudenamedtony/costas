@@ -240,6 +240,14 @@ public sealed class ContactEngine
             LateSignoff(toMe, slotStartUtc);
         }
 
+        // I answered its CQ and it has not replied to me, but it was heard working someone else: it picked another
+        // caller, so stop calling it rather than keep sending into its contact.
+        if (_c is { Flow: ContactFlow.AnswerCq, Phase: 0, ReportReceived: null } a && AnsweredOther(a, heard) is { } other)
+        {
+            a.OtherCall = other;
+            End(ContactOutcome.AnsweredOther, nowUtc);
+        }
+
         // Answer the first caller to my CQ.
         if (_c is null && _cqRunning && parity != _cqParity)
         {
@@ -405,6 +413,25 @@ public sealed class ContactEngine
             default:
                 return false;
         }
+    }
+
+    // The call the DX station started a contact with in these decodes, when it is not me.
+    private string? AnsweredOther(Contact c, IReadOnlyList<HeardMessage> heard)
+    {
+        string? other = null;
+        foreach (var h in heard)
+        {
+            if (h.Decode.LowConfidence) continue;
+            foreach (var m in h.Message.Expand())
+            {
+                if (!Callsign.EqualsCall(m.SenderCall, c.DxCall)) continue;
+                if (m.IsAddressedTo(_myCall)) return null; // it is also working me (a multi-stream DXpedition, say)
+                // A report or a grid starts a contact; a sign-off (RR73, 73) only finishes an earlier one.
+                if (m.To is { Unresolved: false } to && m.Kind is MessageKind.Report or MessageKind.RogerReport or MessageKind.GridReply)
+                    other ??= to.Call;
+            }
+        }
+        return other;
     }
 
     private void LateSignoff(List<(HeardMessage H, ParsedMessage M)> toMe, DateTime slotUtc)
@@ -618,6 +645,7 @@ public sealed class ContactEngine
             ContactOutcome.Logged => $"Logged {c.DxCall}.",
             ContactOutcome.NoReply => $"No reply from {c.DxCall}.",
             ContactOutcome.Watchdog => "Stopped by watchdog.",
+            ContactOutcome.AnsweredOther => c.OtherCall is null ? $"{c.DxCall} answered someone else. Stopped calling." : $"{c.DxCall} answered {c.OtherCall} instead. Stopped calling.",
             _ => $"Stopped calling {c.DxCall}.",
         };
         return new ContactView(c.DxCall, c.DxGrid, c.Flow, c.Outcome, sentAny ? c.ReportSent : null, c.ReportReceived, steps, c.Logged,
@@ -655,6 +683,8 @@ public sealed class ContactEngine
         public DateTime? LoggedUtc { get; set; }
 
         public ContactOutcome Outcome { get; set; } = ContactOutcome.InProgress;
+
+        public string? OtherCall { get; set; }
     }
 
     private sealed record Finished(string DxCall, ContactFlow Flow, SlotParity MyParity, DateTime LoggedUtc, Contact Contact);

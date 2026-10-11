@@ -30,4 +30,13 @@ public sealed record RankingSettings
 
     /// <summary>Count only confirmed contacts for country, band and grid tiers.</summary>
     public bool ConfirmedOnly { get; init; }
+
+    /// <summary>Default for <see cref="KeepCqCallers"/>.</summary>
+    public static readonly TimeSpan DefaultKeepCqCallers = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// How long a station whose latest message was a CQ stays in Next in line after it was last decoded, as long as it
+    /// has not been heard working anyone since. Zero keeps only stations decoded in their most recent own slot.
+    /// </summary>
+    public TimeSpan KeepCqCallers { get; init; } = DefaultKeepCqCallers;
 }
