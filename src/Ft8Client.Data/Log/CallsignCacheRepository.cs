@@ -30,14 +30,28 @@ public sealed class CallsignCacheRepository(SqliteDatabase db)
         return age <= (e.Found ? HitAge : MissAge) ? e : null;
     }
 
+    /// <summary>Fresh found entries for several calls, read in one go (no network; for filling in the station lists).</summary>
+    public IReadOnlyList<CallsignCacheEntry> GetFreshFound(IEnumerable<string> calls, DateTime nowUtc)
+    {
+        var list = calls.Select(c => c.ToUpperInvariant()).Distinct(StringComparer.Ordinal).ToList();
+        if (list.Count == 0) return [];
+        using var c = db.Open();
+        return c.Query<CallsignCacheEntry>("SELECT * FROM callsign_cache WHERE found=1 AND call IN @list", new { list })
+            .Where(e => nowUtc - e.FetchedUtc <= HitAge).ToList();
+    }
+
     /// <summary>Stores an entry.</summary>
     public void Put(CallsignCacheEntry e)
     {
         e.Call = e.Call.ToUpperInvariant();
         using var c = db.Open();
         c.Execute("""
-            INSERT OR REPLACE INTO callsign_cache (call, name, city, state, country, grid, lat, lon, dxcc, fetched_utc, found)
-            VALUES (@Call, @Name, @City, @State, @Country, @Grid, @Lat, @Lon, @Dxcc, @FetchedUtc, @Found)
+            INSERT OR REPLACE INTO callsign_cache (call, name, city, state, country, grid, lat, lon, dxcc,
+              nickname, county, license_class, time_zone, gmt_offset, observes_dst, image_url, qsl_manager, lotw, eqsl, paper_qsl, cq_zone, itu_zone,
+              fetched_utc, found)
+            VALUES (@Call, @Name, @City, @State, @Country, @Grid, @Lat, @Lon, @Dxcc,
+              @Nickname, @County, @LicenseClass, @TimeZone, @GmtOffset, @ObservesDst, @ImageUrl, @QslManager, @Lotw, @Eqsl, @PaperQsl, @CqZone, @ItuZone,
+              @FetchedUtc, @Found)
             """, e);
     }
 }

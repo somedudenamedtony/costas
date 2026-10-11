@@ -1,0 +1,25 @@
+<!-- What is known about a station: shared by the details flyout and the Who you're calling card. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ft8Client.App.ViewModels"
+             xmlns:v="using:Ft8Client.App.Views"
+             x:Class="Ft8Client.App.Views.StationFacts"
+             x:DataType="vm:StationDetailsViewModel">
+  <StackPanel Spacing="4">
+    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+    <TextBlock Text="{Binding Location}" Classes="secondary" TextWrapping="Wrap" />
+    <TextBlock Text="{Binding County}" Classes="secondary" IsVisible="{Binding HasCounty}" />
+    <TextBlock Classes="secondary"><Run Text="Grid " /><Run Text="{Binding Grid}" /><Run Text=" · bearing " /><Run Text="{Binding Bearing}" /></TextBlock>
+    <TextBlock Text="{Binding LocalTime}" Classes="secondary num" IsVisible="{Binding HasLocalTime}" />
+    <TextBlock Text="{Binding LicenseClass}" Classes="secondary" IsVisible="{Binding HasLicenseClass}" />
+    <TextBlock Classes="secondary" IsVisible="{Binding HasQsl}" TextWrapping="Wrap"><Run Text="QSL: " /><Run Text="{Binding Qsl}" /></TextBlock>
+    <TextBlock Text="{Binding Zones}" Classes="secondary" IsVisible="{Binding HasZones}" />
+    <TextBlock Text="{Binding LookupNote}" Classes="secondary" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding HasLookupNote}" />
+    <WrapPanel ItemSpacing="12">
+      <Button Classes="link" Padding="0" Content="Open on QRZ.com" ToolTip.Tip="{Binding QrzUrl}"
+              Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).OpenQrzCommand}" CommandParameter="{Binding}" />
+      <Button Classes="link" Padding="0" Content="Photo" IsVisible="{Binding HasPhoto}" ToolTip.Tip="Opens the QRZ photo in your browser"
+              Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).OpenPhotoCommand}" CommandParameter="{Binding}" />
+    </WrapPanel>
+  </StackPanel>
+</UserControl>

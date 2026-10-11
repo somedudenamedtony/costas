@@ -258,4 +258,47 @@ public sealed class QrzTests : IDisposable
         cache.GetFresh("N0CALL", _clock.UtcNow)!.Found.Should().BeFalse();
         cache.GetFresh("N0CALL", _clock.UtcNow.AddDays(8)).Should().BeNull();
     }
+
+    [Fact]
+    public async Task Lookup_DetailFields_MappedAndCached()
+    {
+        _server.AddLookup("W9RDL", "Robert Dale", "Springfield", "IL", "United States", "EN59", new Dictionary<string, string>
+        {
+            ["nickname"] = "Bob", ["county"] = "Sangamon", ["class"] = "E", ["TimeZone"] = "Central", ["GMTOffset"] = "-6", ["DST"] = "Y",
+            ["image"] = "https://cdn-xml.qrz.com/w9rdl.jpg", ["qslmgr"] = "direct", ["lotw"] = "1", ["eqsl"] = "0", ["mqsl"] = "Y",
+            ["cqzone"] = "4", ["ituzone"] = "8",
+        });
+        var cache = new CallsignCacheRepository(Db());
+        var svc = new CallsignLookupService(new QrzXmlClient(_http, () => ("user", "pass")), cache, _clock);
+
+        await svc.LookupAsync("W9RDL", TestContext.Current.CancellationToken);
+        var e = cache.GetFresh("W9RDL", _clock.UtcNow)!;
+
+        e.Nickname.Should().Be("Bob");
+        e.County.Should().Be("Sangamon");
+        e.LicenseClass.Should().Be("E");
+        e.TimeZone.Should().Be("Central");
+        e.GmtOffset.Should().Be(-6);
+        e.ObservesDst.Should().BeTrue();
+        e.ImageUrl.Should().Be("https://cdn-xml.qrz.com/w9rdl.jpg");
+        e.QslManager.Should().Be("direct");
+        e.Lotw.Should().BeTrue();
+        e.Eqsl.Should().BeFalse();
+        e.PaperQsl.Should().BeTrue("the spec's sample uses Y for these flags");
+        e.CqZone.Should().Be(4);
+        e.ItuZone.Should().Be(8);
+    }
+
+    [Fact]
+    public void GetFreshFound_ReadsHitsOnly_SkipsStaleAndMisses()
+    {
+        var cache = new CallsignCacheRepository(Db());
+        cache.Put(new CallsignCacheEntry { Call = "W9RDL", City = "Springfield", Found = true, FetchedUtc = _clock.UtcNow });
+        cache.Put(new CallsignCacheEntry { Call = "K1OLD", City = "Boston", Found = true, FetchedUtc = _clock.UtcNow.AddDays(-31) });
+        cache.Put(new CallsignCacheEntry { Call = "N0CALL", Found = false, FetchedUtc = _clock.UtcNow });
+
+        var r = cache.GetFreshFound(["w9rdl", "K1OLD", "N0CALL", "ZZ9ZZZ"], _clock.UtcNow);
+
+        r.Should().ContainSingle().Which.City.Should().Be("Springfield");
+    }
 }

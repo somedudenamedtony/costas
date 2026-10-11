@@ -101,13 +101,16 @@ public sealed class FakeQrzServer : HttpMessageHandler
     }
 
     /// <summary>Adds a call for XML lookups.</summary>
-    public void AddLookup(string call, string? name = null, string? city = null, string? state = null, string? country = null, string? grid = null)
+    public void AddLookup(string call, string? name = null, string? city = null, string? state = null, string? country = null, string? grid = null,
+                          IReadOnlyDictionary<string, string>? extra = null)
     {
-        _lookups[call] = new Dictionary<string, string?>
+        var fields = new Dictionary<string, string?>
         {
             ["call"] = call, ["fname"] = name?.Split(' ')[0], ["name"] = name?.Split(' ').Skip(1).FirstOrDefault(), ["addr2"] = city,
             ["state"] = state, ["country"] = country, ["grid"] = grid,
-        }.Where(kv => kv.Value is not null).ToDictionary(kv => kv.Key, kv => kv.Value!);
+        };
+        foreach (var (k, v) in extra ?? new Dictionary<string, string>()) fields[k] = v;
+        _lookups[call] = fields.Where(kv => kv.Value is not null).ToDictionary(kv => kv.Key, kv => kv.Value!);
     }
 
     /// <summary>Expires the XML session so the next lookup must log in again.</summary>

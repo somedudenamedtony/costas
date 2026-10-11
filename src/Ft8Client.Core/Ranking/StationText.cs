@@ -109,21 +109,31 @@ public static class StationText
             ? string.Format(Inv, "{0:N0} mi", GreatCircle.ToMiles(km))
             : string.Format(Inv, "{0:N0} km", km);
 
-    /// <summary>Country, or "State, USA" / "Province, Canada" when known.</summary>
-    public static string Place(EntityMatch? entity, string? region)
+    /// <summary>
+    /// Country, or "State, USA" / "Province, Canada" when known. With a city: "City, ST, USA", "City, ON, Canada" or
+    /// "City, Country".
+    /// </summary>
+    public static string Place(EntityMatch? entity, string? region, string? city = null)
     {
         if (entity is null) return "Unknown";
         var e = entity.Entity;
+        var town = string.IsNullOrWhiteSpace(city) ? null : city.Trim();
         if (e.Key == Entity.UsaKey)
         {
-            var name = UsStates.Normalize(region) is { } code ? UsStates.Names[code] : region;
+            var code = UsStates.Normalize(region);
+            if (town is not null) return string.IsNullOrWhiteSpace(region) ? $"{town}, USA" : $"{town}, {code ?? region!.Trim()}, USA";
+            var name = code is not null ? UsStates.Names[code] : region;
             return string.IsNullOrWhiteSpace(name) ? "USA" : $"{name}, USA";
         }
-        if (e.Key == Entity.CanadaKey) return string.IsNullOrWhiteSpace(region) ? "Canada" : $"{region}, Canada";
-        return e.Name;
+        if (e.Key == Entity.CanadaKey)
+        {
+            if (town is not null) return string.IsNullOrWhiteSpace(region) ? $"{town}, Canada" : $"{town}, {region.Trim()}, Canada";
+            return string.IsNullOrWhiteSpace(region) ? "Canada" : $"{region}, Canada";
+        }
+        return town is null ? e.Name : $"{town}, {e.Name}";
     }
 
     /// <summary>The "Where" column: place, then distance when known.</summary>
     public static string Where(Station s, DistanceUnit unit) =>
-        s.DistanceKm is { } km ? $"{Place(s.Entity, s.Region)} · {Distance(km, unit)}" : Place(s.Entity, s.Region);
+        s.DistanceKm is { } km ? $"{Place(s.Entity, s.Region, s.City)} · {Distance(km, unit)}" : Place(s.Entity, s.Region, s.City);
 }

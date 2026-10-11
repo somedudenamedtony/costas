@@ -27,6 +27,9 @@ public sealed record Station
     /// <summary>US state or Canadian province from QRZ, if known.</summary>
     public string? Region { get; init; }
 
+    /// <summary>City from QRZ, if known.</summary>
+    public string? City { get; init; }
+
     /// <summary>Continent from the country file.</summary>
     public string? Continent => Entity?.Continent;
 

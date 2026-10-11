@@ -150,11 +150,29 @@ public sealed class QrzService : IDisposable
         {
             var svc = new CallsignLookupService(XmlClient(user, pass), _cache, _clock);
             var r = await svc.LookupAsync(call, ct).ConfigureAwait(false);
-            if (r is not null) _session.SetLookup(call, r.Name, r.Grid, r.State);
+            if (r is not null) _session.SetLookups([r]);
         }
         catch (QrzException ex)
         {
             Log.Information("QRZ lookup failed for {Call}: {Message}", call, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Fills in stations from earlier lookups kept in the local cache. Reads only the database, never QRZ, so it is safe
+    /// to run for every station heard (the spec limits network lookups to the selected station and the current contact).
+    /// </summary>
+    public void FillFromCache(IReadOnlyCollection<string> calls)
+    {
+        if (calls.Count == 0) return;
+        try
+        {
+            var found = _cache.GetFreshFound(calls, _clock.UtcNow);
+            if (found.Count > 0) _session.SetLookups(found);
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or InvalidOperationException)
+        {
+            Log.Warning(ex, "Reading the lookup cache failed");
         }
     }
 

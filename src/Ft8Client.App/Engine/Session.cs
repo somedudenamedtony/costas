@@ -18,6 +18,7 @@ using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Stations;
 using Ft8Client.Core.Time;
+using Ft8Client.Data.Log;
 using Ft8Client.Core.Transmit;
 
 namespace Ft8Client.App.Engine;
@@ -44,7 +45,7 @@ public sealed class Session
     private readonly List<SlotActivity> _activity = [];
     private readonly List<(DateTime Slot, SlotParity Parity, List<int> Offsets)> _recentOffsets = [];
     private readonly Dictionary<string, ServiceStatus> _services = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, (string? Name, string? State)> _lookups = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CallsignCacheEntry> _lookups = new(StringComparer.Ordinal);
     private readonly List<TonightContact> _tonight = [];
     private StationTracker _tracker;
     private SessionConfig _config;
@@ -377,13 +378,13 @@ public sealed class Session
             var entity = s?.Entity ?? _countries.Lookup(entry.Call);
             var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid ?? s?.Grid, _config.Band, ModeInfo.Name(_config.Mode),
                 _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
-            _lookups.TryGetValue(entry.Call, out var lk);
+            var lk = _lookups.GetValueOrDefault(Callsign.Normalize(entry.Call));
             ctx = new LogContext(_config.Band, _config.Mode, _dialHz + _txOffset, _config.MyCall, _config.MyGrid, _config.PowerWatts, need,
-                entity?.Entity.Key, entity?.Entity.Name, lk.Name, lk.State, entity?.Continent);
+                entity?.Entity.Key, entity?.Entity.Name, lk?.Name, lk?.State, entity?.Continent, lk?.City);
             if (entry.TimeOffUtc - _lastContactUtc > TimeSpan.FromHours(2)) _tonight.Clear();
             _lastContactUtc = entry.TimeOffUtc;
             _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag));
-            _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid ?? s?.Grid, entity?.Entity.Key, lk.State,
+            _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid ?? s?.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
             _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
         }
@@ -503,6 +504,7 @@ public sealed class Session
             _config = _config with { Band = band, Mode = mode };
             _dialHz = _frequencies.Find(band, mode)?.DialHz ?? _dialHz;
             _tracker = new StationTracker(_config.MyCall, _config.MyGrid, _countries, mode);
+            foreach (var (call, e) in _lookups) _tracker.SetLookup(call, e.Grid, e.State, e.City);
             _engine.Abandon(_clock.UtcNow);
             _engine.StopCq(_clock.UtcNow);
             _hearsMe = new HearsMe(band, _hearsMe.Available);
@@ -581,21 +583,34 @@ public sealed class Session
         Publish();
     }
 
-    /// <summary>Adds a QRZ lookup result for a station.</summary>
-    public void SetLookup(string call, string? name, string? grid, string? state)
+    /// <summary>Adds QRZ lookup results (fresh or from the cache) and publishes once.</summary>
+    public void SetLookups(IEnumerable<CallsignCacheEntry> entries)
     {
         lock (_gate)
         {
-            _lookups[Callsign.Normalize(call)] = (name, state);
-            _tracker.SetLookup(call, grid, state);
+            foreach (var e in entries)
+            {
+                var call = Callsign.Normalize(e.Call);
+                _lookups[call] = e;
+                _tracker.SetLookup(call, e.Grid, e.State, e.City);
+            }
         }
         Publish();
     }
 
     /// <summary>QRZ name for a call, if looked up.</summary>
-    public string? NameOf(string call)
+    public string? NameOf(string call) => LookupOf(call)?.Name;
+
+    /// <summary>QRZ data for a call, if looked up.</summary>
+    public CallsignCacheEntry? LookupOf(string call)
     {
-        lock (_gate) return _lookups.TryGetValue(Callsign.Normalize(call), out var v) ? v.Name : null;
+        lock (_gate) return _lookups.GetValueOrDefault(Callsign.Normalize(call));
+    }
+
+    /// <summary>True when QRZ data for the call is already held (so the cache need not be read again).</summary>
+    public bool HasLookup(string call)
+    {
+        lock (_gate) return _lookups.ContainsKey(Callsign.Normalize(call));
     }
 
     private void AfterCommand()

@@ -38,6 +38,45 @@ public sealed class CallsignCacheEntry
     /// <summary>ADIF DXCC code.</summary>
     public int? Dxcc { get; set; }
 
+    /// <summary>Name used on the air (<c>nickname</c>).</summary>
+    public string? Nickname { get; set; }
+
+    /// <summary>US county (<c>county</c>).</summary>
+    public string? County { get; set; }
+
+    /// <summary>Licence class (<c>class</c>).</summary>
+    public string? LicenseClass { get; set; }
+
+    /// <summary>US time zone name (<c>TimeZone</c>).</summary>
+    public string? TimeZone { get; set; }
+
+    /// <summary>Standard offset from UTC in hours (<c>GMTOffset</c>).</summary>
+    public double? GmtOffset { get; set; }
+
+    /// <summary>Daylight saving observed (<c>DST</c>).</summary>
+    public bool? ObservesDst { get; set; }
+
+    /// <summary>Primary photo URL (<c>image</c>).</summary>
+    public string? ImageUrl { get; set; }
+
+    /// <summary>QSL manager (<c>qslmgr</c>).</summary>
+    public string? QslManager { get; set; }
+
+    /// <summary>Accepts LoTW (<c>lotw</c>).</summary>
+    public bool? Lotw { get; set; }
+
+    /// <summary>Accepts eQSL (<c>eqsl</c>).</summary>
+    public bool? Eqsl { get; set; }
+
+    /// <summary>Returns paper QSLs (<c>mqsl</c>).</summary>
+    public bool? PaperQsl { get; set; }
+
+    /// <summary>CQ zone (<c>cqzone</c>).</summary>
+    public int? CqZone { get; set; }
+
+    /// <summary>ITU zone (<c>ituzone</c>).</summary>
+    public int? ItuZone { get; set; }
+
     /// <summary>When it was fetched.</summary>
     public DateTime FetchedUtc { get; set; }
 

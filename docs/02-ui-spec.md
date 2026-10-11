@@ -112,7 +112,7 @@ A grid with a header row. One row per station that is needed (tiers 1 to 4), cal
 | --- | --- |
 | # | Rank, starting at 1 |
 | Call | Callsign, semibold |
-| Where | Country, or "State, USA" / "Province, Canada" when known, then distance |
+| Where | Country, or "State, USA" / "Province, Canada" when known, then distance. With a city from QRZ: "Springfield, IL, USA", "Ottawa, ON, Canada", "Wellington, New Zealand". City and state come from a QRZ lookup or, for any station heard, from the local lookup cache (a database read, never a network call) |
 | Why | Need tag: New country (caution, bold), New band (accent, bold), New grid (accent, bold), New call (plain) |
 | Doing now | "Calling CQ, 6 slots" · "Calling CQ DX, 2 slots" · "Calling CQ, 4 slots, fading" · "Calling you" |
 | Last heard | Time since the station was last decoded: "45 seconds ago", "2 minutes ago". Counts up between slots, secondary text |
@@ -126,7 +126,8 @@ Behaviour:
 
 - Row 1 is highlighted as the selected row when nothing else is selected. Up and Down move the selection. Enter calls the selected row. Double-click calls that row.
 - Rows re-rank only at slot boundaries, after decodes arrive, and never while the pointer is over the list or within 300 ms of a click. A pending re-rank shows a "List updated" pill that applies on click or when the pointer leaves.
-- Selecting a row loads its QRZ lookup and shows a details flyout to the right of the row: name, location, grid, bearing, and the operator's past contacts with that call (date, band, mode, confirmed).
+- Selecting a row loads its QRZ lookup and shows a details flyout to the right of the row: name (with nickname), location, county, grid, bearing, the station's local time, licence class, how it QSLs (LoTW, eQSL, paper, manager), CQ and ITU zones, an "Open on QRZ.com" link and a "Photo" link when QRZ has one, and the operator's past contacts with that call (date, band, mode, confirmed). Lines with no data are left out; without a lookup it says "No QRZ details yet". The flyout refreshes when the lookup arrives.
+- Local time uses QRZ's standard offset (`GMTOffset`) and daylight-saving flag (`DST`). Daylight saving is applied with the US/Canada rule or the EU rule; anywhere else that observes it, local time is left out rather than guessed.
 - Empty state: "Nobody you need is calling CQ right now." with the Watching list still shown.
 
 ### Watching
@@ -137,7 +138,9 @@ Footer: "N stations you have already worked on 20 m are hidden. Show them" toggl
 
 ### Right column
 
-**Heard here** (first card): a map of the stations I decoded in the last 15 minutes, with choices that are remembered in settings (`Map`):
+**About <call>** (top, only during a contact): the same facts as the station details flyout for the station in the contact, so the operator can see who they are working without selecting a row. The contact's station is looked up on QRZ when the contact starts.
+
+**Heard here** (first card below it): a map of the stations I decoded in the last 15 minutes, with choices that are remembered in settings (`Map`):
 
 | Choice | Options |
 | --- | --- |

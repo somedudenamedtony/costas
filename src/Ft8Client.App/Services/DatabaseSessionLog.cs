@@ -43,6 +43,7 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
             Gridsquare = e.Grid,
             Name = c.Name,
             State = c.State,
+            Qth = c.Qth,
             Country = c.Country,
             EntityKey = c.EntityKey,
             Continent = c.Continent,

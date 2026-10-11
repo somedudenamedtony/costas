@@ -25,7 +25,7 @@ public sealed class StationTracker
     public static readonly TimeSpan RemoveAfter = TimeSpan.FromMinutes(5);
 
     private readonly Dictionary<string, Station> _stations = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, (string? Grid, string? Region)> _lookups = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (string? Grid, string? Region, string? City)> _lookups = new(StringComparer.Ordinal);
     private readonly Dictionary<string, DateTime> _lastCqSlot = new(StringComparer.Ordinal);
     private readonly CountryFile? _countries;
     private readonly Mode _mode;
@@ -65,11 +65,12 @@ public sealed class StationTracker
     }
 
     /// <summary>Adds QRZ lookup data. A lookup grid is used only when the station has not sent its own.</summary>
-    public void SetLookup(string call, string? grid, string? region)
+    public void SetLookup(string call, string? grid, string? region, string? city = null)
     {
         var c = Callsign.Normalize(call);
-        _lookups[c] = (Messages.Grid.IsGrid4Or6(grid) ? grid!.ToUpperInvariant() : null, string.IsNullOrWhiteSpace(region) ? null : region.Trim());
-        if (_stations.TryGetValue(c, out var s)) _stations[c] = Place(s with { Region = _lookups[c].Region ?? s.Region }, s.Grid);
+        _lookups[c] = (Messages.Grid.IsGrid4Or6(grid) ? grid!.ToUpperInvariant() : null, Trimmed(region), Trimmed(city));
+        if (_stations.TryGetValue(c, out var s))
+            _stations[c] = Place(s with { Region = _lookups[c].Region ?? s.Region, City = _lookups[c].City ?? s.City }, s.Grid);
     }
 
     /// <summary>
@@ -123,7 +124,7 @@ public sealed class StationTracker
     {
         var existing = _stations.GetValueOrDefault(call);
         var s = existing ?? new Station { Call = call, FirstHeardUtc = slot, Entity = _countries?.Lookup(call) };
-        if (_lookups.TryGetValue(call, out var lk) && lk.Region is not null) s = s with { Region = lk.Region };
+        if (_lookups.TryGetValue(call, out var lk)) s = s with { Region = lk.Region ?? s.Region, City = lk.City ?? s.City };
 
         var history = s.SnrHistory;
         var bestSnr = snr;
@@ -188,6 +189,8 @@ public sealed class StationTracker
         }
         return s with { Grid = useGrid, DistanceKm = dist, Bearing = bearing };
     }
+
+    private static string? Trimmed(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
 
     private static PartnerStage StageOf(MessageKind k) => k switch
     {
