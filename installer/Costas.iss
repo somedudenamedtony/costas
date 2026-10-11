@@ -73,10 +73,11 @@ Filename: "{app}\Costas.exe"; Description: "{cm:LaunchProgram,Costas}"; Flags: n
 ; The app's Update button runs a silent upgrade with /RELAUNCH=1 and closes; this reopens it, as the signed-in user.
 Filename: "{app}\Costas.exe"; Flags: nowait runasoriginaluser; Check: RelaunchRequested
 
+; The log, settings and saved files live in the user's data folder and are kept on uninstall.
+
 [Code]
+// Must stay last: everything after [Code] is Pascal, where a ; line is not a comment.
 function RelaunchRequested: Boolean;
 begin
   Result := ExpandConstant('{param:relaunch|0}') = '1';
 end;
-
-; The log, settings and saved files live in the user's data folder and are kept on uninstall.
