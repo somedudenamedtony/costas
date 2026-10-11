@@ -22,4 +22,7 @@ public interface IAudioBackend
 
     /// <summary>Opens a playback device by id.</summary>
     IAudioOutput OpenOutput(string deviceId, int sampleRate);
+
+    /// <summary>The system's default playback device (speakers or headphones), or null if there is none.</summary>
+    string? DefaultOutputId();
 }

@@ -22,5 +22,11 @@ namespace Ft8Client.Core.Contacts;
 /// <param name="FirstCalledUtc">When it first called.</param>
 /// <param name="LastCalledUtc">When it last called.</param>
 /// <param name="AnswerAfter">The operator asked to answer it after the current contact.</param>
+/// <param name="AfterStop">
+/// It is the station of the contact I abandoned (or that ended with no reply or by the watchdog), replying afterwards.
+/// Answering it resumes that contact instead of starting a new one.
+/// </param>
+/// <param name="LastMessage">The last message it sent me, as decoded.</param>
 public sealed record WaitingCaller(string Call, string? Grid, int Snr, MessageKind Kind, int? Report, SlotParity Parity, int OffsetHz,
-                                   DateTime FirstCalledUtc, DateTime LastCalledUtc, bool AnswerAfter = false);
+                                   DateTime FirstCalledUtc, DateTime LastCalledUtc, bool AnswerAfter = false, bool AfterStop = false,
+                                   string? LastMessage = null);

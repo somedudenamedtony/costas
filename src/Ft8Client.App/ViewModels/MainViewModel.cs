@@ -29,6 +29,7 @@ namespace Ft8Client.App.ViewModels;
 public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 {
     private readonly AppHost _host;
+    private readonly CallerAlert _callers = new();
     private bool _escArmed;
     private bool _updatingBand;
 
@@ -196,6 +197,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
         Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current.Ranking);
         Operate.Apply(s, tonight.Rows, tonight.Total);
+        if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
         Raw.Apply(s.RawDecodes);
         Frequency = FormatFrequency(s.DialHz);
         Transmitting = s.Transmitting;

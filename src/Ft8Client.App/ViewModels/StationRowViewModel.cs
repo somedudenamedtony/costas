@@ -34,6 +34,7 @@ public sealed partial class StationRowViewModel : ObservableObject
         History = r.Station.SnrHistory;
         HistoryTip = HistoryText(r.Station.SnrHistory);
         Refresh(nowUtc);
+        CallText = r.CallingMe ? "Answer" : "Call";
     }
 
     /// <summary>SNR in the station's last few own slots, oldest first, for the sparkline.</summary>
@@ -46,6 +47,9 @@ public sealed partial class StationRowViewModel : ObservableObject
     public static string HistoryText(IReadOnlyList<int?> history) =>
         history.Count == 0 ? "No signal history yet"
             : $"Last {history.Count} slots: {string.Join(", ", history.Select(h => h is { } v ? Report.Format(v) : "missed"))} dB";
+
+    /// <summary>"Answer" for a station calling me (the button answers it from Waiting for you), otherwise "Call".</summary>
+    public string CallText { get; }
 
     /// <summary>The ranked station.</summary>
     public RankedStation Source { get; }

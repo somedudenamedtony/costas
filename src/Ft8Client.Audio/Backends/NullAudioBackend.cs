@@ -31,6 +31,9 @@ public sealed class NullAudioBackend : IAudioBackend
     /// <inheritdoc />
     public IAudioOutput OpenOutput(string deviceId, int sampleRate) => LastOutput = new NullAudioOutput(sampleRate);
 
+    /// <inheritdoc />
+    public string? DefaultOutputId() => null;
+
     private sealed class SilentInput(int rate) : IAudioInput
     {
         public int SampleRate { get; } = rate;

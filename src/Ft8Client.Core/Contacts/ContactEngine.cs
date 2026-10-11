@@ -26,6 +26,9 @@ public sealed class ContactEngine
     /// <summary>Maximum stations kept in Waiting for you.</summary>
     public const int MaxWaiting = 5;
 
+    /// <summary>How long a caller stays in Waiting for you, and how long a stopped contact can be resumed.</summary>
+    public static readonly TimeSpan WaitingWindow = TimeSpan.FromMinutes(5);
+
     private readonly List<WaitingCaller> _waiting = [];
     private ContactSettings _settings;
     private string _myCall;
@@ -36,6 +39,7 @@ public sealed class ContactEngine
     private SlotParity _cqParity;
     private DateTime _lastInputUtc;
     private Finished? _lastLogged;
+    private Stopped? _stopped;
     private string? _extraMessage;
     private SlotParity _extraParity;
 
@@ -113,6 +117,7 @@ public sealed class ContactEngine
         _c = new Contact(ContactFlow.AnswerCq, call, Grid.Grid4(grid), SlotMath.Opposite(dxParity), Report.Clamp(snr), dxOffsetHz);
         _c.Steps.AddRange(StepsFor(_c));
         RemoveWaiting(call);
+        if (_stopped is { } s && Callsign.EqualsCall(s.Contact.DxCall, call)) ForgetStopped();
     }
 
     /// <summary>Starts calling CQ in slots of the given parity.</summary>
@@ -130,15 +135,17 @@ public sealed class ContactEngine
         _cqRunning = false;
     }
 
-    /// <summary>Answers a waiting caller now: report to a grid, R-report to a report.</summary>
+    /// <summary>
+    /// Answers a waiting caller now: report to a grid, R-report to a report. A station that replied after I stopped its
+    /// contact resumes that contact, applying what it sent since.
+    /// </summary>
     public bool AnswerCaller(string call, DateTime nowUtc)
     {
         OperatorActivity(nowUtc);
         var w = _waiting.FirstOrDefault(x => Callsign.EqualsCall(x.Call, call));
         if (w is null) return false;
         _finished = null;
-        StartFromCaller(w);
-        return true;
+        return Begin(w, nowUtc);
     }
 
     /// <summary>Marks a waiting caller to be answered when the current contact ends.</summary>
@@ -245,13 +252,20 @@ public sealed class ContactEngine
             }
         }
 
+        if (_stopped is { } old && nowUtc - old.EndedUtc > WaitingWindow) ForgetStopped();
         foreach (var (h, m) in toMe)
         {
             if (_c is not null && Callsign.EqualsCall(m.SenderCall, _c.DxCall)) continue;
             if (_lastLogged is { } l && Callsign.EqualsCall(m.SenderCall, l.DxCall) && nowUtc - l.LoggedUtc < LateWindow) continue;
+            if (_stopped is { } s && Callsign.EqualsCall(m.SenderCall, s.Contact.DxCall))
+            {
+                s.Late.Add((m, slotStartUtc));
+                AddWaiting(h, m, parity, slotStartUtc, afterStop: true);
+                continue;
+            }
             AddWaiting(h, m, parity, slotStartUtc);
         }
-        _waiting.RemoveAll(w => nowUtc - w.LastCalledUtc > TimeSpan.FromMinutes(5));
+        _waiting.RemoveAll(w => nowUtc - w.LastCalledUtc > WaitingWindow);
     }
 
     /// <summary>
@@ -437,6 +451,44 @@ public sealed class ContactEngine
             _c = c;
         }
         RemoveWaiting(w.Call);
+        if (_stopped is { } s && Callsign.EqualsCall(s.Contact.DxCall, w.Call)) ForgetStopped();
+    }
+
+    private bool Begin(WaitingCaller w, DateTime nowUtc)
+    {
+        if (w.AfterStop && _stopped is { } s && Callsign.EqualsCall(s.Contact.DxCall, w.Call))
+        {
+            Resume(s, nowUtc);
+            return true;
+        }
+        if (w.Kind is not (MessageKind.GridReply or MessageKind.Report)) return false;
+        StartFromCaller(w);
+        return true;
+    }
+
+    // Picks a stopped contact up where it ended and applies what the station sent since, as if it had arrived in time.
+    private void Resume(Stopped s, DateTime nowUtc)
+    {
+        var c = s.Contact;
+        _stopped = null;
+        if (ReferenceEquals(_finished, c)) _finished = null;
+        c.Outcome = ContactOutcome.InProgress;
+        c.StepTxCount = 0;
+        c.AwaitingReply = false;
+        _c = c;
+        foreach (var (m, slot) in s.Late) Advance(c, m, slot, nowUtc);
+        RemoveWaiting(c.DxCall);
+    }
+
+    // A stopped contact can no longer be resumed: its late replies become ordinary callers, or go if they are sign-offs.
+    private void ForgetStopped()
+    {
+        if (_stopped is not { } s) return;
+        _stopped = null;
+        var i = _waiting.FindIndex(x => x.AfterStop && Callsign.EqualsCall(x.Call, s.Contact.DxCall));
+        if (i < 0) return;
+        if (_waiting[i].Kind is MessageKind.GridReply or MessageKind.Report) _waiting[i] = _waiting[i] with { AfterStop = false };
+        else _waiting.RemoveAt(i);
     }
 
     private void End(ContactOutcome outcome, DateTime nowUtc, bool resume = true)
@@ -444,12 +496,19 @@ public sealed class ContactEngine
         if (_c is null) return;
         _c.Outcome = outcome;
         if (outcome == ContactOutcome.Logged)
+        {
             _lastLogged = new Finished(_c.DxCall, _c.Flow, _c.MyParity, _c.LoggedUtc ?? nowUtc, _c);
+        }
+        else
+        {
+            ForgetStopped();
+            _stopped = new Stopped(_c, nowUtc, []);
+        }
         _finished = _c;
         _c = null;
         if (!resume) return;
         var next = _waiting.FirstOrDefault(w => w.AnswerAfter);
-        if (next is not null) StartFromCaller(next);
+        if (next is not null) Begin(next, nowUtc);
     }
 
     private void DoLog(Contact c, DateTime nowUtc)
@@ -474,7 +533,8 @@ public sealed class ContactEngine
     private static void Count(Contact c, int index, DateTime utc) =>
         c.Steps[index] = c.Steps[index] with { Count = c.Steps[index].Count + 1, TimeUtc = utc };
 
-    private void AddWaiting(HeardMessage h, ParsedMessage m, SlotParity parity, DateTime slotUtc)
+    // A station replying after I stopped its contact is always kept, whatever it sent, so the operator sees it.
+    private void AddWaiting(HeardMessage h, ParsedMessage m, SlotParity parity, DateTime slotUtc, bool afterStop = false)
     {
         var call = m.SenderCall!;
         var i = _waiting.FindIndex(x => Callsign.EqualsCall(x.Call, call));
@@ -486,13 +546,14 @@ public sealed class ContactEngine
                 LastCalledUtc = slotUtc, Snr = h.Decode.Snr, Parity = parity, OffsetHz = h.Decode.OffsetHz,
                 Kind = m.Kind is MessageKind.GridReply or MessageKind.Report ? m.Kind : w.Kind,
                 Grid = m.Grid ?? w.Grid, Report = m.Report ?? w.Report,
+                AfterStop = w.AfterStop || afterStop, LastMessage = m.Text,
             };
             return;
         }
-        if (_waiting.Count >= MaxWaiting) return;
-        if (m.Kind is not (MessageKind.GridReply or MessageKind.Report or MessageKind.RogerReport or MessageKind.Bare)) return;
+        if (!afterStop && _waiting.Count >= MaxWaiting) return;
+        if (!afterStop && m.Kind is not (MessageKind.GridReply or MessageKind.Report or MessageKind.RogerReport or MessageKind.Bare)) return;
         _waiting.Add(new WaitingCaller(call, m.Grid, h.Decode.Snr, m.Kind == MessageKind.RogerReport ? MessageKind.Report : m.Kind,
-            m.Report, parity, h.Decode.OffsetHz, slotUtc, slotUtc));
+            m.Report, parity, h.Decode.OffsetHz, slotUtc, slotUtc, AfterStop: afterStop, LastMessage: m.Text));
     }
 
     private void RemoveWaiting(string call) => _waiting.RemoveAll(x => Callsign.EqualsCall(x.Call, call));
@@ -597,6 +658,8 @@ public sealed class ContactEngine
     }
 
     private sealed record Finished(string DxCall, ContactFlow Flow, SlotParity MyParity, DateTime LoggedUtc, Contact Contact);
+
+    private sealed record Stopped(Contact Contact, DateTime EndedUtc, List<(ParsedMessage Message, DateTime SlotUtc)> Late);
 
     private string Format(Finished f, int index) => Format(f.Contact, index);
 }

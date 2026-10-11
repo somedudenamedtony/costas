@@ -105,4 +105,13 @@ public class DspTests
         var n = r.Process(input, output);
         AudioLevel.RmsDbfs(output.AsSpan(500, n - 1000)).Should().BeLessThan(-50);
     }
+
+    [Fact]
+    public void ChimeTone_Render_QuietAndShort()
+    {
+        var c = ChimeTone.Render(48_000);
+        c.Length.Should().BeLessThan(48_000 / 2);
+        c.Max(Math.Abs).Should().BeLessThanOrEqualTo(0.25f);
+        c[0].Should().Be(0);
+    }
 }

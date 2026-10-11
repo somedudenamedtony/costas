@@ -49,6 +49,15 @@ public sealed class WasapiAudioBackend : IAudioBackend
         return new Output(device);
     }
 
+    /// <inheritdoc />
+    public string? DefaultOutputId()
+    {
+        using var e = new MMDeviceEnumerator();
+        if (!e.HasDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)) return null;
+        using var d = e.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+        return d.ID;
+    }
+
     private static List<AudioDevice> List(DataFlow flow)
     {
         using var e = new MMDeviceEnumerator();
