@@ -115,4 +115,13 @@ public class ContactPanelViewModelTests
         p.Steps[0].Marker.Should().Be("✓");
         p.Steps[1].NextReached.Should().BeFalse();
     }
+
+    [Fact]
+    public void From_NoReportsYet_ShowsDoubleDash()
+    {
+        var p = Panel(AfterGridReply(), false, null, Slot.AddSeconds(14));
+
+        p.Sent.Should().Be("--");
+        p.Received.Should().Be("--");
+    }
 }

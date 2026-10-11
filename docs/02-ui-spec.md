@@ -87,7 +87,15 @@ Mockup: `main-in-contact`. Replaces the band summary from the moment the operato
 | Caption | "Contact in progress", or "Calling", "Logged", "No reply" |
 | Callsign | 40 px, with the need tag beside it |
 | Subline | Name from QRZ lookup (blank until it arrives) · country or state · distance |
-| You sent / You received | The reports, blank until exchanged |
+| On-air panel | A bordered panel on the right of the card that holds everything about the next transmission, described below |
+
+**On-air panel**: one row of readouts above one row of buttons.
+
+| Element | Content |
+| --- | --- |
+| You sent / You received | The reports with "dB" after them. Shows "--" until exchanged |
+| Slot | "Transmitting" or "Receiving", the seconds left, and a progress bar (critical while transmitting). While transmitting it counts down to the end of the transmission, otherwise to the next slot |
+| Call CQ / Stop CQ | The same command as the bottom bar's Call CQ button |
 | Resend | Sends the current step again in my next slot |
 | Log now | Logs the contact as it stands. Enabled once both reports are exchanged |
 | Abandon (Esc) | Stops transmitting, ends the contact, logs nothing |

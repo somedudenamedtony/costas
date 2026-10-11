@@ -32,6 +32,12 @@ public static class ModeInfo
     /// <summary>Delay from slot start to the start of transmit audio, in milliseconds.</summary>
     public static int TxStartMilliseconds(Mode mode) => mode == Mode.Ft8 ? 500 : 500;
 
+    /// <summary>Length of one transmission in milliseconds: FT8 is 79 symbols of 160 ms, FT4 is 105 symbols of 48 ms.</summary>
+    public static int TxMilliseconds(Mode mode) => mode == Mode.Ft8 ? 12_640 : 5_040;
+
+    /// <summary>When a transmission ends, measured from the start of its slot.</summary>
+    public static TimeSpan TxEnd(Mode mode) => TimeSpan.FromMilliseconds(TxStartMilliseconds(mode) + TxMilliseconds(mode));
+
     /// <summary>Signal bandwidth in hertz, used for transmit offset occupancy.</summary>
     public static int OccupiedBandwidthHz(Mode mode) => mode == Mode.Ft8 ? 50 : 90;
 

@@ -359,9 +359,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _host.Qrz.RetryUploadsNow();
     }
 
-    /// <summary>Call CQ / Stop CQ.</summary>
+    /// <inheritdoc />
     [RelayCommand]
-    private void ToggleCq()
+    public void ToggleCq()
     {
         Activity();
         _host.Session.ToggleCq();
