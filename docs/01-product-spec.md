@@ -43,7 +43,7 @@ Reference user: W7LIT, grid DN40, an Icom IC-7300 over USB, Windows 11, a QRZ su
 | Ranking | "Next in line" list ordered by need, then chance; "Watching" list; hidden count of worked stations |
 | Chance | Good, Fair or Long shot from PSK Reporter reports and the station's signal |
 | Band summary | Idle top slot: stations heard, countries, calling CQ, needed, decodes per slot, heard-from by continent, log totals for the band |
-| Contact | Top slot becomes the contact: callsign, need tag, QRZ name and location, reports, conversation (one row per step), Resend, Log now, Abandon |
+| Contact | Top slot becomes the contact: callsign, need tag, QRZ name and location, reports, five-step conversation strip, Resend, Log now, Abandon |
 | Sequencing | Automatic sequencing of the standard exchange, retries, step-back on repeats, RR73 |
 | Calling CQ | Call CQ, answer the first caller, queue further callers in "Waiting for you" |
 | Transmit | Message encoding, GFSK audio, PTT, automatic clear transmit offset, power setting |

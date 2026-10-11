@@ -93,4 +93,26 @@ public class ContactPanelViewModelTests
         p.Steps[4].Status.Should().Be("Then logged");
         p.Steps.Select(s => s.Who).Should().Equal("You", "N4OPI", "You", "N4OPI", "You");
     }
+
+    [Fact]
+    public void From_MessageStillOnAir_TrackStopsAtTheStepOnAir()
+    {
+        var p = Panel(AfterGridReply(), true, "N4OPI W7LIT DN40", Slot.AddSeconds(4));
+
+        p.Steps[0].First.Should().BeTrue();
+        p.Steps[0].Reached.Should().BeTrue();
+        p.Steps[0].NextReached.Should().BeFalse();
+        p.Steps[0].Marker.Should().Be("1");
+        p.Steps[^1].Last.Should().BeTrue();
+    }
+
+    [Fact]
+    public void From_TransmissionEnded_TrackReachesTheReplyAndDoneStepIsTicked()
+    {
+        var p = Panel(AfterGridReply(), false, null, Slot.AddSeconds(14));
+
+        p.Steps[0].NextReached.Should().BeTrue();
+        p.Steps[0].Marker.Should().Be("✓");
+        p.Steps[1].NextReached.Should().BeFalse();
+    }
 }

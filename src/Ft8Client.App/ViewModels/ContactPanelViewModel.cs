@@ -50,7 +50,7 @@ public sealed class ContactPanelViewModel
     /// <summary>The contact is still running.</summary>
     public bool Active { get; private init; }
 
-    /// <summary>The conversation, one row per step in order.</summary>
+    /// <summary>The strip, one box per step in order.</summary>
     public IReadOnlyList<StepViewModel> Steps { get; private init; } = [];
 
     /// <summary>Builds the panel from a snapshot.</summary>
@@ -79,7 +79,7 @@ public sealed class ContactPanelViewModel
                 look = StepLook.Transmitting;
                 time = Time(st.TimeUtc ?? currentSlot);
                 var left = currentSlot + TxEnd(s.Mode) - nowUtc;
-                status = $"Sending · {Math.Max(0, (int)Math.Ceiling(left.TotalSeconds))} s left{count}";
+                status = $"Sending{count} · {Math.Max(0, (int)Math.Ceiling(left.TotalSeconds))} s left";
             }
             else
             {
@@ -123,7 +123,12 @@ public sealed class ContactPanelViewModel
             Received = c.ReportReceived is { } rr ? Report.Format(rr) : string.Empty,
             CanLogNow = c.CanLogNow,
             Active = c.Outcome == ContactOutcome.InProgress,
-            Steps = steps,
+            Steps = [.. steps.Select((x, i) => x with
+            {
+                First = i == 0,
+                Last = i == steps.Count - 1,
+                NextReached = i + 1 < steps.Count && steps[i + 1].Reached,
+            })],
         };
     }
 

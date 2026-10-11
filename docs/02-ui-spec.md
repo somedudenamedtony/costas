@@ -92,20 +92,22 @@ Mockup: `main-in-contact`. Replaces the band summary from the moment the operato
 | Log now | Logs the contact as it stands. Enabled once both reports are exchanged |
 | Abandon (Esc) | Stops transmitting, ends the contact, logs nothing |
 
-**Conversation**: one row per step, oldest at the top, so the exchange reads top to bottom like a transcript. Each row has four columns: UTC time, who ("You" or the DX call, semibold), the literal message, and a status.
+**Conversation strip**: one box per step in a row, mine raised 12 px, theirs lowered 12 px. Above the boxes a progress track has one numbered marker per step: a tick on a filled accent marker once the step is done, a filled critical marker while it is on the air, an accent ring for the step being waited for, and a grey ring ahead. The track is accent up to the furthest step reached.
 
-| Row state | Look | Time | Status |
+Each box has three lines: who ("You" or the DX call, semibold) with the UTC time on the right, the literal message, and a status.
+
+| Box state | Look | Time | Status |
 | --- | --- | --- | --- |
-| Done | Plain row, primary text | When sent or received | "Sent" or "Received" |
+| Done | Thin border, no fill | When sent or received | "Sent" or "Received" |
 | Now, transmitting | Critical fill, white text | When the transmission started | "Sending · 7 s left" |
-| Now, waiting | Accent tint and border | The slot the reply is due in | "Waiting for reply" |
-| Now, mine, not yet on the air | Accent tint and border | Blank | "Sending next slot" |
-| Upcoming | Secondary text | Blank, or the slot it is due in when it is the next reply | "Next", "Expected", or "Then logged" for my last step |
-| Repeated | As above plus "×2" | Latest time | When a step was sent or received more than once |
+| Now, waiting | Accent tint, 2 px accent border | The slot the reply is due in | "Waiting for reply" |
+| Now, mine, not yet on the air | Accent tint, 2 px accent border | Blank | "Sending next slot" |
+| Upcoming | Dashed border, secondary text | Blank, or the slot it is due in when it is the next reply | "Next", "Expected", or "Then logged" for my last step |
+| Repeated | As above with "×2" after the verb | Latest time | When a step was sent or received more than once |
 
-The engine counts a message as sent when its transmission starts. While that message is still on the air its row shows as transmitting, and the reply row after it stays upcoming; the reply row is highlighted as waiting only once the transmission has ended.
+The engine counts a message as sent when its transmission starts. While that message is still on the air its box shows as transmitting and the reply box after it stays upcoming; the reply box is highlighted as waiting only once the transmission has ended.
 
-Clicking one of my upcoming rows jumps the sequence to that step (manual override). The rows are generated from the contact state machine's step list, so the CQ-run flow shows its own six steps.
+Clicking one of my upcoming boxes jumps the sequence to that step (manual override). The boxes are generated from the contact state machine's step list, so the CQ-run flow shows its own six steps.
 
 ### Next in line
 

@@ -50,7 +50,7 @@ public static class Converters
     /// <summary>Semibold for false (the other station's call stands out from "You").</summary>
     public static readonly IValueConverter NotBold = new FuncValueConverter<bool, FontWeight>(b => b ? FontWeight.Normal : FontWeight.SemiBold);
 
-    /// <summary>Step look to row background: red while on the air, tinted while waiting.</summary>
+    /// <summary>Step look to box background: red while on the air, tinted while waiting.</summary>
     public static readonly IValueConverter StepBackground = new FuncValueConverter<StepLook, IBrush?>(l => l switch
     {
         StepLook.Transmitting => Brush("CriticalBrush"),
@@ -58,13 +58,20 @@ public static class Converters
         _ => Brushes.Transparent,
     });
 
-    /// <summary>Step look to row border.</summary>
+    /// <summary>Step look to box border (upcoming boxes draw a dashed outline instead).</summary>
     public static readonly IValueConverter StepBorder = new FuncValueConverter<StepLook, IBrush?>(l => l switch
     {
         StepLook.Transmitting => Brush("CriticalBrush"),
         StepLook.Waiting => Brush("AccentBrush"),
+        StepLook.Done => Brush("ControlBorderBrush"),
         _ => Brushes.Transparent,
     });
+
+    /// <summary>Step look to border thickness: the step being waited for stands out.</summary>
+    public static readonly IValueConverter StepBorderThickness = new FuncValueConverter<StepLook, Thickness>(l => new Thickness(l == StepLook.Waiting ? 2 : 1));
+
+    /// <summary>True for upcoming steps (dashed outline).</summary>
+    public static readonly IValueConverter IsUpcoming = new FuncValueConverter<StepLook, bool>(l => l == StepLook.Upcoming);
 
     /// <summary>Step look to text.</summary>
     public static readonly IValueConverter StepForeground = new FuncValueConverter<StepLook, IBrush?>(l => l switch
@@ -74,13 +81,47 @@ public static class Converters
         _ => Brush("TextPrimaryBrush"),
     });
 
-    /// <summary>Step look to the status text at the end of the row.</summary>
+    /// <summary>Step look to the status line.</summary>
     public static readonly IValueConverter StepStatusForeground = new FuncValueConverter<StepLook, IBrush?>(l => l switch
     {
         StepLook.Transmitting => Brushes.White,
         StepLook.Waiting => Brush("AccentTextBrush"),
         _ => Brush("TextSecondaryBrush"),
     });
+
+    /// <summary>Dashed border for upcoming steps.</summary>
+    public static readonly IValueConverter StepDash = new FuncValueConverter<StepLook, Avalonia.Collections.AvaloniaList<double>?>(l =>
+        l == StepLook.Upcoming ? new Avalonia.Collections.AvaloniaList<double>([4, 3]) : null);
+
+    /// <summary>Offset to a top margin (mine raised, theirs lowered).</summary>
+    public static readonly IValueConverter StepMargin = new FuncValueConverter<double, Thickness>(o => new Thickness(0, 12 + o, 6, 12 - o));
+
+    /// <summary>Progress marker fill: solid once done or on the air, a ring otherwise.</summary>
+    public static readonly IValueConverter MarkerFill = new FuncValueConverter<StepLook, IBrush?>(l => l switch
+    {
+        StepLook.Done => Brush("AccentBrush"),
+        StepLook.Transmitting => Brush("CriticalBrush"),
+        _ => Brush("CardBackgroundBrush"),
+    });
+
+    /// <summary>Progress marker ring.</summary>
+    public static readonly IValueConverter MarkerStroke = new FuncValueConverter<StepLook, IBrush?>(l => l switch
+    {
+        StepLook.Done or StepLook.Waiting => Brush("AccentBrush"),
+        StepLook.Transmitting => Brush("CriticalBrush"),
+        _ => Brush("ControlBorderBrush"),
+    });
+
+    /// <summary>Progress marker text.</summary>
+    public static readonly IValueConverter MarkerForeground = new FuncValueConverter<StepLook, IBrush?>(l => l switch
+    {
+        StepLook.Done or StepLook.Transmitting => Brushes.White,
+        StepLook.Waiting => Brush("AccentTextBrush"),
+        _ => Brush("TextSecondaryBrush"),
+    });
+
+    /// <summary>Progress track: accent where reached, a plain line ahead.</summary>
+    public static readonly IValueConverter TrackBrush = new FuncValueConverter<bool, IBrush?>(b => Brush(b ? "AccentBrush" : "ControlBorderBrush"));
 
     /// <summary>Selected row background.</summary>
     public static readonly IValueConverter SelectedBackground = new FuncValueConverter<bool, IBrush?>(b => b ? Brush("SelectedRowBrush") : Brushes.Transparent);
