@@ -6,8 +6,10 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ft8Client.Core;
+using Ft8Client.Core.Bands;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Ranking;
@@ -18,8 +20,16 @@ namespace Ft8Client.App.ViewModels;
 public sealed partial class StationRowViewModel : ObservableObject
 {
     /// <summary>Builds a row.</summary>
-    public StationRowViewModel(RankedStation r, int rank, DistanceUnit units, DateTime nowUtc)
+    /// <param name="r">The ranked station.</param>
+    /// <param name="rank">Rank from 1.</param>
+    /// <param name="units">Distance units.</param>
+    /// <param name="nowUtc">Now.</param>
+    /// <param name="last">The most recent log contact with this call on any band or mode, if any.</param>
+    /// <param name="contacts">How many log contacts there are with this call.</param>
+    public StationRowViewModel(RankedStation r, int rank, DistanceUnit units, DateTime nowUtc, LogContact? last = null, int contacts = 0)
     {
+        LastWorked = last is null ? "Never" : StationText.LastWorked(last, nowUtc);
+        LastWorkedTip = last is null ? "Not in your log yet" : LastWorkedText(last, contacts);
         Source = r;
         Rank = rank;
         Call = r.Station.Call;
@@ -48,6 +58,18 @@ public sealed partial class StationRowViewModel : ObservableObject
     public static string HistoryText(IReadOnlyList<int?> history) =>
         history.Count == 0 ? "No signal history yet"
             : $"Last {history.Count} slots: {string.Join(", ", history.Select(h => h is { } v ? Report.Format(v) : "missed"))} dB";
+
+    /// <summary>"Today · 20 m", "2026-10-03 · 40 m" (any band or mode), or "Never".</summary>
+    public string LastWorked { get; }
+
+    /// <summary>Tooltip for <see cref="LastWorked"/>: contact count, exact time, band, mode and confirmation.</summary>
+    public string LastWorkedTip { get; }
+
+    /// <summary>"2 contacts in your log. Last: 2026-10-03 18:05 UTC on 20 m FT8, confirmed".</summary>
+    public static string LastWorkedText(LogContact last, int contacts) =>
+        $"{(contacts == 1 ? "1 contact" : $"{contacts} contacts")} in your log. Last: " +
+        $"{last.DateUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)} UTC on {BandPlan.Display(last.Band)} {last.ModeKey}" +
+        (last.Confirmed ? ", confirmed" : string.Empty);
 
     /// <summary>"Answer" for a station calling me (the button answers it from Waiting for you), otherwise "Call".</summary>
     public string CallText { get; }

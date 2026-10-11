@@ -60,6 +60,7 @@ it is heard working someone else, and moves to Watching once the time is up.
 | **dB** | Their signal at your station |
 | **Signal** | A sparkline of their last 6 slots, gaps where they were not decoded. Hover for the values |
 | **Chance** | **Good**, Fair or Long shot, from whether they hear you and how strong they are |
+| **Last worked** | Your most recent contact with that call on any band or mode (*2026-10-03 · 40 m*), or *Never*. Hover for the details |
 | button | **Call**, or **Answer** when they are calling you |
 
 How the order works: stations are grouped by need (new country first), then by chance, then by how well they hear
@@ -86,16 +87,14 @@ Directly under Next in line: stations you can hear now that are already in your 
 line leaves them out because you do not need them, but you may still want to work them again: a friend, a regular,
 or someone you owe a better report. At most 8 rows; the rest are counted underneath.
 
-| Column | Meaning |
-| --- | --- |
-| **Call** | Callsign |
-| **Where** | Country (or state, or province) and distance |
-| **Doing now** | As in Next in line. When they cannot be called right now it says why instead, in grey: *In a contact with EA5HVK*, *Went quiet 2 minutes ago* |
-| **Last heard** | How long ago they were last decoded |
-| **dB** | Their signal at your station |
-| **Signal** | A sparkline of their last 6 slots |
-| **Last worked** | When and on which band you last worked them, on any band or mode: *Today · 20 m*, *Yesterday · 40 m*, *2026-10-03 · 20 m*. Hover for the number of contacts, the exact time, the mode and whether it is confirmed |
-| button | **Call**, or **Answer** when they are calling you. Greyed out while they cannot be called |
+It has the same columns as Next in line, lined up under them, with two differences:
+
+- **Why** always reads *Worked before*.
+- **Doing now** says why they cannot be called right now instead, in grey: *In a contact with EA5HVK*, *Went quiet
+  2 minutes ago*, and the **Call** button is greyed out until they can.
+
+**Last worked** shows when and on which band you last worked them: *Today · 20 m*, *Yesterday · 40 m*,
+*2026-10-03 · 20 m*. Hover for the number of contacts, the exact time, the mode and whether it is confirmed.
 
 Stations you can call now come first, then the same order as Next in line. Like Next in line, the list holds still
 while your pointer is over it and catches up when you move away. When nobody you have worked on this band is on the

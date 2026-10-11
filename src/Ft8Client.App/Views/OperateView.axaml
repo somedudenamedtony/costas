@@ -209,7 +209,8 @@
                   </Button>
                 </StackPanel>
               </DockPanel>
-              <Grid ColumnDefinitions="36,100,190,110,*,120,140,46,64,80,74" Margin="14,0,14,4">
+              <!-- Next in line and Repeats share these columns so the two tables line up. -->
+              <Grid ColumnDefinitions="36,100,160,110,*,100,120,46,64,74,110,74" Margin="14,0,14,4">
                 <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
                 <TextBlock Grid.Column="1" Text="Call" Classes="secondary" />
                 <TextBlock Grid.Column="2" Text="Where" Classes="secondary" />
@@ -220,8 +221,9 @@
                 <TextBlock Grid.Column="7" Text="dB" Classes="secondary" HorizontalAlignment="Right" Margin="0,0,8,0" />
                 <TextBlock Grid.Column="8" Text="Signal" Classes="secondary" />
                 <TextBlock Grid.Column="9" Text="Chance" Classes="secondary" />
+                <TextBlock Grid.Column="10" Text="Last worked" Classes="secondary" />
               </Grid>
-              <ListBox x:Name="LineList" ItemsSource="{Binding Line}" SelectedItem="{Binding Selected}" Background="Transparent"
+              <ListBox x:Name="LineList" ItemsSource="{Binding Line}" SelectedItem="{Binding Selected}" Background="Transparent" Padding="0"
                        ScrollViewer.VerticalScrollBarVisibility="Disabled" AutomationProperties.Name="Next in line">
                 <ListBox.Styles>
                   <Style Selector="ListBoxItem">
@@ -236,24 +238,28 @@
                   <DataTemplate x:DataType="vm:StationRowViewModel">
                     <Border Background="{Binding IsSelected, Converter={x:Static v:Converters.SelectedBackground}}"
                             BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
-                      <Grid ColumnDefinitions="3,33,100,190,110,*,120,140,46,64,80,74" MinHeight="40">
-                        <Border Grid.Column="0" Background="{Binding IsSelected, Converter={x:Static v:Converters.SelectedBar}}" />
-                        <TextBlock Grid.Column="1" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" Margin="11,0,0,0" />
-                        <TextBlock Grid.Column="2" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="3" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Column="4" Text="{Binding Why}" VerticalAlignment="Center"
-                                   Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" FontWeight="{Binding WhyBold, Converter={x:Static v:Converters.Bold}}" />
-                        <TextBlock Grid.Column="5" Text="{Binding DoingNow}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Column="6" Text="{Binding LastHeard}" Classes="secondary" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="7" Text="{Binding HearsYou}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                        <TextBlock Grid.Column="8" Text="{Binding Db}" Classes="num" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
-                        <v:SignalSparkline Grid.Column="9" Values="{Binding History}" Width="52" Height="24" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                           ToolTip.Tip="{Binding HistoryTip}" AutomationProperties.Name="{Binding HistoryTip}" />
-                        <TextBlock Grid.Column="10" Text="{Binding Chance}" VerticalAlignment="Center" FontWeight="{Binding ChanceBold, Converter={x:Static v:Converters.Bold}}" />
-                        <Button Grid.Column="11" Content="{Binding CallText}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0"
-                                Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CallRowCommand}" CommandParameter="{Binding}"
-                                AutomationProperties.Name="{Binding Call, StringFormat='Call or answer {0}'}" />
-                      </Grid>
+                      <Panel>
+                        <Border Width="3" HorizontalAlignment="Left" Background="{Binding IsSelected, Converter={x:Static v:Converters.SelectedBar}}" />
+                        <Grid ColumnDefinitions="36,100,160,110,*,100,120,46,64,74,110,74" MinHeight="40" Margin="14,0">
+                          <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="3" Text="{Binding Why}" VerticalAlignment="Center"
+                                     Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" FontWeight="{Binding WhyBold, Converter={x:Static v:Converters.Bold}}" />
+                          <TextBlock Grid.Column="4" Text="{Binding DoingNow}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="5" Text="{Binding LastHeard}" Classes="secondary" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="6" Text="{Binding HearsYou}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                          <TextBlock Grid.Column="7" Text="{Binding Db}" Classes="num" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
+                          <v:SignalSparkline Grid.Column="8" Values="{Binding History}" Width="52" Height="24" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                             ToolTip.Tip="{Binding HistoryTip}" AutomationProperties.Name="{Binding HistoryTip}" />
+                          <TextBlock Grid.Column="9" Text="{Binding Chance}" VerticalAlignment="Center" FontWeight="{Binding ChanceBold, Converter={x:Static v:Converters.Bold}}" />
+                          <TextBlock Grid.Column="10" Text="{Binding LastWorked}" Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                     ToolTip.Tip="{Binding LastWorkedTip}" />
+                          <Button Grid.Column="11" Content="{Binding CallText}" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                  Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CallRowCommand}" CommandParameter="{Binding}"
+                                  AutomationProperties.Name="{Binding Call, StringFormat='Call or answer {0}'}" />
+                        </Grid>
+                      </Panel>
                     </Border>
                   </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -296,31 +302,40 @@
           <StackPanel>
             <TextBlock Text="Repeats" Classes="title" Margin="14,0" />
             <TextBlock Text="{Binding RepeatsSubtitle}" Classes="secondary" Margin="14,2,14,6" />
-            <Grid ColumnDefinitions="100,190,*,120,46,64,150,74" Margin="14,0,14,4" IsVisible="{Binding !!Repeats.Count}">
-              <TextBlock Grid.Column="0" Text="Call" Classes="secondary" />
-              <TextBlock Grid.Column="1" Text="Where" Classes="secondary" />
-              <TextBlock Grid.Column="2" Text="Doing now" Classes="secondary" />
-              <TextBlock Grid.Column="3" Text="Last heard" Classes="secondary" />
-              <TextBlock Grid.Column="4" Text="dB" Classes="secondary" HorizontalAlignment="Right" Margin="0,0,8,0" />
-              <TextBlock Grid.Column="5" Text="Signal" Classes="secondary" />
-              <TextBlock Grid.Column="6" Text="Last worked" Classes="secondary" />
+            <!-- The same columns as Next in line. -->
+            <Grid ColumnDefinitions="36,100,160,110,*,100,120,46,64,74,110,74" Margin="14,0,14,4" IsVisible="{Binding !!Repeats.Count}">
+              <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
+              <TextBlock Grid.Column="1" Text="Call" Classes="secondary" />
+              <TextBlock Grid.Column="2" Text="Where" Classes="secondary" />
+              <TextBlock Grid.Column="3" Text="Why" Classes="secondary" />
+              <TextBlock Grid.Column="4" Text="Doing now" Classes="secondary" />
+              <TextBlock Grid.Column="5" Text="Last heard" Classes="secondary" />
+              <TextBlock Grid.Column="6" Text="Hears you" Classes="secondary" />
+              <TextBlock Grid.Column="7" Text="dB" Classes="secondary" HorizontalAlignment="Right" Margin="0,0,8,0" />
+              <TextBlock Grid.Column="8" Text="Signal" Classes="secondary" />
+              <TextBlock Grid.Column="9" Text="Chance" Classes="secondary" />
+              <TextBlock Grid.Column="10" Text="Last worked" Classes="secondary" />
             </Grid>
             <ItemsControl x:Name="RepeatList" ItemsSource="{Binding Repeats}" Background="Transparent">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:RepeatRowViewModel">
                   <Border BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
-                    <Grid ColumnDefinitions="100,190,*,120,46,64,150,74" MinHeight="36" Margin="14,0">
-                      <TextBlock Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="1" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Grid.Column="2" Text="{Binding DoingNow}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                    <Grid ColumnDefinitions="36,100,160,110,*,100,120,46,64,74,110,74" MinHeight="36" Margin="14,0">
+                      <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="3" Text="{Binding Why}" Classes="secondary" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="4" Text="{Binding DoingNow}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                  Classes.secondary="{Binding !CanCall}" />
-                      <TextBlock Grid.Column="3" Text="{Binding LastHeard}" Classes="secondary" VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="4" Text="{Binding Db}" Classes="num" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
-                      <v:SignalSparkline Grid.Column="5" Values="{Binding History}" Width="52" Height="20" HorizontalAlignment="Left" VerticalAlignment="Center"
+                      <TextBlock Grid.Column="5" Text="{Binding LastHeard}" Classes="secondary" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="6" Text="{Binding HearsYou}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                      <TextBlock Grid.Column="7" Text="{Binding Db}" Classes="num" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
+                      <v:SignalSparkline Grid.Column="8" Values="{Binding History}" Width="52" Height="20" HorizontalAlignment="Left" VerticalAlignment="Center"
                                          ToolTip.Tip="{Binding HistoryTip}" AutomationProperties.Name="{Binding HistoryTip}" />
-                      <TextBlock Grid.Column="6" Text="{Binding LastWorked}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                      <TextBlock Grid.Column="9" Text="{Binding Chance}" VerticalAlignment="Center" FontWeight="{Binding ChanceBold, Converter={x:Static v:Converters.Bold}}" />
+                      <TextBlock Grid.Column="10" Text="{Binding LastWorked}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                  ToolTip.Tip="{Binding LastWorkedTip}" />
-                      <Button Grid.Column="7" Content="{Binding CallText}" VerticalAlignment="Center" HorizontalAlignment="Right"
+                      <Button Grid.Column="11" Content="{Binding CallText}" VerticalAlignment="Center" HorizontalAlignment="Right"
                               IsEnabled="{Binding CanCall}"
                               Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CallRepeatCommand}" CommandParameter="{Binding}"
                               AutomationProperties.Name="{Binding Call, StringFormat='Call or answer {0} again'}" />

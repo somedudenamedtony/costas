@@ -133,6 +133,7 @@ A grid with a header row. One row per station that is needed (tiers 1 to 4), cal
 | dB | Their latest SNR at my station |
 | Signal | Sparkline of their SNR over their last 6 own slots, oldest on the left, gaps where they were not decoded. The scale fits the station's readings but spans at least 12 dB. Tooltip and screen reader text give the values |
 | Chance | Good (bold), Fair, Long shot |
+| Last worked | The most recent log contact with the call on any band or mode, as in Repeats ("2026-10-03 · 40 m"), or "Never"; tooltip as in Repeats |
 | Call | Button. Calls that station |
 
 Behaviour:
@@ -149,7 +150,7 @@ Stations that are needed but not callable now. Columns: Call, Where, Why, signal
 
 ### Repeats
 
-Directly under Next in line. Stations heard now that are already worked (tier 5: this call on this band and mode), so the operator can work them again. Title "Repeats", subtitle "Heard now and already in your log on 20 m FT8." Columns: Call, Where, Doing now (or, when not callable, the Watching reason in secondary text), Last heard, dB, Signal sparkline, Last worked ("Today · 20 m", "Yesterday · 40 m", "2026-10-03 · 20 m": the most recent log contact with the call on any band or mode; tooltip gives the contact count, exact UTC time, band, mode and confirmation), and a Call button ("Answer" when the station is calling me; disabled when not callable). Callable stations first, then the line's ranking order. At most 8 rows, then "and N more". The list is held still while the pointer is over it or within 300 ms of a click, as Next in line. Empty state: "Nobody you have worked on 20 m is on the air right now."
+Directly under Next in line. Stations heard now that are already worked (tier 5: this call on this band and mode), so the operator can work them again. Title "Repeats", subtitle "Heard now and already in your log on 20 m FT8." Columns are the same as Next in line, at the same widths so the two tables line up (owner request 2026-10-11): #, Call, Where, Why ("Worked before", secondary), Doing now (or, when not callable, the Watching reason in secondary text), Last heard, Hears you, dB, Signal sparkline, Chance, Last worked ("Today · 20 m", "Yesterday · 40 m", "2026-10-03 · 20 m": the most recent log contact with the call on any band or mode; tooltip gives the contact count, exact UTC time, band, mode and confirmation), and a Call button ("Answer" when the station is calling me; disabled when not callable). Callable stations first, then the line's ranking order. At most 8 rows, then "and N more". The list is held still while the pointer is over it or within 300 ms of a click, as Next in line. Empty state: "Nobody you have worked on 20 m is on the air right now."
 
 ### Right column
 
