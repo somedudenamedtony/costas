@@ -180,6 +180,10 @@ public sealed partial class SetupViewModel : ObservableObject
 
     // Step 4 ---------------------------------------------------------------
 
+    /// <summary>Which radio the test tone goes through, or why there is none.</summary>
+    [ObservableProperty]
+    public partial string TestRadio { get; set; } = string.Empty;
+
     /// <summary>The operator confirms the radio transmitted.</summary>
     [ObservableProperty]
     public partial bool ToneConfirmed { get; set; }
@@ -236,6 +240,7 @@ public sealed partial class SetupViewModel : ObservableObject
     partial void OnStepChanged(int value)
     {
         Message = string.Empty;
+        if (value == 3) DescribeTestRadio();
         if (value == 4) _ = MeasureClockAsync();
     }
 
@@ -253,6 +258,8 @@ public sealed partial class SetupViewModel : ObservableObject
             await FinishAsync();
             return;
         }
+        // The transmit test must go through the radio and output chosen here, not the ones the app started with.
+        if (Step is 1 or 2) await ApplyDevicesAsync();
         Step++;
     }
 
@@ -271,7 +278,10 @@ public sealed partial class SetupViewModel : ObservableObject
         else Step++;
     }
 
-    /// <summary>Port auto-scan.</summary>
+    /// <summary>
+    /// Test connection: finds the port and baud rate when they are not set, opens the radio with the chosen settings
+    /// (the same connection the transmit test and operating use) and reads its dial and mode back.
+    /// </summary>
     [RelayCommand]
     private async Task ScanAsync()
     {
@@ -282,23 +292,35 @@ public sealed partial class SetupViewModel : ObservableObject
             return;
         }
         Busy = true;
-        Message = "Scanning ports…";
+        Readback = string.Empty;
         try
         {
-            int[] bauds = int.TryParse(Baud, out var b) ? [b] : [115200, 38400, 19200, 9600, 4800];
-            var ports = string.IsNullOrEmpty(Port) ? Ports.ToList() : [Port];
-            var hit = await RigctldRig.ScanAsync(exe, Model.Number, ports, bauds, _host.Guard, _host.Clock, CancellationToken.None);
-            if (hit is { } h)
+            if (string.IsNullOrEmpty(Port) || string.IsNullOrEmpty(Baud))
             {
+                Message = "Scanning ports…";
+                await _host.ReleaseRigAsync(); // the open radio would hold its serial port
+                int[] bauds = int.TryParse(Baud, out var b) ? [b] : [115200, 38400, 19200, 9600, 4800];
+                var ports = string.IsNullOrEmpty(Port) ? Ports.ToList() : [Port];
+                var hit = await RigctldRig.ScanAsync(exe, Model.Number, ports, bauds, _host.Guard, _host.Clock, CancellationToken.None);
+                if (hit is not { } h)
+                {
+                    await ApplyDevicesAsync();
+                    Message = "No answer from the radio on any port. Check the cable, the radio's CI-V or CAT settings, and the model.";
+                    return;
+                }
                 Port = h.Port;
                 Baud = h.Baud.ToString(CultureInfo.InvariantCulture);
-                Readback = MainViewModel.FormatFrequency(h.Hz) + " MHz";
-                Message = $"Found the radio on {h.Port} at {h.Baud} baud.";
             }
-            else
+            Message = $"Connecting to the radio on {Port}…";
+            await ApplyDevicesAsync();
+            var (state, problem) = await _host.CheckRigAsync(CancellationToken.None);
+            if (state is null)
             {
-                Message = "No answer from the radio on any port. Check the cable, the radio's CI-V or CAT settings, and the model.";
+                Message = $"The radio did not answer on {Port} at {Baud} baud. {problem}";
+                return;
             }
+            Readback = $"{MainViewModel.FormatFrequency(state.FrequencyHz)} MHz {state.Mode}";
+            Message = $"Connected to the radio on {Port} at {Baud} baud.";
         }
         finally
         {
@@ -306,23 +328,77 @@ public sealed partial class SetupViewModel : ObservableObject
         }
     }
 
-    /// <summary>Two-second test tone.</summary>
+    /// <summary>
+    /// Two-second test tone through the radio chosen on the Radio step. Afterwards it says whether the radio reported
+    /// PTT on during the tone, and the ALC and SWR it read.
+    /// </summary>
     [RelayCommand]
     private async Task SendTestToneAsync()
     {
-        var s = _host.Session.Snapshot;
-        var why = await _host.Transmitter.TuneAsync(1500, 2.0,
-            new Engine.TxGuardInput(s.Band, s.DialHz, s.ClockOffsetSeconds, 100, null, true));
-        if (why is not null)
+        if (Busy) return;
+        Busy = true;
+        try
         {
-            Message = why;
-            return;
+            await ApplyDevicesAsync();
+            DescribeTestRadio();
+            var s = _host.Session.Snapshot;
+            var radio = s.Services[Engine.ServiceNames.Radio];
+            var (state, problem) = await _host.CheckRigAsync(CancellationToken.None);
+            var rigFault = radio.Health == Core.Services.ServiceHealth.Down ? radio.Message : problem;
+            // Check the band limits against the dial the radio is on now, not the band last chosen in the app.
+            var dial = state?.FrequencyHz ?? s.DialHz;
+            var band = Core.Bands.BandPlan.BandOf(dial) ?? s.Band;
+            var why = await _host.Transmitter.TuneAsync(1500, 2.0, new Engine.TxGuardInput(band, dial, s.ClockOffsetSeconds, 100, rigFault, true));
+            if (why is not null)
+            {
+                Message = "No tone was sent. " + why;
+                return;
+            }
+            Message = "Sending a 2-second tone at 1500 Hz…";
+            await Task.Delay(500);
+            var ptt = await _host.Rig.ReadPttAsync(CancellationToken.None);
+            var keyed = ptt switch
+            {
+                true => "The radio reported transmit during the tone.",
+                false => "PTT was sent, but the radio reported it was not transmitting. Check the PTT method on the Radio step.",
+                null => "The radio cannot report whether it transmitted; watch its TX light.",
+            };
+            var meters = await _host.TxMeters.Idle;
+            Message = meters is null
+                ? keyed + " Did the radio transmit?"
+                : $"{keyed} Meters during the tone: {TxMeterText.Summary(meters)}. " + (meters.Warning ?? "Within limits. Did the radio transmit?");
         }
-        Message = "Sending a 2-second tone at 1500 Hz. Did the radio transmit?";
-        var meters = await _host.TxMeters.Idle;
-        if (meters is null) return;
-        Message = $"Meters during the tone: {TxMeterText.Summary(meters)}. "
-                  + (meters.Warning ?? "Within limits. Did the radio transmit?");
+        finally
+        {
+            Busy = false;
+        }
+    }
+
+    /// <summary>Saves the radio and audio choices and opens them, so the transmit test uses them.</summary>
+    private async Task ApplyDevicesAsync()
+    {
+        _host.Settings.Update(SaveDevices);
+        await _host.ReopenDevicesAsync();
+    }
+
+    private void SaveDevices(AppSettings s)
+    {
+        s.Profile.Rig.Mode = AudioOnly ? RigModes.Vox : Model is null ? RigModes.None : RigModes.Hamlib;
+        s.Profile.Rig.Model = Model?.Number;
+        s.Profile.Rig.Port = string.IsNullOrEmpty(Port) ? null : Port;
+        s.Profile.Rig.Baud = int.TryParse(Baud, out var b) ? b : null;
+        s.Profile.Rig.Ptt = Ptt;
+        s.Profile.Audio.InputId = Input?.Id;
+        s.Profile.Audio.OutputId = Output?.Id;
+    }
+
+    private void DescribeTestRadio()
+    {
+        var radio = _host.Session.Snapshot.Services[Engine.ServiceNames.Radio];
+        TestRadio = radio.Health == Core.Services.ServiceHealth.Down
+            ? $"No radio is open, so the test cannot key it: {radio.Message}"
+            : AudioOnly ? "Audio only: the radio keys on the tone by VOX."
+            : $"The tone keys the radio on {Port} ({PttChoice?.Label ?? Ptt}).";
     }
 
     /// <summary>Tests the logbook key.</summary>
@@ -388,13 +464,7 @@ public sealed partial class SetupViewModel : ObservableObject
             s.Profile.Callsign = call;
             s.Profile.Grid = Grid.Trim().ToUpperInvariant();
             s.Appearance.Units = UnitsKm ? "km" : "miles";
-            s.Profile.Rig.Mode = AudioOnly ? RigModes.Vox : Model is null ? RigModes.None : RigModes.Hamlib;
-            s.Profile.Rig.Model = Model?.Number;
-            s.Profile.Rig.Port = string.IsNullOrEmpty(Port) ? null : Port;
-            s.Profile.Rig.Baud = int.TryParse(Baud, out var b) ? b : null;
-            s.Profile.Rig.Ptt = Ptt;
-            s.Profile.Audio.InputId = Input?.Id;
-            s.Profile.Audio.OutputId = Output?.Id;
+            SaveDevices(s);
             s.PskReporter.UploadSpots = UploadSpots;
             s.Qrz.LookupEnabled = !string.IsNullOrWhiteSpace(QrzUser) && !string.IsNullOrEmpty(QrzPassword);
             s.SetupComplete = true;

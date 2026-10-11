@@ -66,7 +66,8 @@
         <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}">
           <TextBlock Text="Transmit test" FontSize="20" FontWeight="SemiBold" />
           <TextBlock TextWrapping="Wrap" Text="This sends a steady tone for 2 seconds so you can check that the radio keys and the power meter moves. Connect a dummy load or turn the power down first. Nothing is sent unless you press the button." />
-          <Button Content="Send test tone" Command="{Binding SendTestToneCommand}" HorizontalAlignment="Left" />
+          <TextBlock Text="{Binding TestRadio}" Classes="secondary" TextWrapping="Wrap" />
+          <Button Content="Send test tone" Command="{Binding SendTestToneCommand}" IsEnabled="{Binding !Busy}" HorizontalAlignment="Left" />
           <CheckBox Content="The radio transmitted" IsChecked="{Binding ToneConfirmed}" />
         </StackPanel>
         <!-- 5 Clock -->
