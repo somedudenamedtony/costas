@@ -41,7 +41,7 @@ Positional arguments are WAV files: `jt9 [OPTIONS] file1 [file2 ...]`.
 
 ### Output
 
-- **VERIFY** the line format by running `jt9` on the sample files and saving the output as golden files. Expected for FT8: `HHMMSS SNR DT FREQ ~  MESSAGE [flags]`, for example `025345  -8  0.1 1234 ~  CQ JA1QRS PM95`. FT4 uses `+` in place of `~`. A trailing `?` marks low confidence; `a1` to `a7` mark a-priori decodes.
+- **VERIFY** the line format by running `jt9` on the sample files and saving the output as golden files. Expected for FT8: `HHMMSS SNR DT FREQ ~  MESSAGE [flags]`, for example `025345  -8  0.1 1234 ~  CQ JA1QRS PM95`. FT4 uses `+` in place of `~`. A trailing `?` marks low confidence; `a1` to `a7` mark a-priori decodes; the jt9 from WSJT-X 3.x also prints `a8` (seen in the operator's output, 2026-10-11), so the parser accepts `a` with any number.
 - The run ends with `<DecodeFinished>` followed by three integers (confirmed: `format('<DecodeFinished>',2i4,i9)`).
 - Parse with a tolerant regular expression anchored on the separator character, not fixed columns.
 

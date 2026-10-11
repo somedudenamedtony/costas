@@ -15,5 +15,5 @@ namespace Ft8Client.Core.Decoding;
 /// <param name="OffsetHz">Audio offset of the lowest tone in hertz.</param>
 /// <param name="Text">Message text with decoder markers removed.</param>
 /// <param name="LowConfidence">True when the decoder marked the line with <c>?</c>.</param>
-/// <param name="APriori">A-priori decode level 1 to 7, or 0 for a normal decode.</param>
+/// <param name="APriori">A-priori decode type from the decoder's <c>aN</c> marker (1 to 8 seen so far), or 0 for a normal decode.</param>
 public sealed record Decode(DateTime SlotStartUtc, int Snr, double Dt, int OffsetHz, string Text, bool LowConfidence, int APriori = 0);
