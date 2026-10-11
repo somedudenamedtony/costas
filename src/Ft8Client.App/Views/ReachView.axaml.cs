@@ -6,6 +6,7 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using System.Globalization;
 using Avalonia.Controls;
 
 namespace Ft8Client.App.Views;
@@ -14,5 +15,20 @@ namespace Ft8Client.App.Views;
 public partial class ReachView : UserControl
 {
     /// <summary>Creates the view.</summary>
-    public ReachView() => InitializeComponent();
+    public ReachView()
+    {
+        InitializeComponent();
+        ZoomIn.Click += (_, _) => Plot.ZoomBy(ReachPlot.ZoomStep * ReachPlot.ZoomStep);
+        ZoomOut.Click += (_, _) => Plot.ZoomBy(1 / (ReachPlot.ZoomStep * ReachPlot.ZoomStep));
+        ZoomReset.Click += (_, _) => Plot.ResetZoom();
+        Plot.ZoomChanged += ShowZoom;
+        ShowZoom(Plot.Zoom);
+    }
+
+    private void ShowZoom(double zoom)
+    {
+        ZoomText.Text = zoom <= 1 ? string.Empty : zoom.ToString("0.#", CultureInfo.InvariantCulture) + "×";
+        ZoomOut.IsEnabled = ZoomReset.IsEnabled = zoom > 1;
+        ZoomIn.IsEnabled = zoom < ReachPlot.MaxZoom;
+    }
 }

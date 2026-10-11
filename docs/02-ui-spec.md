@@ -175,8 +175,11 @@ The classic list for operators who want it. Columns: UTC, local time, dB, DT, Hz
 
 Mockup: `reach`. Band dropdown and time-window dropdown (15 minutes, 1 hour, 24 hours).
 
+Layout (owner request): the map card with the plot and the by-band stats fills the top two thirds of the view; Who heard you fills the bottom third and scrolls on its own, with its column headings fixed.
+
 - **Headline**: heard by N stations, countries, farthest distance, best report.
 - **Plot**: azimuthal equidistant, centred on my grid, north up, rings every 2,000 miles (or 3,000 km), scale to the farthest report rounded up to the next ring. One dot per reporting station at its bearing and distance. Three strength classes by size and shade: strong (-10 or better), fair (-11 to -17), weak (-18 or below). Label dots with callsigns, with collision avoidance: drop labels that would overlap, show them on hover. This fixes the overlap visible in the mockup. When my grid is known, land and country borders (Natural Earth 1:110m, public domain, bundled) are drawn faintly behind the rings in the same projection, on both the full plot and the compact one.
+- **Zoom**: the full plot zooms up to 16×. Mouse wheel zooms about the pointer; +, − and "Show the whole map" buttons sit beside the plot with the zoom factor under them. Drag to move around when zoomed; double-click shows the whole map. The frame, the N marker and line widths stay fixed; the map, rings, dots and labels scale, so more labels fit as you zoom in. The compact plot on Operate does not zoom.
 - **Who heard you**: grid of station, where, miles, bearing, dB, age, "In your log" (Needed in accent, or Worked). Sortable; default by distance. Double-click a row opens that station's details.
 - **By band, last 24 hours**: band, stations that heard you, farthest, median report. Current band highlighted.
 - Empty state: "No reports yet. Reports appear a few minutes after you transmit."
