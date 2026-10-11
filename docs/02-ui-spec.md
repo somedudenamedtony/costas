@@ -92,17 +92,20 @@ Mockup: `main-in-contact`. Replaces the band summary from the moment the operato
 | Log now | Logs the contact as it stands. Enabled once both reports are exchanged |
 | Abandon (Esc) | Stops transmitting, ends the contact, logs nothing |
 
-**Conversation strip**: five boxes in a row, mine raised 12 px, theirs lowered 12 px.
+**Conversation**: one row per step, oldest at the top, so the exchange reads top to bottom like a transcript. Each row has four columns: UTC time, who ("You" or the DX call, semibold), the literal message, and a status.
 
-| Box state | Look | Content |
-| --- | --- | --- |
-| Done | Accent tint, solid border | "You · sent 02:54:00" or "ZL2RPA · received 02:54:15", and the literal message |
-| Now, transmitting | Critical fill, white text | "You · sending now, 7 s left" and the message |
-| Now, waiting | Accent border, no fill | "ZL2RPA · expected 02:54:45" and the expected message |
-| Upcoming | Dashed border, secondary text | The expected message |
-| Repeated | Done look plus "×2" | When a step was sent or received more than once |
+| Row state | Look | Time | Status |
+| --- | --- | --- | --- |
+| Done | Plain row, primary text | When sent or received | "Sent" or "Received" |
+| Now, transmitting | Critical fill, white text | When the transmission started | "Sending · 7 s left" |
+| Now, waiting | Accent tint and border | The slot the reply is due in | "Waiting for reply" |
+| Now, mine, not yet on the air | Accent tint and border | Blank | "Sending next slot" |
+| Upcoming | Secondary text | Blank, or the slot it is due in when it is the next reply | "Next", "Expected", or "Then logged" for my last step |
+| Repeated | As above plus "×2" | Latest time | When a step was sent or received more than once |
 
-Clicking one of my upcoming boxes jumps the sequence to that step (manual override). The boxes are generated from the contact state machine's step list, so the CQ-run flow shows its own six steps.
+The engine counts a message as sent when its transmission starts. While that message is still on the air its row shows as transmitting, and the reply row after it stays upcoming; the reply row is highlighted as waiting only once the transmission has ended.
+
+Clicking one of my upcoming rows jumps the sequence to that step (manual override). The rows are generated from the contact state machine's step list, so the CQ-run flow shows its own six steps.
 
 ### Next in line
 
