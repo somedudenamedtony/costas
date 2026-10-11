@@ -28,4 +28,10 @@ public sealed class RankingOptions
 
     /// <summary>Count only confirmed contacts.</summary>
     public bool ConfirmedOnly { get; set; }
+
+    /// <summary>
+    /// Minutes a CQ caller stays in Next in line after it was last heard, unless it has been heard working someone
+    /// since. 0 keeps only stations heard in their latest slot.
+    /// </summary>
+    public int KeepCqCallersMinutes { get; set; } = 2;
 }

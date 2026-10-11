@@ -44,6 +44,38 @@ public class StationTrackerTests
     }
 
     [Fact]
+    public void ApplySlot_Decoded_LastHeardEndIsEndOfTransmission()
+    {
+        var t = NewTracker();
+        t.ApplySlot(S(0), [H(S(0), "CQ K1ABC FN42")]);
+        var s = t.Find("K1ABC")!;
+        s.LastHeardUtc.Should().Be(S(0));
+        s.LastHeardEndUtc.Should().Be(S(0) + ModeInfo.TxEnd(Mode.Ft8));
+        s.LastCalledCq.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ApplySlot_SilentFiveMinutes_Removed()
+    {
+        var t = NewTracker();
+        t.ApplySlot(S(0), [H(S(0), "CQ K1ABC FN42")]);
+        t.ApplySlot(S(20), []);
+        t.Find("K1ABC").Should().BeNull();
+    }
+
+    [Fact]
+    public void ApplySlot_KeepForLongerThanRemoval_KeptUntilKeepForPasses()
+    {
+        var t = NewTracker();
+        t.KeepFor = TimeSpan.FromMinutes(10);
+        t.ApplySlot(S(0), [H(S(0), "CQ K1ABC FN42")]);
+        t.ApplySlot(S(20), []);
+        t.Find("K1ABC").Should().NotBeNull();
+        t.ApplySlot(S(42), []);
+        t.Find("K1ABC").Should().BeNull();
+    }
+
+    [Fact]
     public void ApplySlot_CqAfterMissedOwnSlot_ResetsStreakToOne()
     {
         var t = NewTracker();

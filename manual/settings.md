@@ -55,6 +55,9 @@ line*.
 - **Hide stations I have already worked on this band**: on. They are listed in **Repeats** under Next in line instead.
 - **Leave out long shots (signals too weak to likely complete)**: off.
 - **Count a country or state as worked only when confirmed**: off.
+- **Keep CQ callers listed**: 2 minutes. How long a station calling CQ stays in Next in line after it was last heard.
+  Choices run from *Only while heard every slot* (the list drops a station the first slot it is missed) to 15
+  minutes. A station heard working someone else leaves the list straight away whatever this says.
 
 ## QRZ
 

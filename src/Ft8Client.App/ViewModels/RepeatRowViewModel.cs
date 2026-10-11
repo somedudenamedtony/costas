@@ -41,6 +41,7 @@ public sealed partial class RepeatRowViewModel : ObservableObject
               $"{last.DateUtc.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)} UTC on {BandPlan.Display(last.Band)} {last.ModeKey}" +
               (last.Confirmed ? ", confirmed" : string.Empty);
         CallText = r.CallingMe ? "Answer" : "Call";
+        _heardEndUtc = r.Station.LastHeardEndUtc;
         Refresh(nowUtc);
     }
 
@@ -55,7 +56,14 @@ public sealed partial class RepeatRowViewModel : ObservableObject
     public partial string Where { get; private set; }
 
     /// <summary>Shows the latest place for the station (a QRZ lookup may have filled in its city and state).</summary>
-    public void UpdatePlace(Core.Stations.Station s, DistanceUnit units) => Where = StationText.Where(s, units);
+    public void UpdatePlace(Core.Stations.Station s, DistanceUnit units)
+    {
+        Where = StationText.Where(s, units);
+        // A held list keeps its rows, but the age counts from the station's newest decode.
+        if (s.LastHeardEndUtc > _heardEndUtc) _heardEndUtc = s.LastHeardEndUtc;
+    }
+
+    private DateTime _heardEndUtc;
 
     /// <summary>What the station is doing, or why it cannot be called right now.</summary>
     public string DoingNow { get; }
@@ -86,5 +94,5 @@ public sealed partial class RepeatRowViewModel : ObservableObject
     public partial string LastHeard { get; private set; } = string.Empty;
 
     /// <summary>Updates the age text on every timer tick.</summary>
-    public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - Source.Station.LastHeardUtc);
+    public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - _heardEndUtc);
 }

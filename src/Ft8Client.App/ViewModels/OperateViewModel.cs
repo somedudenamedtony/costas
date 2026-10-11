@@ -535,6 +535,9 @@ public sealed partial class OperateViewModel : ObservableObject
         if (!r.OnlyCallingCq) parts.Add("Stations finishing a contact are included.");
         if (r.SkipLongShots) parts.Add("Long shots are left out.");
         if (r.ConfirmedOnly) parts.Add("Only confirmed contacts count.");
+        if (r.KeepCqCallers > TimeSpan.Zero)
+            parts.Add(r.KeepCqCallers.TotalMinutes == 1 ? "CQ callers stay listed for 1 minute after they were last heard."
+                : $"CQ callers stay listed for {r.KeepCqCallers.TotalMinutes:0} minutes after they were last heard.");
         return string.Join(" ", parts);
     }
 

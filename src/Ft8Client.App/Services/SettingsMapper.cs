@@ -70,6 +70,7 @@ public static class SettingsMapper
             HideWorked = r.HideWorked,
             SkipLongShots = r.SkipLongShots,
             ConfirmedOnly = r.ConfirmedOnly,
+            KeepCqCallers = TimeSpan.FromMinutes(Math.Clamp(r.KeepCqCallersMinutes, 0, 60)),
         };
     }
 

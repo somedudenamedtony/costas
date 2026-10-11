@@ -33,6 +33,7 @@ public sealed partial class StationRowViewModel : ObservableObject
         ChanceBold = r.Chance == Core.Ranking.Chance.Good;
         History = r.Station.SnrHistory;
         HistoryTip = HistoryText(r.Station.SnrHistory);
+        _heardEndUtc = r.Station.LastHeardEndUtc;
         Refresh(nowUtc);
         CallText = r.CallingMe ? "Answer" : "Call";
     }
@@ -65,7 +66,14 @@ public sealed partial class StationRowViewModel : ObservableObject
     public partial string Where { get; private set; }
 
     /// <summary>Shows the latest place for the station (a QRZ lookup may have filled in its city and state).</summary>
-    public void UpdatePlace(Core.Stations.Station s, DistanceUnit units) => Where = StationText.Where(s, units);
+    public void UpdatePlace(Core.Stations.Station s, DistanceUnit units)
+    {
+        Where = StationText.Where(s, units);
+        // A held list keeps its rows, but the age counts from the station's newest decode.
+        if (s.LastHeardEndUtc > _heardEndUtc) _heardEndUtc = s.LastHeardEndUtc;
+    }
+
+    private DateTime _heardEndUtc;
 
     /// <summary>Need tag text.</summary>
     public string Why { get; }
@@ -100,7 +108,7 @@ public sealed partial class StationRowViewModel : ObservableObject
     public partial bool IsSelected { get; set; }
 
     /// <summary>Updates the age text. Called on every timer tick so a held list does not show a stale age.</summary>
-    public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - Source.Station.LastHeardUtc);
+    public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - _heardEndUtc);
 
     /// <summary>Colour for a need tag.</summary>
     public static TextKind KindOf(NeedTag t) => t switch

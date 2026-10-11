@@ -32,6 +32,23 @@ public class StationRowViewModelTests
     }
 
     [Fact]
+    public void Constructor_JustDecoded_CountsFromEndOfTransmission()
+    {
+        var station = new Station { Call = "CE3MPV", LastHeardUtc = Heard, LastHeardEndUtc = Heard.AddSeconds(13.14), State = StationState.CallingCq };
+        var ranked = new RankedStation(station, new NeedResult(NeedTag.NewCountry, 1), new HearsYou(HearsYouKind.None), Chance.Good, true, null);
+        new StationRowViewModel(ranked, 1, DistanceUnit.Miles, Heard.AddSeconds(14.5)).LastHeard.Should().Be("1 second ago");
+    }
+
+    [Fact]
+    public void UpdatePlace_HeldRowHeardAgain_AgeCountsFromNewestDecode()
+    {
+        var row = Row(Heard.AddSeconds(15));
+        row.UpdatePlace(new Station { Call = "CE3MPV", LastHeardUtc = Heard.AddSeconds(30), LastHeardEndUtc = Heard.AddSeconds(43) }, DistanceUnit.Miles);
+        row.Refresh(Heard.AddSeconds(50));
+        row.LastHeard.Should().Be("7 seconds ago");
+    }
+
+    [Fact]
     public void Refresh_TimePasses_AgeCountsUp()
     {
         var row = Row(Heard.AddSeconds(15));

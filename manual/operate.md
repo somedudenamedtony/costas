@@ -43,6 +43,11 @@ When you call or answer a station, this card becomes the contact panel. See [Mak
 
 The stations you need that you can call right now, best first. At most 12 rows; the rest are counted underneath.
 
+A station calling CQ stays listed for 2 minutes after it was last heard (change this in
+[Settings › Who to call](settings.md#who-to-call)), so one missed decode does not drop it. *Doing now* then says
+*Calling CQ, missed last slot*, and it sorts below stations heard in their latest slot. It leaves the list as soon as
+it is heard working someone else, and moves to Watching once the time is up.
+
 | Column | Meaning |
 | --- | --- |
 | **#** | Rank |
@@ -50,7 +55,7 @@ The stations you need that you can call right now, best first. At most 12 rows; 
 | **Where** | Country (or state for the USA, province for Canada) and distance |
 | **Why** | Why you need them: **New country**, **New band**, **New grid** or **New call** |
 | **Doing now** | *Calling CQ, 3 slots*, *Calling CQ DX*, *Calling you*, and *fading* when their signal is dropping |
-| **Last heard** | How long ago they were last decoded |
+| **Last heard** | How long ago their last decoded transmission ended, counting up every second |
 | **Hears you** | From PSK Reporter: *Yes, -22* (they reported you), *Japan does, at -17* (someone in their country or area did), *No reports yet*, or *—* without PSK Reporter |
 | **dB** | Their signal at your station |
 | **Signal** | A sparkline of their last 6 slots, gaps where they were not decoded. Hover for the values |

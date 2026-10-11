@@ -73,32 +73,49 @@ public static class Ranker
         if (s.Call.StartsWith('<')) return new WatchReason(WatchReasonKind.Unresolved);
         if (!s.HeardInLastOwnSlot)
         {
+            // A CQ caller missed in a slot or two is usually still calling (a fade or a busy slot): keep it listed
+            // for the operator's chosen time unless it was heard working someone since.
+            if (KeptCqCaller(s, input)) return CqReason(s, input);
             return s.JustFinished && s.State != StationState.Quiet
-                ? new WatchReason(WatchReasonKind.JustFinished, s.Partner, s.LastHeardUtc)
-                : new WatchReason(WatchReasonKind.WentQuiet, null, s.LastHeardUtc);
+                ? new WatchReason(WatchReasonKind.JustFinished, s.Partner, s.LastHeardEndUtc)
+                : new WatchReason(WatchReasonKind.WentQuiet, null, s.LastHeardEndUtc);
         }
         switch (s.State)
         {
             case StationState.CallingMe:
                 return null;
             case StationState.CallingCq:
-                return CqModifierRule.Allows(s.CqModifier, input.MyEntity, s.EntityKey, input.Countries)
-                    ? null
-                    : new WatchReason(WatchReasonKind.NotCallingYou, Modifier: s.CqModifier);
+                return CqReason(s, input);
             case StationState.Finishing:
                 return input.Settings.OnlyCallingCq ? new WatchReason(WatchReasonKind.Finishing, s.Partner) : null;
             case StationState.InContact:
                 return new WatchReason(WatchReasonKind.InContact, s.Partner);
             default:
-                return new WatchReason(WatchReasonKind.WentQuiet, null, s.LastHeardUtc);
+                return new WatchReason(WatchReasonKind.WentQuiet, null, s.LastHeardEndUtc);
         }
     }
+
+    /// <summary>
+    /// True for a station not decoded in its latest own slot whose latest message was a CQ, last heard within the
+    /// operator's <see cref="RankingSettings.KeepCqCallers"/>.
+    /// </summary>
+    public static bool KeptCqCaller(Station s, RankInput input) =>
+        !s.HeardInLastOwnSlot && s.LastCalledCq && input.Settings.KeepCqCallers > TimeSpan.Zero
+        && input.NowUtc - s.LastHeardUtc <= input.Settings.KeepCqCallers;
+
+    private static WatchReason? CqReason(Station s, RankInput input) =>
+        CqModifierRule.Allows(s.CqModifier, input.MyEntity, s.EntityKey, input.Countries)
+            ? null
+            : new WatchReason(WatchReasonKind.NotCallingYou, Modifier: s.CqModifier);
 
     private static int CompareLine(RankedStation a, RankedStation b, RankingSettings settings)
     {
         var c = a.Need.Tier.CompareTo(b.Need.Tier);
         if (c != 0) return c;
         c = b.CallingMe.CompareTo(a.CallingMe);
+        if (c != 0) return c;
+        // Stations heard in their latest slot come before CQ callers kept on after a missed slot.
+        c = b.Station.HeardInLastOwnSlot.CompareTo(a.Station.HeardInLastOwnSlot);
         if (c != 0) return c;
         if (settings.PreferHearsMe)
         {
