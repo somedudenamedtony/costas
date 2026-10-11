@@ -123,6 +123,9 @@ public sealed class Session
         get { lock (_gate) return _decodeTask; }
     }
 
+    /// <summary>Decoder runs started so far (full and quick), so tests can wait for each to reach the decoder.</summary>
+    internal int DecodesStarted { get; private set; }
+
     /// <summary>The configuration.</summary>
     public SessionConfig Config
     {
@@ -188,9 +191,11 @@ public sealed class Session
         if (audio is null) return;
         lock (_gate)
         {
+            DecodesStarted++;
             var full = Task.Run(() => DecodeAsync(audio, CancellationToken.None));
             if (QuickContext() is { } quick)
             {
+                DecodesStarted++;
                 _quickSlot = e.SlotStartUtc;
                 _decodeTask = Task.WhenAll(full, Task.Run(() => QuickDecodeAsync(audio, quick)));
             }
@@ -341,7 +346,7 @@ public sealed class Session
 
     // ---------------------------------------------------------------- transmit planning
 
-    private void PlanFor(DateTime slot, Mode mode, bool late)
+    private void PlanFor(DateTime slot, Mode mode, bool late, bool command = false)
     {
         TxPlan? plan;
         TxGuardInput guard;
@@ -354,7 +359,9 @@ public sealed class Session
         lock (_gate)
         {
             var now = _clock.UtcNow;
-            if (late && now > txStart + _config.LateStartLimit) return;
+            // An operator command (calling a station, CQ) may still start in the current slot well after its Tx start,
+            // leaving out the part already past; anything automatic only within the late-start limit.
+            if (late && now > txStart + (command ? _config.CommandStartLimit : _config.LateStartLimit)) return;
             if (_tx.AudioStarted(slot)) return; // already on the air with this slot's message
             pending = _tx.Pending is { } p && p.Plan.SlotStartUtc == slot ? p : null;
             held = pending is not null && _tx.Held;
@@ -403,7 +410,13 @@ public sealed class Session
             }
         }
         // Its marks have passed: nothing was keyed for it yet (no earlier message, or the earlier one was held).
-        if ((pending is null || held) && _clock.UtcNow > pttDue) _tx.BeginLate(prepared, _config.PttLead);
+        if ((pending is null || held) && _clock.UtcNow > pttDue)
+        {
+            // Up to the late-start limit the whole message goes out, shifted later; beyond it (a command only) it keeps
+            // its place in the slot and the part already past is left out.
+            var align = command && _clock.UtcNow + _config.PttLead > txStart + _config.LateStartLimit ? txStart : (DateTime?)null;
+            _tx.BeginLate(prepared, _config.PttLead, align);
+        }
     }
 
     private void OnTxStarted(PreparedTx tx, DateTime startedUtc)
@@ -663,7 +676,7 @@ public sealed class Session
     {
         // A command may start a transmission in the current slot if its start is still within the late limit.
         var mode = Config.Mode;
-        PlanFor(SlotMath.SlotStart(_clock.UtcNow, mode), mode, late: true);
+        PlanFor(SlotMath.SlotStart(_clock.UtcNow, mode), mode, late: true, command: true);
         Publish();
     }
 

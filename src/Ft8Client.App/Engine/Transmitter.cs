@@ -39,6 +39,7 @@ public sealed class Transmitter
     private DateTime _audioStartedUtc;
     private DateTime? _pttOffDueUtc;
     private DateTime? _lateAudioDueUtc;
+    private DateTime? _lateAlignUtc;
     private TxHold? _hold;
     private DateTime? _lastStartedSlot;
     private bool _ptt;
@@ -185,6 +186,7 @@ public sealed class Transmitter
             _next = null;
             _hold = null;
             _lateAudioDueUtc = null;
+            _lateAlignUtc = null;
             if (_current is null && _ptt) _pttOffDueUtc = _clock.UtcNow;
         }
     }
@@ -233,20 +235,23 @@ public sealed class Transmitter
     }
 
     /// <summary>
-    /// Starts a prepared transmission after its marks have passed (decodes arrived late): PTT now, audio after the
-    /// PTT lead. The caller has checked that the start is within the late-start limit.
+    /// Starts a prepared transmission after its marks have passed (decodes arrived late, or the operator acted late): PTT
+    /// now, audio after the PTT lead. Without <paramref name="alignToUtc"/> the whole message is sent, shifted later.
+    /// With it, the message keeps its place in the slot as if it had started at <paramref name="alignToUtc"/> (the Tx
+    /// start) and the part that would have been sent already is left out, as WSJT-X does for a late start. The caller
+    /// has checked that the start is within the limit.
     /// </summary>
-    public void BeginLate(PreparedTx tx, TimeSpan pttLead)
+    public void BeginLate(PreparedTx tx, TimeSpan pttLead, DateTime? alignToUtc = null)
     {
         lock (_gate)
         {
             _next = tx;
             _ptt = true;
             _lateAudioDueUtc = _clock.UtcNow + pttLead;
+            _lateAlignUtc = alignToUtc;
         }
         _ = SetPttSafe(true);
     }
-
     /// <summary>Releases PTT when the audio and its tail have finished. Called on the slot thread every millisecond.</summary>
     public void Poll()
     {
@@ -271,6 +276,13 @@ public sealed class Transmitter
             {
                 _lateAudioDueUtc = null;
                 _next = null;
+                if (_lateAlignUtc is { } align)
+                {
+                    // Leave out what would already have been sent; nothing left means nothing to send.
+                    var skip = (int)Math.Round((_clock.UtcNow - align).TotalSeconds * n.SampleRate);
+                    n = skip <= 0 ? n : n with { Samples = skip < n.Samples.Length ? n.Samples[skip..] : [] };
+                    _lateAlignUtc = null;
+                }
                 _current = n;
                 _lastStartedSlot = n.Plan.SlotStartUtc;
                 _audioStartedUtc = _clock.UtcNow;
@@ -309,6 +321,7 @@ public sealed class Transmitter
             _hold = null;
             _pttOffDueUtc = null;
             _lateAudioDueUtc = null;
+            _lateAlignUtc = null;
             _ptt = false;
         }
         _output?.Stop();
