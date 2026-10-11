@@ -37,6 +37,8 @@ public sealed class QrzService : IDisposable
     private readonly HttpMessageHandler? _handler;
     private readonly CancellationTokenSource _cts = new();
     private readonly SemaphoreSlim _syncLock = new(1, 1);
+    private readonly SemaphoreSlim _lookupWake = new(0, 1);
+    private readonly LookupQueue _lookups = new();
     private HttpClient _http;
     private string _agentCall = string.Empty;
     private QrzXmlClient? _xml;
@@ -77,6 +79,7 @@ public sealed class QrzService : IDisposable
     {
         _ = Task.Run(() => SyncLoopAsync(_cts.Token));
         _ = Task.Run(() => UploadLoopAsync(_cts.Token));
+        _ = Task.Run(() => LookupLoopAsync(_cts.Token));
     }
 
     /// <summary>Tests the logbook key with STATUS.</summary>
@@ -139,28 +142,23 @@ public sealed class QrzService : IDisposable
         }
     }
 
-    /// <summary>Looks up a call (cached) and passes the result to the session.</summary>
-    public async Task LookupAsync(string call, CancellationToken ct)
+    /// <summary>The calls waiting for a lookup (for tests and diagnostics).</summary>
+    public LookupQueue Lookups => _lookups;
+
+    /// <summary>
+    /// Asks for a call to be looked up. Each call is asked about at most once per run; the answer is kept in the local
+    /// cache (30 days for a hit, 7 for a miss), so later runs read it from there without asking QRZ again. Network
+    /// requests go one at a time, at most one a second.
+    /// </summary>
+    public void RequestLookup(string call, bool urgent)
     {
         if (!_settings.Current.Qrz.LookupEnabled) return;
-        var user = _secrets.Get(SecretNames.QrzUsername);
-        var pass = _secrets.Get(SecretNames.QrzPassword);
-        if (user is null || pass is null) return;
-        try
-        {
-            var svc = new CallsignLookupService(XmlClient(user, pass), _cache, _clock);
-            var r = await svc.LookupAsync(call, ct).ConfigureAwait(false);
-            if (r is not null) _session.SetLookups([r]);
-        }
-        catch (QrzException ex)
-        {
-            Log.Information("QRZ lookup failed for {Call}: {Message}", call, ex.Message);
-        }
+        if (_lookups.Request(call, urgent, _clock.UtcNow) && _lookupWake.CurrentCount == 0) _lookupWake.Release();
     }
 
     /// <summary>
     /// Fills in stations from earlier lookups kept in the local cache. Reads only the database, never QRZ, so it is safe
-    /// to run for every station heard (the spec limits network lookups to the selected station and the current contact).
+    /// to run for every station heard. Those calls are not looked up again this run.
     /// </summary>
     public void FillFromCache(IReadOnlyCollection<string> calls)
     {
@@ -168,12 +166,69 @@ public sealed class QrzService : IDisposable
         try
         {
             var found = _cache.GetFreshFound(calls, _clock.UtcNow);
+            foreach (var e in found) _lookups.Settle(e.Call);
             if (found.Count > 0) _session.SetLookups(found);
         }
         catch (Exception ex) when (ex is Microsoft.Data.Sqlite.SqliteException or InvalidOperationException)
         {
             Log.Warning(ex, "Reading the lookup cache failed");
         }
+    }
+
+    private async Task LookupLoopAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await _lookupWake.WaitAsync(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+                while (_lookups.Next() is { } call)
+                {
+                    if (await LookupOneAsync(call, ct).ConfigureAwait(false)) await Task.Delay(TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Lookup loop error");
+            }
+        }
+    }
+
+    // Returns true when QRZ was asked (so the next request waits a second).
+    private async Task<bool> LookupOneAsync(string call, CancellationToken ct)
+    {
+        var cached = _cache.GetFresh(call, _clock.UtcNow);
+        if (cached is not null)
+        {
+            _lookups.Settle(call);
+            if (cached.Found) _session.SetLookups([cached]);
+            return false;
+        }
+        var user = _secrets.Get(SecretNames.QrzUsername);
+        var pass = _secrets.Get(SecretNames.QrzPassword);
+        if (!_settings.Current.Qrz.LookupEnabled || user is null || pass is null)
+        {
+            _lookups.Failed(call, _clock.UtcNow + TimeSpan.FromMinutes(1));
+            return false;
+        }
+        try
+        {
+            var r = await new CallsignLookupService(XmlClient(user, pass), _cache, _clock).LookupAsync(call, ct).ConfigureAwait(false);
+            _lookups.Settle(call);
+            if (r is not null) _session.SetLookups([r]);
+        }
+        catch (QrzException ex)
+        {
+            // Unreachable or refused: try this call again later, and give QRZ a rest before the next one.
+            _lookups.Failed(call, _clock.UtcNow + TimeSpan.FromMinutes(10));
+            Log.Information("QRZ lookup failed for {Call}: {Message}", call, ex.Message);
+            await Task.Delay(TimeSpan.FromSeconds(30), ct).ConfigureAwait(false);
+        }
+        return true;
     }
 
     /// <summary>Makes every queued upload due now.</summary>

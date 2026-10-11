@@ -197,6 +197,12 @@ public sealed partial class OperateViewModel : ObservableObject
             _line.Offer(s.Rank.Line);
         }
         ListUpdated = _line.HasPending;
+        // Lookups arrive between re-ranks; show them now rather than at the next slot.
+        var byCall = s.Stations.ToDictionary(x => x.Call, StringComparer.Ordinal);
+        foreach (var row in Line)
+        {
+            if (byCall.TryGetValue(row.Call, out var st)) row.UpdatePlace(st, Units);
+        }
 
         Watching.Clear();
         foreach (var w in s.Rank.Watching.Take(MaxWatching)) Watching.Add(new WatchRowViewModel(w, now, Units));

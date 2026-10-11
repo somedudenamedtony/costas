@@ -129,9 +129,9 @@ Source: https://www.qrz.com/XML/current_spec.html (confirmed).
 - Look up: `GET https://xmldata.qrz.com/xml/current/?s=<key>;callsign=<call>` → `<Callsign>` with `call`, `fname`, `name`, `addr2` (city), `state`, `country`, `grid`, `lat`, `lon`, `dxcc`, and more.
 - A `<Session><Error>` element or a missing `<Key>` means the session expired or the call was not found; re-login once on session errors.
 - Full data needs a QRZ XML subscription; without one, fields are limited.
-- Look up only the selected station and the current contact, not every decode. Cache results in `callsign_cache` for 30 days. Strip `/P`-style suffixes for the lookup if the full call is not found.
+- Look up the stations on screen, not every decode: the current contact and stations calling me first (and the selected station), then Next in line and Watching. Each call is asked about at most once per run, one request at a time and at most one a second; a failed lookup is not retried for 10 minutes and pauses the queue 30 s. Cache results in `callsign_cache` (hits 30 days, misses 7), so a later run reads them from there and does not ask QRZ again. Strip `/P`-style suffixes for the lookup if the full call is not found. (Owner request 2026-10-11: city and state in Where for the whole list, not only the selected station.)
 - Fields read: `call`, `fname`, `name`, `nickname`, `addr2`, `state`, `county`, `country`, `grid`, `lat`, `lon`, `dxcc`, `class`, `TimeZone`, `GMTOffset`, `DST`, `image`, `qslmgr`, `lotw`, `eqsl`, `mqsl`, `cqzone`, `ituzone` (names checked against the current spec, 2026-10-11). The spec documents `lotw`/`eqsl`/`mqsl` as `0/1` but its sample shows `Y`; both are accepted. The street address, email and birth year are not read.
-- Every station heard is filled in from `callsign_cache` (a local read), so its city and state show in Where once it has been looked up before; that never sends a request to QRZ.
+- Every station heard is first filled in from `callsign_cache` (a local read); only calls with no fresh cache entry are queued for QRZ.
 - This uses the QRZ username and password, which are separate from the logbook key. Both optional.
 
 **Why two QRZ credentials.** QRZ runs two separate services with separate sign-ins, and neither accepts the other's:

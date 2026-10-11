@@ -117,7 +117,7 @@ A grid with a header row. One row per station that is needed (tiers 1 to 4), cal
 | --- | --- |
 | # | Rank, starting at 1 |
 | Call | Callsign, semibold |
-| Where | Country, or "State, USA" / "Province, Canada" when known, then distance. With a city from QRZ: "Springfield, IL, USA", "Ottawa, ON, Canada", "Wellington, New Zealand". City and state come from a QRZ lookup or, for any station heard, from the local lookup cache (a database read, never a network call) |
+| Where | Country, or "State, USA" / "Province, Canada" when known, then distance. With a city from QRZ: "Springfield, IL, USA", "Ottawa, ON, Canada", "Wellington, New Zealand". City and state come from QRZ: stations in the list are looked up once (see `05-integrations.md` §4) and the answer is kept in the local cache, so it shows again at once after a refresh or restart. A row updates as soon as its lookup arrives, without waiting for the next re-rank |
 | Why | Need tag: New country (caution, bold), New band (accent, bold), New grid (accent, bold), New call (plain) |
 | Doing now | "Calling CQ, 6 slots" · "Calling CQ DX, 2 slots" · "Calling CQ, 4 slots, fading" · "Calling you" |
 | Last heard | Time since the station was last decoded: "45 seconds ago", "2 minutes ago". Counts up between slots, secondary text |

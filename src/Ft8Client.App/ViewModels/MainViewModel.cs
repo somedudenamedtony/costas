@@ -31,7 +31,6 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     private readonly AppHost _host;
     private readonly CallerAlert _callers = new();
     private readonly HashSet<string> _cacheChecked = new(StringComparer.Ordinal);
-    private string? _lookedUpContact;
     private bool _escArmed;
     private bool _updatingBand;
 
@@ -327,18 +326,21 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     }
 
     // Stations newly heard get their place from earlier QRZ lookups kept in the local cache (a database read off the UI
-    // thread, never the network); the station in a contact is looked up on QRZ like a selected one.
+    // thread, never the network). Then the stations on screen are queued for QRZ: the one in a contact and those calling
+    // me first, then Next in line and Watching. The queue asks QRZ about each call at most once per run, and the cache
+    // keeps the answer across runs.
     private void FillLookups(SessionSnapshot s)
     {
         var fresh = s.Stations.Select(x => x.Call).Where(c => _cacheChecked.Add(c) && !_host.Session.HasLookup(c)).ToList();
         if (fresh.Count > 0) _ = Task.Run(() => _host.Qrz.FillFromCache(fresh));
-        var dx = s.Contact?.DxCall;
-        if (dx is not null && dx != _lookedUpContact) Lookup(dx);
-        _lookedUpContact = dx;
+        if (s.Contact?.DxCall is { } dx) _host.Qrz.RequestLookup(dx, urgent: true);
+        foreach (var w in s.Waiting) _host.Qrz.RequestLookup(w.Call, urgent: true);
+        foreach (var r in s.Rank.Line.Take(OperateViewModel.MaxLine)) _host.Qrz.RequestLookup(r.Station.Call, urgent: false);
+        foreach (var r in s.Rank.Watching.Take(OperateViewModel.MaxWatching)) _host.Qrz.RequestLookup(r.Station.Call, urgent: false);
     }
 
     /// <inheritdoc />
-    public void Lookup(string call) => _ = _host.Qrz.LookupAsync(call, CancellationToken.None);
+    public void Lookup(string call) => _host.Qrz.RequestLookup(call, urgent: true);
 
     /// <inheritdoc />
     public void OpenReach() => Tab = 2;
