@@ -61,7 +61,7 @@
               <TextBlock Classes="label" Text="Power (watts)" />
               <StackPanel Grid.Column="1">
                 <TextBox Text="{Binding Power}" Width="90" HorizontalAlignment="Left" />
-                <TextBlock Classes="help" Text="Recorded in the log for each contact. It does not change the radio's power." />
+                <TextBlock Classes="help" Text="Recorded in the log when the radio cannot report its own power setting. It does not change the radio's power." />
               </StackPanel>
             </Grid>
             <TextBlock Classes="help" Text="Radio, audio devices and the transmit test are in Station setup (menu ☰)." />

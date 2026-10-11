@@ -103,7 +103,7 @@ public class SessionSimulationTests
 
         var logged = qsos.List().OrderBy(q => q.QsoDateOn).ToList();
         logged.Select(q => q.Call).Take(10).Should().Equal("K1ABC", "VE7HLB", "JA1QRS", "ZL2RPA", "LU8DCM", "PY2WRA", "EA5HVK", "OH2KQA", "VK3BMT", "KH6TU");
-        logged.Should().OnlyContain(q => q.RstSent != null && q.RstRcvd != null && q.Band == "20m" && q.Mode == "FT8" && q.StationCallsign == "W7LIT");
+        logged.Should().OnlyContain(q => q.RstSent != null && q.RstRcvd != null && q.Comment == $"FT8 Sent: {q.RstSent} Rcvd: {q.RstRcvd}" && q.Band == "20m" && q.Mode == "FT8" && q.StationCallsign == "W7LIT");
         queue.Count().Should().Be(logged.Count);
         logged.Should().OnlyContain(q => q.UploadState == UploadState.Queued);
         d.Session.Snapshot.Tonight.Should().HaveCount(logged.Count);

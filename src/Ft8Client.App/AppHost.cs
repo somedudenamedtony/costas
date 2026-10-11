@@ -240,7 +240,8 @@ public sealed class AppHost : IAsyncDisposable
         }
 
         Transmitter = new Transmitter(_rig, _output, Clock, Frequencies) { GainDb = s.Profile.Audio.TxGainDb };
-        var log = new DatabaseSessionLog(Qsos, Uploads, s.Profile.Id, () => Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete);
+        var log = new DatabaseSessionLog(Qsos, Uploads, s.Profile.Id, () => Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
+            () => TxMeters.PowerWatts);
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
         TxMeters = new TxMeterMonitor(Transmitter, () => _rig);
         TxMeters.Measured += Session.SetTxMeters;

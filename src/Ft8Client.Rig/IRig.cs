@@ -42,6 +42,13 @@ public interface IRig : IAsyncDisposable
     /// </summary>
     Task<bool?> ReadPttAsync(CancellationToken ct);
 
+    /// <summary>
+    /// Reads the radio's transmit power setting in whole watts, for the log. Null when the radio or its Hamlib driver
+    /// cannot report it in watts. Like <see cref="ReadTxMetersAsync"/>, never raises <see cref="Faulted"/> and never
+    /// throws <see cref="RigException"/>.
+    /// </summary>
+    Task<int?> ReadPowerWattsAsync(CancellationToken ct);
+
     /// <summary>Turns split on or off with a transmit frequency.</summary>
     Task SetSplitAsync(bool on, long txHz, CancellationToken ct);
 
