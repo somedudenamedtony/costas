@@ -23,7 +23,7 @@ in `docs/07-milestones.md` up to M7 passes (`dotnet test`: 487 tests, Linux, wit
 | M8 FT4, hardening, release | FT4 vectors and decode round trip | 24-hour soak, code signing, user guide |
 
 Install on Windows: download `Costas-Setup-<version>.exe` from the repository's **Releases** page (every green build of
-`main` is published there; the installed app checks for newer ones daily and offers to install them). Every CI run also
+`main` is published there; the installed app checks for newer ones at start and daily, and offers to install them). Every CI run also
 builds the installer as the **Costas-Setup** artifact on the Actions run, self-contained with `jt9` and Hamlib bundled. It is not code-signed yet, so Windows SmartScreen will warn
 on first run. To build it locally: `scripts/build-installer.ps1`.
 Running a newer installer upgrades the existing install in place and keeps the log and settings; an install of a build

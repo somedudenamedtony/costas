@@ -14,12 +14,11 @@ using Serilog;
 namespace Ft8Client.App.Services;
 
 /// <summary>
-/// Checks GitHub for a newer Costas build a minute after start and then daily (when enabled in Settings), and downloads
+/// Checks GitHub for a newer Costas build at start and then daily (when enabled in Settings), and downloads
 /// and verifies its installer on request. Failures are logged and otherwise ignored: updates are optional.
 /// </summary>
 public sealed class UpdateService : IDisposable
 {
-    private static readonly TimeSpan FirstCheck = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan Interval = TimeSpan.FromHours(24);
 
     private readonly AppSettingsAccessor _settings;
@@ -68,7 +67,7 @@ public sealed class UpdateService : IDisposable
                 }
             }
         }
-        _timer.Change(FirstCheck, Interval);
+        _timer.Change(TimeSpan.Zero, Interval);
     }
 
     /// <summary>Checks now (skipped when checks are off). Returns the newer release, if any.</summary>
