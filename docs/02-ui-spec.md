@@ -45,9 +45,9 @@ One window, minimum 1100 × 720, default 1440 × 900, remembers size and positio
 | --- | --- |
 | Status text | One plain line: "Not in a contact. Enter calls ZL2RPA, the top of the line." / "Transmitting to ZL2RPA." / "Waiting for ZL2RPA." / fault text in critical colour |
 | Tx offset | "Tx offset 1650 Hz · clear". Click opens a small flyout: automatic (default) or a manual value |
-| Call CQ | Starts calling CQ in the next slot of the chosen parity. Becomes "Stop CQ" while running |
+| Call CQ | Starts calling CQ in the next slot of the chosen parity. Becomes "Stop CQ" while running. Hidden while the Operate view shows the contact card, whose on-air panel has the same button |
 | Halt Tx | Always enabled. Drops PTT immediately and stops sequencing. Critical colour while transmitting. Esc does the same |
-| Slot progress | Label "Receiving" or "Transmitting", seconds to next slot, a 4 px bar. Critical colour while transmitting |
+| Slot progress | Label "Receiving" or "Transmitting", seconds to next slot, a 4 px bar. Critical colour while transmitting. Hidden while the Operate view shows the contact card, whose on-air panel has its own countdown |
 | Meter warning | Only when the last transmission's ALC or SWR crossed a threshold (`04-domain-logic.md` section 11): "SWR 3.4 · ALC 70%", caution colour, critical when SWR is 3 or more. The tooltip and screen reader text give the full advice. Hidden when the meters read within limits |
 | Indicators | Radio, audio, QRZ, PSK Reporter: a dot and a word each. Click opens Diagnostics |
 
@@ -95,7 +95,7 @@ Mockup: `main-in-contact`. Replaces the band summary from the moment the operato
 | --- | --- |
 | You sent / You received | The reports with "dB" after them. Shows "--" until exchanged |
 | Slot | "Transmitting" or "Receiving", the seconds left, and a progress bar (critical while transmitting). While transmitting it counts down to the end of the transmission, otherwise to the next slot |
-| Call CQ / Stop CQ | The same command as the bottom bar's Call CQ button |
+| Call CQ / Stop CQ | The same command as the bottom bar's Call CQ button, which is hidden while this panel is on screen |
 | Resend | Sends the current step again in my next slot |
 | Log now | Logs the contact as it stands. Enabled once both reports are exchanged |
 | Abandon (Esc) | Stops transmitting, ends the contact, logs nothing |
