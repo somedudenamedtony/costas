@@ -38,7 +38,11 @@ Write-Host "One Apps & features entry: $($entry.DisplayName) $($entry.DisplayVer
 if (Get-Process -Name 'Costas' -ErrorAction SilentlyContinue) { throw 'A silent install without /RELAUNCH=1 started the app' }
 
 Write-Host 'Silent upgrade with /RELAUNCH=1 (the app''s Update button) reopens the app'
-Start-Process $setup.FullName -ArgumentList ($silent + '/NOCANCEL', '/RELAUNCH=1') -Wait
+# Not -Wait: it also waits for the installer's descendants, and the reopened app is one of them.
+$upgrade = Start-Process $setup.FullName -ArgumentList ($silent + '/NOCANCEL', '/RELAUNCH=1') -PassThru
+$null = $upgrade.Handle  # keeps ExitCode readable after exit
+if (-not $upgrade.WaitForExit(300000)) { throw 'The /RELAUNCH=1 upgrade did not finish within 5 minutes' }
+if ($upgrade.ExitCode -ne 0) { throw "The /RELAUNCH=1 upgrade failed (code $($upgrade.ExitCode))" }
 $deadline = (Get-Date).AddSeconds(30)
 $relaunched = $null
 while ((Get-Date) -lt $deadline -and -not $relaunched) {
