@@ -145,6 +145,39 @@ public class TransmitterTests
     }
 
     [Fact]
+    public async Task Tune_Guarded_KeysAndPlaysThenReleases()
+    {
+        var r = new Rig();
+        (await r.Tx.TuneAsync(1500, 2.0, Guard())).Should().BeNull();
+        r.Radio.Ptt.Should().BeTrue();
+        r.Out.Played.Should().ContainSingle();
+        r.Run(TimeSpan.FromSeconds(2.2));
+        r.Radio.Ptt.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Tune_NoRadio_RefusesWithoutKeying()
+    {
+        var r = new Rig();
+        var why = await r.Tx.TuneAsync(1500, 2.0, Guard() with { RigFault = "No radio set up." });
+        why.Should().Contain("No radio set up.");
+        r.Radio.PttLog.Should().BeEmpty();
+        r.Out.Played.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Tune_PttFails_ReturnsWhyAndPlaysNothing()
+    {
+        var r = new Rig();
+        r.Radio.FailNext = "COM3 not answering";
+        var why = await r.Tx.TuneAsync(1500, 2.0, Guard());
+        why.Should().Contain("PTT could not be asserted").And.Contain("COM3 not answering");
+        r.Out.Played.Should().BeEmpty();
+        r.Radio.Ptt.Should().BeFalse();
+        r.Tx.Transmitting.Should().BeFalse();
+    }
+
+    [Fact]
     public void NothingPrepared_NeverKeys()
     {
         var r = new Rig();

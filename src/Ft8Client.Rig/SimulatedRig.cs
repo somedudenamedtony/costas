@@ -87,6 +87,12 @@ public sealed class SimulatedRig(IClock clock, long frequencyHz = 14_074_000) : 
     }
 
     /// <inheritdoc />
+    public Task<bool?> ReadPttAsync(CancellationToken ct)
+    {
+        lock (_gate) return Task.FromResult<bool?>(_ptt);
+    }
+
+    /// <inheritdoc />
     public Task SetSplitAsync(bool on, long txHz, CancellationToken ct)
     {
         Check();

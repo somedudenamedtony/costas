@@ -44,6 +44,9 @@ public sealed class AppHost : IAsyncDisposable
     private CapturePump? _pump;
     private SlotLoop? _loop;
     private IRig _rig;
+    private string? _rigKey;
+    private string? _inputId;
+    private string? _outputId;
 
     private AppHost(CommandLine args, AppPaths paths, AppSettingsAccessor settings)
     {
@@ -311,16 +314,83 @@ public sealed class AppHost : IAsyncDisposable
         }
     }
 
-    /// <summary>Re-opens audio and rig after setup or settings changes.</summary>
+    /// <summary>
+    /// Opens the radio and the transmit audio output from the current settings, so Setup's transmit test uses the radio
+    /// just chosen. Each is reopened only when its settings changed (or the radio is down). The input device is
+    /// reopened by restarting the app in v1; the status says so when it changed.
+    /// </summary>
     public async Task ReopenDevicesAsync()
     {
-        await OpenRigAsync().ConfigureAwait(false);
-        if (!Simulating && Session is not null)
+        var a = Settings.Current.Profile.Audio;
+        IAudioOutput? closed = null;
+        if (!Simulating && AudioBackend is not NullAudioBackend && !string.Equals(a.OutputId, _outputId, StringComparison.Ordinal))
         {
-            // Live audio devices are reopened by restarting the app in v1; the status shows what is in use.
-            Session.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Degraded, "Restart to use the new audio devices", Clock.UtcNow));
+            if (Transmitter.Transmitting) await Transmitter.HaltAsync().ConfigureAwait(false);
+            closed = _output;
+            _output = null;
+            _outputId = a.OutputId;
+            try
+            {
+                if (a.OutputId is not null) _output = AudioBackend.OpenOutput(a.OutputId, 48_000);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+            {
+                Log.Warning(ex, "Audio output could not be opened");
+            }
+        }
+        if (!string.Equals(RigKey(Settings.Current.Profile.Rig), _rigKey, StringComparison.Ordinal)
+            || Session.Snapshot.Services[ServiceNames.Radio].Health == ServiceHealth.Down)
+        {
+            await OpenRigAsync().ConfigureAwait(false);
+        }
+        else
+        {
+            Transmitter.SetOutput(Plan.MutesTransmitAudio(Settings.Current.Profile.Rig) ? _mutedOutput ??= new NullAudioOutput() : _output);
+        }
+        closed?.Dispose(); // after the transmitter has let go of it
+        if (!Simulating && !string.Equals(a.InputId, _inputId, StringComparison.Ordinal))
+        {
+            Session.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Degraded, "Restart to use the new input device", Clock.UtcNow));
         }
     }
+
+    /// <summary>
+    /// Closes the radio so Setup's port scan can open its serial port. The radio indicator says so and transmit is
+    /// refused until <see cref="ReopenDevicesAsync"/> opens it again.
+    /// </summary>
+    public async Task ReleaseRigAsync()
+    {
+        if (Transmitter.Transmitting) await Transmitter.HaltAsync().ConfigureAwait(false);
+        var old = _rig;
+        var rig = new VoxRig(Session.Snapshot.DialHz);
+        _rig = rig;
+        _rigKey = null;
+        _rigOpenStatus = null;
+        Transmitter.SetRig(rig);
+        Session.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, "Looking for the radio…", Clock.UtcNow));
+        await old.DisposeAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Reads the open radio back: its dial and mode, or why it cannot be reached. Null state for audio-only, where there
+    /// is nothing to read.
+    /// </summary>
+    public async Task<(RigState? State, string? Problem)> CheckRigAsync(CancellationToken ct)
+    {
+        var status = Session.Snapshot.Services[ServiceNames.Radio];
+        if (status.Health == ServiceHealth.Down) return (null, status.Message);
+        if (_rig is VoxRig) return (null, null);
+        try
+        {
+            return (await _rig.GetStateAsync(ct).ConfigureAwait(false), null);
+        }
+        catch (RigException ex)
+        {
+            return (null, ex.Message);
+        }
+    }
+
+    private static string RigKey(RigSettings r) => string.Join('|', r.Mode, r.Model, r.Port, r.Baud, r.Ptt, r.PttPort);
 
     private void OpenAudio(SlotRecorder recorder)
     {
@@ -336,6 +406,8 @@ public sealed class AppHost : IAsyncDisposable
                 _pump.Start();
             }
             if (a.OutputId is not null && AudioBackend is not NullAudioBackend) _output = AudioBackend.OpenOutput(a.OutputId, 48_000);
+            _inputId = a.InputId;
+            _outputId = a.OutputId;
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
         {
@@ -395,6 +467,7 @@ public sealed class AppHost : IAsyncDisposable
                 }
             }
         }
+        _rigKey = RigKey(r);
         rig.Faulted += (_, f) => Session?.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, f.Message, f.TimeUtc));
         _rig = rig;
         Transmitter?.SetRig(rig);

@@ -35,6 +35,13 @@ public interface IRig : IAsyncDisposable
     /// </summary>
     Task<TxMeterReading> ReadTxMetersAsync(CancellationToken ct);
 
+    /// <summary>
+    /// Reads back whether PTT is asserted, for checking that a test transmission keyed the radio. Null when it cannot be
+    /// read (audio-only radios, or no answer). Like <see cref="ReadTxMetersAsync"/>, never raises <see cref="Faulted"/>
+    /// and never throws <see cref="RigException"/>.
+    /// </summary>
+    Task<bool?> ReadPttAsync(CancellationToken ct);
+
     /// <summary>Turns split on or off with a transmit frequency.</summary>
     Task SetSplitAsync(bool on, long txHz, CancellationToken ct);
 
