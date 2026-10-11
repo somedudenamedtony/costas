@@ -36,6 +36,7 @@
 | V12 | Default dial frequencies for FT8 and FT4 | M3 | WSJT-X frequency list (Settings, Frequencies) |
 | V13 | Stable download URL for `cty.dat` | M7 | country-files.com |
 | V14 | Current stable versions of Avalonia, NAudio, MQTTnet and their .NET 10 support | M0 | NuGet |
+| V15 | Whether `rigctld`'s `t` (get_ptt) reads the radio's own transmit state or echoes the PTT Hamlib last set. Setup's transmit test reports it as "the radio reported transmit"; for RTS or DTR PTT Hamlib may only report the serial line it drives | Setup transmit test | Send the test tone on the owner's radio with CAT, then with RTS PTT and the radio unplugged from the PTT line; note what `t` returns. The dummy rig (`-m 1`) answers `PTT: 1` after `T 1` (checked in `RigTests`) |
 
 Confirmed from primary sources while writing this package: the `jt9` option table and `<DecodeFinished>` format; the WSJT-X UDP message types and fields; the QRZ Logbook API actions, parameters, responses and User-Agent rule; the QRZ XML login and lookup flow; the PSK Reporter upload rules (host, port, timing); the MQTT broker, ports, topic structure and payload fields; and that the PSK Reporter query endpoint answers with `<receptionReports>` XML.
 

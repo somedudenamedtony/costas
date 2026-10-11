@@ -45,6 +45,9 @@ public sealed class VoxRig(long frequencyHz) : IRig
     public Task<TxMeterReading> ReadTxMetersAsync(CancellationToken ct) => Task.FromResult(TxMeterReading.None);
 
     /// <inheritdoc />
+    public Task<bool?> ReadPttAsync(CancellationToken ct) => Task.FromResult<bool?>(null);
+
+    /// <inheritdoc />
     public Task SetSplitAsync(bool on, long txHz, CancellationToken ct) => Task.CompletedTask;
 
     /// <inheritdoc />

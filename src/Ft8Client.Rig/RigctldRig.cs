@@ -169,6 +169,28 @@ public sealed class RigctldRig : IRig
     }
 
     /// <inheritdoc />
+    public async Task<bool?> ReadPttAsync(CancellationToken ct)
+    {
+        // The meter connection, for the same reason as the meters: a PTT command must never wait behind this read.
+        var m = _meters;
+        if (m is null || !ProcessRunning) return null;
+        try
+        {
+            var t = await m.SendAsync("t", ct).ConfigureAwait(false);
+            return t["PTT"] switch
+            {
+                "1" or "2" or "3" => true,
+                "0" => false,
+                _ => null,
+            };
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task SetSplitAsync(bool on, long txHz, CancellationToken ct)
     {
         if (on)

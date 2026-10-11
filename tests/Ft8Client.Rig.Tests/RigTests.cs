@@ -89,6 +89,22 @@ public class RigTests
     }
 
     [Fact]
+    public async Task ReadPtt_SimulatedRig_FollowsPtt()
+    {
+        var rig = new SimulatedRig(new ManualClock(new DateTime(2026, 1, 4, 2, 54, 0, DateTimeKind.Utc)));
+        var ct = TestContext.Current.CancellationToken;
+        (await rig.ReadPttAsync(ct)).Should().BeFalse();
+        await rig.SetPttAsync(true, ct);
+        (await rig.ReadPttAsync(ct)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ReadPtt_AudioOnly_Unknown()
+    {
+        (await new VoxRig(14_074_000).ReadPttAsync(TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [Fact]
     public async Task Rigctld_DummyRig_SetsAndReadsBackAndRecoversFromCrash()
     {
         var exe = HamlibModels.Find("rigctld", null);
@@ -101,8 +117,10 @@ public class RigTests
         await rig.SetPttAsync(true, ct);
         var s = await rig.GetStateAsync(ct);
         s.Should().Be(new RigState(14_074_000, "PKTUSB", true, false));
+        (await rig.ReadPttAsync(ct)).Should().BeTrue();
         await rig.SetPttAsync(false, ct);
         (await rig.GetStateAsync(ct)).Ptt.Should().BeFalse();
+        (await rig.ReadPttAsync(ct)).Should().BeFalse();
         await rig.SetSplitAsync(true, 14_075_000, ct);
         (await rig.GetStateAsync(ct)).Split.Should().BeTrue();
 
