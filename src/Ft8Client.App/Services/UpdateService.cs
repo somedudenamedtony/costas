@@ -70,11 +70,14 @@ public sealed class UpdateService : IDisposable
         _timer.Change(TimeSpan.Zero, Interval);
     }
 
-    /// <summary>Checks now (skipped when checks are off). Returns the newer release, if any.</summary>
-    public async Task<ReleaseInfo?> CheckAsync(CancellationToken ct)
+    /// <summary>
+    /// Checks now. Returns the newer release, if any. The scheduled check is skipped when checks are off;
+    /// <paramref name="manual"/> (the operator asked) checks regardless.
+    /// </summary>
+    public async Task<ReleaseInfo?> CheckAsync(CancellationToken ct, bool manual = false)
     {
         var options = _settings.Current.Updates;
-        if (!options.CheckEnabled) return null;
+        if (!manual && !options.CheckEnabled) return null;
         if (!await _checking.WaitAsync(0, ct).ConfigureAwait(false)) return Available;
         try
         {
