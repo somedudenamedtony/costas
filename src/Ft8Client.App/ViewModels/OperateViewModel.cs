@@ -214,6 +214,10 @@ public sealed partial class OperateViewModel : ObservableObject
         {
             if (byCall.TryGetValue(row.Call, out var st)) row.UpdatePlace(st, Units);
         }
+        foreach (var row in Repeats)
+        {
+            if (byCall.TryGetValue(row.Call, out var st)) row.UpdatePlace(st, Units);
+        }
 
         Watching.Clear();
         foreach (var w in s.Rank.Watching.Take(MaxWatching)) Watching.Add(new WatchRowViewModel(w, now, Units));
