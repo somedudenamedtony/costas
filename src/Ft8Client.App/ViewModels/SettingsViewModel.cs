@@ -11,6 +11,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Ft8Client.App.Services;
+using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Data.Secrets;
@@ -35,6 +36,10 @@ public sealed partial class SettingsViewModel : ObservableObject
         Watchdog = s.Operating.WatchdogMinutes.ToString(CultureInfo.InvariantCulture);
         RetryLimit = s.Operating.RetryLimit.ToString(CultureInfo.InvariantCulture);
         Signoff = s.Operating.Signoff;
+        CqModifier = s.Operating.CqModifier;
+        GridInReply = s.Operating.GridInReply;
+        AnswerSignoff = s.Operating.AnswerSignoff == "RR73" ? "RR73" : "73";
+        FreeTextAfter = s.Operating.FreeTextAfter;
         AutoLog = s.Operating.AutoLog;
         CqParity = s.Operating.CqParity;
         ClockBlock = s.Operating.ClockBlockSeconds.ToString("0.0", CultureInfo.InvariantCulture);
@@ -127,10 +132,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>Call.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
     public partial string Callsign { get; set; }
 
     /// <summary>Grid.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
     public partial string Grid { get; set; }
 
     /// <summary>Power in watts.</summary>
@@ -154,7 +161,70 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>Sign-off.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
     public partial string Signoff { get; set; }
+
+    /// <summary>CQ modifier (DX, POTA, ...); empty for a plain CQ.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
+    public partial string CqModifier { get; set; }
+
+    /// <summary>Send my grid when answering a CQ.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
+    public partial bool GridInReply { get; set; }
+
+    /// <summary>Choices for my last message when I answered a CQ.</summary>
+    public IReadOnlyList<string> AnswerSignoffs { get; } = ["73", "RR73"];
+
+    /// <summary>My last message when I answered a CQ.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
+    public partial string AnswerSignoff { get; set; }
+
+    /// <summary>Free text sent after my last message; empty for none.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
+    public partial string FreeTextAfter { get; set; }
+
+    /// <summary>The messages as they will be sent with the settings on screen, one per line.</summary>
+    public string MessagePreview
+    {
+        get
+        {
+            var s = MessageSettings();
+            var me = Callsign.Trim().ToUpperInvariant();
+            if (me.Length == 0) me = "MYCALL";
+            var grid = Core.Messages.Grid.Grid4(Grid.Trim().ToUpperInvariant()) ?? string.Empty;
+            const string dx = "THEIRCALL";
+            var lines = new List<string>
+            {
+                $"Calling CQ:        {OutgoingMessages.Cq(me, grid, s)}",
+                $"Report:            {dx} {me} -10",
+                $"Sign-off:          {dx} {me} {s.Signoff}",
+                string.Empty,
+                $"Answering a CQ:    {OutgoingMessages.Reply(dx, me, grid, s)}",
+                $"Roger and report:  {dx} {me} R-10",
+                $"Last message:      {OutgoingMessages.Final(dx, me, s)}",
+            };
+            if (OutgoingMessages.FreeTextAfter(s) is { } free) lines.Add($"Then:              {free}");
+            return string.Join('\n', lines);
+        }
+    }
+
+    /// <summary>Why the message settings cannot be used, or empty.</summary>
+    public string MessageProblem => OutgoingMessages.Problem(MessageSettings(), Callsign, Grid) ?? string.Empty;
+
+    private ContactSettings MessageSettings() => new()
+    {
+        Signoff = Signoff == "RRR" ? "RRR" : "RR73",
+        CqModifier = CqModifier.Trim().ToUpperInvariant(),
+        GridInReply = GridInReply,
+        AnswerSignoff = AnswerSignoff == "RR73" ? "RR73" : "73",
+        FreeTextAfter = FreeText(),
+    };
+
+    private string FreeText() => string.Join(' ', FreeTextAfter.ToUpperInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>Auto log.</summary>
     [ObservableProperty]
@@ -255,6 +325,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     private async Task CheckNow()
     {
         UpdateStatus = "Checking…";
+        if (MessageProblem is { Length: > 0 } problem)
+        {
+            Message = problem;
+            SelectedPage = 1;
+            return;
+        }
         _host.Settings.Update(s =>
         {
             s.Updates.CheckEnabled = true;
@@ -361,6 +437,10 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.WatchdogMinutes = Int(Watchdog, 1, 60, 6);
             s.Operating.RetryLimit = Int(RetryLimit, 1, 20, 4);
             s.Operating.Signoff = Signoff;
+            s.Operating.CqModifier = CqModifier.Trim().ToUpperInvariant();
+            s.Operating.GridInReply = GridInReply;
+            s.Operating.AnswerSignoff = AnswerSignoff == "RR73" ? "RR73" : "73";
+            s.Operating.FreeTextAfter = FreeText();
             s.Operating.AutoLog = AutoLog;
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
