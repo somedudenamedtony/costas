@@ -30,6 +30,7 @@ namespace Ft8Client.App.Engine;
 public sealed class Session
 {
     private const int MaxRaw = 1500;
+    private const int QuickSpanHz = 100;
     private readonly object _gate = new();
     private readonly IDecoder _decoder;
     private readonly ISlotSource _source;
@@ -62,7 +63,8 @@ public sealed class Session
     private TxMeterResult? _txMeters;
     private Task _decodeTask = Task.CompletedTask;
     private DateTime? _recordingSlot;
-    private DateTime? _decodingSlot;
+    private DateTime? _quickSlot;
+    private readonly Dictionary<DateTime, HashSet<string>> _fedToEngine = [];
     private DateTime? _finishedShownAt;
     private DateTime _lastContactUtc = DateTime.MinValue;
     private SessionSnapshot _snapshot = new();
@@ -186,9 +188,70 @@ public sealed class Session
         if (audio is null) return;
         lock (_gate)
         {
-            _decodingSlot = e.SlotStartUtc;
-            _decodeTask = Task.Run(() => DecodeAsync(audio, CancellationToken.None));
+            var full = Task.Run(() => DecodeAsync(audio, CancellationToken.None));
+            if (QuickContext() is { } quick)
+            {
+                _quickSlot = e.SlotStartUtc;
+                _decodeTask = Task.WhenAll(full, Task.Run(() => QuickDecodeAsync(audio, quick)));
+            }
+            else
+            {
+                _decodeTask = full;
+            }
         }
+    }
+
+    /// <summary>
+    /// A quick extra decode whose results reach the contact engine long before the full depth-3 decode finishes (which
+    /// takes 3 s or more on a busy band), so my next message is chosen on time. In a contact: only the other station's
+    /// frequency, full depth and a-priori. Calling CQ: the whole band at depth 1. Otherwise none.
+    /// </summary>
+    private DecodeContext? QuickContext()
+    {
+        var myGrid = Grid.Grid4(_config.MyGrid) ?? string.Empty;
+        if (_engine.InContact && _engine.DxOffsetHz is { } dx)
+        {
+            return new DecodeContext(_config.MyCall, myGrid, _engine.DxCall, _engine.DxGrid, LowHz: Math.Max(100, dx - QuickSpanHz),
+                HighHz: dx + QuickSpanHz, Depth: 3, QsoProgress: _engine.QsoProgress, RxOffsetHz: dx);
+        }
+        if (_engine.CallingCq) return new DecodeContext(_config.MyCall, myGrid, null, null, Depth: 1, RxOffsetHz: _txOffset);
+        return null;
+    }
+
+    private async Task QuickDecodeAsync(SlotAudio audio, DecodeContext ctx)
+    {
+        DecodeResult result;
+        try
+        {
+            result = await _decoder.DecodeAsync(audio, ctx, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            result = new DecodeResult([], TimeSpan.Zero, DecodeStatus.Failed, ex.Message);
+        }
+        lock (_gate)
+        {
+            if (_quickSlot == audio.SlotStartUtc) _quickSlot = null;
+            if (audio.Mode != _config.Mode) return;
+            FeedEngine(audio.SlotStartUtc, audio.Mode, result.Decodes.Select(HeardMessage.From).ToList(), _clock.UtcNow);
+        }
+        PlanFor(SlotMath.SlotStart(_clock.UtcNow, audio.Mode), audio.Mode, late: true);
+        Publish();
+    }
+
+    /// <summary>
+    /// Passes a slot's decodes to the contact engine, each message once: the quick and the full decode of a slot both
+    /// find the other station's message, and a second copy would read as the other station repeating itself.
+    /// </summary>
+    private void FeedEngine(DateTime slot, Mode mode, List<HeardMessage> heard, DateTime now)
+    {
+        // Decodes belonging to an earlier slot never trigger a transmission.
+        if (slot + ModeInfo.SlotLength(mode) < SlotMath.SlotStart(now, mode)) return;
+        if (!_fedToEngine.TryGetValue(slot, out var fed)) _fedToEngine[slot] = fed = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var old in _fedToEngine.Keys.Where(k => k < slot - TimeSpan.FromMinutes(1)).ToList()) _fedToEngine.Remove(old);
+        var fresh = heard.Where(h => h.Decode.LowConfidence || !fed.Contains(h.Decode.Text)).ToList();
+        foreach (var h in fresh.Where(h => !h.Decode.LowConfidence)) fed.Add(h.Decode.Text);
+        _engine.OnDecodes(slot, mode, fresh, now);
     }
 
     /// <summary>Decodes one slot and applies it. Public so tests and simulation can drive slots directly.</summary>
@@ -217,7 +280,7 @@ public sealed class Session
     {
         lock (_gate)
         {
-            if (_decodingSlot == slot) _decodingSlot = null;
+            if (_quickSlot == slot) _quickSlot = null;
             _services[ServiceNames.Decoder] = result.Succeeded
                 ? new ServiceStatus(ServiceHealth.Ok, $"{result.Decodes.Count} decodes in {result.Elapsed.TotalSeconds:0.0} s", _clock.UtcNow)
                 : new ServiceStatus(ServiceHealth.Degraded, result.Message, _clock.UtcNow);
@@ -233,10 +296,7 @@ public sealed class Session
             if (_raw.Count > MaxRaw) _raw.RemoveRange(0, _raw.Count - MaxRaw);
 
             _tracker.ApplySlot(slot, heard);
-            // Decodes belonging to an earlier slot never trigger a transmission.
-            var current = SlotMath.SlotStart(now, mode);
-            var stale = slot + ModeInfo.SlotLength(mode) < current;
-            if (!stale) _engine.OnDecodes(slot, mode, heard, now);
+            FeedEngine(slot, mode, heard, now);
 
             _slotCounts.Add((slot, result.Decodes.Count));
             _slotCounts.RemoveAll(x => now - x.Slot > TimeSpan.FromHours(1));
@@ -311,9 +371,10 @@ public sealed class Session
                 if (held && _tx.Release() && now > pttDue) _tx.BeginLate(pending, _config.PttLead);
                 return;
             }
-            // The previous slot (the other station's) is still being decoded and its decodes may change this message:
-            // hold the transmission until they are applied, up to the late-start limit (audio by Tx start + limit).
-            if (!late && _decodingSlot == slot - ModeInfo.SlotLength(mode) && (_engine.InContact || _engine.CallingCq))
+            // The quick decode of the previous slot (the other station's) has not finished and may change this message:
+            // hold the transmission until it is applied, up to the late-start limit (audio by Tx start + limit). The
+            // full decode is not waited for: it takes longer than the limit on a busy band.
+            if (!late && _quickSlot == slot - ModeInfo.SlotLength(mode) && (_engine.InContact || _engine.CallingCq))
                 hold = new TxHold(txStart + _config.LateStartLimit - _config.PttLead, _config.PttLead);
             offset = _txOffset;
             guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
