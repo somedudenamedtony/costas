@@ -32,9 +32,13 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>Rows shown in Watching.</summary>
     public const int MaxWatching = 8;
 
+    /// <summary>Rows shown in Repeats before "and N more".</summary>
+    public const int MaxRepeats = 8;
+
     private readonly IOperateCommands _commands;
     private readonly Func<DateTime> _now;
     private readonly LineStabilizer<IReadOnlyList<RankedStation>> _line;
+    private readonly LineStabilizer<IReadOnlyList<RankedStation>> _repeats;
     private DateTime? _lastRankedSlot;
     private SessionSnapshot? _snap;
 
@@ -45,6 +49,8 @@ public sealed partial class OperateViewModel : ObservableObject
         _now = now;
         _line = new LineStabilizer<IReadOnlyList<RankedStation>>(now);
         _line.AppliedChanged += ApplyLine;
+        _repeats = new LineStabilizer<IReadOnlyList<RankedStation>>(now);
+        _repeats.AppliedChanged += ApplyRepeats;
     }
 
     /// <summary>Distance units.</summary>
@@ -71,8 +77,8 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>Watching rows.</summary>
     public ObservableCollection<WatchRowViewModel> Watching { get; } = [];
 
-    /// <summary>Already worked rows (shown on request).</summary>
-    public ObservableCollection<StationRowViewModel> Worked { get; } = [];
+    /// <summary>Repeats: stations heard now that are already in the log on this band and mode.</summary>
+    public ObservableCollection<RepeatRowViewModel> Repeats { get; } = [];
 
     /// <summary>Waiting for you.</summary>
     public ObservableCollection<WaitingRowViewModel> WaitingRows { get; } = [];
@@ -121,13 +127,17 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial bool ListUpdated { get; set; }
 
-    /// <summary>Show Already worked.</summary>
+    /// <summary>"Already in your log on 20 m".</summary>
     [ObservableProperty]
-    public partial bool ShowWorked { get; set; }
+    public partial string RepeatsSubtitle { get; set; } = string.Empty;
 
-    /// <summary>"5 stations you have already worked on 20 m are hidden."</summary>
+    /// <summary>Empty-state text for Repeats, or empty when there are rows.</summary>
     [ObservableProperty]
-    public partial string WorkedFooter { get; set; } = string.Empty;
+    public partial string RepeatsEmptyText { get; set; } = string.Empty;
+
+    /// <summary>"and N more" under Repeats, or empty.</summary>
+    [ObservableProperty]
+    public partial string RepeatsMoreText { get; set; } = string.Empty;
 
     /// <summary>Waiting title.</summary>
     [ObservableProperty]
@@ -195,20 +205,15 @@ public sealed partial class OperateViewModel : ObservableObject
         {
             _lastRankedSlot = s.LastDecodedSlot;
             _line.Offer(s.Rank.Line);
+            _repeats.Offer(RepeatOrder(s.Rank.Worked));
         }
         ListUpdated = _line.HasPending;
 
         Watching.Clear();
         foreach (var w in s.Rank.Watching.Take(MaxWatching)) Watching.Add(new WatchRowViewModel(w, now, Units));
-        Worked.Clear();
-        if (ShowWorked)
-        {
-            var i = 1;
-            foreach (var w in s.Rank.Worked) Worked.Add(new StationRowViewModel(w, i++, Units, now));
-        }
         var band = BandPlan.Display(s.Band);
-        WorkedFooter = s.Rank.WorkedCount == 0 ? string.Empty
-            : $"{s.Rank.WorkedCount} station{(s.Rank.WorkedCount == 1 ? "" : "s")} you have already worked on {band} {(s.Rank.WorkedCount == 1 ? "is" : "are")} {(ShowWorked ? "shown below" : "hidden")}.";
+        RepeatsSubtitle = $"Heard now and already in your log on {band} {ModeInfo.Name(s.Mode)}.";
+        RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {band} is on the air right now.";
 
         Summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty);
         Contact = s.Contact is null ? null : ContactPanelViewModel.From(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall));
@@ -256,8 +261,14 @@ public sealed partial class OperateViewModel : ObservableObject
         ListUpdated = _line.HasPending;
         var now = _now();
         foreach (var r in Line) r.Refresh(now);
-        foreach (var r in Worked) r.Refresh(now);
+        foreach (var r in Repeats) r.Refresh(now);
     }
+
+    /// <summary>Pointer entered Repeats: hold its order still.</summary>
+    public void PointerEnteredRepeats() => _repeats.PointerEntered();
+
+    /// <summary>Pointer left Repeats.</summary>
+    public void PointerExitedRepeats() => _repeats.PointerExited();
 
     /// <summary>Pointer entered the line.</summary>
     public void PointerEnteredLine() => _line.PointerEntered();
@@ -353,12 +364,12 @@ public sealed partial class OperateViewModel : ObservableObject
         else _commands.Answer(row.Call);
     }
 
-    /// <summary>Toggles Already worked.</summary>
+    /// <summary>Calls or answers a station in Repeats.</summary>
     [RelayCommand]
-    private void ToggleWorked()
+    private void CallRepeat(RepeatRowViewModel row)
     {
-        ShowWorked = !ShowWorked;
-        if (_snap is not null) Apply(_snap, TonightRows.ToList(), 0);
+        _repeats.Clicked();
+        _commands.Call(row.Call);
     }
 
     /// <summary>Resend.</summary>
@@ -413,6 +424,22 @@ public sealed partial class OperateViewModel : ObservableObject
         foreach (var r in Line) r.IsSelected = ReferenceEquals(r, sel);
         Selected = sel;
     }
+
+    private void ApplyRepeats(IReadOnlyList<RankedStation> list)
+    {
+        var now = _now();
+        var log = Log?.Invoke();
+        Repeats.Clear();
+        foreach (var r in list.Take(MaxRepeats))
+            Repeats.Add(new RepeatRowViewModel(r, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0, Units, now));
+        RepeatsMoreText = list.Count > MaxRepeats ? $"and {list.Count - MaxRepeats} more" : string.Empty;
+        if (_snap is not null)
+            RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {BandPlan.Display(_snap.Band)} is on the air right now.";
+    }
+
+    /// <summary>Repeats order: stations that can be called now first, then the ranker's order (calling me, chance, signal).</summary>
+    public static IReadOnlyList<RankedStation> RepeatOrder(IReadOnlyList<RankedStation> worked) =>
+        worked.OrderBy(r => r.Callable ? 0 : 1).ToList();
 
     private void ApplySignal(SessionSnapshot s, DateTime now, string band)
     {

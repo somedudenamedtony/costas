@@ -12,7 +12,9 @@ the station is free to call, and whether it can hear you.
 ## What it does for you
 
 - **Tells you who to call next.** The *Next in line* list puts the stations you need first: a new country, then a
-  new band, a new grid, a new call. It reads what you have worked and confirmed from your QRZ logbook.
+  new band, a new grid, a new call. It reads what you have worked and confirmed from your QRZ logbook. Stations
+  you have already worked are listed under it in *Repeats*, with when you last worked them, so you can call them
+  again.
 - **Knows who can hear you.** With PSK Reporter it shows, per station, whether that station (or someone near it)
   has heard your signal, and rates your chance of completing: Good, Fair or Long shot.
 - **Runs the contact for you.** Click **Call** (or press ++enter++) and Costas sends the standard exchange, follows

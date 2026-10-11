@@ -52,7 +52,7 @@ line*.
   which outranks a new call. Use ▲ ▼ to reorder.
 - **Rank stations that hear me higher (from PSK Reporter)**: on.
 - **Only list stations that are calling CQ**: on. Off also lists stations finishing a contact.
-- **Hide stations I have already worked on this band**: on. They are counted under Watching with **Show them**.
+- **Hide stations I have already worked on this band**: on. They are listed in **Repeats** under Next in line instead.
 - **Leave out long shots (signals too weak to likely complete)**: off.
 - **Count a country or state as worked only when confirmed**: off.
 

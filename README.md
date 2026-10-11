@@ -17,6 +17,8 @@ log, whether the station is free to call, and whether it can hear you.
 
 - **Next in line**: the stations you need, best first. New country, then new band, new grid, new call, worked out
   from your QRZ logbook.
+- **Repeats**: stations on the air now that you have already worked on this band, with when and where you last
+  worked them, one click to call them again.
 - **Hears you and Chance**: from PSK Reporter, whether each station (or someone near it) hears your signal, and a
   Good / Fair / Long shot rating.
 - **One-click contacts**: click **Call** or press Enter. Costas runs the standard exchange, shows each step in a

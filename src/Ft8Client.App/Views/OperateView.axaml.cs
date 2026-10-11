@@ -7,7 +7,6 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Avalonia.Controls;
-using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Ft8Client.App.ViewModels;
@@ -17,9 +16,6 @@ namespace Ft8Client.App.Views;
 /// <summary>The Operate view.</summary>
 public partial class OperateView : UserControl
 {
-    /// <summary>"Show them" / "Hide them".</summary>
-    public static readonly IValueConverter ShowHide = new FuncValueConverter<bool, string>(b => b ? "Hide them" : "Show them");
-
     /// <summary>Creates the view.</summary>
     public OperateView()
     {
@@ -27,6 +23,8 @@ public partial class OperateView : UserControl
         LineList.PointerEntered += (_, _) => Vm?.PointerEnteredLine();
         LineList.PointerExited += (_, _) => Vm?.PointerExitedLine();
         LineList.AddHandler(PointerPressedEvent, OnRowPressed, RoutingStrategies.Tunnel);
+        RepeatList.PointerEntered += (_, _) => Vm?.PointerEnteredRepeats();
+        RepeatList.PointerExited += (_, _) => Vm?.PointerExitedRepeats();
         LineList.DoubleTapped += (_, _) =>
         {
             if (Vm?.Selected is { } row) Vm.CallSelected();

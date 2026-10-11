@@ -71,6 +71,21 @@ public class LogIndexTests
     }
 
     [Fact]
+    public void LastContactWith_SeveralContacts_ReturnsNewest()
+    {
+        var index = Index();
+        index.Add(new LogContact("K1ABC", "40m", "FT8", "FN42", "K", "MA", false, D.AddDays(3)));
+        index.Add(new LogContact("K1ABC", "15m", "FT8", "FN42", "K", "MA", false, D.AddDays(1)));
+        index.LastContactWith("k1abc")!.Band.Should().Be("40m");
+    }
+
+    [Fact]
+    public void LastContactWith_NotInLog_ReturnsNull()
+    {
+        Index().LastContactWith("ZL2RPA").Should().BeNull();
+    }
+
+    [Fact]
     public void BandStatistics_TwentyMetres_CountsEntitiesStatesGrids()
     {
         var index = Index();

@@ -139,7 +139,9 @@ Behaviour:
 
 Stations that are needed but not callable now. Columns: Call, Where, Why, signal sparkline (as in Next in line), reason. Reasons: "Went quiet 45 seconds ago", "In a contact with EA5HVK", "Finishing a contact with K7RGB". Rows are secondary text. Maximum 8 rows.
 
-Footer: "N stations you have already worked on 20 m are hidden. Show them" toggles a third section, "Already worked", with the same columns as Next in line.
+### Repeats
+
+Directly under Next in line. Stations heard now that are already worked (tier 5: this call on this band and mode), so the operator can work them again. Title "Repeats", subtitle "Heard now and already in your log on 20 m FT8." Columns: Call, Where, Doing now (or, when not callable, the Watching reason in secondary text), Last heard, dB, Signal sparkline, Last worked ("Today · 20 m", "Yesterday · 40 m", "2026-10-03 · 20 m": the most recent log contact with the call on any band or mode; tooltip gives the contact count, exact UTC time, band, mode and confirmation), and a Call button ("Answer" when the station is calling me; disabled when not callable). Callable stations first, then the line's ranking order. At most 8 rows, then "and N more". The list is held still while the pointer is over it or within 300 ms of a click, as Next in line. Empty state: "Nobody you have worked on 20 m is on the air right now."
 
 ### Right column
 

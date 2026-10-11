@@ -130,6 +130,10 @@ public sealed class LogIndex
     public IReadOnlyList<LogContact> ContactsWith(string call) =>
         _byCall.TryGetValue(Callsign.Normalize(call), out var list) ? list : [];
 
+    /// <summary>The most recent contact with a call on any band or mode, or null if there is none.</summary>
+    public LogContact? LastContactWith(string call) =>
+        _byCall.TryGetValue(Callsign.Normalize(call), out var list) ? list.MaxBy(c => c.DateUtc) : null;
+
     private bool Matches(NeedTag tag, string call, string? entityKey, string? grid, string band, string modeKey, bool confirmedOnly) => tag switch
     {
         NeedTag.NewCountry => entityKey is not null && !EntityWorked(entityKey, confirmedOnly),

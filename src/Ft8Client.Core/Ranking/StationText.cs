@@ -96,6 +96,23 @@ public static class StationText
         return h == 1 ? "1 hour ago" : $"{h} hours ago";
     }
 
+    /// <summary>
+    /// When and where a station was last worked, from its most recent log contact: "Today · 20 m",
+    /// "Yesterday · 40 m", "2026-10-03 · 20 m". Days are UTC days. Empty when there is no contact.
+    /// </summary>
+    public static string LastWorked(LogContact? c, DateTime nowUtc)
+    {
+        if (c is null) return string.Empty;
+        var days = (nowUtc.Date - c.DateUtc.Date).Days;
+        var when = days switch
+        {
+            <= 0 => "Today",
+            1 => "Yesterday",
+            _ => c.DateUtc.ToString("yyyy-MM-dd", Inv),
+        };
+        return $"{when} · {Bands.BandPlan.Display(c.Band)}";
+    }
+
     /// <summary>Short age for report lists: "2 min ago", "now".</summary>
     public static string ShortAgo(TimeSpan t)
     {
