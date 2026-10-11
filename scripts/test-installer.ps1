@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Costas contributors. GPLv3; see LICENSE.
 #
 # Exercises the built installer on Windows (CI): a fresh per-user install, an upgrade over an install that still has a
-# pre-rename build's files and shortcuts, a start of the installed app, and an uninstall.
+# pre-rename build's files and shortcuts, the silent upgrade the app's Update button runs (which reopens the app), a start of the installed app, and an uninstall.
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $setup = Get-ChildItem (Join-Path $root 'artifacts') -Filter 'Costas-Setup-*.exe' | Select-Object -First 1
@@ -35,6 +35,21 @@ Assert-File (Join-Path $startMenu 'FT8 Client.lnk') $false
 $entry = Get-ItemProperty $uninstallKey
 if ($entry.DisplayName -ne 'Costas') { throw "Uninstall entry is '$($entry.DisplayName)'" }
 Write-Host "One Apps & features entry: $($entry.DisplayName) $($entry.DisplayVersion)"
+if (Get-Process -Name 'Costas' -ErrorAction SilentlyContinue) { throw 'A silent install without /RELAUNCH=1 started the app' }
+
+Write-Host 'Silent upgrade with /RELAUNCH=1 (the app''s Update button) reopens the app'
+Start-Process $setup.FullName -ArgumentList ($silent + '/NOCANCEL', '/RELAUNCH=1') -Wait
+$deadline = (Get-Date).AddSeconds(30)
+$relaunched = $null
+while ((Get-Date) -lt $deadline -and -not $relaunched) {
+    $relaunched = Get-Process -Name 'Costas' -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $relaunched) { Start-Sleep -Seconds 1 }
+}
+if (-not $relaunched) { throw 'The installer did not reopen the app after a /RELAUNCH=1 upgrade' }
+if ($relaunched.Path -ne (Join-Path $dir 'Costas.exe')) { throw "Reopened $($relaunched.Path), not the installed app" }
+Stop-Process -Id $relaunched.Id -Force
+$relaunched.WaitForExit(10000) | Out-Null
+Write-Host 'The installer reopened the installed app'
 
 Write-Host 'Start the installed app'
 $appHome = Join-Path $env:RUNNER_TEMP 'costas-home'
