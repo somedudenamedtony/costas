@@ -486,34 +486,36 @@ public sealed class ContactEngine
 
     private void RemoveWaiting(string call) => _waiting.RemoveAll(x => Callsign.EqualsCall(x.Call, call));
 
-    private string CqMessage() => _myGrid.Length > 0 ? $"CQ {_myCall} {_myGrid}" : $"CQ {_myCall}";
+    private string CqMessage() => OutgoingMessages.Cq(_myCall, _myGrid, _settings);
 
     private static string Dx(string call) => MessagePacker.IsStandardCall(call) ? call : $"<{call}>";
 
-    private string Format(Contact c, int index) => c.Steps.Count > index ? c.Steps[index].Message : $"{Dx(c.DxCall)} {_myCall} 73";
+    private string Format(Contact c, int index) => c.Steps.Count > index ? c.Steps[index].Message : OutgoingMessages.Final(Dx(c.DxCall), _myCall, _settings);
 
     private List<ContactStep> StepsFor(Contact c)
     {
         var dx = Dx(c.DxCall);
         var me = _myCall;
         var rpt = Report.Format(c.ReportSent);
-        var grid = _myGrid.Length > 0 ? $" {_myGrid}" : string.Empty;
+        var cq = CqMessage();
+        var final = OutgoingMessages.Final(dx, me, _settings);
         ContactStep Mine(string m) => new(true, m, StepState.Upcoming, 0, null);
         ContactStep Theirs(string m) => new(false, m, StepState.Upcoming, 0, null);
         return c.Flow switch
         {
             ContactFlow.AnswerCq =>
             [
-                Mine($"{dx} {me}{grid}"), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"), Mine($"{dx} {me} 73"),
+                Mine(OutgoingMessages.Reply(dx, me, _myGrid, _settings)), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"),
+                Mine(final),
             ],
             ContactFlow.CalledCq =>
             [
-                Mine($"CQ {me}{grid}"), Theirs($"{me} {dx} {c.DxGrid}".TrimEnd()), Mine($"{dx} {me} {rpt}"), Theirs($"{me} {dx} R±NN"),
+                Mine(cq), Theirs($"{me} {dx} {c.DxGrid}".TrimEnd()), Mine($"{dx} {me} {rpt}"), Theirs($"{me} {dx} R±NN"),
                 Mine($"{dx} {me} {_settings.Signoff}"), Theirs($"{me} {dx} 73"),
             ],
             _ =>
             [
-                Mine($"CQ {me}{grid}"), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"), Mine($"{dx} {me} 73"),
+                Mine(cq), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"), Mine(final),
             ],
         };
     }

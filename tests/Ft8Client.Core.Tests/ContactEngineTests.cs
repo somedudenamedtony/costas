@@ -438,4 +438,40 @@ public class ContactEngineTests
         s.Sent.Should().HaveCount(6);
         s.Sent.Should().OnlyContain(x => FtxEncoder.Encode(x.Message, Mode.Ft8).Ok);
     }
+
+    [Fact]
+    public void ConfiguredMessages_UsedForCqReplyAndFinal()
+    {
+        var settings = new ContactSettings { CqModifier = "DX", GridInCq = false, GridInReply = false, FinalMessage = "TNX 73 GL" };
+        var s = new Sim(settings);
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step().Should().Be("ZL2RPA W7LIT");
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step().Should().Be("ZL2RPA W7LIT R-19");
+        s.Step("W7LIT ZL2RPA RR73");
+        s.Logs.Should().ContainSingle();
+        s.Step().Should().Be("TNX 73 GL");
+        s.Steps(4);
+        s.Sent.Should().HaveCount(3);
+
+        s.E.CallCq(SlotParity.Even, s.Now);
+        while (s.Slot % 2 != 0) s.Step();
+        s.Step().Should().Be("CQ DX W7LIT");
+        s.Sent.Should().OnlyContain(x => FtxEncoder.Encode(x.Message, Mode.Ft8).Ok);
+    }
+
+    [Fact]
+    public void ConfiguredFinal_LateRr73_RepeatsSameFinal()
+    {
+        var s = new Sim(new ContactSettings { FinalMessage = "TNX 73 GL" });
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step();
+        s.Step("W7LIT ZL2RPA RR73");
+        s.Step().Should().Be("TNX 73 GL");
+        s.Step("W7LIT ZL2RPA RR73");
+        s.Step().Should().Be("TNX 73 GL");
+        s.Logs.Should().ContainSingle();
+    }
 }

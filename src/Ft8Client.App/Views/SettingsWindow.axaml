@@ -83,10 +83,43 @@
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="CQ" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <TextBox Text="{Binding CqModifier}" Width="90" MaxLength="4" Watermark="modifier" />
+                  <CheckBox IsChecked="{Binding GridInCq}" Content="Send my grid" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="Leave the modifier empty for a plain CQ, or use DX, POTA, NA, a number and so on." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Answering a CQ" />
+              <StackPanel Grid.Column="1">
+                <CheckBox IsChecked="{Binding GridInReply}" Content="Send my grid" />
+                <TextBlock Classes="help" Text="Without the grid the first message is just their call and yours." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Sign-off" />
               <StackPanel Grid.Column="1">
                 <ComboBox ItemsSource="{Binding Signoffs}" SelectedItem="{Binding Signoff}" MinWidth="110" />
                 <TextBlock Classes="help" Text="RR73 ends the contact in one message; RRR waits for the other station's 73." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Last message" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding FinalMessage}" Width="160" HorizontalAlignment="Left" MaxLength="13" />
+                <TextBlock Classes="help" Text="73 sends their call, yours and 73. Anything else is sent as free text, up to 13 characters, such as TNX 73 GL." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="What you send" />
+              <StackPanel Grid.Column="1">
+                <TextBlock Text="{Binding MessagePreview}" FontFamily="Consolas,Menlo,monospace" />
+                <TextBlock Text="{Binding MessageProblem}" Foreground="{DynamicResource CriticalBrush}" TextWrapping="Wrap" Margin="0,4,0,0"
+                           IsVisible="{Binding MessageProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Classes="help" Text="The order of the exchange and the reports are fixed by FT8, so only these parts can change." />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">

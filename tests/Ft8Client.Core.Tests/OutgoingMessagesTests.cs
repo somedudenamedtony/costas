@@ -1,0 +1,81 @@
+// Costas - a station-centric FT8/FT4 client.
+// Copyright (C) 2026 Costas contributors
+//
+// This program is free software: you can redistribute it and/or modify it under the terms of the
+// GNU General Public License as published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
+// see the GNU General Public License in LICENSE for details.
+
+using Ft8Client.Core.Contacts;
+
+namespace Ft8Client.Core.Tests;
+
+public class OutgoingMessagesTests
+{
+    private static readonly ContactSettings Defaults = new();
+
+    [Fact]
+    public void Defaults_MatchTheStandardMessages()
+    {
+        OutgoingMessages.Cq("W7LIT", "DN40", Defaults).Should().Be("CQ W7LIT DN40");
+        OutgoingMessages.Reply("ZL2RPA", "W7LIT", "DN40", Defaults).Should().Be("ZL2RPA W7LIT DN40");
+        OutgoingMessages.Final("ZL2RPA", "W7LIT", Defaults).Should().Be("ZL2RPA W7LIT 73");
+        OutgoingMessages.Problem(Defaults, "W7LIT", "DN40").Should().BeNull();
+    }
+
+    [Fact]
+    public void Cq_ModifierAndNoGrid_BuildsThem()
+    {
+        var s = new ContactSettings { CqModifier = " pota ", GridInCq = false };
+        OutgoingMessages.Cq("W7LIT", "DN40", s).Should().Be("CQ POTA W7LIT");
+        OutgoingMessages.Problem(s, "W7LIT", "DN40").Should().BeNull();
+    }
+
+    [Fact]
+    public void Cq_NoGridConfigured_LeavesItOut()
+    {
+        OutgoingMessages.Cq("W7LIT", string.Empty, Defaults).Should().Be("CQ W7LIT");
+    }
+
+    [Fact]
+    public void Reply_GridOff_SendsBothCallsOnly()
+    {
+        OutgoingMessages.Reply("ZL2RPA", "W7LIT", "DN40", new ContactSettings { GridInReply = false }).Should().Be("ZL2RPA W7LIT");
+    }
+
+    [Theory]
+    [InlineData("tnx  73 gl", "TNX 73 GL")]
+    [InlineData("73", "ZL2RPA W7LIT 73")]
+    [InlineData("", "ZL2RPA W7LIT 73")]
+    public void Final_FreeTextOr73_BuildsIt(string setting, string expected)
+    {
+        var s = new ContactSettings { FinalMessage = setting };
+        OutgoingMessages.Final("ZL2RPA", "W7LIT", s).Should().Be(expected);
+        OutgoingMessages.Problem(s, "W7LIT", "DN40").Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("DXCCX")]
+    [InlineData("1234")]
+    [InlineData("D1")]
+    public void Problem_BadModifier_Refused(string mod)
+    {
+        var s = new ContactSettings { CqModifier = mod };
+        OutgoingMessages.Problem(s, "W7LIT", "DN40").Should().Contain("modifier");
+    }
+
+    [Fact]
+    public void Problem_ModifierWithNonstandardCall_Refused()
+    {
+        OutgoingMessages.Problem(new ContactSettings { CqModifier = "DX" }, "PJ4/K1ABC", "FN42").Should().Contain("cannot be sent");
+    }
+
+    [Theory]
+    [InlineData("THANKS FOR QSO 73")]
+    [InlineData("CQ W7LIT")]
+    [InlineData("HI@HOME")]
+    public void Problem_UnsendableFinal_Refused(string final)
+    {
+        OutgoingMessages.Problem(new ContactSettings { FinalMessage = final }, "W7LIT", "DN40").Should().NotBeNull();
+    }
+}
