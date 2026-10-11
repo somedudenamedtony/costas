@@ -263,10 +263,15 @@ public sealed class Transmitter
         if (cut is not null) Ended?.Invoke(cut, false);
     }
 
-    /// <summary>Tune: a steady tone at the offset for up to <paramref name="seconds"/> (the Tune watchdog), PTT on now.</summary>
+    /// <summary>
+    /// Tune: a steady tone at the offset for up to <paramref name="seconds"/> (the Tune watchdog), PTT on now. Returns
+    /// null once the tone is on the air, or why it was refused or stopped: no audio output, a radio fault or no radio,
+    /// outside the band, or PTT could not be asserted (then no audio is played).
+    /// </summary>
     public async Task<string?> TuneAsync(int offsetHz, double seconds, TxGuardInput guard)
     {
         if (!guard.AudioReady || _output is null) return "No audio output device is open.";
+        if (guard.RigFault is not null) return $"Radio fault: {guard.RigFault}";
         if (!_frequencies.TransmitAllowed(guard.Band, Mode.Ft8, guard.DialHz, offsetHz, out var why)) return why;
         var n = (int)(seconds * _output.SampleRate);
         var tone = new float[n];
@@ -279,24 +284,35 @@ public sealed class Transmitter
             _current = tx;
             _pttOffDueUtc = _clock.UtcNow + tx.Duration + Tail;
         }
-        await SetPttSafe(true).ConfigureAwait(false);
+        var failed = await SetPttSafe(true).ConfigureAwait(false);
+        if (failed is not null) return failed; // halted: PTT released, nothing to play
+        lock (_gate)
+        {
+            if (!ReferenceEquals(_current, tx)) return "The tone was stopped before it started."; // halted meanwhile
+        }
         _output.Play(tone);
-        bool keyed;
-        lock (_gate) keyed = ReferenceEquals(_current, tx); // not when asserting PTT failed and halted
-        if (keyed) ToneStarted?.Invoke(tx);
+        ToneStarted?.Invoke(tx);
         return null;
     }
 
-    private async Task SetPttSafe(bool on)
+    /// <summary>Sets PTT. When asserting fails, halts and returns why (also raised as <see cref="Fault"/>).</summary>
+    private async Task<string?> SetPttSafe(bool on)
     {
         try
         {
             await _rig.SetPttAsync(on, CancellationToken.None).ConfigureAwait(false);
+            return null;
         }
         catch (RigException ex)
         {
-            if (on) await AbortAsync($"PTT could not be asserted: {ex.Message}").ConfigureAwait(false);
-            else Fault?.Invoke(ex.Message);
+            if (!on)
+            {
+                Fault?.Invoke(ex.Message);
+                return ex.Message;
+            }
+            var why = $"PTT could not be asserted: {ex.Message}";
+            await AbortAsync(why).ConfigureAwait(false);
+            return why;
         }
     }
 
