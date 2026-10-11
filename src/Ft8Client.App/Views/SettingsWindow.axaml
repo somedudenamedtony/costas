@@ -169,6 +169,13 @@
               <TextBlock Classes="label" Text="Logging" />
               <CheckBox Grid.Column="1" Content="Log each contact automatically when it completes" IsChecked="{Binding AutoLog}" />
             </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Calling you" />
+              <StackPanel Grid.Column="1" Spacing="4">
+                <CheckBox Content="Chime when a new station calls me" IsChecked="{Binding ChimeOnCaller}" />
+                <TextBlock Classes="help" Text="Plays on the computer's default speakers, never on the radio's audio device. If the default device is the radio's, the chime stays silent." />
+              </StackPanel>
+            </Grid>
           </StackPanel>
         </ScrollViewer>
       </TabItem>

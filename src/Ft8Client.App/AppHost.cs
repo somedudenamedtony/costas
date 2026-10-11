@@ -42,6 +42,7 @@ public sealed class AppHost : IAsyncDisposable
     private NullAudioOutput? _mutedOutput;
     private volatile ServiceStatus? _rigOpenStatus;
     private CapturePump? _pump;
+    private ChimePlayer? _chime;
     private SlotLoop? _loop;
     private IRig _rig;
     private string? _rigKey;
@@ -148,6 +149,9 @@ public sealed class AppHost : IAsyncDisposable
 
     /// <summary>The audio backend.</summary>
     public IAudioBackend AudioBackend { get; private set; } = new NullAudioBackend();
+
+    /// <summary>The new-caller chime.</summary>
+    public ChimePlayer Chime => _chime ??= new ChimePlayer(() => AudioBackend, () => Settings.Current.Profile.Audio.OutputId);
 
     /// <summary>The capture pump, when live audio is running (input level, dropouts).</summary>
     public CapturePump? Pump => _pump;

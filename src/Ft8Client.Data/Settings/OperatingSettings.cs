@@ -44,6 +44,9 @@ public sealed class OperatingSettings
     /// <summary>Log automatically when the contact completes.</summary>
     public bool AutoLog { get; set; } = true;
 
+    /// <summary>Play a short chime on the computer's speakers when a new station calls me. Off by default.</summary>
+    public bool ChimeOnCaller { get; set; }
+
     /// <summary><c>auto</c>, or a fixed offset in hertz.</summary>
     public string TxOffset { get; set; } = "auto";
 
