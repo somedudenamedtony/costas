@@ -21,6 +21,7 @@ using Ft8Client.Core.Services;
 using Ft8Client.Core.Time;
 using Ft8Client.Core.Transmit;
 using Ft8Client.Data.Log;
+using Ft8Client.Data.Settings;
 
 namespace Ft8Client.App.ViewModels;
 
@@ -41,6 +42,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             Log = () => host.Session.LogIndex,
             QrzName = host.Session.NameOf,
         };
+        LoadMapChoices(host.Settings.Current.Map);
+        Operate.Map.ChoicesChanged += SaveMapChoices;
         Raw = new RawDecodesViewModel(c => Call(c));
         Reach = new ReachViewModel(host.Spots, host.Countries, () => host.Session.LogIndex, () => host.Clock.UtcNow);
         LogView = new LogViewModel(host.Qsos, host.Countries, () => (host.Settings.Current.Profile.Id, host.Settings.Current.Profile.Callsign),
@@ -484,5 +487,28 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var khz = hz / 1000 % 1000;
         var h = hz % 1000;
         return $"{mhz}.{khz:000}.{h:000}";
+    }
+
+    private void LoadMapChoices(MapOptions m)
+    {
+        var map = Operate.Map;
+        map.View = m.View == "world" ? "World" : "Around me";
+        map.Show = m.Show switch { "needed" => "Needed only", "cq" => "Calling CQ", _ => "Everyone heard" };
+        map.Colour = m.Colour switch { "signal" => "Signal", "age" => "Last heard", _ => "Need" };
+        map.HearsMe = m.HearsMe;
+        map.DayNight = m.DayNight;
+    }
+
+    private void SaveMapChoices()
+    {
+        var map = Operate.Map;
+        _host.Settings.Update(s =>
+        {
+            s.Map.View = map.World ? "world" : "around";
+            s.Map.Show = map.Show switch { "Needed only" => "needed", "Calling CQ" => "cq", _ => "all" };
+            s.Map.Colour = map.Colour switch { "Signal" => "signal", "Last heard" => "age", _ => "need" };
+            s.Map.HearsMe = map.HearsMe;
+            s.Map.DayNight = map.DayNight;
+        });
     }
 }

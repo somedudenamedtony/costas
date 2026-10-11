@@ -78,6 +78,9 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>Newest reports of my signal (three).</summary>
     public ObservableCollection<ReportRowViewModel> ReportRows { get; } = [];
 
+    /// <summary>The heard-here map and band activity chart.</summary>
+    public HeardMapViewModel Map { get; } = new();
+
     /// <summary>My position, the centre of the mini map.</summary>
     [ObservableProperty]
     public partial LatLon? ReachCentre { get; set; }
@@ -218,6 +221,9 @@ public sealed partial class OperateViewModel : ObservableObject
         WaitingTitle = $"Waiting for you · {WaitingRows.Count}";
 
         ApplySignal(s, now, band);
+        Map.Units = Units;
+        Map.Countries = Countries;
+        Map.Apply(s, now);
 
         TonightRows.Clear();
         foreach (var t in tonight.Take(3)) TonightRows.Add(t);

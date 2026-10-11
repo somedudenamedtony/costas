@@ -15,7 +15,6 @@ using Ft8Client.App.ViewModels;
 using Ft8Client.Core;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Ranking;
-using Ft8Client.Data.Reference;
 
 namespace Ft8Client.App.Views;
 
@@ -38,8 +37,6 @@ public sealed class ReachPlot : Control
 
     /// <summary>My position, the centre of the map. Null draws the plot without a map.</summary>
     public static readonly StyledProperty<LatLon?> CentreProperty = AvaloniaProperty.Register<ReachPlot, LatLon?>(nameof(Centre));
-
-    private static readonly Lazy<WorldOutline> Outline = new(ReferenceData.LoadWorldOutline);
 
     private readonly List<(Point P, ReachPoint R)> _placed = [];
     private (LatLon Centre, double ScaleKm, Rect Disc)? _mapKey;
@@ -133,7 +130,7 @@ public sealed class ReachPlot : Control
             for (var i = 1; i <= rings; i++)
             {
                 var label = StationText.Distance(RingKm(Units) * i, Units);
-                DrawText(ctx, label, new Point(c.X + 3, c.Y - r * i / rings + 1), text, 10);
+                DrawText(ctx, label, new Point(c.X + 8, c.Y - r * i / rings + 1), text, 10);
             }
         }
 
@@ -162,41 +159,9 @@ public sealed class ReachPlot : Control
         if (_mapKey != (centre, scaleKm, disc))
         {
             _mapKey = (centre, scaleKm, disc);
-            Point ToScreen((double X, double Y) p) => new(c.X + p.X * r, c.Y - p.Y * r);
-            var land = new StreamGeometry();
-            using (var g = land.Open())
-            {
-                foreach (var ring in Outline.Value.Land)
-                {
-                    if (AzimuthalProjection.ProjectRing(centre, ring, scaleKm) is not { } pts) continue;
-                    g.BeginFigure(ToScreen(pts[0]), true);
-                    for (var i = 1; i < pts.Count; i++) g.LineTo(ToScreen(pts[i]));
-                    g.EndFigure(true);
-                }
-            }
-            var borders = new StreamGeometry();
-            using (var g = borders.Open())
-            {
-                foreach (var shape in Outline.Value.Land.Concat(Outline.Value.Borders))
-                {
-                    foreach (var piece in AzimuthalProjection.ProjectLine(centre, shape, scaleKm))
-                    {
-                        g.BeginFigure(ToScreen(piece[0]), false);
-                        for (var i = 1; i < piece.Count; i++) g.LineTo(ToScreen(piece[i]));
-                        g.EndFigure(false);
-                    }
-                }
-            }
-            _land = land;
-            _borders = borders;
+            (_land, _borders) = MapGeometry.Azimuthal(centre, scaleKm, c, r);
         }
-
-        var shade = Brush("TextSecondaryBrush") ?? Brushes.Gray;
-        using (ctx.PushGeometryClip(new EllipseGeometry(disc)))
-        {
-            using (ctx.PushOpacity(0.12)) ctx.DrawGeometry(shade, null, _land!);
-        }
-        using (ctx.PushOpacity(0.35)) ctx.DrawGeometry(null, new Pen(shade, Compact ? 0.5 : 0.75), _borders!);
+        MapGeometry.Draw(ctx, _land!, _borders!, new EllipseGeometry(disc), Compact);
     }
 
     /// <inheritdoc />

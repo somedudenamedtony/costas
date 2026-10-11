@@ -127,7 +127,7 @@
                   </Button>
                 </StackPanel>
               </DockPanel>
-              <Grid ColumnDefinitions="36,100,190,110,*,140,46,80,74" Margin="14,0,14,4">
+              <Grid ColumnDefinitions="36,100,190,110,*,140,46,64,80,74" Margin="14,0,14,4">
                 <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
                 <TextBlock Grid.Column="1" Text="Call" Classes="secondary" />
                 <TextBlock Grid.Column="2" Text="Where" Classes="secondary" />
@@ -135,7 +135,8 @@
                 <TextBlock Grid.Column="4" Text="Doing now" Classes="secondary" />
                 <TextBlock Grid.Column="5" Text="Hears you" Classes="secondary" />
                 <TextBlock Grid.Column="6" Text="dB" Classes="secondary" HorizontalAlignment="Right" Margin="0,0,8,0" />
-                <TextBlock Grid.Column="7" Text="Chance" Classes="secondary" />
+                <TextBlock Grid.Column="7" Text="Signal" Classes="secondary" />
+                <TextBlock Grid.Column="8" Text="Chance" Classes="secondary" />
               </Grid>
               <ListBox x:Name="LineList" ItemsSource="{Binding Line}" SelectedItem="{Binding Selected}" Background="Transparent"
                        ScrollViewer.VerticalScrollBarVisibility="Disabled" AutomationProperties.Name="Next in line">
@@ -152,7 +153,7 @@
                   <DataTemplate x:DataType="vm:StationRowViewModel">
                     <Border Background="{Binding IsSelected, Converter={x:Static v:Converters.SelectedBackground}}"
                             BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
-                      <Grid ColumnDefinitions="3,33,100,190,110,*,140,46,80,74" MinHeight="40">
+                      <Grid ColumnDefinitions="3,33,100,190,110,*,140,46,64,80,74" MinHeight="40">
                         <Border Grid.Column="0" Background="{Binding IsSelected, Converter={x:Static v:Converters.SelectedBar}}" />
                         <TextBlock Grid.Column="1" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" Margin="11,0,0,0" />
                         <TextBlock Grid.Column="2" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -162,8 +163,10 @@
                         <TextBlock Grid.Column="5" Text="{Binding DoingNow}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         <TextBlock Grid.Column="6" Text="{Binding HearsYou}" VerticalAlignment="Center" TextWrapping="Wrap" />
                         <TextBlock Grid.Column="7" Text="{Binding Db}" Classes="num" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
-                        <TextBlock Grid.Column="8" Text="{Binding Chance}" VerticalAlignment="Center" FontWeight="{Binding ChanceBold, Converter={x:Static v:Converters.Bold}}" />
-                        <Button Grid.Column="9" Content="Call" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0"
+                        <v:SignalSparkline Grid.Column="8" Values="{Binding History}" Width="52" Height="24" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                           ToolTip.Tip="{Binding HistoryTip}" AutomationProperties.Name="{Binding HistoryTip}" />
+                        <TextBlock Grid.Column="9" Text="{Binding Chance}" VerticalAlignment="Center" FontWeight="{Binding ChanceBold, Converter={x:Static v:Converters.Bold}}" />
+                        <Button Grid.Column="10" Content="Call" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,12,0"
                                 Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CallRowCommand}" CommandParameter="{Binding}"
                                 AutomationProperties.Name="{Binding Call, StringFormat='Call {0}'}" />
                       </Grid>
@@ -215,11 +218,13 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:WatchRowViewModel">
                   <Border BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
-                    <Grid ColumnDefinitions="100,180,160,*" MinHeight="34" Margin="14,0">
+                    <Grid ColumnDefinitions="100,180,160,64,*" MinHeight="34" Margin="14,0">
                       <TextBlock Text="{Binding Call}" Classes="secondary" FontWeight="SemiBold" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="1" Text="{Binding Where}" Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                       <TextBlock Grid.Column="2" Text="{Binding Why}" VerticalAlignment="Center" Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" />
-                      <TextBlock Grid.Column="3" Text="{Binding Reason}" Classes="secondary" VerticalAlignment="Center" />
+                      <v:SignalSparkline Grid.Column="3" Values="{Binding History}" Width="52" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" Opacity="0.7"
+                                         ToolTip.Tip="{Binding HistoryTip}" AutomationProperties.Name="{Binding HistoryTip}" />
+                      <TextBlock Grid.Column="4" Text="{Binding Reason}" Classes="secondary" VerticalAlignment="Center" />
                     </Grid>
                   </Border>
                 </DataTemplate>
@@ -255,6 +260,52 @@
     <!-- Right column -->
     <ScrollViewer Grid.Column="1" Grid.Row="0" x:Name="RightColumn" VerticalScrollBarVisibility="Auto">
       <StackPanel Spacing="12">
+        <!-- Heard here: map and band activity -->
+        <Border Classes="card" Padding="14,12">
+          <StackPanel Spacing="8" DataContext="{Binding Map}" x:DataType="vm:HeardMapViewModel">
+            <TextBlock Text="Heard here" Classes="title" />
+            <TextBlock Text="{Binding Headline}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,-4,0,0" />
+            <WrapPanel ItemSpacing="6" LineSpacing="6">
+              <ComboBox ItemsSource="{x:Static vm:HeardMapViewModel.Views}" SelectedItem="{Binding View}" MinWidth="110" AutomationProperties.Name="Map view" ToolTip.Tip="Map view" />
+              <ComboBox ItemsSource="{x:Static vm:HeardMapViewModel.Shows}" SelectedItem="{Binding Show}" MinWidth="130" AutomationProperties.Name="Stations shown" ToolTip.Tip="Stations shown" />
+              <ComboBox ItemsSource="{x:Static vm:HeardMapViewModel.Colours}" SelectedItem="{Binding Colour}" MinWidth="110" AutomationProperties.Name="Colour by" ToolTip.Tip="Colour by" />
+            </WrapPanel>
+            <WrapPanel ItemSpacing="14">
+              <CheckBox Content="Who heard you" IsChecked="{Binding HearsMe}" />
+              <CheckBox Content="Day and night" IsChecked="{Binding DayNight}" IsVisible="{Binding World}" />
+            </WrapPanel>
+            <v:StationMap Points="{Binding Points}" Centre="{Binding Centre}" World="{Binding World}" DayNight="{Binding DayNight}"
+                          NowUtc="{Binding NowUtc}" Units="{Binding Units}" HorizontalAlignment="Stretch" />
+            <TextBlock Text="{Binding Notice}" Classes="secondary" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding Notice, Converter={x:Static v:Converters.NotEmpty}}" />
+            <ItemsControl ItemsSource="{Binding Legend}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="12" LineSpacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:LegendItem">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <Ellipse Width="9" Height="9" VerticalAlignment="Center" Opacity="{Binding Opacity}"
+                             Fill="{Binding Converter={x:Static v:Converters.LegendFill}}" Stroke="{Binding Converter={x:Static v:Converters.LegendStroke}}" StrokeThickness="1.5" />
+                    <TextBlock Text="{Binding Text}" Classes="secondary" FontSize="12" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Band activity, last hour" Classes="title" Margin="0,6,0,0" />
+            <v:ActivityChart Activity="{Binding Activity}" NowUtc="{Binding NowUtc}" Height="80" HorizontalAlignment="Stretch"
+                             AutomationProperties.Name="{Binding ActivityText}" />
+            <TextBlock Text="{Binding ActivityText}" Classes="secondary" FontSize="12" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <Rectangle Width="9" Height="9" Fill="{DynamicResource TextSecondaryBrush}" Opacity="0.35" VerticalAlignment="Center" />
+                <TextBlock Text="Decodes per slot" Classes="secondary" FontSize="12" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <Rectangle Width="9" Height="9" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="Needed stations" Classes="secondary" FontSize="12" />
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
         <Border Classes="card" Padding="14,12" IsVisible="{Binding HasWaiting}">
           <StackPanel Spacing="6">
             <TextBlock Text="{Binding WaitingTitle}" Classes="title" />

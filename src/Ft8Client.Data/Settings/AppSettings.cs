@@ -44,6 +44,9 @@ public sealed class AppSettings
     /// <summary>Appearance.</summary>
     public AppearanceOptions Appearance { get; set; } = new();
 
+    /// <summary>The heard-here map on the Operate view.</summary>
+    public MapOptions Map { get; set; } = new();
+
     /// <summary>Paths.</summary>
     public PathOptions Paths { get; set; } = new();
 

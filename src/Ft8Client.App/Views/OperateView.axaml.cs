@@ -41,11 +41,12 @@ public partial class OperateView : UserControl
         if ((e.Source as Control)?.DataContext is StationRowViewModel row) Vm?.RowClicked(row);
     }
 
-    // Below 1100 px the right column drops under the left.
+    // Below 1100 px the right column drops under the left. On wide screens it grows so the map has room.
     private void Relayout(double width)
     {
         var narrow = width < 1100;
-        Root.ColumnDefinitions = narrow ? new ColumnDefinitions("*") : new ColumnDefinitions("*,300");
+        var wide = width >= 1600;
+        Root.ColumnDefinitions = narrow ? new ColumnDefinitions("*") : new ColumnDefinitions(wide ? "*,460" : "*,300");
         Root.RowDefinitions = narrow ? new RowDefinitions("*,Auto") : new RowDefinitions("*");
         Grid.SetColumn(RightColumn, narrow ? 0 : 1);
         Grid.SetRow(RightColumn, narrow ? 1 : 0);

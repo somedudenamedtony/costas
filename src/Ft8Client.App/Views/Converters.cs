@@ -29,6 +29,12 @@ public static class Converters
         _ => "TextPrimaryBrush",
     }));
 
+    /// <summary>Legend dot fill: the kind's colour, or none for a ring.</summary>
+    public static readonly IValueConverter LegendFill = new FuncValueConverter<LegendItem, IBrush?>(l => l is null || l.Ring ? null : Brush(StationMap.DotBrushKey(l.Kind)));
+
+    /// <summary>Legend dot outline: the kind's colour for a ring, none for a dot.</summary>
+    public static readonly IValueConverter LegendStroke = new FuncValueConverter<LegendItem, IBrush?>(l => l is { Ring: true } ? Brush(StationMap.DotBrushKey(l.Kind)) : null);
+
     /// <summary>Service health to a dot brush.</summary>
     public static readonly IValueConverter HealthBrush = new FuncValueConverter<ServiceHealth, IBrush?>(h => Brush(h switch
     {
