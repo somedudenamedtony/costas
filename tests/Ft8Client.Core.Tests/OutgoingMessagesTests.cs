@@ -20,14 +20,15 @@ public class OutgoingMessagesTests
         OutgoingMessages.Cq("W7LIT", "DN40", Defaults).Should().Be("CQ W7LIT DN40");
         OutgoingMessages.Reply("ZL2RPA", "W7LIT", "DN40", Defaults).Should().Be("ZL2RPA W7LIT DN40");
         OutgoingMessages.Final("ZL2RPA", "W7LIT", Defaults).Should().Be("ZL2RPA W7LIT 73");
+        OutgoingMessages.FreeTextAfter(Defaults).Should().BeNull();
         OutgoingMessages.Problem(Defaults, "W7LIT", "DN40").Should().BeNull();
     }
 
     [Fact]
-    public void Cq_ModifierAndNoGrid_BuildsThem()
+    public void Cq_Modifier_AddedAfterCq()
     {
-        var s = new ContactSettings { CqModifier = " pota ", GridInCq = false };
-        OutgoingMessages.Cq("W7LIT", "DN40", s).Should().Be("CQ POTA W7LIT");
+        var s = new ContactSettings { CqModifier = " pota " };
+        OutgoingMessages.Cq("W7LIT", "DN40", s).Should().Be("CQ POTA W7LIT DN40");
         OutgoingMessages.Problem(s, "W7LIT", "DN40").Should().BeNull();
     }
 
@@ -43,14 +44,17 @@ public class OutgoingMessagesTests
         OutgoingMessages.Reply("ZL2RPA", "W7LIT", "DN40", new ContactSettings { GridInReply = false }).Should().Be("ZL2RPA W7LIT");
     }
 
-    [Theory]
-    [InlineData("tnx  73 gl", "TNX 73 GL")]
-    [InlineData("73", "ZL2RPA W7LIT 73")]
-    [InlineData("", "ZL2RPA W7LIT 73")]
-    public void Final_FreeTextOr73_BuildsIt(string setting, string expected)
+    [Fact]
+    public void Final_Rr73_SendsRr73()
     {
-        var s = new ContactSettings { FinalMessage = setting };
-        OutgoingMessages.Final("ZL2RPA", "W7LIT", s).Should().Be(expected);
+        OutgoingMessages.Final("ZL2RPA", "W7LIT", new ContactSettings { AnswerSignoff = "RR73" }).Should().Be("ZL2RPA W7LIT RR73");
+    }
+
+    [Fact]
+    public void FreeTextAfter_Tidied_UpperCaseSingleSpaced()
+    {
+        var s = new ContactSettings { FreeTextAfter = " tnx  73 gl " };
+        OutgoingMessages.FreeTextAfter(s).Should().Be("TNX 73 GL");
         OutgoingMessages.Problem(s, "W7LIT", "DN40").Should().BeNull();
     }
 
@@ -60,8 +64,7 @@ public class OutgoingMessagesTests
     [InlineData("D1")]
     public void Problem_BadModifier_Refused(string mod)
     {
-        var s = new ContactSettings { CqModifier = mod };
-        OutgoingMessages.Problem(s, "W7LIT", "DN40").Should().Contain("modifier");
+        OutgoingMessages.Problem(new ContactSettings { CqModifier = mod }, "W7LIT", "DN40").Should().Contain("modifier");
     }
 
     [Fact]
@@ -74,8 +77,8 @@ public class OutgoingMessagesTests
     [InlineData("THANKS FOR QSO 73")]
     [InlineData("CQ W7LIT")]
     [InlineData("HI@HOME")]
-    public void Problem_UnsendableFinal_Refused(string final)
+    public void Problem_UnsendableFreeText_Refused(string text)
     {
-        OutgoingMessages.Problem(new ContactSettings { FinalMessage = final }, "W7LIT", "DN40").Should().NotBeNull();
+        OutgoingMessages.Problem(new ContactSettings { FreeTextAfter = text }, "W7LIT", "DN40").Should().NotBeNull();
     }
 }

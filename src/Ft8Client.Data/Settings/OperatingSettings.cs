@@ -32,14 +32,14 @@ public sealed class OperatingSettings
     /// <summary>CQ modifier such as <c>DX</c> or <c>POTA</c>; empty for a plain CQ.</summary>
     public string CqModifier { get; set; } = string.Empty;
 
-    /// <summary>Send my grid in my CQ.</summary>
-    public bool GridInCq { get; set; } = true;
-
     /// <summary>Send my grid when I answer a CQ.</summary>
     public bool GridInReply { get; set; } = true;
 
-    /// <summary>Last message after the sign-off: <c>73</c>, or free text of up to 13 characters.</summary>
-    public string FinalMessage { get; set; } = "73";
+    /// <summary>Last message when I answered a CQ: <c>73</c> or <c>RR73</c>.</summary>
+    public string AnswerSignoff { get; set; } = "73";
+
+    /// <summary>Free text of up to 13 characters sent once after that last message; empty for none.</summary>
+    public string FreeTextAfter { get; set; } = string.Empty;
 
     /// <summary>Log automatically when the contact completes.</summary>
     public bool AutoLog { get; set; } = true;

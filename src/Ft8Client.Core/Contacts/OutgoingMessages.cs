@@ -14,13 +14,11 @@ namespace Ft8Client.Core.Contacts;
 
 /// <summary>
 /// The text of the messages I send, built from <see cref="ContactSettings"/>. The operator can change only what keeps
-/// the exchange standard (CQ modifier, grid on or off, sign-off, the last message), so the sequence never changes.
+/// the exchange standard (owner choice, 2026-10-11): a CQ modifier, my grid in my answer to a CQ, <c>73</c> or
+/// <c>RR73</c> as my last message when I answered, and free text sent once after it.
 /// </summary>
 public static class OutgoingMessages
 {
-    /// <summary>The standard last message: <c>DX ME 73</c>.</summary>
-    public const string StandardFinal = "73";
-
     /// <summary>Longest free text FT8 and FT4 can carry.</summary>
     public const int MaxFreeText = 13;
 
@@ -28,8 +26,7 @@ public static class OutgoingMessages
     /// <param name="me">My call.</param>
     /// <param name="grid">My 4-character grid, or empty.</param>
     /// <param name="s">The settings.</param>
-    public static string Cq(string me, string grid, ContactSettings s) =>
-        Join("CQ", Modifier(s.CqModifier), me, s.GridInCq ? grid : string.Empty);
+    public static string Cq(string me, string grid, ContactSettings s) => Join("CQ", Modifier(s.CqModifier), me, grid);
 
     /// <summary>My answer to a CQ: <c>DX ME [GRID]</c>.</summary>
     /// <param name="dx">The DX call as it is sent (a nonstandard call in angle brackets).</param>
@@ -38,14 +35,18 @@ public static class OutgoingMessages
     /// <param name="s">The settings.</param>
     public static string Reply(string dx, string me, string grid, ContactSettings s) => Join(dx, me, s.GridInReply ? grid : string.Empty);
 
-    /// <summary>My last message: <c>DX ME 73</c>, or the free text.</summary>
+    /// <summary>My last message when I answered a CQ: <c>DX ME 73</c> or <c>DX ME RR73</c>.</summary>
     /// <param name="dx">The DX call as it is sent.</param>
     /// <param name="me">My call.</param>
     /// <param name="s">The settings.</param>
-    public static string Final(string dx, string me, ContactSettings s)
+    public static string Final(string dx, string me, ContactSettings s) => Join(dx, me, s.AnswerSignoff == "RR73" ? "RR73" : "73");
+
+    /// <summary>The free text sent after my last message, upper case and single-spaced; null for none.</summary>
+    /// <param name="s">The settings.</param>
+    public static string? FreeTextAfter(ContactSettings s)
     {
-        var f = FreeText(s.FinalMessage);
-        return f.Length == 0 || f == StandardFinal ? Join(dx, me, StandardFinal) : f;
+        var f = Tidy(s.FreeTextAfter);
+        return f.Length == 0 ? null : f;
     }
 
     /// <summary>
@@ -69,18 +70,17 @@ public static class OutgoingMessages
             if (!enc.Ok) return $"Your CQ \"{cq}\" cannot be sent: {enc.Error}";
         }
 
-        var f = FreeText(s.FinalMessage);
-        if (f.Length == 0 || f == StandardFinal) return null;
-        if (f.Length > MaxFreeText) return $"The last message can be at most {MaxFreeText} characters; \"{f}\" has {f.Length}.";
-        var kind = MessageParser.Parse(f).Kind;
-        if (kind != MessageKind.FreeText) return $"The last message \"{f}\" would be read as a standard message. Use 73, or free text without callsigns.";
+        if (FreeTextAfter(s) is not { } f) return null;
+        if (f.Length > MaxFreeText) return $"The free text can be at most {MaxFreeText} characters; \"{f}\" has {f.Length}.";
+        if (MessageParser.Parse(f).Kind != MessageKind.FreeText)
+            return $"The free text \"{f}\" would be read as a standard message. Leave out callsigns and grids.";
         var e = FtxEncoder.Encode(f, Mode.Ft8);
-        return e.Ok ? null : $"The last message \"{f}\" cannot be sent: {e.Error}";
+        return e.Ok ? null : $"The free text \"{f}\" cannot be sent: {e.Error}";
     }
 
     private static string Modifier(string? m) => (m ?? string.Empty).Trim().ToUpperInvariant();
 
-    private static string FreeText(string? t) => string.Join(' ', (t ?? string.Empty).ToUpperInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+    private static string Tidy(string? t) => string.Join(' ', (t ?? string.Empty).ToUpperInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
     private static string Join(params string[] parts) => string.Join(' ', parts.Where(p => p.Length > 0));
 }

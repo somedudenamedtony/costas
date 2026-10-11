@@ -440,9 +440,9 @@ public class ContactEngineTests
     }
 
     [Fact]
-    public void ConfiguredMessages_UsedForCqReplyAndFinal()
+    public void ConfiguredMessages_UsedForCqReplyFinalAndFreeText()
     {
-        var settings = new ContactSettings { CqModifier = "DX", GridInCq = false, GridInReply = false, FinalMessage = "TNX 73 GL" };
+        var settings = new ContactSettings { CqModifier = "DX", GridInReply = false, FreeTextAfter = "TNX 73 GL" };
         var s = new Sim(settings);
         s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
         s.Step().Should().Be("ZL2RPA W7LIT");
@@ -450,28 +450,48 @@ public class ContactEngineTests
         s.Step().Should().Be("ZL2RPA W7LIT R-19");
         s.Step("W7LIT ZL2RPA RR73");
         s.Logs.Should().ContainSingle();
+        s.Step().Should().Be("ZL2RPA W7LIT 73");
+        s.Step().Should().BeNull();
         s.Step().Should().Be("TNX 73 GL");
         s.Steps(4);
-        s.Sent.Should().HaveCount(3);
+        s.Sent.Should().HaveCount(4, "the free text goes once");
 
         s.E.CallCq(SlotParity.Even, s.Now);
         while (s.Slot % 2 != 0) s.Step();
-        s.Step().Should().Be("CQ DX W7LIT");
+        s.Step().Should().Be("CQ DX W7LIT DN40");
         s.Sent.Should().OnlyContain(x => FtxEncoder.Encode(x.Message, Mode.Ft8).Ok);
     }
 
     [Fact]
-    public void ConfiguredFinal_LateRr73_RepeatsSameFinal()
+    public void FreeTextPending_NewContactStarted_Dropped()
     {
-        var s = new Sim(new ContactSettings { FinalMessage = "TNX 73 GL" });
+        var s = new Sim(new ContactSettings { FreeTextAfter = "TNX 73 GL" });
         s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
         s.Step();
         s.Step("W7LIT ZL2RPA -22");
         s.Step();
         s.Step("W7LIT ZL2RPA RR73");
-        s.Step().Should().Be("TNX 73 GL");
-        s.Step("W7LIT ZL2RPA RR73");
-        s.Step().Should().Be("TNX 73 GL");
+        s.Step().Should().Be("ZL2RPA W7LIT 73");
+        s.E.CallStation("JA1QRS", "PM95", -5, SlotParity.Odd, 900, s.Now);
+        s.Step();
+        s.Step().Should().Be("JA1QRS W7LIT DN40");
+        s.Sent.Should().NotContain(x => x.Message == "TNX 73 GL");
+    }
+
+    [Fact]
+    public void AnswerSignoffRr73_Their73_NotAnsweredAgain()
+    {
+        var s = new Sim(new ContactSettings { AnswerSignoff = "RR73" });
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step();
+        s.Step("W7LIT ZL2RPA RRR");
+        s.Step().Should().Be("ZL2RPA W7LIT RR73");
+        s.Step("W7LIT ZL2RPA 73");
+        s.Step().Should().BeNull("their 73 answers my RR73");
+        s.Step("W7LIT ZL2RPA RRR");
+        s.Step().Should().Be("ZL2RPA W7LIT RR73", "a repeated RRR still gets one more");
         s.Logs.Should().ContainSingle();
     }
 }

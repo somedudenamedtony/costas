@@ -176,7 +176,7 @@ Mockup: `setup` (step 2). A left rail lists the six steps; the right pane holds 
 
 ## Settings
 
-Sections: Station profiles · Radio · Audio · Transmit (power, watchdog minutes, retry limit, RR73 or RRR, CQ modifier, my grid in CQ and in my answer on or off, last message `73` or free text up to 13 characters, a preview of every message as it will be sent, auto-log on or off) · Ranking · QRZ · PSK Reporter (receive feed on or off, upload my spots on or off) · Interop (UDP address and port) · Files (WAV saving: none, decoded, all; retention days) · Appearance (theme, units).
+Sections: Station profiles · Radio · Audio · Transmit (power, watchdog minutes, retry limit, RR73 or RRR, CQ modifier, my grid in my answer to a CQ on or off, `73` or `RR73` as my last message when answering, optional free text up to 13 characters sent after it, a preview of every message as it will be sent, auto-log on or off) · Ranking · QRZ · PSK Reporter (receive feed on or off, upload my spots on or off) · Interop (UDP address and port) · Files (WAV saving: none, decoded, all; retention days) · Appearance (theme, units).
 
 ## Diagnostics
 

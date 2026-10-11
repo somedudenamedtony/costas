@@ -37,9 +37,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         RetryLimit = s.Operating.RetryLimit.ToString(CultureInfo.InvariantCulture);
         Signoff = s.Operating.Signoff;
         CqModifier = s.Operating.CqModifier;
-        GridInCq = s.Operating.GridInCq;
         GridInReply = s.Operating.GridInReply;
-        FinalMessage = s.Operating.FinalMessage;
+        AnswerSignoff = s.Operating.AnswerSignoff == "RR73" ? "RR73" : "73";
+        FreeTextAfter = s.Operating.FreeTextAfter;
         AutoLog = s.Operating.AutoLog;
         CqParity = s.Operating.CqParity;
         ClockBlock = s.Operating.ClockBlockSeconds.ToString("0.0", CultureInfo.InvariantCulture);
@@ -169,20 +169,23 @@ public sealed partial class SettingsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
     public partial string CqModifier { get; set; }
 
-    /// <summary>Send my grid in my CQ.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
-    public partial bool GridInCq { get; set; }
-
     /// <summary>Send my grid when answering a CQ.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
     public partial bool GridInReply { get; set; }
 
-    /// <summary>Last message: 73 or free text.</summary>
+    /// <summary>Choices for my last message when I answered a CQ.</summary>
+    public IReadOnlyList<string> AnswerSignoffs { get; } = ["73", "RR73"];
+
+    /// <summary>My last message when I answered a CQ.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
-    public partial string FinalMessage { get; set; }
+    public partial string AnswerSignoff { get; set; }
+
+    /// <summary>Free text sent after my last message; empty for none.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
+    public partial string FreeTextAfter { get; set; }
 
     /// <summary>The messages as they will be sent with the settings on screen, one per line.</summary>
     public string MessagePreview
@@ -194,13 +197,18 @@ public sealed partial class SettingsViewModel : ObservableObject
             if (me.Length == 0) me = "MYCALL";
             var grid = Core.Messages.Grid.Grid4(Grid.Trim().ToUpperInvariant()) ?? string.Empty;
             const string dx = "THEIRCALL";
-            return string.Join('\n',
+            var lines = new List<string>
+            {
                 $"Calling CQ:        {OutgoingMessages.Cq(me, grid, s)}",
-                $"Answering a CQ:    {OutgoingMessages.Reply(dx, me, grid, s)}",
                 $"Report:            {dx} {me} -10",
+                $"Sign-off:          {dx} {me} {s.Signoff}",
+                string.Empty,
+                $"Answering a CQ:    {OutgoingMessages.Reply(dx, me, grid, s)}",
                 $"Roger and report:  {dx} {me} R-10",
-                $"Sign-off (my CQ):  {dx} {me} {s.Signoff}",
-                $"Last message:      {OutgoingMessages.Final(dx, me, s)}");
+                $"Last message:      {OutgoingMessages.Final(dx, me, s)}",
+            };
+            if (OutgoingMessages.FreeTextAfter(s) is { } free) lines.Add($"Then:              {free}");
+            return string.Join('\n', lines);
         }
     }
 
@@ -211,16 +219,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         Signoff = Signoff == "RRR" ? "RRR" : "RR73",
         CqModifier = CqModifier.Trim().ToUpperInvariant(),
-        GridInCq = GridInCq,
         GridInReply = GridInReply,
-        FinalMessage = FinalText(),
+        AnswerSignoff = AnswerSignoff == "RR73" ? "RR73" : "73",
+        FreeTextAfter = FreeText(),
     };
 
-    private string FinalText()
-    {
-        var f = string.Join(' ', FinalMessage.ToUpperInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        return f.Length == 0 ? OutgoingMessages.StandardFinal : f;
-    }
+    private string FreeText() => string.Join(' ', FreeTextAfter.ToUpperInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>Auto log.</summary>
     [ObservableProperty]
@@ -434,9 +438,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.RetryLimit = Int(RetryLimit, 1, 20, 4);
             s.Operating.Signoff = Signoff;
             s.Operating.CqModifier = CqModifier.Trim().ToUpperInvariant();
-            s.Operating.GridInCq = GridInCq;
             s.Operating.GridInReply = GridInReply;
-            s.Operating.FinalMessage = FinalText();
+            s.Operating.AnswerSignoff = AnswerSignoff == "RR73" ? "RR73" : "73";
+            s.Operating.FreeTextAfter = FreeText();
             s.Operating.AutoLog = AutoLog;
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);

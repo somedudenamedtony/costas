@@ -23,14 +23,14 @@ public sealed record ContactSettings
     /// <summary>CQ modifier such as <c>DX</c> or <c>POTA</c>; empty for a plain CQ.</summary>
     public string CqModifier { get; init; } = string.Empty;
 
-    /// <summary>Send my grid in my CQ.</summary>
-    public bool GridInCq { get; init; } = true;
-
     /// <summary>Send my grid when I answer a CQ.</summary>
     public bool GridInReply { get; init; } = true;
 
-    /// <summary>My last message after the sign-off: <c>73</c>, or free text of up to 13 characters.</summary>
-    public string FinalMessage { get; init; } = OutgoingMessages.StandardFinal;
+    /// <summary>My last message when I answered a CQ: <c>73</c> or <c>RR73</c>.</summary>
+    public string AnswerSignoff { get; init; } = "73";
+
+    /// <summary>Free text of up to 13 characters sent once after that last message; empty for none.</summary>
+    public string FreeTextAfter { get; init; } = string.Empty;
 
     /// <summary>Log automatically when the contact completes.</summary>
     public bool AutoLog { get; init; } = true;

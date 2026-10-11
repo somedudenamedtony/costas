@@ -109,6 +109,7 @@ public sealed class ContactEngine
         OperatorActivity(nowUtc);
         call = Callsign.Normalize(call);
         _finished = null;
+        _extraMessage = null;
         _c = new Contact(ContactFlow.AnswerCq, call, Grid.Grid4(grid), SlotMath.Opposite(dxParity), Report.Clamp(snr), dxOffsetHz);
         _c.Steps.AddRange(StepsFor(_c));
         RemoveWaiting(call);
@@ -322,7 +323,14 @@ public sealed class ContactEngine
         else if (IsFinalCourtesy(_c, _c.Phase))
         {
             _c.Steps[_c.Phase] = _c.Steps[_c.Phase] with { State = StepState.Done };
+            var parity = _c.MyParity;
             End(ContactOutcome.Logged, startedUtc);
+            if (_c is null && OutgoingMessages.FreeTextAfter(_settings) is { } free)
+            {
+                // The operator's free text goes once, in my next slot, unless another contact has started.
+                _extraMessage = free;
+                _extraParity = parity;
+            }
         }
     }
 
@@ -391,7 +399,9 @@ public sealed class ContactEngine
         foreach (var (_, m) in toMe)
         {
             if (!Callsign.EqualsCall(m.SenderCall, l.DxCall)) continue;
-            if (l.Flow != ContactFlow.CalledCq && m.Kind is MessageKind.RogerBye or MessageKind.Bye or MessageKind.Roger)
+            // After my RR73, their 73 is the normal answer, not a repeat.
+            var signedOffRr73 = Format(l.Contact, 4).EndsWith(" RR73", StringComparison.Ordinal);
+            if (l.Flow != ContactFlow.CalledCq && (m.Kind is MessageKind.RogerBye or MessageKind.Roger || (m.Kind == MessageKind.Bye && !signedOffRr73)))
             {
                 _extraMessage = Format(l.Contact, 4);
                 _extraParity = l.MyParity;
@@ -407,6 +417,7 @@ public sealed class ContactEngine
     private void StartFromCaller(WaitingCaller w)
     {
         var parity = SlotMath.Opposite(w.Parity);
+        _extraMessage = null;
         if (w.Kind == MessageKind.Report)
         {
             var c = new Contact(ContactFlow.CalledCqSkippedGrid, w.Call, w.Grid, parity, Report.Clamp(w.Snr), w.OffsetHz) { ReportReceived = w.Report };
