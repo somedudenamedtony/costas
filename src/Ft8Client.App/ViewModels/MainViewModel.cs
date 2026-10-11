@@ -30,6 +30,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     private readonly AppHost _host;
     private bool _escArmed;
     private bool _updatingBand;
+    private string? _notReceiving = "Not receiving";
 
     /// <summary>Creates the view model.</summary>
     public MainViewModel(AppHost host)
@@ -196,6 +197,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Raw.Apply(s.RawDecodes);
         Frequency = FormatFrequency(s.DialHz);
         Transmitting = s.Transmitting;
+        _notReceiving = NotReceiving(s);
         OnAirText = s.TransmittingMessage is { Length: > 0 } msg ? $"ON AIR · {msg}" : "ON AIR";
         var radio = s.Services.TryGetValue(ServiceNames.Radio, out var r) ? r : null;
         NoRadio = !s.Transmitting && radio is not null && radio.Health != ServiceHealth.Ok;
@@ -226,10 +228,20 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var len = ModeInfo.SlotLength(mode);
         var start = SlotMath.SlotStart(now, mode);
         var into = now - start;
-        SlotProgress = into / len;
-        var left = (int)Math.Ceiling((len - into).TotalSeconds);
-        SlotRemaining = $"{left} s to next slot";
-        SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+        if (!Transmitting && _notReceiving is { } why)
+        {
+            // Without a working radio and audio input nothing is received; a moving bar would suggest otherwise.
+            SlotProgress = 0;
+            SlotRemaining = string.Empty;
+            SlotLabel = why;
+        }
+        else
+        {
+            SlotProgress = into / len;
+            var left = (int)Math.Ceiling((len - into).TotalSeconds);
+            SlotRemaining = $"{left} s to next slot";
+            SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+        }
         Operate.Tick();
     }
 
@@ -462,6 +474,16 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (s.CallingCq) return (s.Transmitting ? "Transmitting CQ." : "Calling CQ.", s.Transmitting ? TextKind.Critical : TextKind.Normal);
         var top = s.Rank.Line.FirstOrDefault();
         return (top is null ? "Not in a contact." : $"Not in a contact. Enter calls {top.Station.Call}, the top of the line.", TextKind.Normal);
+    }
+
+    /// <summary>Why nothing is being received ("Not receiving · no radio"), or null when radio and audio input both work.</summary>
+    internal static string? NotReceiving(SessionSnapshot s)
+    {
+        var radio = s.Services.TryGetValue(ServiceNames.Radio, out var r) ? r.Health : ServiceHealth.Off;
+        var audio = s.Services.TryGetValue(ServiceNames.Audio, out var a) ? a.Health : ServiceHealth.Off;
+        if (radio != ServiceHealth.Ok) return "Not receiving · no radio";
+        if (audio is ServiceHealth.Off or ServiceHealth.Down) return "Not receiving · no audio";
+        return null;
     }
 
     private static IndicatorViewModel Indicator(string label, SessionSnapshot s, string key)
