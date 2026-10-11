@@ -22,10 +22,14 @@ public sealed class RawLineViewModel
     }
 
     /// <summary>Builds a line.</summary>
-    public RawLineViewModel(RawDecodeLine l)
+    /// <param name="l">The decode line.</param>
+    /// <param name="localZone">Zone for the Local column; the machine's zone when null.</param>
+    public RawLineViewModel(RawDecodeLine l, TimeZoneInfo? localZone = null)
     {
         var d = l.Decode;
-        Utc = d.SlotStartUtc.ToString("HHmmss", CultureInfo.InvariantCulture);
+        var utc = DateTime.SpecifyKind(d.SlotStartUtc, DateTimeKind.Utc);
+        Utc = utc.ToString("HHmmss", CultureInfo.InvariantCulture);
+        Local = TimeZoneInfo.ConvertTimeFromUtc(utc, localZone ?? TimeZoneInfo.Local).ToString("HHmmss", CultureInfo.InvariantCulture);
         Db = l.Transmitted ? "Tx" : d.Snr.ToString("+0;-0;0", CultureInfo.InvariantCulture);
         Dt = l.Transmitted ? string.Empty : d.Dt.ToString("0.0", CultureInfo.InvariantCulture);
         Hz = d.OffsetHz.ToString(CultureInfo.InvariantCulture);
@@ -37,6 +41,9 @@ public sealed class RawLineViewModel
 
     /// <summary>Slot time.</summary>
     public string Utc { get; } = string.Empty;
+
+    /// <summary>Slot time in the operator's local zone.</summary>
+    public string Local { get; } = string.Empty;
 
     /// <summary>SNR.</summary>
     public string Db { get; } = string.Empty;

@@ -145,7 +145,7 @@ Footer: "N stations you have already worked on 20 m are hidden. Show them" toggl
 
 ## Raw decodes view
 
-The classic list for operators who want it. Columns: UTC, dB, DT, Hz, message, country. Newest slot at the bottom, blank line between slots, keeps scroll position when scrolled up with a "Jump to live" button. Messages to me in critical colour, CQ in accent. Double-click calls the sender. A filter box matches callsign or text.
+The classic list for operators who want it. Columns: UTC, local time, dB, DT, Hz, message, country. Newest slot at the top (owner request, replacing newest at the bottom), blank line between slots, keeps scroll position when scrolled down away from the newest lines, with a "Jump to live" button. Messages to me in critical colour, CQ in accent. Double-click calls the sender. A filter box matches callsign or text.
 
 ## Reach view
 

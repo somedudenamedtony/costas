@@ -20,7 +20,10 @@ public partial class RawDecodesView : UserControl
         InitializeComponent();
         DataContextChanged += (_, _) =>
         {
-            if (DataContext is RawDecodesViewModel vm) vm.ScrollToEnd += () => List.ScrollIntoView(vm.Lines.Count - 1);
+            if (DataContext is RawDecodesViewModel vm) vm.ScrollToNewest += () =>
+            {
+                if (vm.Lines.Count > 0) List.ScrollIntoView(0);
+            };
         };
         List.DoubleTapped += (_, _) =>
         {
@@ -29,10 +32,17 @@ public partial class RawDecodesView : UserControl
         List.AddHandler(ScrollViewer.ScrollChangedEvent, (_, e) =>
         {
             if (DataContext is not RawDecodesViewModel vm || e.Source is not ScrollViewer sv) return;
-            var atEnd = sv.Offset.Y + sv.Viewport.Height >= sv.Extent.Height - 4;
-            // Only the operator scrolling up (offset moving up, extent unchanged) pauses following the newest line.
-            if (e.OffsetDelta.Y < 0 && e.ExtentDelta.Y == 0 && !atEnd) vm.ScrolledUp = true;
-            else if (atEnd) vm.ScrolledUp = false;
+            // Newest lines are at the top. New slots grow the list above the operator's place, so while they are
+            // scrolled away, shift the offset by the growth to keep the lines they were reading where they were.
+            if (vm.ScrolledAway && e.ExtentDelta.Y > 0)
+            {
+                sv.Offset = sv.Offset.WithY(sv.Offset.Y + e.ExtentDelta.Y);
+                return;
+            }
+            var atTop = sv.Offset.Y <= 4;
+            // Only the operator scrolling down (offset moving down, extent unchanged) pauses following the newest line.
+            if (e.OffsetDelta.Y > 0 && e.ExtentDelta.Y == 0 && !atTop) vm.ScrolledAway = true;
+            else if (atTop) vm.ScrolledAway = false;
         });
     }
 }
