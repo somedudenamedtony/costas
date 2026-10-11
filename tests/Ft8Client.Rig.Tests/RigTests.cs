@@ -105,6 +105,24 @@ public class RigTests
     }
 
     [Fact]
+    public async Task Scan_DummyRig_ReportsEachTryAndFindsTheRadio()
+    {
+        var exe = HamlibModels.Find("rigctld", null);
+        Assert.SkipWhen(exe is null, "rigctld is not installed.");
+        var tried = new List<(string Port, int Baud)>();
+        var hit = await RigctldRig.ScanAsync(exe!, 1, ["COM-TEST"], [38400], NullProcessGuard.Instance, SystemClock.Instance,
+            TestContext.Current.CancellationToken, new SyncProgress<(string, int)>(tried.Add));
+        tried.Should().Equal(("COM-TEST", 38400));
+        hit.Should().NotBeNull();
+        hit!.Value.Port.Should().Be("COM-TEST");
+    }
+
+    private sealed class SyncProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
+    }
+
+    [Fact]
     public async Task Rigctld_DummyRig_SetsAndReadsBackAndRecoversFromCrash()
     {
         var exe = HamlibModels.Find("rigctld", null);
