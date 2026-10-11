@@ -259,6 +259,22 @@ public class LateDecodeTests
     }
 
     [Fact]
+    public async Task Call_ClickedHalfwayThroughTheirSlot_GoesOutInTheVeryNextSlot()
+    {
+        var r = new Rig();
+        r.Decoder.Script(CqSlot, TimeSpan.FromSeconds(3.4), "CQ N8WCR EN81");
+        // Halfway through N8WCR's next slot (they transmit, I receive).
+        await r.RunUntilAsync(ReportSlot.AddSeconds(7.5));
+
+        r.Session.CallStation("N8WCR").Should().BeTrue();
+        await r.RunUntilAsync(MySecondSlot.AddSeconds(1));
+
+        var (message, started) = r.Sent.Should().ContainSingle().Subject;
+        message.Should().Be("N8WCR W7LIT DN40");
+        started.Should().BeCloseTo(MySecondSlot.AddSeconds(0.5), TimeSpan.FromMilliseconds(2));
+    }
+
+    [Fact]
     public async Task Call_ClickedTooLateInMySlot_GoesOutInMyNextSlot()
     {
         var r = new Rig();
