@@ -45,6 +45,33 @@ public class Jt9DecoderTests
     }
 
     [Fact]
+    public async Task DecodeAsync_RunLeavesWisdom_NextRunStartsWithIt()
+    {
+        var dir = Directory.CreateTempSubdirectory("ft8client-wisdom").FullName;
+        string exe;
+        if (OperatingSystem.IsWindows())
+        {
+            exe = Path.Combine(dir, "plan.cmd");
+            File.WriteAllText(exe, "@echo planned>>jt9_wisdom.dat\r\n");
+        }
+        else
+        {
+            exe = Path.Combine(dir, "plan.sh");
+            File.WriteAllText(exe, "#!/bin/sh\necho planned >> jt9_wisdom.dat\n");
+            File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+        var tmp = Path.Combine(dir, "tmp");
+        var decoder = new Jt9Decoder(new Jt9Options(exe, tmp));
+        var audio = new SlotAudio(Slot, Mode.Ft8, new short[100]);
+
+        (await decoder.DecodeAsync(audio, DecodeContext.Anonymous, TestContext.Current.CancellationToken)).Status.Should().Be(DecodeStatus.Ok);
+        (await decoder.DecodeAsync(audio, DecodeContext.Anonymous, TestContext.Current.CancellationToken)).Status.Should().Be(DecodeStatus.Ok);
+
+        File.ReadAllLines(Path.Combine(tmp, "jt9_wisdom.dat")).Select(l => l.Trim()).Should().Equal("planned", "planned");
+        Directory.EnumerateFiles(tmp, "wisdom-*").Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task DecodeAsync_MissingExecutable_ReportsFailed()
     {
         var dir = Directory.CreateTempSubdirectory("ft8client-missing").FullName;

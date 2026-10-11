@@ -18,8 +18,14 @@ namespace Ft8Client.Decoding;
 /// Runs <c>jt9</c> once per slot in file mode. Each run gets its own scratch folder as working directory.
 /// A run that exceeds its timeout is killed and reported, never awaited forever.
 /// </summary>
+/// <remarks>
+/// <c>jt9</c> plans its FFTs at start-up unless it finds <c>jt9_wisdom.dat</c> in its data folder, which costs about
+/// 0.9 s per run (measured: a ±100 Hz decode takes 1.15 s without it, 0.3 s with it). The wisdom a run leaves behind is
+/// kept in the temp root and copied into each new scratch folder.
+/// </remarks>
 public sealed class Jt9Decoder : IDecoder
 {
+    private const string WisdomFile = "jt9_wisdom.dat";
     private readonly Jt9Options _options;
     private readonly IProcessGuard _guard;
 
@@ -31,13 +37,19 @@ public sealed class Jt9Decoder : IDecoder
         Directory.CreateDirectory(options.TempRoot);
     }
 
-    /// <summary>Deletes scratch folders left by earlier runs.</summary>
+    /// <summary>Deletes scratch folders and files left by earlier runs.</summary>
     public static void CleanTempRoot(string tempRoot)
     {
         if (!Directory.Exists(tempRoot)) return;
         foreach (var dir in Directory.EnumerateDirectories(tempRoot, "jt9-*"))
         {
             try { Directory.Delete(dir, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+        foreach (var file in Directory.EnumerateFiles(tempRoot, "wisdom-*.tmp"))
+        {
+            try { File.Delete(file); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
@@ -77,6 +89,7 @@ public sealed class Jt9Decoder : IDecoder
             Array.Copy(slot.Samples12k, samples, Math.Min(samples.Length, slot.Samples12k.Length));
             var wavName = WavName(slot.SlotStartUtc);
             WavFile.Write(Path.Combine(workDir, wavName), samples, ModeInfo.DecoderSampleRate);
+            RestoreWisdom(workDir);
 
             var exeDir = Path.GetDirectoryName(_options.ExecutablePath) ?? ".";
             var psi = new ProcessStartInfo(_options.ExecutablePath)
@@ -131,6 +144,7 @@ public sealed class Jt9Decoder : IDecoder
                     var detail = string.IsNullOrWhiteSpace(stderr) ? stdout.Trim() : stderr.Trim();
                     return new DecodeResult(decodes, sw.Elapsed, DecodeStatus.Failed, $"jt9 exited with code {process.ExitCode}. {Truncate(detail, 300)}".Trim());
                 }
+                KeepWisdom(workDir);
                 return new DecodeResult(decodes, sw.Elapsed, DecodeStatus.Ok);
             }
         }
@@ -138,6 +152,34 @@ public sealed class Jt9Decoder : IDecoder
         {
             TryDelete(workDir);
         }
+    }
+
+    private void RestoreWisdom(string workDir)
+    {
+        var kept = Path.Combine(_options.TempRoot, WisdomFile);
+        try
+        {
+            if (File.Exists(kept)) File.Copy(kept, Path.Combine(workDir, WisdomFile));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // jt9 plans from scratch
+    }
+
+    // The quick and the full decode run side by side, so the file is replaced in one move, never written in place.
+    // A run's wisdom includes everything it started with, so the last one kept is never missing much.
+    private void KeepWisdom(string workDir)
+    {
+        var made = Path.Combine(workDir, WisdomFile);
+        var kept = Path.Combine(_options.TempRoot, WisdomFile);
+        try
+        {
+            if (!File.Exists(made)) return;
+            if (File.Exists(kept) && new FileInfo(kept).Length == new FileInfo(made).Length) return;
+            var staged = Path.Combine(_options.TempRoot, $"wisdom-{Guid.NewGuid():N}.tmp");
+            File.Copy(made, staged);
+            try { File.Move(staged, kept, overwrite: true); }
+            finally { if (File.Exists(staged)) File.Delete(staged); }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // kept by a later run
     }
 
     private static void Kill(Process process)
