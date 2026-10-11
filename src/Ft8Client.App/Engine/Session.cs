@@ -62,6 +62,7 @@ public sealed class Session
     private TxMeterResult? _txMeters;
     private Task _decodeTask = Task.CompletedTask;
     private DateTime? _recordingSlot;
+    private DateTime? _decodingSlot;
     private DateTime? _finishedShownAt;
     private DateTime _lastContactUtc = DateTime.MinValue;
     private SessionSnapshot _snapshot = new();
@@ -183,7 +184,11 @@ public sealed class Session
         }
         var audio = _source.Cutoff(e.SlotStartUtc, e.Mode);
         if (audio is null) return;
-        lock (_gate) _decodeTask = Task.Run(() => DecodeAsync(audio, CancellationToken.None));
+        lock (_gate)
+        {
+            _decodingSlot = e.SlotStartUtc;
+            _decodeTask = Task.Run(() => DecodeAsync(audio, CancellationToken.None));
+        }
     }
 
     /// <summary>Decodes one slot and applies it. Public so tests and simulation can drive slots directly.</summary>
@@ -212,6 +217,7 @@ public sealed class Session
     {
         lock (_gate)
         {
+            if (_decodingSlot == slot) _decodingSlot = null;
             _services[ServiceNames.Decoder] = result.Succeeded
                 ? new ServiceStatus(ServiceHealth.Ok, $"{result.Decodes.Count} decodes in {result.Elapsed.TotalSeconds:0.0} s", _clock.UtcNow)
                 : new ServiceStatus(ServiceHealth.Degraded, result.Message, _clock.UtcNow);
@@ -281,13 +287,17 @@ public sealed class Session
         TxGuardInput guard;
         int offset;
         PreparedTx? pending;
+        bool held;
+        TxHold? hold = null;
+        var txStart = slot + TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode));
+        var pttDue = txStart - _config.PttLead;
         lock (_gate)
         {
             var now = _clock.UtcNow;
-            var txStart = slot + TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode));
             if (late && now > txStart + _config.LateStartLimit) return;
             if (_tx.AudioStarted(slot)) return; // already on the air with this slot's message
             pending = _tx.Pending is { } p && p.Plan.SlotStartUtc == slot ? p : null;
+            held = pending is not null && _tx.Held;
             plan = _engine.PlanTransmission(slot, mode, now);
             if (plan is null)
             {
@@ -295,13 +305,22 @@ public sealed class Session
                 if (pending is not null) _tx.CancelPending();
                 return;
             }
-            if (pending is not null && pending.Plan.Message == plan.Message) return;
+            if (pending is not null && pending.Plan.Message == plan.Message)
+            {
+                // The decodes did not change the message: send it now instead of waiting out the hold.
+                if (held && _tx.Release() && now > pttDue) _tx.BeginLate(pending, _config.PttLead);
+                return;
+            }
+            // The previous slot (the other station's) is still being decoded and its decodes may change this message:
+            // hold the transmission until they are applied, up to the late-start limit (audio by Tx start + limit).
+            if (!late && _decodingSlot == slot - ModeInfo.SlotLength(mode) && (_engine.InContact || _engine.CallingCq))
+                hold = new TxHold(txStart + _config.LateStartLimit - _config.PttLead, _config.PttLead);
             offset = _txOffset;
             guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         }
 
-        var prepared = _tx.Prepare(plan, mode, offset, guard, out var refusal);
+        var prepared = _tx.Prepare(plan, mode, offset, guard, out var refusal, hold);
         if (prepared is null)
         {
             lock (_gate)
@@ -322,8 +341,8 @@ public sealed class Session
                 _source.CancelSlot();
             }
         }
-        var pttDue = slot + TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode)) - _config.PttLead;
-        if (pending is null && _clock.UtcNow > pttDue) _tx.BeginLate(prepared, _config.PttLead);
+        // Its marks have passed: nothing was keyed for it yet (no earlier message, or the earlier one was held).
+        if ((pending is null || held) && _clock.UtcNow > pttDue) _tx.BeginLate(prepared, _config.PttLead);
     }
 
     private void OnTxStarted(PreparedTx tx, DateTime startedUtc)

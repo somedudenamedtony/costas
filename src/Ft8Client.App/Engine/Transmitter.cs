@@ -39,6 +39,7 @@ public sealed class Transmitter
     private DateTime _audioStartedUtc;
     private DateTime? _pttOffDueUtc;
     private DateTime? _lateAudioDueUtc;
+    private TxHold? _hold;
     private DateTime? _lastStartedSlot;
     private bool _ptt;
 
@@ -89,6 +90,12 @@ public sealed class Transmitter
         get { lock (_gate) return _next; }
     }
 
+    /// <summary>True while the pending transmission is held back waiting for decodes.</summary>
+    public bool Held
+    {
+        get { lock (_gate) return _hold is not null && _next is not null; }
+    }
+
     /// <summary>True when audio for the slot has started (or the slot's transmission has finished).</summary>
     public bool AudioStarted(DateTime slotStartUtc)
     {
@@ -114,8 +121,10 @@ public sealed class Transmitter
     /// <summary>
     /// Checks and renders a transmission for its slot. Returns null and a reason when it must not go out: the message
     /// cannot be sent exactly as shown, it would fall outside the band, the clock is off, or a device is missing.
+    /// With a <paramref name="hold"/>, the slot's PTT and audio marks are skipped until <see cref="Release"/> or a new
+    /// <see cref="Prepare"/>; if neither comes before the hold expires, the transmission starts late by itself.
     /// </summary>
-    public PreparedTx? Prepare(TxPlan plan, Mode mode, int offsetHz, TxGuardInput guard, out string? refusal)
+    public PreparedTx? Prepare(TxPlan plan, Mode mode, int offsetHz, TxGuardInput guard, out string? refusal, TxHold? hold = null)
     {
         refusal = null;
         if (!guard.AudioReady || _output is null)
@@ -146,21 +155,50 @@ public sealed class Transmitter
         }
         var samples = GfskSynth.Render(enc.Tones, mode, offsetHz, _output.SampleRate, Math.Pow(10, GainDb / 20));
         var tx = new PreparedTx(plan, mode, offsetHz, samples, _output.SampleRate);
-        lock (_gate) _next = tx;
+        lock (_gate)
+        {
+            _next = tx;
+            _hold = hold;
+        }
         return tx;
     }
 
-    /// <summary>Drops a prepared transmission that has not started.</summary>
+    /// <summary>
+    /// Lifts the hold on the pending transmission. Returns false when nothing was held. The caller starts it with
+    /// <see cref="BeginLate"/> if its PTT mark has passed.
+    /// </summary>
+    public bool Release()
+    {
+        lock (_gate)
+        {
+            if (_hold is null || _next is null) return false;
+            _hold = null;
+            return true;
+        }
+    }
+
+    /// <summary>Drops a prepared transmission that has not started, releasing PTT if it was asserted for it.</summary>
     public void CancelPending()
     {
-        lock (_gate) _next = null;
+        lock (_gate)
+        {
+            _next = null;
+            _hold = null;
+            _lateAudioDueUtc = null;
+            if (_current is null && _ptt) _pttOffDueUtc = _clock.UtcNow;
+        }
     }
 
     /// <summary>Slot clock events. Called on the slot thread; never waits on I/O.</summary>
     public void OnSlotEvent(SlotEvent e)
     {
         PreparedTx? tx;
-        lock (_gate) tx = _next is { } n && n.Plan.SlotStartUtc == e.SlotStartUtc ? n : null;
+        lock (_gate)
+        {
+            tx = _next is { } n && n.Plan.SlotStartUtc == e.SlotStartUtc ? n : null;
+            // Held for decodes, or already started late: Poll starts the audio.
+            if (_hold is not null || _lateAudioDueUtc is not null) tx = null;
+        }
         if (tx is null) return;
 
         switch (e.Mark)
@@ -212,6 +250,20 @@ public sealed class Transmitter
     /// <summary>Releases PTT when the audio and its tail have finished. Called on the slot thread every millisecond.</summary>
     public void Poll()
     {
+        var keyHeld = false;
+        lock (_gate)
+        {
+            if (_hold is { } h && _next is not null && _clock.UtcNow >= h.UntilUtc)
+            {
+                // The decodes did not arrive in time: send what was prepared, late but within the limit.
+                _hold = null;
+                _ptt = true;
+                _lateAudioDueUtc = _clock.UtcNow + h.PttLead;
+                keyHeld = true;
+            }
+        }
+        if (keyHeld) _ = SetPttSafe(true);
+
         PreparedTx? late = null;
         lock (_gate)
         {
@@ -254,6 +306,7 @@ public sealed class Transmitter
             cut = _current;
             _current = null;
             _next = null;
+            _hold = null;
             _pttOffDueUtc = null;
             _lateAudioDueUtc = null;
             _ptt = false;
