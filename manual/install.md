@@ -23,8 +23,9 @@ appears at the top of the main window:
 
 ![The update bar](images/update-bar.png)
 
-- **Install and restart** downloads the new installer, checks its SHA-256 checksum, closes Costas and upgrades in
-  place. It is refused while you are transmitting or in a contact: finish or halt first.
+- **Update** downloads the new installer, checks its SHA-256 checksum, closes Costas, upgrades it in the background with
+  no installer windows, and opens Costas again. If you installed for all users, Windows asks for administrator
+  permission first. It is refused while you are transmitting or in a contact: finish or halt first.
 - **Release notes** opens the release on GitHub.
 - **Skip this version** hides the bar until a newer build comes out.
 

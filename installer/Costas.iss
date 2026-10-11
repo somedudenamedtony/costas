@@ -5,7 +5,7 @@
 ; and passes AppVersion, StageDir and OutputDir. The display name matches AppInfo.ProductName.
 ;
 ; Upgrades: AppId never changes, so running a newer installer upgrades the existing install in place (same folder,
-; one entry in Apps & features), closing the app first. User data lives in the user's data folder, not here, and is
+; one entry in Apps & features), closing the app first. The app's Update button runs it silently with /RELAUNCH=1. User data lives in the user's data folder, not here, and is
 ; kept. Builds from before the rename to Costas installed "FT8 Client" shortcuts and Ft8Client.App.* files; those are
 ; removed on upgrade.
 
@@ -70,5 +70,13 @@ Name: "{autodesktop}\Costas"; Filename: "{app}\Costas.exe"; Tasks: desktopicon
 [Run]
 ; Starts with no radio until one is set up; it never keys a radio on start-up.
 Filename: "{app}\Costas.exe"; Description: "{cm:LaunchProgram,Costas}"; Flags: nowait postinstall skipifsilent
+; The app's Update button runs a silent upgrade with /RELAUNCH=1 and closes; this reopens it, as the signed-in user.
+Filename: "{app}\Costas.exe"; Flags: nowait runasoriginaluser; Check: RelaunchRequested
+
+[Code]
+function RelaunchRequested: Boolean;
+begin
+  Result := ExpandConstant('{param:relaunch|0}') = '1';
+end;
 
 ; The log, settings and saved files live in the user's data folder and are kept on uninstall.

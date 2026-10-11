@@ -55,14 +55,17 @@ public sealed partial class UpdateBarViewModel : ObservableObject
         if (r is not null) Text = $"{AppInfo.ProductName} {r.Version} is available (you have {AppInfo.Version}).";
     }
 
-    /// <summary>Downloads and verifies the installer, starts it, and closes the app so it can be upgraded.</summary>
+    /// <summary>
+    /// Downloads and verifies the installer, starts it silently (no installer windows) and closes the app so it can be
+    /// upgraded; the installer reopens Costas when it has finished.
+    /// </summary>
     [RelayCommand]
     private async Task Install()
     {
         if (Busy) return;
         if (_busyOnAir())
         {
-            Detail = "Finish the contact (or halt) first; the app closes to install.";
+            Detail = "Finish the contact (or halt) first; Costas closes to update.";
             return;
         }
         Busy = true;
@@ -72,11 +75,11 @@ public sealed partial class UpdateBarViewModel : ObservableObject
             var path = await _updates.DownloadAsync(progress, CancellationToken.None);
             if (_busyOnAir())
             {
-                Detail = "Downloaded. Finish the contact, then press Install again.";
+                Detail = "Downloaded. Finish the contact, then press Update again.";
                 return;
             }
-            Detail = "Starting the installer…";
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            Detail = "Updating; Costas will reopen in a moment…";
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true, Arguments = SilentInstallArguments });
             _shutdown();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or InvalidDataException
@@ -89,6 +92,13 @@ public sealed partial class UpdateBarViewModel : ObservableObject
             Busy = false;
         }
     }
+
+    /// <summary>
+    /// Inno Setup switches for an unattended upgrade: no windows or prompts, no reboot, and reopen Costas afterwards
+    /// (<c>/RELAUNCH=1</c>, read by <c>installer/Costas.iss</c>). The install mode (current user or all users) follows
+    /// the existing install; an all-users install still shows Windows' administrator prompt.
+    /// </summary>
+    internal const string SilentInstallArguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /RELAUNCH=1";
 
     /// <summary>Opens the release page.</summary>
     [RelayCommand]

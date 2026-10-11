@@ -79,7 +79,7 @@
             Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
-          <Button Content="Install and restart" Classes="accent" Command="{Binding Update.InstallCommand}" IsEnabled="{Binding !Update.Busy}" />
+          <Button Content="Update" Classes="accent" Command="{Binding Update.InstallCommand}" IsEnabled="{Binding !Update.Busy}" />
           <Button Content="Release notes" Command="{Binding Update.ReleaseNotesCommand}" />
           <Button Content="Skip this version" Command="{Binding Update.SkipCommand}" IsEnabled="{Binding !Update.Busy}" />
         </StackPanel>
