@@ -50,7 +50,7 @@ public sealed class ContactPanelViewModel
     /// <summary>The contact is still running.</summary>
     public bool Active { get; private init; }
 
-    /// <summary>The strip.</summary>
+    /// <summary>The conversation, one row per step in order.</summary>
     public IReadOnlyList<StepViewModel> Steps { get; private init; } = [];
 
     /// <summary>Builds the panel from a snapshot.</summary>
@@ -63,6 +63,7 @@ public sealed class ContactPanelViewModel
         if (station is not null) parts.Add(StationText.Where(station, units));
         var slotLen = ModeInfo.SlotLength(s.Mode);
         var currentSlot = SlotMath.SlotStart(nowUtc, s.Mode);
+        var txIndex = TransmittingIndex(c, s, currentSlot);
         var steps = new List<StepViewModel>();
         for (var i = 0; i < c.Steps.Count; i++)
         {
@@ -70,32 +71,46 @@ public sealed class ContactPanelViewModel
             var who = st.Mine ? "You" : c.DxCall;
             var count = st.Count > 1 ? $" ×{st.Count}" : string.Empty;
             StepLook look;
-            string header;
-            switch (st.State)
+            string time;
+            string status;
+            if (i == txIndex)
             {
-                case StepState.Done:
-                    look = StepLook.Done;
-                    header = $"{who} · {(st.Mine ? "sent" : "received")} {Time(st.TimeUtc)}{count}";
-                    break;
-                case StepState.Now when st.Mine && s.Transmitting && s.TransmittingMessage == st.Message:
-                    look = StepLook.Transmitting;
-                    var left = currentSlot + TimeSpan.FromSeconds(0.5 + 12.64) - nowUtc;
-                    header = $"You · sending, {Math.Max(0, (int)Math.Ceiling(left.TotalSeconds))} s left{count}";
-                    break;
-                case StepState.Now when st.Mine:
-                    look = StepLook.Waiting;
-                    header = $"You · sending next slot{count}";
-                    break;
-                case StepState.Now:
-                    look = StepLook.Waiting;
-                    header = $"{who} · expected {Time(currentSlot + slotLen)}{count}";
-                    break;
-                default:
-                    look = StepLook.Upcoming;
-                    header = st.Mine ? (i == c.Steps.Count - 1 || (i == c.Steps.Count - 2 && !c.Steps[^1].Mine) ? "You · then logged" : "You · next") : $"{who} · expected";
-                    break;
+                // The engine counts a message as sent when it starts, so a step on the air now is marked done; show it as sending.
+                look = StepLook.Transmitting;
+                time = Time(st.TimeUtc ?? currentSlot);
+                var left = currentSlot + TxEnd(s.Mode) - nowUtc;
+                status = $"Sending · {Math.Max(0, (int)Math.Ceiling(left.TotalSeconds))} s left{count}";
             }
-            steps.Add(new StepViewModel(i, st.Mine, header, st.Message, look, st.Mine && st.State == StepState.Upcoming && c.Outcome == ContactOutcome.InProgress));
+            else
+            {
+                switch (st.State)
+                {
+                    case StepState.Done:
+                        look = StepLook.Done;
+                        time = Time(st.TimeUtc);
+                        status = (st.Mine ? "Sent" : "Received") + count;
+                        break;
+                    case StepState.Now when st.Mine:
+                        look = StepLook.Waiting;
+                        time = string.Empty;
+                        status = $"Sending next slot{count}";
+                        break;
+                    case StepState.Now:
+                        // The reply is due in the slot after my last transmission. While that transmission is still on the air the
+                        // reply is not being waited for yet, so it is not highlighted.
+                        look = txIndex >= 0 && txIndex < i ? StepLook.Upcoming : StepLook.Waiting;
+                        time = Time(ExpectedReply(c, i, s.Mode, currentSlot, slotLen));
+                        status = (look == StepLook.Waiting ? "Waiting for reply" : "Expected") + count;
+                        break;
+                    default:
+                        look = StepLook.Upcoming;
+                        time = string.Empty;
+                        status = st.Mine ? (i == c.Steps.Count - 1 || (i == c.Steps.Count - 2 && !c.Steps[^1].Mine) ? "Then logged" : "Next") : "Expected";
+                        break;
+                }
+            }
+            steps.Add(new StepViewModel(i, st.Mine, who, time, st.Message, status, look,
+                st.Mine && st.State == StepState.Upcoming && c.Outcome == ContactOutcome.InProgress));
         }
         return new ContactPanelViewModel
         {
@@ -111,6 +126,33 @@ public sealed class ContactPanelViewModel
             Steps = steps,
         };
     }
+
+    // The mine step on the air now: the one still to send, or the one the engine already counted as sent in this slot.
+    private static int TransmittingIndex(ContactView c, SessionSnapshot s, DateTime currentSlot)
+    {
+        if (!s.Transmitting || s.TransmittingMessage is null) return -1;
+        for (var i = c.Steps.Count - 1; i >= 0; i--)
+        {
+            var st = c.Steps[i];
+            if (!st.Mine || !string.Equals(st.Message, s.TransmittingMessage, StringComparison.Ordinal)) continue;
+            if (st.State == StepState.Now || (st.State == StepState.Done && st.TimeUtc >= currentSlot)) return i;
+        }
+        return -1;
+    }
+
+    // The slot after my last transmission before this step, or the next slot when I have not sent yet.
+    private static DateTime ExpectedReply(ContactView c, int index, Mode mode, DateTime currentSlot, TimeSpan slotLen)
+    {
+        for (var i = index - 1; i >= 0; i--)
+        {
+            if (c.Steps[i] is { Mine: true, TimeUtc: { } sent }) return SlotMath.SlotStart(sent, mode) + slotLen;
+        }
+        return currentSlot + slotLen;
+    }
+
+    // When a transmission ends, from the start of its slot: FT8 is 79 symbols of 160 ms, FT4 is 105 symbols of 48 ms.
+    private static TimeSpan TxEnd(Mode mode) =>
+        TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode) + (mode == Mode.Ft8 ? 12_640 : 5_040));
 
     private static string Time(DateTime? t) => t?.ToString("HH:mm:ss", CultureInfo.InvariantCulture) ?? string.Empty;
 }

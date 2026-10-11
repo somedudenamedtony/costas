@@ -8,18 +8,18 @@
 
 namespace Ft8Client.App.ViewModels;
 
-/// <summary>How a conversation-strip box looks.</summary>
+/// <summary>How a conversation row looks.</summary>
 public enum StepLook
 {
-    /// <summary>Accent tint, solid border.</summary>
+    /// <summary>Sent or received: plain row, primary text.</summary>
     Done,
 
-    /// <summary>Critical fill, white text.</summary>
+    /// <summary>On the air now: critical fill, white text.</summary>
     Transmitting,
 
-    /// <summary>Accent border, no fill.</summary>
+    /// <summary>The current step when not on the air: accent tint and border.</summary>
     Waiting,
 
-    /// <summary>Dashed border, secondary text.</summary>
+    /// <summary>Not reached yet: secondary text.</summary>
     Upcoming,
 }

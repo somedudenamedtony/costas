@@ -47,24 +47,24 @@ public static class Converters
     /// <summary>Bold for true.</summary>
     public static readonly IValueConverter Bold = new FuncValueConverter<bool, FontWeight>(b => b ? FontWeight.SemiBold : FontWeight.Normal);
 
-    /// <summary>Step look to background.</summary>
+    /// <summary>Semibold for false (the other station's call stands out from "You").</summary>
+    public static readonly IValueConverter NotBold = new FuncValueConverter<bool, FontWeight>(b => b ? FontWeight.Normal : FontWeight.SemiBold);
+
+    /// <summary>Step look to row background: red while on the air, tinted while waiting.</summary>
     public static readonly IValueConverter StepBackground = new FuncValueConverter<StepLook, IBrush?>(l => l switch
     {
-        StepLook.Done => Brush("SelectedRowBrush"),
         StepLook.Transmitting => Brush("CriticalBrush"),
+        StepLook.Waiting => Brush("SelectedRowBrush"),
         _ => Brushes.Transparent,
     });
 
-    /// <summary>Step look to border.</summary>
+    /// <summary>Step look to row border.</summary>
     public static readonly IValueConverter StepBorder = new FuncValueConverter<StepLook, IBrush?>(l => l switch
     {
-        StepLook.Done or StepLook.Waiting => Brush("AccentBrush"),
         StepLook.Transmitting => Brush("CriticalBrush"),
+        StepLook.Waiting => Brush("AccentBrush"),
         _ => Brushes.Transparent,
     });
-
-    /// <summary>True for upcoming steps (dashed outline).</summary>
-    public static readonly IValueConverter IsUpcoming = new FuncValueConverter<StepLook, bool>(l => l == StepLook.Upcoming);
 
     /// <summary>Step look to text.</summary>
     public static readonly IValueConverter StepForeground = new FuncValueConverter<StepLook, IBrush?>(l => l switch
@@ -74,12 +74,13 @@ public static class Converters
         _ => Brush("TextPrimaryBrush"),
     });
 
-    /// <summary>Dashed border for upcoming steps.</summary>
-    public static readonly IValueConverter StepDash = new FuncValueConverter<StepLook, Avalonia.Collections.AvaloniaList<double>?>(l =>
-        l == StepLook.Upcoming ? new Avalonia.Collections.AvaloniaList<double>([4, 3]) : null);
-
-    /// <summary>Offset to a top margin (mine raised, theirs lowered).</summary>
-    public static readonly IValueConverter StepMargin = new FuncValueConverter<double, Thickness>(o => new Thickness(0, 12 + o, 6, 12 - o));
+    /// <summary>Step look to the status text at the end of the row.</summary>
+    public static readonly IValueConverter StepStatusForeground = new FuncValueConverter<StepLook, IBrush?>(l => l switch
+    {
+        StepLook.Transmitting => Brushes.White,
+        StepLook.Waiting => Brush("AccentTextBrush"),
+        _ => Brush("TextSecondaryBrush"),
+    });
 
     /// <summary>Selected row background.</summary>
     public static readonly IValueConverter SelectedBackground = new FuncValueConverter<bool, IBrush?>(b => b ? Brush("SelectedRowBrush") : Brushes.Transparent);

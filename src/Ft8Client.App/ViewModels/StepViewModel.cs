@@ -8,15 +8,13 @@
 
 namespace Ft8Client.App.ViewModels;
 
-/// <summary>One box of the conversation strip.</summary>
+/// <summary>One row of the conversation.</summary>
 /// <param name="Index">Step index, for jumping.</param>
-/// <param name="Mine">Mine (raised) or theirs (lowered).</param>
-/// <param name="Header">"You · sent 02:54:00", "ZL2RPA · expected 02:54:45".</param>
+/// <param name="Mine">True for my transmissions.</param>
+/// <param name="Who">"You" or the DX call.</param>
+/// <param name="Time">UTC time sent, received or expected ("20:29:31"); blank when not known yet.</param>
 /// <param name="Message">Literal message.</param>
+/// <param name="Status">"Sent", "Sending · 9 s left", "Waiting for reply", "Received ×2", "Next".</param>
 /// <param name="Look">Look.</param>
-/// <param name="CanJump">True for my upcoming boxes (click to jump).</param>
-public sealed record StepViewModel(int Index, bool Mine, string Header, string Message, StepLook Look, bool CanJump)
-{
-    /// <summary>Vertical offset: mine raised 12 px, theirs lowered 12 px.</summary>
-    public double Offset => Mine ? -12 : 12;
-}
+/// <param name="CanJump">True for my upcoming rows (click to jump).</param>
+public sealed record StepViewModel(int Index, bool Mine, string Who, string Time, string Message, string Status, StepLook Look, bool CanJump);
