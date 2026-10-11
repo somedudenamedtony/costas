@@ -88,7 +88,21 @@ CREATE TABLE callsign_cache (
   lon          REAL,
   dxcc         INTEGER,
   fetched_utc  TEXT NOT NULL,
-  found        INTEGER NOT NULL               -- 0 caches a miss for 7 days
+  found        INTEGER NOT NULL,              -- 0 caches a miss for 7 days
+  -- migration 002: details for the station flyout (the migration empties the cache so rows are refetched in full)
+  nickname     TEXT,
+  county       TEXT,
+  license_class TEXT,                         -- QRZ "class", e.g. E, G, T
+  time_zone    TEXT,
+  gmt_offset   REAL,                          -- standard offset, hours
+  observes_dst INTEGER,
+  image_url    TEXT,
+  qsl_manager  TEXT,
+  lotw         INTEGER,
+  eqsl         INTEGER,
+  paper_qsl    INTEGER,                       -- QRZ "mqsl"
+  cq_zone      INTEGER,
+  itu_zone     INTEGER
 );
 
 CREATE TABLE spot (                           -- reports of my signal from PSK Reporter

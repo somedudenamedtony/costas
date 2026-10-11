@@ -39,6 +39,19 @@ public sealed class CallsignLookupService(QrzXmlClient client, CallsignCacheRepo
             Lat = result?.Lat,
             Lon = result?.Lon,
             Dxcc = result?.Dxcc,
+            Nickname = result?.Nickname,
+            County = result?.County,
+            LicenseClass = result?.LicenseClass,
+            TimeZone = result?.TimeZone,
+            GmtOffset = result?.GmtOffset,
+            ObservesDst = result?.ObservesDst,
+            ImageUrl = result?.ImageUrl,
+            QslManager = result?.QslManager,
+            Lotw = result?.Lotw,
+            Eqsl = result?.Eqsl,
+            PaperQsl = result?.PaperQsl,
+            CqZone = result?.CqZone,
+            ItuZone = result?.ItuZone,
         };
         cache.Put(entry);
         return entry.Found ? entry : null;

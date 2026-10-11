@@ -101,10 +101,41 @@ public sealed class QrzXmlClient(HttpClient http, Func<(string User, string Pass
 
     private static QrzLookupResult Map(XElement cs, XNamespace ns)
     {
-        string? V(string n) => cs.Element(ns + n)?.Value is { Length: > 0 } v ? WebUtility.HtmlDecode(v) : null;
+        string? V(string n) => cs.Element(ns + n)?.Value is { Length: > 0 } v ? WebUtility.HtmlDecode(v).Trim() is { Length: > 0 } t ? t : null : null;
         double? D(string n) => double.TryParse(V(n), NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : null;
+        int? I(string n) => int.TryParse(V(n), NumberStyles.Integer, CultureInfo.InvariantCulture, out var i) ? i : null;
+        // The spec documents 0/1 for these flags but its own sample uses Y/N; accept both.
+        bool? B(string n) => V(n)?.ToUpperInvariant() switch
+        {
+            "1" or "Y" => true,
+            "0" or "N" => false,
+            _ => null,
+        };
         var name = string.Join(' ', new[] { V("fname"), V("name") }.Where(s => !string.IsNullOrWhiteSpace(s)));
-        return new QrzLookupResult(V("call") ?? string.Empty, name.Length == 0 ? null : name, V("addr2"), V("state"), V("country"),
-            V("grid"), D("lat"), D("lon"), int.TryParse(V("dxcc"), out var dx) ? dx : null);
+        return new QrzLookupResult
+        {
+            Call = V("call") ?? string.Empty,
+            Name = name.Length == 0 ? null : name,
+            City = V("addr2"),
+            State = V("state"),
+            Country = V("country"),
+            Grid = V("grid"),
+            Lat = D("lat"),
+            Lon = D("lon"),
+            Dxcc = I("dxcc"),
+            Nickname = V("nickname"),
+            County = V("county"),
+            LicenseClass = V("class"),
+            TimeZone = V("TimeZone"),
+            GmtOffset = D("GMTOffset"),
+            ObservesDst = B("DST"),
+            ImageUrl = V("image") is { } img && img.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? img : null,
+            QslManager = V("qslmgr"),
+            Lotw = B("lotw"),
+            Eqsl = B("eqsl"),
+            PaperQsl = B("mqsl"),
+            CqZone = I("cqzone"),
+            ItuZone = I("ituzone"),
+        };
     }
 }

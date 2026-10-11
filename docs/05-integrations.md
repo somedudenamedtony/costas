@@ -130,6 +130,8 @@ Source: https://www.qrz.com/XML/current_spec.html (confirmed).
 - A `<Session><Error>` element or a missing `<Key>` means the session expired or the call was not found; re-login once on session errors.
 - Full data needs a QRZ XML subscription; without one, fields are limited.
 - Look up only the selected station and the current contact, not every decode. Cache results in `callsign_cache` for 30 days. Strip `/P`-style suffixes for the lookup if the full call is not found.
+- Fields read: `call`, `fname`, `name`, `nickname`, `addr2`, `state`, `county`, `country`, `grid`, `lat`, `lon`, `dxcc`, `class`, `TimeZone`, `GMTOffset`, `DST`, `image`, `qslmgr`, `lotw`, `eqsl`, `mqsl`, `cqzone`, `ituzone` (names checked against the current spec, 2026-10-11). The spec documents `lotw`/`eqsl`/`mqsl` as `0/1` but its sample shows `Y`; both are accepted. The street address, email and birth year are not read.
+- Every station heard is filled in from `callsign_cache` (a local read), so its city and state show in Where once it has been looked up before; that never sends a request to QRZ.
 - This uses the QRZ username and password, which are separate from the logbook key. Both optional.
 
 **Why two QRZ credentials.** QRZ runs two separate services with separate sign-ins, and neither accepts the other's:
