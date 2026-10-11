@@ -1,0 +1,123 @@
+# Making contacts
+
+Costas runs the standard FT8 exchange for you, the same messages WSJT-X sends, so other stations cannot tell the
+difference. You start every contact; Costas never calls anyone on its own.
+
+## Calling a station
+
+Pick a station in **Next in line** and click **Call** (or double-click it, or select it and press ++enter++).
+You can also double-click a CQ in [Raw decodes](raw-decodes.md).
+
+The top card becomes the contact panel, and the red **ON AIR** banner shows while you transmit:
+
+![Calling a station: on the air](images/contact-on-air.png)
+
+| Part | What it shows |
+| --- | --- |
+| Caption | *Calling*, then *Contact in progress*, then *Logged* (or *Abandoned*, *No reply*) |
+| Callsign and need tag | Who you are working, and why you wanted them |
+| Subline | Name from QRZ (once the lookup arrives), country or state, distance |
+| **You sent** / **You received** | The signal reports, as they are exchanged |
+| **Resend** | Sends the current step again in your next slot. ++ctrl+r++ |
+| **Log now** | Logs the contact as it stands. Enabled once both reports are exchanged. ++ctrl+l++ |
+| **Abandon (Esc)** | Stops transmitting and ends the contact without logging it |
+
+### The conversation strip
+
+Under the callsign, five boxes show the exchange. Yours sit higher, theirs lower:
+
+![A contact in progress](images/contact-in-progress.png)
+
+| Box | Means |
+| --- | --- |
+| Solid tinted | Done: *You · sent 20:04:45* or *F5RXL · received 20:05:00*, with the message |
+| Red | Sending now, with seconds left |
+| Outlined | What Costas is waiting for, and when it is expected |
+| Dashed | Still to come |
+| ×2 | That step was sent or received more than once |
+
+If you need to jump ahead or back, click one of **your** upcoming boxes: Costas sends that message next.
+
+A typical contact answering a CQ:
+
+1. You: `F5RXL W7LIT DN40` (your grid, unless you turned **Send my grid** off)
+2. Them: `W7LIT F5RXL -13`
+3. You: `F5RXL W7LIT R-03`
+4. Them: `W7LIT F5RXL RR73`. The contact is logged (and uploaded to QRZ) at this point.
+5. You: `F5RXL W7LIT 73`, sent once as a courtesy (or `RR73`, see **Last message when answering** in
+   [Settings](settings.md#transmitting)).
+
+When the other station does not answer, Costas tries again, and gives up after the number of tries set in
+**Settings › Transmitting › Give up after** (4 by default). If they repeat themselves, Costas steps back and resends
+what they missed.
+
+After logging, the panel shows *Logged* for one slot and then goes back to the band summary. The station drops out
+of Next in line (it is now worked on this band) and your tallies update:
+
+![After logging](images/after-logging.png)
+
+## Calling CQ
+
+Click **Call CQ** (or press ++ctrl+q++). Costas calls CQ in the parity set in **Settings › Transmitting › Call CQ in**
+(even or odd slots) until you click **Stop CQ**.
+
+When someone answers, Costas starts the contact with the first caller. Anyone else who calls you meanwhile waits in
+the **Calling you** bar.
+
+## The Calling you bar
+
+When a station calls you and you have not answered, a bar is pinned above the top card, outside the scrolling area,
+so you cannot miss it:
+
+![Calling you, during a contact](images/calling-you.png)
+
+Each caller shows callsign, where, need tag and *Called you at 20:07:15 · +25*. Up to 5 callers, oldest first.
+
+- While you are in a contact the button reads **Answer after this contact**. Click it and Costas answers that
+  station as soon as the current contact ends (the button then reads *Will answer after this contact*).
+- When you are not in a contact it reads **Answer** and answers in your next slot.
+
+The same station also appears in Next in line with *Calling you* under Doing now and an **Answer** button, which does
+the same thing.
+
+**Chime**: **Settings › Transmitting › Calling you › Chime when a new station calls me** plays a short sound when a new
+caller appears. It is off by default. It plays on the computer's default speakers, and stays silent if the default
+device is the radio's audio device, so it can never go out over the air.
+
+### Late replies and Resume
+
+If you stop a contact (Abandon, Halt, or it ended with no reply or by the watchdog) and that station then replies
+within 5 minutes, it shows in the bar with *Replied after you stopped: W7LIT K1ABC R-13* and a **Resume** button:
+
+![A late reply with Resume](images/calling-you-resume.png)
+
+Nothing is sent until you press **Resume**. Resume picks the contact up where it was, as if their late message had
+arrived in time: a late RR73 logs the contact and sends 73, a late report gets your R-report.
+
+## Halting
+
+**Halt Tx** in the bottom bar, **Halt (Esc)** in the ON AIR banner, and the ++esc++ key all drop PTT immediately and
+stop the sequence.
+
+In a contact, the first ++esc++ stops transmitting. Once both reports have been exchanged, Costas asks you to press
+++esc++ a second time before it abandons the contact, so a stray key press does not lose a nearly complete contact.
+
+## Safety guards
+
+These are always on:
+
+| Guard | What happens |
+| --- | --- |
+| **Watchdog** | If you have not touched the app (key or click) for 6 minutes (**Settings › Transmitting › Watchdog**), transmitting stops: *Stopped by watchdog* |
+| **Clock** | Transmitting is refused while your clock is off by more than 2 s (**Clock limit**) |
+| **Band edge** | Costas will not transmit outside the band's limits for the dial frequency and offset |
+| **Faults** | Any radio or audio error releases PTT at once |
+| **No radio** | With no radio set up, transmit is refused and the radio indicator says why |
+| **Exact messages** | If a message cannot be encoded exactly as shown (for example an unusual callsign or a free text with characters FT8 cannot carry), Costas refuses to send it and says why, rather than changing it |
+| **Meters** | After each transmission, a high SWR (2 or more, red at 3) or ALC reading shows a warning in the bottom bar with advice |
+
+## Logging
+
+With **Settings › Transmitting › Logging › Log each contact automatically when it completes** on (the default),
+contacts are logged when the exchange completes. Otherwise use **Log now**. Either way the contact goes to the local
+log and, if set up, to your QRZ logbook. See [Log, QRZ and ADIF](log.md).
