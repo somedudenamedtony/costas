@@ -40,8 +40,10 @@ public class RepeatRowViewModelTests
     {
         var row = new RepeatRowViewModel(Ranked("W1AW", true), Last, 2, DistanceUnit.Miles, Now, 3);
         row.Rank.Should().Be(3);
-        row.Why.Should().Be("Worked before");
+        row.Why.Should().Be("Not confirmed");
+        row.WhyBold.Should().BeTrue();
         row.HearsYou.Should().Be(StationText.Hears(new HearsYou(HearsYouKind.None)));
+        row.ChanceReason.Should().Be("no reports yet");
         row.Chance.Should().Be("Good");
         row.ChanceBold.Should().BeTrue();
     }
@@ -67,5 +69,36 @@ public class RepeatRowViewModelTests
     {
         var order = OperateViewModel.RepeatOrder([Ranked("A1A", false), Ranked("B1B", true), Ranked("C1C", false), Ranked("D1D", true)]);
         order.Select(r => r.Station.Call).Should().Equal("B1B", "D1D", "A1A", "C1C");
+    }
+
+    [Fact]
+    public void Constructor_Confirmed_WhySaysConfirmedInGrey()
+    {
+        var row = new RepeatRowViewModel(Ranked("W1AW", true), Last, 2, DistanceUnit.Miles, Now, confirmed: true);
+        row.Why.Should().Be("Confirmed");
+        row.WhyKind.Should().Be(TextKind.Secondary);
+    }
+
+    [Fact]
+    public void Refresh_WentQuiet_CountsUpWithLastHeard()
+    {
+        var quiet = new Station { Call = "W3YNI", LastHeardUtc = Now.AddSeconds(-45), LastHeardEndUtc = Now.AddSeconds(-31), State = StationState.Quiet };
+        var ranked = new RankedStation(quiet, new NeedResult(NeedTag.Worked, 5), new HearsYou(HearsYouKind.None), Chance.Fair, false,
+            new WatchReason(WatchReasonKind.WentQuiet, null, quiet.LastHeardEndUtc));
+        var row = new RepeatRowViewModel(ranked, Last, 1, DistanceUnit.Miles, Now);
+        row.DoingNow.Should().Be("Went quiet 31 seconds ago");
+
+        row.Refresh(Now.AddSeconds(20));
+
+        row.DoingNow.Should().Be("Went quiet 51 seconds ago");
+        row.LastHeard.Should().Be("51 seconds ago");
+    }
+
+    [Fact]
+    public void RepeatOrder_Confirmation_NotConfirmedFirstWithinCallable()
+    {
+        var order = OperateViewModel.RepeatOrder([Ranked("A1A", true), Ranked("B1B", false), Ranked("C1C", true), Ranked("D1D", false)],
+            r => r.Station.Call is "A1A" or "D1D");
+        order.Select(r => r.Station.Call).Should().Equal("C1C", "A1A", "B1B", "D1D");
     }
 }

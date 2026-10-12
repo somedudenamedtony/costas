@@ -130,6 +130,25 @@ public sealed class LogIndex
     public IReadOnlyList<LogContact> ContactsWith(string call) =>
         _byCall.TryGetValue(Callsign.Normalize(call), out var list) ? list : [];
 
+    /// <summary>True when a contact with this call on this band and mode is confirmed.</summary>
+    public bool CallConfirmed(string call, string band, string modeKey) =>
+        _byCall.TryGetValue(Callsign.Normalize(call), out var list)
+        && list.Any(c => c.Confirmed && string.Equals(c.Band, band, StringComparison.OrdinalIgnoreCase)
+                         && string.Equals(c.ModeKey, modeKey, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>The bands (lower case, as logged) the entity has a contact on, in band plan order.</summary>
+    public IReadOnlyList<string> BandsWorked(string entityKey) =>
+        _entitiesByBand.Where(kv => kv.Value.Contains(entityKey)).Select(kv => kv.Key).OrderBy(BandOrder).ToList();
+
+    private static int BandOrder(string band)
+    {
+        for (var i = 0; i < Bands.BandPlan.Bands.Count; i++)
+        {
+            if (string.Equals(Bands.BandPlan.Bands[i].Band, band, StringComparison.OrdinalIgnoreCase)) return i;
+        }
+        return int.MaxValue;
+    }
+
     /// <summary>The most recent contact with a call on any band or mode, or null if there is none.</summary>
     public LogContact? LastContactWith(string call) =>
         _byCall.TryGetValue(Callsign.Normalize(call), out var list) ? list.MaxBy(c => c.DateUtc) : null;

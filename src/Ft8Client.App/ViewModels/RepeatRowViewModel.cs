@@ -24,18 +24,23 @@ public sealed partial class RepeatRowViewModel : ObservableObject
     /// <param name="units">Distance units.</param>
     /// <param name="nowUtc">Now.</param>
     /// <param name="rank">Position in Repeats, from 1.</param>
-    public RepeatRowViewModel(RankedStation r, LogContact? last, int contacts, DistanceUnit units, DateTime nowUtc, int rank = 1)
+    /// <param name="confirmed">True when a contact with this call on this band and mode is confirmed.</param>
+    public RepeatRowViewModel(RankedStation r, LogContact? last, int contacts, DistanceUnit units, DateTime nowUtc, int rank = 1,
+                              bool confirmed = false)
     {
         Source = r;
         Rank = rank;
-        Why = StationText.Need(r.Need.Tag);
+        Why = StationText.Confirmation(confirmed);
+        WhyKind = confirmed ? TextKind.Secondary : TextKind.Accent;
         HearsYou = StationText.Hears(r.Hears);
         Chance = StationText.Chance(r.Chance);
+        ChanceReason = StationText.ChanceReason(r.Hears);
         ChanceBold = r.Chance == Core.Ranking.Chance.Good;
         Call = r.Station.Call;
         Where = StationText.Where(r.Station, units);
         CanCall = r.Callable;
-        DoingNow = r.Callable || r.Reason is null ? StationText.DoingNow(r.Station) : StationText.Watch(r.Reason, nowUtc);
+        _reason = r.Callable ? null : r.Reason;
+        DoingNow = _reason is null ? StationText.DoingNow(r.Station) : string.Empty;
         Db = Report.Format(r.Station.LastSnr);
         History = r.Station.SnrHistory;
         HistoryTip = StationRowViewModel.HistoryText(r.Station.SnrHistory);
@@ -55,11 +60,20 @@ public sealed partial class RepeatRowViewModel : ObservableObject
     /// <summary>Call.</summary>
     public string Call { get; }
 
-    /// <summary>Need tag text: "Worked before".</summary>
+    /// <summary>"Not confirmed" or "Confirmed" for this call on this band and mode: the reason to work them again.</summary>
     public string Why { get; }
 
-    /// <summary>Hears you, as in Next in line.</summary>
+    /// <summary>Accent for not confirmed, secondary for confirmed.</summary>
+    public TextKind WhyKind { get; }
+
+    /// <summary>Not confirmed is bold.</summary>
+    public bool WhyBold => WhyKind == TextKind.Accent;
+
+    /// <summary>Hears you (the phone remote shows it; the desk shows <see cref="ChanceReason"/>).</summary>
     public string HearsYou { get; }
+
+    /// <summary>What the chance is based on, as in Next in line.</summary>
+    public string ChanceReason { get; }
 
     /// <summary>Chance, as in Next in line.</summary>
     public string Chance { get; }
@@ -80,9 +94,11 @@ public sealed partial class RepeatRowViewModel : ObservableObject
     }
 
     private DateTime _heardEndUtc;
+    private readonly WatchReason? _reason;
 
-    /// <summary>What the station is doing, or why it cannot be called right now.</summary>
-    public string DoingNow { get; }
+    /// <summary>What the station is doing, or why it cannot be called right now; "Went quiet …" counts up with Last heard.</summary>
+    [ObservableProperty]
+    public partial string DoingNow { get; private set; }
 
     /// <summary>
     /// True when the station is calling CQ or calling me now. When false, Doing now shows why in grey; the Call button
@@ -117,6 +133,12 @@ public sealed partial class RepeatRowViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsInContact { get; set; }
 
-    /// <summary>Updates the age text on every timer tick.</summary>
-    public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - _heardEndUtc);
+    /// <summary>Updates the age texts on every timer tick.</summary>
+    public void Refresh(DateTime nowUtc)
+    {
+        LastHeard = StationText.Ago(nowUtc - _heardEndUtc);
+        // The reason's own time is when the row was built; count from the newest decode so both columns agree.
+        if (_reason is not null)
+            DoingNow = StationText.Watch(_reason.SinceUtc is null ? _reason : _reason with { SinceUtc = _heardEndUtc }, nowUtc);
+    }
 }

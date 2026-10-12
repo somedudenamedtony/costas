@@ -96,4 +96,26 @@ public class StationRowViewModelTests
 
         new StationRowViewModel(ranked, 1, DistanceUnit.Miles, Heard, mostWantedRank: 61).HasRarity.Should().BeFalse();
     }
+
+    [Fact]
+    public void Constructor_NewGrid_WhyNamesTheGridAndChanceSaysWhy()
+    {
+        var station = new Station { Call = "VE5SD", Grid = "DO62", LastHeardUtc = Heard, State = StationState.CallingCq, CqStreak = 1 };
+        var ranked = new RankedStation(station, new NeedResult(NeedTag.NewGrid, 3), new HearsYou(HearsYouKind.Regional, 5, "VE5XX", "DO field"),
+            Chance.Fair, true, null);
+        var row = new StationRowViewModel(ranked, 1, DistanceUnit.Miles, Heard);
+        row.Why.Should().Be("New grid DO62");
+        row.WhyTip.Should().BeNull();
+        row.Chance.Should().Be("Fair");
+        row.ChanceReason.Should().Be("heard in DO field at +05");
+    }
+
+    [Fact]
+    public void Constructor_WhyTipGiven_ShowsIt()
+    {
+        var station = new Station { Call = "VE5SD", LastHeardUtc = Heard, State = StationState.CallingCq };
+        var ranked = new RankedStation(station, new NeedResult(NeedTag.NewBand, 2), new HearsYou(HearsYouKind.None), Chance.Fair, true, null);
+        new StationRowViewModel(ranked, 1, DistanceUnit.Miles, Heard, whyTip: "Canada is in your log on 40 m, not on 20 m yet")
+            .WhyTip.Should().Be("Canada is in your log on 40 m, not on 20 m yet");
+    }
 }

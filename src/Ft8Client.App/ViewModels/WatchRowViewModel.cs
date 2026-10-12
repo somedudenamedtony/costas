@@ -20,8 +20,8 @@ public sealed class WatchRowViewModel(RankedStation r, DateTime nowUtc, Distance
     /// <summary>Place and distance.</summary>
     public string Where { get; } = StationText.Where(r.Station, units);
 
-    /// <summary>Need tag.</summary>
-    public string Why { get; } = StationText.Need(r.Need.Tag);
+    /// <summary>Need tag, with the grid for a new grid.</summary>
+    public string Why { get; } = StationText.Why(r.Need.Tag, r.Station.Grid);
 
     /// <summary>Need tag colour.</summary>
     public TextKind WhyKind { get; } = StationRowViewModel.KindOf(r.Need.Tag);

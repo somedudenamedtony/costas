@@ -58,4 +58,4 @@ Reports of your signal come from [PSK Reporter](https://pskreporter.info/), live
 periodic query as a fallback. The caption under *Your signal* says which: *PSK Reporter · live*,
 *· updated 6 min ago* (fallback), or *· unavailable*. Turn the feed on or off in
 [Settings › PSK Reporter](settings.md#psk-reporter). Without it, the maps and the station list still work, but
-*Hears you* stays blank.
+Chance comes from the signal alone.

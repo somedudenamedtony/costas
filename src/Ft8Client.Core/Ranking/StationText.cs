@@ -29,6 +29,39 @@ public static class StationText
         _ => "Worked before",
     };
 
+    /// <summary>
+    /// The Why column: the need tag, with the grid for a new grid ("New grid DO62") so the operator sees which one.
+    /// </summary>
+    public static string Why(NeedTag tag, string? grid) =>
+        tag == NeedTag.NewGrid && Grid.Grid4(grid) is { } g ? $"New grid {g}" : Need(tag);
+
+    /// <summary>
+    /// The Why tooltip for a new band: "Canada is in your log on 40 m and 15 m, not on 20 m yet". Empty for other tags
+    /// or when the bands are not known.
+    /// </summary>
+    public static string WhyTip(NeedTag tag, string? entityName, IReadOnlyList<string> bandsWorked, string band)
+    {
+        if (tag != NeedTag.NewBand || entityName is null || bandsWorked.Count == 0) return string.Empty;
+        var names = bandsWorked.Select(Bands.BandPlan.Display).ToList();
+        var list = names.Count == 1 ? names[0] : $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}";
+        return $"{entityName} is in your log on {list}, not on {Bands.BandPlan.Display(band)} yet";
+    }
+
+    /// <summary>"Confirmed" or "Not confirmed": the Why column in Repeats.</summary>
+    public static string Confirmation(bool confirmed) => confirmed ? "Confirmed" : "Not confirmed";
+
+    /// <summary>
+    /// What the chance is based on, shown beside it: "hears you at -07", "heard in Japan at -17", "no reports yet",
+    /// or empty without PSK Reporter (the chance then comes from the signal alone).
+    /// </summary>
+    public static string ChanceReason(HearsYou h) => h.Kind switch
+    {
+        HearsYouKind.Direct => $"hears you at {Report.Format(h.Snr ?? 0)}",
+        HearsYouKind.Regional => $"heard in {h.RegionName} at {Report.Format(h.Snr ?? 0)}",
+        HearsYouKind.None => "no reports yet",
+        _ => string.Empty,
+    };
+
     /// <summary>"Good", "Fair", "Long shot".</summary>
     public static string Chance(Chance c) => c switch
     {

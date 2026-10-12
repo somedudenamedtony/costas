@@ -242,7 +242,9 @@ public sealed partial class OperateViewModel : ObservableObject
         {
             _lastRankedSlot = s.LastDecodedSlot;
             _line.Offer(s.Rank.Line);
-            _repeats.Offer(RepeatOrder(s.Rank.Worked));
+            var log = Log?.Invoke();
+            var mode = ModeInfo.Name(s.Mode);
+            _repeats.Offer(RepeatOrder(s.Rank.Worked, r => log?.CallConfirmed(r.Station.Call, s.Band, mode) ?? false));
         }
         ListUpdated = _line.HasPending;
         MarkInContact();
@@ -488,7 +490,7 @@ public sealed partial class OperateViewModel : ObservableObject
         var i = 1;
         foreach (var r in list.Take(MaxLine))
             Line.Add(new StationRowViewModel(r, i++, Units, now, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0,
-                MostWanted.RankOf(r.Station.EntityKey)));
+                MostWanted.RankOf(r.Station.EntityKey), WhyTip(r, log)));
         MoreText = list.Count > MaxLine ? $"and {list.Count - MaxLine} more" : string.Empty;
         LineEmpty = Line.Count == 0;
         // Only a row the operator picked stays selected; nothing is selected for them, so the highlight never
@@ -513,16 +515,25 @@ public sealed partial class OperateViewModel : ObservableObject
         Repeats.Clear();
         var i = 1;
         foreach (var r in list.Take(MaxRepeats))
-            Repeats.Add(new RepeatRowViewModel(r, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0, Units, now, i++));
+            Repeats.Add(new RepeatRowViewModel(r, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0, Units, now, i++,
+                _snap is not null && (log?.CallConfirmed(r.Station.Call, _snap.Band, ModeInfo.Name(_snap.Mode)) ?? false)));
         MarkInContact();
         RepeatsMoreText = list.Count > MaxRepeats ? $"and {list.Count - MaxRepeats} more" : string.Empty;
         if (_snap is not null)
             RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {BandPlan.Display(_snap.Band)} is on the air right now.";
     }
 
-    /// <summary>Repeats order: stations that can be called now first, then the ranker's order (calling me, chance, signal).</summary>
-    public static IReadOnlyList<RankedStation> RepeatOrder(IReadOnlyList<RankedStation> worked) =>
-        worked.OrderBy(r => r.Callable ? 0 : 1).ToList();
+    /// <summary>
+    /// Repeats order: stations that can be called now first, then those not confirmed on this band and mode, then the
+    /// ranker's order (calling me, chance, signal).
+    /// </summary>
+    public static IReadOnlyList<RankedStation> RepeatOrder(IReadOnlyList<RankedStation> worked, Func<RankedStation, bool>? confirmed = null) =>
+        worked.OrderBy(r => r.Callable ? 0 : 1).ThenBy(r => confirmed?.Invoke(r) == true ? 1 : 0).ToList();
+
+    // For a new band: the bands the country is already in the log on.
+    private string WhyTip(RankedStation r, LogIndex? log) =>
+        log is null || _snap is null || r.Station.EntityKey is not { } e ? string.Empty
+            : StationText.WhyTip(r.Need.Tag, r.Station.Entity?.Entity.Name, log.BandsWorked(e), _snap.Band);
 
     private void ApplySignal(SessionSnapshot s, DateTime now, string band)
     {
