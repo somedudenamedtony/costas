@@ -86,7 +86,8 @@ public sealed partial class RepeatRowViewModel : ObservableObject
 
     /// <summary>
     /// True when the station is calling CQ or calling me now. When false, Doing now shows why in grey; the Call button
-    /// stays enabled so the operator can still call them (owner request 2026-10-12).
+    /// stays enabled so the operator can still call them (owner request 2026-10-12), except that a station in a contact
+    /// with someone else is not called: the session ends that call at once and the contact card says why.
     /// </summary>
     public bool CanCall { get; }
 
