@@ -9,6 +9,8 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Ft8Client.App.Services;
 using Ft8Client.Core;
 using Ft8Client.Core.Bands;
 using Ft8Client.Core.Geo;
@@ -88,6 +90,94 @@ public sealed partial class ReachViewModel : ObservableObject
     [ObservableProperty]
     public partial string NeighbourBasis { get; set; } = string.Empty;
 
+    /// <summary>The daily history of the comparison; null shows no history (tests).</summary>
+    public NeighbourHistoryService? History
+    {
+        get => _history;
+        set
+        {
+            if (_history is not null) _history.Changed -= OnHistoryChanged;
+            _history = value;
+            if (_history is not null) _history.Changed += OnHistoryChanged;
+            RefreshHistory();
+        }
+    }
+
+    private NeighbourHistoryService? _history;
+    private string _historyKey = string.Empty;
+
+    /// <summary>History of the comparison, one row per continent, for the selected band.</summary>
+    public ObservableCollection<NeighbourHistoryRowViewModel> HistoryRows { get; } = [];
+
+    /// <summary>The history rows are shown.</summary>
+    [ObservableProperty]
+    public partial bool HasHistory { get; set; }
+
+    /// <summary>What the history shows, or why there is none yet.</summary>
+    [ObservableProperty]
+    public partial string HistoryNote { get; set; } = string.Empty;
+
+    /// <summary>"What changed?" typed before marking a change.</summary>
+    [ObservableProperty]
+    public partial string ChangeNote { get; set; } = string.Empty;
+
+    /// <summary>A change is marked today (the button then removes it).</summary>
+    [ObservableProperty]
+    public partial bool MarkedToday { get; set; }
+
+    /// <summary>"Change marked on 9 Oct (new vertical).", or blank.</summary>
+    [ObservableProperty]
+    public partial string MarkText { get; set; } = string.Empty;
+
+    /// <summary>"Mark a change today" or "Remove today's mark".</summary>
+    public string MarkButtonText => MarkedToday ? "Remove today's mark" : "Mark a change today";
+
+    partial void OnMarkedTodayChanged(bool value) => OnPropertyChanged(nameof(MarkButtonText));
+
+    /// <summary>Marks today as the day of a change at the station, or removes today's mark.</summary>
+    [RelayCommand]
+    private void ToggleMark()
+    {
+        if (_history is null || string.IsNullOrEmpty(MyCall)) return;
+        if (MarkedToday) _history.RemoveTodaysMark(MyCall);
+        else
+        {
+            _history.MarkChange(MyCall, ChangeNote);
+            ChangeNote = string.Empty;
+        }
+    }
+
+    private void OnHistoryChanged() => MainViewModel.Dispatch(RefreshHistory);
+
+    /// <summary>Rebuilds the history rows for the selected band and mode.</summary>
+    public void RefreshHistory()
+    {
+        var h = _history?.Current ?? NeighbourHistory.Empty;
+        var today = DateOnly.FromDateTime(_now());
+        var mark = h.LatestMark(MyCall, today);
+        var first = today.AddDays(1 - NeighbourHistoryText.ChartDays);
+        var rows = h.Continents(MyCall, Band, Mode, first).Select(c =>
+        {
+            var days = h.Daily(MyCall, Band, Mode, c, today, NeighbourHistoryText.ChartDays);
+            var markIndex = mark is not null && mark.Day >= first ? mark.Day.DayNumber - first.DayNumber : -1;
+            var sentence = NeighbourHistoryText.Sentence(h, MyCall, Band, Mode, c, today);
+            var tip = $"{NeighbourText.Continent(c)}, last {NeighbourHistoryText.ChartDays} days. Each dot is a day's median difference from stations near you; the middle line is level with them.";
+            return new NeighbourHistoryRowViewModel(sentence, days, markIndex, tip);
+        }).ToList();
+        var key = string.Join('|', rows.Select(r => r.Sentence + ":" + r.MarkIndex + ":" + string.Join(',', r.Days)));
+        MarkedToday = mark?.Day == today;
+        MarkText = mark is null ? string.Empty
+            : $"Change marked on {NeighbourHistoryText.Date(mark.Day)}" + (mark.Note.Length > 0 ? $" ({mark.Note})." : ".");
+        HistoryNote = rows.Count > 0
+            ? $"Daily, last {NeighbourHistoryText.ChartDays} days. Below the line you were weaker than stations near you."
+            : $"Nothing recorded on {BandPlan.Display(Band)} {Mode} yet. Costas keeps a daily summary of this comparison whenever it has something to show.";
+        if (key == _historyKey) return;
+        _historyKey = key;
+        HistoryRows.Clear();
+        foreach (var r in rows) HistoryRows.Add(r);
+        HasHistory = rows.Count > 0;
+    }
+
     /// <summary>Distance units.</summary>
     public DistanceUnit Units { get; set; } = DistanceUnit.Miles;
 
@@ -132,6 +222,7 @@ public sealed partial class ReachViewModel : ObservableObject
             ByBand.Add(new BandReachRowViewModel(BandPlan.Display(g.Key), bp.Count.ToString(CultureInfo.InvariantCulture),
                 StationText.Distance(bp.Max(p => p.Km), Units), Report.Format(snrs[snrs.Count / 2]), g.Key == Band));
         }
+        RefreshHistory();
     }
 
     /// <summary>Shows the neighbour comparison for the current band (from the session; it covers the last 30 minutes).</summary>

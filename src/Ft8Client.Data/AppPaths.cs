@@ -53,6 +53,9 @@ public sealed class AppPaths
     /// <summary>Settings file.</summary>
     public string Settings => Path.Combine(Root, "settings.json");
 
+    /// <summary>Daily summaries of the comparison with stations near me.</summary>
+    public string NeighbourHistory => Path.Combine(Root, "neighbour-history.json");
+
     /// <summary>Serilog folder.</summary>
     public string Logs => Path.Combine(Root, "logs");
 

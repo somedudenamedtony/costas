@@ -20,6 +20,7 @@ using Ft8Client.Core.Time;
 using Ft8Client.Data;
 using Ft8Client.Data.Database;
 using Ft8Client.Data.Log;
+using Ft8Client.Data.Neighbours;
 using Ft8Client.Data.Reference;
 using Ft8Client.Data.Secrets;
 using Ft8Client.Data.Settings;
@@ -144,6 +145,9 @@ public sealed class AppHost : IAsyncDisposable
 
     /// <summary>Club Log's most-wanted list for the rarity meter.</summary>
     public MostWantedService MostWanted { get; private set; } = null!;
+
+    /// <summary>Daily history of the comparison with stations near me.</summary>
+    public NeighbourHistoryService NeighbourHistory { get; private set; } = null!;
 
     /// <summary>Update checks.</summary>
     public UpdateService Updates { get; private set; } = null!;
@@ -287,6 +291,11 @@ public sealed class AppHost : IAsyncDisposable
 
         MostWanted = new MostWantedService(Paths, () => Settings.Current.Profile.Callsign, Clock);
         _ = MostWanted.StartAsync();
+
+        NeighbourHistory = new NeighbourHistoryService(new NeighbourHistoryStore(Paths.NeighbourHistory),
+            () => Settings.Current.PskReporter is { FeedEnabled: true, CompareNeighbours: true }, Clock, record: !Simulating);
+        NeighbourHistory.Load();
+        Session.Changed += NeighbourHistory.OnSnapshot;
 
         Updates = new UpdateService(Settings, Path.Combine(Paths.Temp, "updates"), Paths.Logs);
         Updates.Start();

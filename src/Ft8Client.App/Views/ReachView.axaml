@@ -71,6 +71,27 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <TextBlock Text="Did a change help?" Classes="title" Margin="0,12,0,0" />
+            <TextBlock Text="{Binding HistoryNote}" Classes="secondary" FontSize="12" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding HistoryRows}" IsVisible="{Binding HasHistory}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:NeighbourHistoryRowViewModel">
+                  <StackPanel Spacing="2" Margin="0,4,0,4">
+                    <TextBlock Text="{Binding Sentence}" TextWrapping="Wrap" />
+                    <v:NeighbourHistoryChart Values="{Binding Days}" MarkIndex="{Binding MarkIndex}" Height="64"
+                                             ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Sentence}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding MarkText}" Classes="secondary" FontSize="12" TextWrapping="Wrap"
+                       IsVisible="{Binding MarkText, Converter={x:Static v:Converters.NotEmpty}}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+              <TextBox Text="{Binding ChangeNote}" PlaceholderText="What changed? (optional)" MaxLength="60"
+                       IsVisible="{Binding !MarkedToday}" AutomationProperties.Name="What changed" />
+              <Button Grid.Column="1" Content="{Binding MarkButtonText}" Command="{Binding ToggleMarkCommand}"
+                      ToolTip.Tip="Mark today as the day you changed your antenna or station. The lines above then compare before and after." />
+            </Grid>
             <TextBlock Text="You are at the centre, north is up. Bigger, darker dots are stronger reports. Hover over a dot for its call."
                        Classes="secondary" TextWrapping="Wrap" Margin="0,12,0,0" />
             <TextBlock Text="Scroll or use + and − to zoom, drag to move around, double-click to see the whole map."

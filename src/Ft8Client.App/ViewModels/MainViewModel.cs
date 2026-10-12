@@ -51,7 +51,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         LoadMapChoices(host.Settings.Current.Map);
         Operate.Map.ChoicesChanged += SaveMapChoices;
         Raw = new RawDecodesViewModel(c => Call(c));
-        Reach = new ReachViewModel(host.Spots, host.Countries, () => host.Session.LogIndex, () => host.Clock.UtcNow);
+        Reach = new ReachViewModel(host.Spots, host.Countries, () => host.Session.LogIndex, () => host.Clock.UtcNow) { History = host.NeighbourHistory };
         LogView = new LogViewModel(host.Qsos, host.Countries, () => (host.Settings.Current.Profile.Id, host.Settings.Current.Profile.Callsign),
             host.Qrz.SyncNowAsync, () => host.Qrz.LastSyncUtc, host.RebuildLogIndex);
         Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
