@@ -284,7 +284,7 @@ public sealed class AppHost : IAsyncDisposable
         MostWanted = new MostWantedService(Paths, () => Settings.Current.Profile.Callsign, Clock);
         _ = MostWanted.StartAsync();
 
-        Updates = new UpdateService(Settings, Path.Combine(Paths.Temp, "updates"));
+        Updates = new UpdateService(Settings, Path.Combine(Paths.Temp, "updates"), Paths.Logs);
         Updates.Start();
 
         Udp = new UdpInteropService(Session, Settings, offAir: Simulating);

@@ -23,8 +23,8 @@ appears at the top of the main window:
 
 ![The update bar](images/update-bar.png)
 
-- **Update** downloads the new installer, checks its SHA-256 checksum, closes Costas, upgrades it in the background with
-  no installer windows, and opens Costas again. If you installed for all users, Windows asks for administrator
+- **Update** downloads the new installer, checks its SHA-256 checksum, closes Costas, and upgrades it. A small
+  *Setup - Costas* window shows the progress; there is nothing to click. Costas opens again when it has finished. If you installed for all users, Windows asks for administrator
   permission first. It is refused while you are transmitting or in a contact: finish or halt first.
 - **Release notes** opens the release on GitHub.
 - **Skip this version** hides the bar until a newer build comes out.

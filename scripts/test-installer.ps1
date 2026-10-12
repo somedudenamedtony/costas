@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Costas contributors. GPLv3; see LICENSE.
 #
 # Exercises the built installer on Windows (CI): a fresh per-user install, an upgrade over an install that still has a
-# pre-rename build's files and shortcuts, the silent upgrade the app's Update button runs (which reopens the app), a start of the installed app, and an uninstall.
+# pre-rename build's files and shortcuts, the upgrade the app's Update button runs (which reopens the app), a start of the installed app, and an uninstall.
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $setup = Get-ChildItem (Join-Path $root 'artifacts') -Filter 'Costas-Setup-*.exe' | Select-Object -First 1
@@ -35,25 +35,40 @@ Assert-File (Join-Path $startMenu 'FT8 Client.lnk') $false
 $entry = Get-ItemProperty $uninstallKey
 if ($entry.DisplayName -ne 'Costas') { throw "Uninstall entry is '$($entry.DisplayName)'" }
 Write-Host "One Apps & features entry: $($entry.DisplayName) $($entry.DisplayVersion)"
-if (Get-Process -Name 'Costas' -ErrorAction SilentlyContinue) { throw 'A silent install without /RELAUNCH=1 started the app' }
+if (Get-Process -Name 'Costas' -ErrorAction SilentlyContinue) { throw 'A silent install started the app' }
 
-Write-Host 'Silent upgrade with /RELAUNCH=1 (the app''s Update button) reopens the app'
-# Not -Wait: it also waits for the installer's descendants, and the reopened app is one of them.
-$upgrade = Start-Process $setup.FullName -ArgumentList ($silent + '/NOCANCEL', '/RELAUNCH=1') -PassThru
-$null = $upgrade.Handle  # keeps ExitCode readable after exit
-if (-not $upgrade.WaitForExit(300000)) { throw 'The /RELAUNCH=1 upgrade did not finish within 5 minutes' }
-if ($upgrade.ExitCode -ne 0) { throw "The /RELAUNCH=1 upgrade failed (code $($upgrade.ExitCode))" }
-$deadline = (Get-Date).AddSeconds(30)
-$relaunched = $null
-while ((Get-Date) -lt $deadline -and -not $relaunched) {
-    $relaunched = Get-Process -Name 'Costas' -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $relaunched) { Start-Sleep -Seconds 1 }
+Write-Host 'Update button: upgrade while the app is running, then reopen it'
+# The same hidden cmd that UpdateService.InstallAndReopenCommand builds, started while Costas runs; the app closes
+# itself right after, as it does when the operator presses Update.
+$running = Start-Process (Join-Path $dir 'Costas.exe') -ArgumentList '--home', (Join-Path $env:RUNNER_TEMP 'costas-update-home') -PassThru
+Start-Sleep -Seconds 5
+$updateLog = Join-Path $env:RUNNER_TEMP 'costas-update.log'
+$app = Join-Path $dir 'Costas.exe'
+$script = "start `"`" /wait `"$($setup.FullName)`" /SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL `"/LOG=$updateLog`" & start `"`" `"$app`""
+$psi = [System.Diagnostics.ProcessStartInfo]::new((Join-Path $env:SystemRoot 'System32\cmd.exe'), "/d /s /c `"$script`"")
+$psi.UseShellExecute = $false
+$psi.CreateNoWindow = $true
+$psi.WorkingDirectory = $env:RUNNER_TEMP
+$waiter = [System.Diagnostics.Process]::Start($psi)
+Stop-Process -Id $running.Id
+if (-not $waiter.WaitForExit(300000)) { throw 'The update did not finish within 5 minutes' }
+if (-not (Select-String -Path $updateLog -Pattern 'Installation process succeeded' -Quiet)) {
+    Get-Content $updateLog -Tail 40 | Out-Host
+    throw 'The update did not install'
 }
-if (-not $relaunched) { throw 'The installer did not reopen the app after a /RELAUNCH=1 upgrade' }
-if ($relaunched.Path -ne (Join-Path $dir 'Costas.exe')) { throw "Reopened $($relaunched.Path), not the installed app" }
-Stop-Process -Id $relaunched.Id -Force
-$relaunched.WaitForExit(10000) | Out-Null
-Write-Host 'The installer reopened the installed app'
+$deadline = (Get-Date).AddSeconds(30)
+$reopened = $null
+while ((Get-Date) -lt $deadline -and -not $reopened) {
+    $reopened = Get-Process -Name 'Costas' -ErrorAction SilentlyContinue | Where-Object Id -ne $running.Id | Select-Object -First 1
+    if (-not $reopened) { Start-Sleep -Seconds 1 }
+}
+if (-not $reopened) { throw 'Costas did not reopen after the update' }
+if ($reopened.Path -ne $app) { throw "Reopened $($reopened.Path), not the installed app" }
+Start-Sleep -Seconds 5
+if ($reopened.HasExited) { throw "The reopened app exited by itself (code $($reopened.ExitCode))" }
+Stop-Process -Id $reopened.Id -Force
+$reopened.WaitForExit(10000) | Out-Null
+Write-Host 'The update installed and Costas reopened'
 
 Write-Host 'Start the installed app'
 $appHome = Join-Path $env:RUNNER_TEMP 'costas-home'
