@@ -143,7 +143,7 @@ From top to bottom:
   [Maps and who hears you](maps.md#heard-here).
 - **Band activity, last hour**: a bar per minute of decodes per slot (grey) and needed stations per slot (blue),
   with a sentence saying whether the band is busier or quieter than half an hour ago.
-- **Your signal on 20 m**: a small Reach map, how many stations hear you, the farthest and the best report.
+- **Your signal on 20 m**: how many stations hear you, the farthest and the best report.
   **Open reach view** goes to the full view.
 - **Worked tonight**: your latest contacts this session with their QRZ upload state. **Show all in the log** opens
   the Log view.

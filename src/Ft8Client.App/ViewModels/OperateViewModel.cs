@@ -95,14 +95,6 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>The heard-here map and band activity chart.</summary>
     public HeardMapViewModel Map { get; } = new();
 
-    /// <summary>My position, the centre of the mini map.</summary>
-    [ObservableProperty]
-    public partial LatLon? ReachCentre { get; set; }
-
-    /// <summary>Reach points for the mini plot.</summary>
-    [ObservableProperty]
-    public partial IReadOnlyList<ReachPoint> ReachPoints { get; set; } = [];
-
     /// <summary>The band summary (idle top slot).</summary>
     [ObservableProperty]
     public partial SummaryViewModel? Summary { get; set; }
@@ -578,8 +570,6 @@ public sealed partial class OperateViewModel : ObservableObject
         };
         if (Countries is null || Log is null) return;
         var points = ReachPoint.From(s.Reports, now, TimeSpan.FromMinutes(15), s.MyGrid, Countries, Log(), s.Band, ModeInfo.Name(s.Mode));
-        ReachPoints = points;
-        ReachCentre = Grid.ToLatLon(s.MyGrid);
         var countries = points.Select(p => p.EntityKey).Where(k => k is not null).Distinct().Count();
         SignalHeadline = points.Count == 0
             ? "No reports yet. Reports appear a few minutes after you transmit."

@@ -462,14 +462,16 @@
           <StackPanel Spacing="6">
             <TextBlock Text="{Binding SignalTitle}" Classes="title" />
             <TextBlock Text="{Binding SignalSource}" Classes="secondary" FontSize="12" Margin="0,-4,0,0" />
-            <Grid ColumnDefinitions="128,*">
-              <v:ReachPlot Width="124" Height="124" Points="{Binding ReachPoints}" Centre="{Binding ReachCentre}" Compact="True" />
-              <StackPanel Grid.Column="1" Spacing="4" Margin="8,0,0,0">
-                <TextBlock Text="{Binding SignalHeadline}" TextWrapping="Wrap" />
+            <!-- No map here: Heard here's "Who heard you" rings already show these stations on a map. -->
+            <TextBlock Text="{Binding SignalHeadline}" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel>
                 <TextBlock Text="Farthest" Classes="secondary" FontSize="12" />
-                <TextBlock Text="{Binding SignalFarthest}" />
+                <TextBlock Text="{Binding SignalFarthest}" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
                 <TextBlock Text="Best report" Classes="secondary" FontSize="12" />
-                <TextBlock Text="{Binding SignalBest}" />
+                <TextBlock Text="{Binding SignalBest}" TextTrimming="CharacterEllipsis" />
               </StackPanel>
             </Grid>
             <TextBlock Text="{Binding SignalNeighbours}" TextWrapping="Wrap" IsVisible="{Binding SignalNeighbours, Converter={x:Static v:Converters.NotEmpty}}"
