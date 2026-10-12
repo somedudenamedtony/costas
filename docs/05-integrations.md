@@ -152,6 +152,7 @@ Source: https://www.mqtt.pskreporter.info/ (confirmed). A best-effort community 
 - Subscribe to `pskr/filter/v2/+/+/<MYCALL>/#`.
 - Payload JSON: `sq` sequence, `f` frequency Hz, `md` mode, `rp` report dB, `t` epoch seconds, `sc`/`rc` sender and receiver calls, `sl`/`rl` locators, `sa`/`ra` ADIF DXCC codes, `b` band.
 - **VERIFY** how a callsign containing `/` appears in the topic.
+- Neighbour comparison (`04-domain-logic.md` section 13, optional, on by default): once a report of my signal gives my ADIF DXCC code (`sa`), also subscribe to `pskr/filter/v2/<band>/<mode>/+/+/+/+/<my DXCC>/#` for the band and mode I am on, and change it when they change. Reports from senders more than 300 miles away are dropped on arrival and nothing is stored on disk; the rest are kept in memory for 30 minutes. If more than 6,000 arrive in a minute the client stops following them for the session. **VERIFY** the rate on a busy band (V17).
 - Reconnect with back-off. Store each report in `spot` (dedupe on receiver, band, 5-minute bucket; keep the strongest). Prune after 24 hours.
 
 ### Fallback and history: query service

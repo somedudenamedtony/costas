@@ -46,6 +46,7 @@ public sealed class PskReporterService : IAsyncDisposable
     private UdpClient? _udp;
     private string _myCall = string.Empty;
     private volatile bool _queryWorking;
+    private bool _neighboursStopLogged;
 
     /// <summary>
     /// Creates the service. <paramref name="uploadsAllowed"/> is false in simulation: replayed recordings must never be
@@ -77,6 +78,7 @@ public sealed class PskReporterService : IAsyncDisposable
             LoadStored();
             _feed = new PskFeedClient(_countries);
             _feed.Report += OnReport;
+            _feed.NeighbourReport += _session.AddNeighbourReport;
             _feed.StatusChanged += st =>
             {
                 _session.SetReportsAvailable(st.Health == ServiceHealth.Ok || _queryWorking);
@@ -107,7 +109,25 @@ public sealed class PskReporterService : IAsyncDisposable
         }
     }
 
-    private void OnReport(ReceptionReport r) => Store(r, "mqtt");
+    private void OnReport(ReceptionReport r)
+    {
+        Store(r, "mqtt");
+        FollowNeighbours();
+    }
+
+    // Follows the stations near me on the current band and mode once my DXCC code is known (from my own reports).
+    private void FollowNeighbours()
+    {
+        if (_feed is null) return;
+        var on = _settings.Current.PskReporter.CompareNeighbours;
+        var snap = _session.Snapshot;
+        _feed.FollowNeighbours(on ? snap.Band : null, on ? ModeInfo.Name(snap.Mode) : null, on ? _feed.MyDxcc : null);
+        if (_feed.NeighboursStopped && !_neighboursStopLogged)
+        {
+            _neighboursStopLogged = true;
+            Log.Warning("PSK Reporter neighbour reports came too fast; stopped following them");
+        }
+    }
 
     private void Store(ReceptionReport r, string source)
     {
@@ -172,6 +192,8 @@ public sealed class PskReporterService : IAsyncDisposable
 
     private void OnSlotDecoded(DateTime slot, Mode mode, IReadOnlyList<Decode> decodes)
     {
+        // Band, mode and the setting can change at any time; catching up once a slot is soon enough.
+        FollowNeighbours();
         var s = _settings.Current;
         if (!_uploadsAllowed || !s.PskReporter.UploadSpots || _myCall.Length == 0) return;
         var dial = _session.Snapshot.DialHz;

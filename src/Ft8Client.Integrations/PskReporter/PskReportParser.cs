@@ -21,9 +21,10 @@ public static class PskReportParser
     /// <summary>
     /// Parses one MQTT payload: <c>sq</c> sequence, <c>f</c> frequency, <c>md</c> mode, <c>rp</c> report, <c>t</c> epoch
     /// seconds, <c>sc</c>/<c>rc</c> calls, <c>sl</c>/<c>rl</c> locators, <c>sa</c>/<c>ra</c> DXCC, <c>b</c> band.
+    /// The report is the receiver's view of the sender; the sender's locator and ADIF DXCC code come back alongside.
     /// Returns null for anything unusable.
     /// </summary>
-    public static (long Sequence, string SenderCall, ReceptionReport Report)? ParseMqtt(ReadOnlySpan<byte> json, CountryFile? countries)
+    public static (long Sequence, string SenderCall, ReceptionReport Report, string? SenderGrid, int? SenderDxcc)? ParseMqtt(ReadOnlySpan<byte> json, CountryFile? countries)
     {
         try
         {
@@ -39,7 +40,8 @@ public static class PskReportParser
             var time = DateTimeOffset.FromUnixTimeSeconds(t.GetInt64()).UtcDateTime;
             var report = new ReceptionReport(rc.ToUpperInvariant(), Str(r, "rl"), countries?.Lookup(rc)?.Entity.Key, null, band.ToLowerInvariant(),
                 Str(r, "md") ?? "FT8", rp.GetInt32(), time, freq);
-            return (seq, sc.ToUpperInvariant(), report);
+            var sa = r.TryGetProperty("sa", out var sav) && sav.ValueKind == JsonValueKind.Number && sav.TryGetInt32(out var sai) ? sai : (int?)null;
+            return (seq, sc.ToUpperInvariant(), report, Str(r, "sl"), sa);
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException or ArgumentOutOfRangeException)
         {

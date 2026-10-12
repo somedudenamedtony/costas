@@ -447,6 +447,8 @@
                 <TextBlock Text="{Binding SignalBest}" />
               </StackPanel>
             </Grid>
+            <TextBlock Text="{Binding SignalNeighbours}" TextWrapping="Wrap" IsVisible="{Binding SignalNeighbours, Converter={x:Static v:Converters.NotEmpty}}"
+                       ToolTip.Tip="From PSK Reporter receivers that heard both you and stations within 300 miles in the last 30 minutes. Details in the Reach view." />
             <ItemsControl ItemsSource="{Binding ReportRows}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:ReportRowViewModel">

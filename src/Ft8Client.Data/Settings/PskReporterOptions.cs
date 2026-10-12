@@ -14,6 +14,9 @@ public sealed class PskReporterOptions
     /// <summary>Receive the live feed of who hears me.</summary>
     public bool FeedEnabled { get; set; } = true;
 
+    /// <summary>Also follow reports of stations near me, to compare my signal with theirs. Needs the feed.</summary>
+    public bool CompareNeighbours { get; set; } = true;
+
     /// <summary>Upload my reception spots. Off until the operator turns it on.</summary>
     public bool UploadSpots { get; set; }
 
