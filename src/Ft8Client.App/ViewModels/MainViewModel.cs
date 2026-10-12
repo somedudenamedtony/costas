@@ -114,7 +114,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public AppHost Host => _host;
 
     /// <summary>Bands for the current mode.</summary>
-    public ObservableCollection<string> Bands { get; } = [];
+    public ObservableCollection<BandChoiceViewModel> Bands { get; } = [];
 
     /// <summary>Modes.</summary>
     public IReadOnlyList<string> Modes { get; }
@@ -228,6 +228,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Reach.ApplyNeighbours(s.Neighbours, s.Band, _host.Settings.Current.PskReporter is { FeedEnabled: true, CompareNeighbours: true });
         BarShowsCqAndSlot = ShowCqAndSlotInBar(Tab);
         FillLookups(s);
+        ApplyBandOpenings(s);
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
         Raw.Apply(s.RawDecodes);
         Frequency = FormatFrequency(s.DialHz);
@@ -476,13 +477,24 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         foreach (var b in _host.Frequencies.Bands(mode)) Reach.Bands.Add(b);
     }
 
+    // The band menu's activity rows, from PSK Reporter reports of stations near me.
+    private void ApplyBandOpenings(SessionSnapshot s)
+    {
+        var on = _host.Settings.Current.PskReporter is { FeedEnabled: true, BandActivity: true };
+        var live = on && s.BandOpenings.Count > 0;
+        var max = live ? s.BandOpenings.Values.Max(o => o.Spots) : 0;
+        var units = SettingsMapper.Units(_host.Settings.Current);
+        foreach (var b in Bands) b.Apply(s.BandOpenings.GetValueOrDefault(b.Band), max, live, units);
+    }
+
     private void RefreshBands(Mode mode)
     {
         var keep = _updatingBand;
         _updatingBand = true;
         Bands.Clear();
-        foreach (var b in _host.Frequencies.Bands(mode)) Bands.Add(BandPlan.Display(b));
+        foreach (var b in _host.Frequencies.Bands(mode)) Bands.Add(new BandChoiceViewModel(b));
         _updatingBand = keep;
+        ApplyBandOpenings(_host.Session.Snapshot);
     }
 
     private (IReadOnlyList<TonightRowViewModel> Rows, int Total) TonightRows(SessionSnapshot s)

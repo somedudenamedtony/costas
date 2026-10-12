@@ -50,7 +50,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private readonly Dictionary<string, ServiceStatus> _services = new(StringComparer.Ordinal);
     private readonly Dictionary<string, CallsignCacheEntry> _lookups = new(StringComparer.Ordinal);
     private readonly List<TonightContact> _tonight = [];
-    private const int MaxNeighbourReports = 20000;
+    private const int MaxNeighbourReports = 50000;
+    private IReadOnlyDictionary<string, BandOpening> _openings = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
+    private DateTime _openingsUtc;
+    private bool _openingsDirty;
     private StationTracker _tracker;
     private PileupTracker _pileups;
     private readonly List<NeighbourReport> _neighbours = [];
@@ -621,6 +624,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     {
         lock (_gate)
         {
+            var oldMode = _config.Mode;
             _config = _config with { Band = band, Mode = mode };
             _dialHz = _frequencies.Find(band, mode)?.DialHz ?? _dialHz;
             _tracker = new StationTracker(_config.MyCall, _config.MyGrid, _countries, mode);
@@ -629,7 +633,12 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _engine.Abandon(_clock.UtcNow);
             _engine.StopCq(_clock.UtcNow);
             _hearsMe = new HearsMe(band, _hearsMe.Available);
-            _neighbours.Clear();
+            // Reports of nearby stations cover every band (for the band menu); only a mode change makes them irrelevant.
+            if (mode != oldMode)
+            {
+                _neighbours.Clear();
+                _openingsUtc = default;
+            }
             _recentOffsets.Clear();
             _slotCounts.Clear();
             _activity.Clear();
@@ -706,20 +715,33 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     }
 
     /// <summary>
-    /// Adds a report of another station, kept only when it is near me on this band and mode. Shown at the next publish
-    /// (they can arrive several a second, so they do not publish on their own).
+    /// Adds a report of another station, kept only when it is near me in this mode (on any band: the band menu shows
+    /// them all). Shown at the next publish (they can arrive several a second, so they do not publish on their own).
     /// </summary>
     public void AddNeighbourReport(NeighbourReport r)
     {
         lock (_gate)
         {
-            if (r.Band != _config.Band || r.Mode != ModeInfo.Name(_config.Mode) || Callsign.EqualsCall(r.SenderCall, _config.MyCall)) return;
+            if (r.Mode != ModeInfo.Name(_config.Mode) || Callsign.EqualsCall(r.SenderCall, _config.MyCall)) return;
             if (Grid.ToLatLon(_config.MyGrid) is not { } me || !NeighbourComparison.IsNeighbour(me, r.SenderGrid)) return;
             _neighbours.Add(r);
+            _openingsDirty = true;
             var since = _clock.UtcNow - NeighbourComparison.Window;
             if (_neighbours.Count > MaxNeighbourReports || _neighbours[0].TimeUtc < since) _neighbours.RemoveAll(x => x.TimeUtc < since);
             if (_neighbours.Count > MaxNeighbourReports) _neighbours.RemoveRange(0, _neighbours.Count - MaxNeighbourReports);
         }
+    }
+
+    // The band menu's activity. It looks up the country of every receiver, so while reports stream in it is rebuilt at
+    // most once a slot (sooner when it is empty). Under _gate.
+    private IReadOnlyDictionary<string, BandOpening> Openings(DateTime now)
+    {
+        var stale = now - _openingsUtc >= ModeInfo.SlotLength(_config.Mode);
+        if (!stale && !(_openingsDirty && _openings.Count == 0)) return _openings;
+        _openingsUtc = now;
+        _openingsDirty = false;
+        _openings = BandOpenings.Build(_neighbours, _config.MyCall, _config.MyGrid, ModeInfo.Name(_config.Mode), _countries, _logIndex, now);
+        return _openings;
     }
 
     /// <summary>Adds QRZ lookup results (fresh or from the cache) and publishes once.</summary>
@@ -793,6 +815,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 Reports = _hearsMe.Reports.OrderByDescending(r => r.TimeUtc).ToList(),
                 Neighbours = NeighbourComparison.Compare(_hearsMe.Reports, _neighbours, _config.MyCall, _config.MyGrid, _config.Band,
                     ModeInfo.Name(_config.Mode), _countries, now),
+                BandOpenings = Openings(now),
                 Services = new Dictionary<string, ServiceStatus>(_services),
                 Contact = _engine.View,
                 Transmitting = _tx.Transmitting,

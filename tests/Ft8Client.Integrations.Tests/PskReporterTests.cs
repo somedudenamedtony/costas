@@ -168,6 +168,41 @@ public class PskReporterTests
     }
 
     [Fact]
+    public async Task Feed_FollowNeighboursOnAllBands_RaisesReportsFromOtherBands()
+    {
+        var port = FreePort();
+        var server = new MqttServerFactory().CreateMqttServer(BrokerOptions(port));
+        await server.StartAsync();
+        var neighbours = new List<NeighbourReport>();
+        await using var feed = new PskFeedClient(Countries, "127.0.0.1", port, tls: false);
+        feed.NeighbourReport += r =>
+        {
+            lock (neighbours) neighbours.Add(r);
+        };
+        feed.Start("W7LIT");
+        await WaitFor(() => feed.Connected);
+
+        feed.FollowNeighbours("20m", "FT8", 291, allBands: true);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+        var line = """{"sq":2,"f":21075500,"md":"FT8","rp":-15,"t":1767495300,"sc":"K7AAA","sl":"DN41","rc":"PY2ABC","rl":"GG66","sa":291,"ra":108,"b":"15m"}""";
+        var msg = new MqttApplicationMessageBuilder().WithTopic("pskr/filter/v2/15m/FT8/K7AAA/PY2ABC/DN41/GG66/291/108").WithPayload(line).Build();
+        await server.InjectApplicationMessage(new InjectedMqttApplicationMessage(msg) { SenderClientId = "test" }, TestContext.Current.CancellationToken);
+        await WaitFor(() =>
+        {
+            lock (neighbours) return neighbours.Count > 0;
+        });
+        lock (neighbours) neighbours.Should().ContainSingle().Which.Band.Should().Be("15m");
+        feed.AllBandsStopped.Should().BeFalse();
+        await server.StopAsync(new MqttServerStopOptions());
+    }
+
+    [Fact]
+    public void NeighbourTopicFor_AllBands_UsesWildcard()
+    {
+        PskFeedClient.NeighbourTopicFor("+", "FT8", 291).Should().Be("pskr/filter/v2/+/FT8/+/+/+/+/291/#");
+    }
+
+    [Fact]
     public void NeighbourTopicFor_BandModeDxcc_FiltersOnSenderEntity()
     {
         PskFeedClient.NeighbourTopicFor("20M", "ft8", 291).Should().Be("pskr/filter/v2/20m/FT8/+/+/+/+/291/#");

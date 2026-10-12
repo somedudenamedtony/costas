@@ -18,6 +18,14 @@ should not need Settings while operating.
 
 ![The menu](images/menu.png)
 
+### Which bands are open
+
+Open the **Band** menu to see, before you switch, which bands are open from your area right now. For each band it shows how many PSK Reporter spots stations within 300 miles of you got in the last 15 minutes, which continents heard them (darker means more), and countries hearing them that you still need on that band, for example *You need Brazil +2*. Hover over it for the full list.
+
+![The band menu with band activity](images/band-menu.png){ width="600" }
+
+It needs **Receive live reports of stations hearing my signal** and **Show band activity near me in the band menu** in [Settings](settings.md). The rows fill in once PSK Reporter has reported your own signal, which tells Costas your country. Until then the menu shows band names only.
+
 Two banners can appear under the top bar:
 
 - **ON AIR** (red) while Costas is transmitting, with the message being sent and a **Halt (Esc)** button.

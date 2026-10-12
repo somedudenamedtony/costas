@@ -147,6 +147,21 @@ public static class Converters
     /// <summary>Progress bar colour.</summary>
     public static readonly IValueConverter ProgressBrush = new FuncValueConverter<bool, IBrush?>(b => Brush(b ? "CriticalBrush" : "AccentBrush"));
 
+    /// <summary>Band menu continent chip shade (0 to 3) to its fill: none, then the accent colour at rising strength.</summary>
+    public static readonly IValueConverter ShadeBackground = new FuncValueConverter<int, IBrush?>(l =>
+        l <= 0 || Brush("AccentBrush") is not ISolidColorBrush a ? Brushes.Transparent : new SolidColorBrush(a.Color, l switch { 1 => 0.3, 2 => 0.65, _ => 1.0 }));
+
+    /// <summary>Band menu continent chip shade to its outline: the control border when there are no spots.</summary>
+    public static readonly IValueConverter ShadeBorder = new FuncValueConverter<int, IBrush?>(l => l <= 0 ? Brush("ControlBorderBrush") : Brushes.Transparent);
+
+    /// <summary>Band menu continent chip shade to its text.</summary>
+    public static readonly IValueConverter ShadeForeground = new FuncValueConverter<int, IBrush?>(l => l switch
+    {
+        <= 0 => Brush("TextSecondaryBrush"),
+        1 => Brush("TextPrimaryBrush"),
+        _ => Brushes.White,
+    });
+
     private static IBrush? Brush(string key)
     {
         var app = Application.Current;

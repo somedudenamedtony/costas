@@ -47,6 +47,7 @@ public sealed class PskReporterService : IAsyncDisposable
     private string _myCall = string.Empty;
     private volatile bool _queryWorking;
     private bool _neighboursStopLogged;
+    private bool _allBandsStopLogged;
 
     /// <summary>
     /// Creates the service. <paramref name="uploadsAllowed"/> is false in simulation: replayed recordings must never be
@@ -115,13 +116,20 @@ public sealed class PskReporterService : IAsyncDisposable
         FollowNeighbours();
     }
 
-    // Follows the stations near me on the current band and mode once my DXCC code is known (from my own reports).
+    // Follows the stations near me once my DXCC code is known (from my own reports): on the current band for the
+    // neighbour comparison, on every band for the band menu.
     private void FollowNeighbours()
     {
         if (_feed is null) return;
-        var on = _settings.Current.PskReporter.CompareNeighbours;
+        var o = _settings.Current.PskReporter;
+        var on = o.CompareNeighbours || o.BandActivity;
         var snap = _session.Snapshot;
-        _feed.FollowNeighbours(on ? snap.Band : null, on ? ModeInfo.Name(snap.Mode) : null, on ? _feed.MyDxcc : null);
+        _feed.FollowNeighbours(on ? snap.Band : null, on ? ModeInfo.Name(snap.Mode) : null, on ? _feed.MyDxcc : null, o.BandActivity);
+        if (_feed.AllBandsStopped && !_allBandsStopLogged)
+        {
+            _allBandsStopLogged = true;
+            Log.Warning("PSK Reporter reports on every band came too fast; following the current band only");
+        }
         if (_feed.NeighboursStopped && !_neighboursStopLogged)
         {
             _neighboursStopLogged = true;
