@@ -37,7 +37,7 @@ One window, minimum 1100 × 720, default 1440 × 900, remembers size and positio
 | Frequency | Dial frequency read from the radio, `14.074.000` format, MHz label. Read-only in v1 |
 | View tabs | Operate, Raw decodes, Reach, Log. Ctrl+1 to Ctrl+4 |
 | Clock | UTC `HH:MM:SS`. Turns caution colour with a tooltip when the clock offset exceeds 0.5 s; critical above 2 s |
-| Menu button | Settings, Station profile, Diagnostics, About |
+| Menu button | Mini mode (Ctrl+M), Settings, Station profile, Diagnostics, Keyboard shortcuts, About |
 
 ### Bottom bar
 
@@ -180,6 +180,21 @@ Below the map, **Band activity, last hour**: one bar per minute with the average
 
 **How the line is ordered**: one sentence and a "Change" link that opens the ranking settings flyout: tier order (drag to reorder), and checkboxes Prefer stations that hear me (on), Only stations calling CQ (on), Hide stations worked on this band (on), Skip long shots (off).
 
+## Mini mode
+
+A small strip, 480 px wide, that stays on top of other windows so the operator can use another program while Costas keeps watch. Opened from the menu or Ctrl+M; the main window hides while it is open. The expand button (⤢) or closing the strip brings the main window back. The strip remembers its position.
+
+It mirrors the Operate view and holds no state of its own. Nothing transmits without a click.
+
+| Row | Behaviour |
+| --- | --- |
+| Top | Band and mode ("20 m FT8"), the slot ("Receiving · 9 s", critical colour while transmitting), the count ("6 in line", or "2 calling you" in caution colour when anyone is calling you), and the expand button |
+| Idle | The station at the top of Next in line: call, where and dB, and why it is worth calling in the need colour, with a **Call** button. "Nobody to call yet." when the line is empty, with no Call button |
+| In a contact | The call, a small progress track with one dot per step (same colours as the conversation strip), and the message on the air or being waited for. No Call button |
+| Halt | Always there, at the right of the second row. Critical colour while transmitting. Esc in the strip does what it does in the main window |
+
+The strip is outlined in the on-air colour while transmitting, like the main window.
+
 ## Raw decodes view
 
 The classic list for operators who want it. Columns: UTC, local time, dB, DT, Hz, message, country. Newest slot at the top (owner request, replacing newest at the bottom), blank line between slots, keeps scroll position when scrolled down away from the newest lines, with a "Jump to live" button. Messages to me in critical colour, CQ in accent. Double-click calls the sender. A filter box matches callsign or text.
@@ -237,6 +252,7 @@ Audio dropouts, decode time per slot, median DT of decodes, clock offset, CAT ro
 | Ctrl+R | Resend |
 | Ctrl+L | Log now |
 | Ctrl+1 to Ctrl+4 | Switch view |
+| Ctrl+M | Mini mode |
 | F1 | Keyboard shortcuts |
 
 ## States every data-bound element must handle

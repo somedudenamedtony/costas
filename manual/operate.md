@@ -14,7 +14,7 @@ should not need Settings while operating.
 | Frequency | The dial frequency read from the radio, in MHz |
 | **Operate**, **Raw decodes**, **Reach**, **Log** | The four views. ++ctrl+1++ to ++ctrl+4++ |
 | Clock | UTC. Turns amber with a tooltip when your clock is off by more than 0.5 s, red above 2 s |
-| **☰** | Settings, Station setup, Diagnostics, Keyboard shortcuts, About |
+| **☰** | Mini mode, Settings, Station setup, Diagnostics, Keyboard shortcuts, About |
 
 ![The menu](images/menu.png)
 
@@ -158,3 +158,19 @@ From top to bottom:
 ![Transmit offset flyout](images/tx-offset.png)
 
 Costas has no waterfall. With the offset on Automatic it picks a clear spot in the passband for you each time.
+
+## Mini mode
+
+Want to browse, log or check email while you keep an eye on the band? Choose **Mini mode** from the **☰** menu, or press ++ctrl+m++. Costas shrinks to a small strip that stays on top of your other windows.
+
+![Mini mode, watching the band](images/mini-idle.png){ width="480" }
+
+The top row shows the band, the slot countdown and how many stations are in line. When someone calls you it says so in amber instead, for example *1 calling you*. The second row shows the station at the top of Next in line and why it's worth calling. **Call** calls it, exactly as calling it from the full window would.
+
+During a contact the strip shows who you're working, a dot for each step of the contact, and the message on the air or the one you're waiting for. The strip is outlined in red while you transmit.
+
+![Mini mode, in a contact](images/mini-contact.png){ width="480" }
+
+**Halt** is always there, and ++esc++ works in the strip too. Nothing is sent without a click.
+
+To get the full window back, click **⤢** or close the strip. Costas remembers where you put it.

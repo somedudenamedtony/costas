@@ -55,6 +55,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             host.Qrz.SyncNowAsync, () => host.Qrz.LastSyncUtc, host.RebuildLogIndex);
         Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
             () => Shutdown());
+        Mini = new MiniViewModel(Operate, this, () => HaltCommand.Execute(null));
         Modes = ["FT8", "FT4"];
         ApplySettings();
         _host.Settings.Changed += _ => Dispatch(ApplySettings);
@@ -217,7 +218,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>Window title.</summary>
     public string Title => Simulating ? $"{AppInfo.ProductName} · simulation" : AppInfo.ProductName;
 
-    /// <summary>Raised when a dialog should open: "settings", "setup", "diagnostics", "about", "shortcuts", "ranking".</summary>
+    /// <summary>Mini mode: the small always-on-top strip.</summary>
+    public MiniViewModel Mini { get; }
+
+    /// <summary>Raised when a dialog should open: "settings", "setup", "diagnostics", "about", "shortcuts", "ranking", or "mini" for mini mode.</summary>
     public event Action<string>? OpenDialog;
 
     /// <summary>Applies a snapshot. UI thread.</summary>
@@ -254,6 +258,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             : offset is { } o2 && Math.Abs(o2) > ClockEstimate.WarnSeconds ? TextKind.Caution : TextKind.Normal;
         ClockTip = offset is { } o3 ? $"Clock offset {o3:+0.00;-0.00} s." : "Clock offset not measured yet.";
         if (Tab == 2) Reach.Refresh();
+        Mini.Refresh(SelectedBand, SelectedMode);
     }
 
     /// <summary>Called every 200 ms: clock and slot progress.</summary>
@@ -270,6 +275,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         SlotRemaining = $"{left} s to next slot";
         SlotLabel = Transmitting ? "Transmitting" : "Receiving";
         Operate.Tick();
+        Mini.Refresh(SelectedBand, SelectedMode);
     }
 
     partial void OnSelectedBandChanged(string? value)
