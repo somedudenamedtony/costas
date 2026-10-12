@@ -86,7 +86,7 @@ Idle (no contact): caption "Not in a contact" (or "Calling CQ" with the subline 
 
 | Element | Content |
 | --- | --- |
-| Caption | "Contact in progress", or "Calling", "Logged", "No reply", "Answered someone else" |
+| Caption | "Contact in progress", or "Calling", "Logged", "No reply", "In another contact" (the subline then gives the reason: "N8WCR answered K1ABC instead. Stopped calling." or "N8WCR is in a contact with K1ABC. Not calling.") |
 | Callsign | 40 px, with the need tag beside it |
 | Subline | Name from QRZ lookup (blank until it arrives) · country or state · distance |
 | On-air panel | A bordered panel on the right of the card that holds everything about the next transmission, described below |
@@ -111,7 +111,7 @@ Each box has three lines: who ("You" or the DX call, semibold) with the UTC time
 | Done | Thin border, no fill | When sent or received | "Sent" or "Received" |
 | Now, transmitting | Critical fill, white text | When the transmission started | "Sending · 7 s left" |
 | Now, waiting | Accent tint, 2 px accent border | The slot the reply is due in | "Waiting for reply" |
-| Now, mine, not yet on the air | Accent tint, 2 px accent border | Blank | "Sending next slot" |
+| Now, mine, not yet on the air | Accent tint, 2 px accent border | Blank, or the slot time when it is not the next slot | "Sending next slot", or "Sending at HH:MM:SS" when my next slot is later (clicked too late in my own slot) |
 | Upcoming | Dashed border, secondary text | Blank, or the slot it is due in when it is the next reply | "Next", "Expected", or "Then logged" for my last step |
 | Repeated | As above with "×2" after the verb | Latest time | When a step was sent or received more than once |
 

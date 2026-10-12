@@ -171,10 +171,24 @@ public class ContactEngineTests
 
         s.E.InContact.Should().BeFalse();
         s.E.View!.Outcome.Should().Be(ContactOutcome.AnsweredOther);
-        s.E.View.Caption.Should().Be("Answered someone else");
+        s.E.View.Caption.Should().Be("In another contact");
         s.E.View.StatusText.Should().Be("ZL2RPA answered K1ABC instead. Stopped calling.");
         s.Steps(6);
         s.Sent.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void CallStation_DxBusyWithAnother_EndsAtOnceAndSendsNothing()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0, busyWith: "K1ABC");
+
+        s.E.InContact.Should().BeFalse();
+        s.E.View!.Outcome.Should().Be(ContactOutcome.AnsweredOther);
+        s.E.View.Caption.Should().Be("In another contact");
+        s.E.View.StatusText.Should().Be("ZL2RPA is in a contact with K1ABC. Not calling.");
+        s.Steps(4);
+        s.Sent.Should().BeEmpty();
     }
 
     [Fact]

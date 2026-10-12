@@ -488,7 +488,10 @@ public sealed class Session
             {
                 var s = _tracker.Find(call);
                 if (s is null) return false;
-                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now);
+                // A station heard working someone else (reports or grids exchanged, not signing off) will not hear me:
+                // the contact ends at once and says so rather than calling into its contact.
+                var busyWith = s is { State: StationState.InContact, Partner: { } p } && !Callsign.EqualsCall(p, _config.MyCall) ? p : null;
+                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, busyWith);
             }
             _fault = null;
         }
