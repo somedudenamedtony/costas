@@ -41,6 +41,17 @@ shows. **HALT TX** is always at the bottom of the screen.
 Under the top bar the page also shows the radio's SWR or ALC warning after a transmission that read outside limits,
 and a line when QRZ, PSK Reporter or the audio device is not working.
 
+### On a tablet
+
+On an iPad or other tablet (any screen 760 pixels wide or more) the same address opens a fuller layout, close to the
+desk's Operate view. There are two tabs, **Operate** and **Decodes**. Next in line, Repeats and Watching are tables
+with the desk's columns (Call, Where, Doing now, Signal, Chance, Last heard, Last worked). The contact card shows all
+five messages under the strip. In landscape the band summary, your signal and tonight's contacts sit in a column on
+the right; in portrait they follow below. Buttons are sized for fingers, station details open in a panel on the
+right, and **HALT TX** sits in the bottom right corner. Turning the tablet switches layouts straight away.
+
+![The tablet layout in landscape](images/phone-tablet.png)
+
 ### Station details
 
 Tap a call anywhere (a row in a list, a line in Decodes, a report) to open what the desk's details flyout shows:
