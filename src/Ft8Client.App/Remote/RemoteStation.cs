@@ -19,5 +19,6 @@ namespace Ft8Client.App.Remote;
 /// <param name="Chance">Chance of a contact.</param>
 /// <param name="LastHeard">"45 seconds ago".</param>
 /// <param name="LastWorked">"Today · 20 m", or "Never".</param>
+/// <param name="ChanceReason">What the chance is based on, "hears you at -07", as beside Chance on the desk.</param>
 public sealed record RemoteStation(string Call, string Where, string Need, string Doing, string Db, string Button,
-                                   string HearsYou = "", string Chance = "", string LastHeard = "", string LastWorked = "");
+                                   string HearsYou = "", string Chance = "", string LastHeard = "", string LastWorked = "", string ChanceReason = "");

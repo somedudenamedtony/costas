@@ -105,10 +105,11 @@ public static class RemoteStateBuilder
     }
 
     private static RemoteStation Row(StationRowViewModel x) =>
-        new(x.Call, x.Where, x.Why, x.DoingNow, x.Db, x.CallText, x.HearsYou, x.Chance, x.LastHeard, x.LastWorked);
+        new(x.Call, x.Where, x.Why, x.DoingNow, x.Db, x.CallText, x.HearsYou, x.Chance, x.LastHeard, x.LastWorked, x.ChanceReason);
 
     private static RemoteStation Repeat(RepeatRowViewModel x) =>
-        new(x.Call, x.Where, x.Why, x.DoingNow, x.Db, x.CanCall ? x.CallText : string.Empty, x.HearsYou, x.Chance, x.LastHeard, x.LastWorked);
+        new(x.Call, x.Where, x.Why, x.DoingNow, x.Db, x.CanCall ? x.CallText : string.Empty, x.HearsYou, x.Chance, x.LastHeard, x.LastWorked,
+            x.ChanceReason);
 
     private static RemoteDecode Decode(RawDecodeLine l)
     {

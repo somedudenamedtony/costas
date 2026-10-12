@@ -88,6 +88,52 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 .seg{display:flex;gap:6px}.seg button{flex:1}
 .offset{display:flex;gap:6px}.offset input{flex:1;min-width:0;font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--tx)}
 .warnline{font-size:13px}
+.board{display:flex;flex-direction:column;gap:12px}
+.board .col{display:contents}
+[data-pane=operate]{order:1}[data-pane=heard]{order:2}[data-pane=stations]{order:3}[data-pane=decodes]{order:4}[data-pane=signal]{order:5}[data-pane=log]{order:6}
+
+/* Tablet: the desk's Operate layout, sized for fingers. Portrait gets one wide column with table rows; landscape adds
+   the desk's right-hand column. */
+@media (min-width:760px){
+  html,body{font-size:16px}
+  .top{padding:14px 24px 12px}
+  .tabs{padding:10px 24px 0}.tabs button{flex:0 0 auto;padding:10px 22px;font-size:15px}
+  .tabs button[data-phone]{display:none}
+  main{padding:14px 24px 130px}
+  button{min-height:44px;padding:10px 16px}
+  .thead,.trow{display:grid;grid-template-columns:minmax(104px,1.1fr) 1.7fr 1.3fr 58px 1.6fr 1fr 1fr 104px;gap:0 10px;align-items:center}
+  .thead{font-size:12px;color:var(--mut);padding:6px 0;border-bottom:1px solid var(--line)}
+  .trow{padding:8px 0;border-top:1px solid var(--line);min-height:56px;font-size:14px}
+  .trow:nth-of-type(2){border-top:0}
+  .trow .cl{cursor:pointer;min-width:0}.trow .cl b{font-size:17px;display:block}
+  .trow .cell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .trow .cell.wrap{white-space:normal}
+  .trow button{width:100%}
+  .trow.wide2{grid-template-columns:minmax(120px,1.2fr) 2fr 3fr 112px}
+  .thead.wide2{grid-template-columns:minmax(120px,1.2fr) 2fr 3fr 112px}
+  .msgs.five{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .msgs.five .msg{margin:0}
+  .msgs.five .msg .m{font-size:13px;overflow-wrap:anywhere}
+  .card{padding:14px 16px}
+  .call{font-size:34px}
+  .btns{grid-template-columns:repeat(auto-fit,minmax(130px,180px));justify-content:end}
+  .shade{align-items:stretch;justify-content:flex-end}
+  .sheet{width:440px;max-height:none;height:100%;border-radius:16px 0 0 16px}
+  .dec{font-size:14px;grid-template-columns:4.2em 3em 3.6em 1fr 12em;padding:6px 0}
+  .dec .cty{grid-column:5;font-size:13px;align-self:center}
+  .haltbar{padding:10px 24px calc(14px + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;pointer-events:none}
+  .halt{width:420px;padding:12px;font-size:18px;pointer-events:auto;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+  .note{left:auto;right:24px;width:420px}
+}
+@media (min-width:760px) and (max-width:1079px){
+  .thead:not(.wide2) > :nth-child(7),.trow:not(.wide2) > :nth-child(7){display:none}
+  .thead:not(.wide2),.trow:not(.wide2){grid-template-columns:minmax(104px,1.1fr) 1.7fr 1.3fr 58px 1.6fr 1fr 104px}
+}
+@media (min-width:1080px){
+  .board{display:grid;grid-template-columns:minmax(0,1fr) 340px;align-items:start}
+  .board .col{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .side .stats{grid-template-columns:repeat(2,1fr);row-gap:10px}
+}
 </style>
 </head>
 <body>
@@ -109,25 +155,28 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
   </div>
   <div id="onair" class="onair hidden"></div>
   <nav id="tabs" class="tabs">
-    <button data-tab="operate">Operate</button><button data-tab="stations">Stations</button><button data-tab="decodes">Decodes</button><button data-tab="signal">Signal</button><button data-tab="log">Log</button>
+    <button data-tab="operate">Operate</button><button data-tab="stations" data-phone>Stations</button><button data-tab="decodes">Decodes</button><button data-tab="signal" data-phone>Signal</button><button data-tab="log" data-phone>Log</button>
   </nav>
   <main>
     <div id="fault" class="banner hidden"></div>
     <div id="meter" class="banner warnline hidden"></div>
     <div id="services" class="mini hidden"></div>
+    <div id="board" class="board"><div class="col">
     <div data-pane="operate">
       <div class="card"><div id="contactBody"></div><div id="contactBtns" class="btns"></div></div>
       <div id="callers" class="card list hidden" style="margin-top:12px"></div>
       <div id="line" class="card list" style="margin-top:12px"></div>
     </div>
     <div data-pane="stations">
-      <div id="summary" class="card"></div>
-      <div id="repeats" class="card list" style="margin-top:12px"></div>
+      <div id="repeats" class="card list"></div>
       <div id="watching" class="card list" style="margin-top:12px"></div>
     </div>
     <div data-pane="decodes"><div id="decodes" class="card"></div></div>
+    </div><div class="col side">
+    <div data-pane="heard"><div id="summary" class="card"></div></div>
     <div data-pane="signal"><div id="signal" class="card list"></div></div>
     <div data-pane="log"><div id="tonight" class="card list"></div></div>
+    </div></div>
   </main>
   <div id="detailsShade" class="shade hidden"><div id="details" class="sheet"></div></div>
   <div id="tuneShade" class="shade hidden"><div id="tune" class="sheet"></div></div>
@@ -298,7 +347,7 @@ function renderContact(s) {
   if (changed("contactBtns", btns)) {
     $("contactBtns").replaceChildren(...btns.map(([text, cls, type, off]) => button(text, cls, () => cmd(type), off)));
   }
-  if (!changed("contactBody", { c, cq: s.callingCq })) return;
+  if (!changed("contactBody", { c, cq: s.callingCq, wide })) return;
   const box = $("contactBody"); box.replaceChildren();
   if (idle) {
     box.append(el("div", "lbl", s.callingCq ? "Calling CQ" : "Not in a contact"));
@@ -328,7 +377,9 @@ function renderContact(s) {
   let cur = c.steps.findIndex(x => x.look === "sending" || x.look === "waiting");
   if (cur < 0) cur = c.steps.findIndex(x => x.look === "upcoming");
   if (cur < 0 || !c.active) cur = Math.max(0, c.steps.map(x => x.look).lastIndexOf("done"));
-  const shown = c.active ? c.steps.slice(Math.max(0, cur - 1), cur + 2) : c.steps.slice(cur, cur + 1);
+  // A tablet has room for every message under the strip, as on the desk.
+  const shown = wide ? c.steps : c.active ? c.steps.slice(Math.max(0, cur - 1), cur + 2) : c.steps.slice(cur, cur + 1);
+  if (wide) msgs.classList.add("five");
   shown.forEach(st => {
     const m = el("div", "msg " + (st.mine ? "mine " : "theirs ") + st.look + (st.canJump ? " jump" : ""));
     const who = el("div", "s", st.who + (st.time ? " · " + st.time : ""));
@@ -360,28 +411,57 @@ function renderCallers(s) {
 }
 
 // A list whose rows are rebuilt only when they change; the "last heard" ages tick in place, so a tap is never lost.
-function list(box, key, title, sub, rows, empty, build) {
+function list(box, key, title, sub, rows, empty, build, columns) {
   const ages = rows.map(r => r.lastHeard || "");
   const shape = rows.map(r => Object.assign({}, r, { lastHeard: undefined }));
-  if (changed(key, { title, sub, shape, empty, ok: state.radioOk })) {
+  if (changed(key, { title, sub, shape, empty, ok: state.radioOk, wide })) {
     box.replaceChildren();
     const head = el("div", "head"); head.append(el("b", null, title), el("span", "s", rows.length ? sub : ""));
     box.append(head);
     if (rows.length === 0 && empty) box.append(el("div", "s", empty));
+    // On a tablet the rows are a table with the desk's column headings.
+    if (wide && columns && rows.length) {
+      const th = el("div", "thead" + (columns.length === 4 ? " wide2" : ""));
+      columns.forEach(c => th.append(el("span", null, c)));
+      box.append(th);
+    }
     box._ages = rows.map(r => build(r));
     box.append(...box._ages.map(x => x.item));
   }
-  (box._ages || []).forEach((x, i) => { if (x.age) x.age.textContent = ages[i] ? (x.age.previousSibling ? " · " : "") + "Heard " + ages[i] : ""; });
+  (box._ages || []).forEach((x, i) => {
+    if (!x.age) return;
+    x.age.textContent = x.bare ? ages[i] : ages[i] ? (x.age.previousSibling ? " · " : "") + "Heard " + ages[i] : "";
+  });
 }
+
+// The desk's Next in line columns; Chance carries what it is based on beside it, as on the desk.
+const COLUMNS = ["Call", "Where", "Doing now", "Signal", "Chance", "Last heard", "Last worked", ""];
 
 // A station row: tap the call for its details; the button calls or answers it.
 function stationRow(r, command) {
+  if (wide) {
+    const row = el("div", "trow");
+    const cl = el("div", "cl");
+    cl.append(el("b", null, r.call));
+    if (r.need) cl.append(el("span", "tag", r.need));
+    cl.onclick = () => openDetails(r.call);
+    const age = el("span", "cell wrap s");
+    age.title = "Last heard";
+    const chance = el("span", "cell wrap");
+    chance.append(el("b", null, r.chance));
+    if (r.chanceReason) chance.append(el("span", "s", " " + r.chanceReason));
+    row.append(cl, el("span", "cell wrap", r.where), el("span", "cell", r.doing), el("span", "cell", r.db ? r.db + " dB" : ""),
+      chance, age, el("span", "cell s", r.lastWorked));
+    row.append(r.button ? button(r.button, "", () => cmd(command || "call", { call: r.call }), !state.radioOk) : el("span"));
+    return { item: row, age, bare: true };
+  }
   const it = el("div", "it");
   const left = el("div", "left");
   const c = el("div", "c", r.call + " ");
   if (r.need) c.append(el("span", "tag", r.need));
   left.append(c, el("div", "s", [r.doing, r.where, r.db ? r.db + " dB" : ""].filter(Boolean).join(" · ")));
-  const more = [r.hearsYou, r.chance ? r.chance + " chance" : "", r.lastWorked && r.lastWorked !== "Never" ? "Last worked " + r.lastWorked : ""].filter(Boolean).join(" · ");
+  const more = [r.chance ? r.chance + " chance" + (r.chanceReason ? " (" + r.chanceReason + ")" : "") : "",
+    r.lastWorked && r.lastWorked !== "Never" ? "Last worked " + r.lastWorked : ""].filter(Boolean).join(" · ");
   const line3 = el("div", "s", more);
   const age = el("span");
   line3.append(age);
@@ -393,7 +473,7 @@ function stationRow(r, command) {
 }
 
 function renderLine(s) {
-  list($("line"), "line", "Next in line", String(s.line.length), s.line, "Nobody you need is calling CQ right now.", r => stationRow(r));
+  list($("line"), "line", "Next in line", String(s.line.length), s.line, "Nobody you need is calling CQ right now.", r => stationRow(r), COLUMNS);
 }
 
 function renderStations(s) {
@@ -411,8 +491,17 @@ function renderStations(s) {
     }
   }
   list($("repeats"), "repeats", "Repeats", "Already in your log on " + s.frequency.split(" · ")[1], s.repeats,
-    "Nobody you have worked on this band is on the air right now.", r => stationRow(r));
+    "Nobody you have worked on this band is on the air right now.", r => stationRow(r), COLUMNS);
   list($("watching"), "watching", "Watching", "Needed, not callable now", s.watching, "Nobody needed is waiting to become callable.", w => {
+    if (wide) {
+      const row = el("div", "trow wide2");
+      const cl = el("div", "cl");
+      cl.append(el("b", null, w.call));
+      if (w.need) cl.append(el("span", "tag", w.need));
+      cl.onclick = () => openDetails(w.call);
+      row.append(cl, el("span", "cell", w.where), el("span", "cell s", w.reason), el("span"));
+      return { item: row };
+    }
     const it = el("div", "it");
     const left = el("div", "left");
     const c = el("div", "c", w.call + " ");
@@ -421,7 +510,7 @@ function renderStations(s) {
     left.onclick = () => openDetails(w.call);
     it.append(left);
     return { item: it };
-  });
+  }, ["Call", "Where", "Why not now", ""]);
 }
 
 function renderDecodes(s) {
@@ -558,15 +647,28 @@ setInterval(renderSlot, 200);
 const TAB = "costas-remote-tab";
 let tab = "operate";
 try { tab = localStorage.getItem(TAB) || "operate"; } catch { }
+// Which parts each tab shows. A tablet shows the whole Operate view at once, like the desk, so it has two tabs.
+const PHONE_TABS = { operate: ["operate"], stations: ["heard", "stations"], decodes: ["decodes"], signal: ["signal"], log: ["log"] };
+const TABLET_TABS = { operate: ["operate", "heard", "stations", "signal", "log"], decodes: ["decodes"] };
+const wideQuery = matchMedia("(min-width: 760px)");
+let wide = wideQuery.matches;
 function showTab(t) {
+  const tabs = wide ? TABLET_TABS : PHONE_TABS;
+  if (!tabs[t]) t = "operate";
   tab = t;
   try { localStorage.setItem(TAB, t); } catch { }
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
-  document.querySelectorAll("[data-pane]").forEach(p => p.classList.toggle("hidden", p.dataset.pane !== t));
+  document.querySelectorAll("[data-pane]").forEach(p => p.classList.toggle("hidden", !tabs[t].includes(p.dataset.pane)));
 }
 document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
-if (!document.querySelector('[data-pane="' + tab + '"]')) tab = "operate";
 showTab(tab);
+// Turning a tablet or resizing a window rebuilds the lists in the other layout.
+wideQuery.addEventListener("change", e => {
+  wide = e.matches;
+  Object.keys(cache).forEach(k => delete cache[k]);
+  showTab(tab);
+  render();
+});
 
 token = load();
 if (token) { showOp(); connect(); } else showPair();
