@@ -65,8 +65,13 @@ public sealed class PskFeedClient : IAsyncDisposable
     /// <summary>Raised for each report of another station on the band followed by <see cref="FollowNeighbours"/>.</summary>
     public event Action<NeighbourReport>? NeighbourReport;
 
-    /// <summary>My ADIF DXCC code, learned from the first report of my signal that carries one.</summary>
+    /// <summary>
+    /// My ADIF DXCC code, learned from the first report of my signal that carries one, or remembered from an earlier run.
+    /// </summary>
     public int? MyDxcc { get; private set; }
+
+    /// <summary>Uses a DXCC code remembered from an earlier run until a report of my signal gives one.</summary>
+    public void RememberMyDxcc(int dxcc) => MyDxcc ??= dxcc;
 
     /// <summary>True when neighbour reports came too fast and following them was stopped.</summary>
     public bool NeighboursStopped { get; private set; }
@@ -221,7 +226,7 @@ public sealed class PskFeedClient : IAsyncDisposable
         }
         if (mine)
         {
-            MyDxcc ??= p.SenderDxcc;
+            if (p.SenderDxcc is { } dxcc) MyDxcc = dxcc;
             Report?.Invoke(p.Report);
             return;
         }

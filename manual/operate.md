@@ -24,7 +24,7 @@ Open the **Band** menu to see, before you switch, which bands are open from your
 
 ![The band menu with band activity](images/band-menu.png){ width="600" }
 
-It needs **Receive live reports of stations hearing my signal** and **Show band activity near me in the band menu** in [Settings](settings.md). The rows fill in once PSK Reporter has reported your own signal, which tells Costas your country. Until then the menu shows band names only.
+It needs **Receive live reports of stations hearing my signal** and **Show band activity near me in the band menu** in [Settings](settings.md). The rows fill in once PSK Reporter has reported your own signal, which tells Costas your country; Costas remembers it, so after that they fill in at start-up. Until then each row says *Needs a spot of you*. If PSK Reporter sends more reports than Costas can keep up with, it follows only the band you are on and the other rows say *Too busy to follow* until you restart Costas.
 
 Two banners can appear under the top bar:
 

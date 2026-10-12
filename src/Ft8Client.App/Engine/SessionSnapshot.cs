@@ -68,6 +68,9 @@ public sealed record SessionSnapshot
     /// <summary>Per band (ADIF, lower case): where stations near me are heard right now, for the band menu.</summary>
     public IReadOnlyDictionary<string, BandOpening> BandOpenings { get; init; } = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
 
+    /// <summary>Which bands <see cref="BandOpenings"/> are being received for.</summary>
+    public BandActivityFeed BandActivityFeed { get; init; }
+
     /// <summary>Reports of my signal on this band, newest first.</summary>
     public IReadOnlyList<ReceptionReport> Reports { get; init; } = [];
 

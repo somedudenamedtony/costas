@@ -12,6 +12,7 @@ using Ft8Client.Core;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Messages;
+using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Time;
@@ -78,6 +79,7 @@ public sealed class PskReporterService : IAsyncDisposable
         {
             LoadStored();
             _feed = new PskFeedClient(_countries);
+            if (s.PskReporter is { MyDxcc: { } dxcc, MyDxccCall: { } call } && Callsign.EqualsCall(call, _myCall)) _feed.RememberMyDxcc(dxcc);
             _feed.Report += OnReport;
             _feed.NeighbourReport += _session.AddNeighbourReport;
             _feed.StatusChanged += st =>
@@ -87,6 +89,7 @@ public sealed class PskReporterService : IAsyncDisposable
             };
             _session.SetService(ServiceNames.Psk, new ServiceStatus(ServiceHealth.Degraded, "Connecting to the live feed", _clock.UtcNow));
             _feed.Start(_myCall);
+            FollowNeighbours();
             _ = Task.Run(() => QueryLoopAsync(_cts.Token));
         }
         _session.SlotDecoded += OnSlotDecoded;
@@ -116,8 +119,8 @@ public sealed class PskReporterService : IAsyncDisposable
         FollowNeighbours();
     }
 
-    // Follows the stations near me once my DXCC code is known (from my own reports): on the current band for the
-    // neighbour comparison, on every band for the band menu.
+    // Follows the stations near me once my DXCC code is known (from my own reports, or remembered from the last run): on
+    // the current band for the neighbour comparison, on every band for the band menu.
     private void FollowNeighbours()
     {
         if (_feed is null) return;
@@ -125,6 +128,19 @@ public sealed class PskReporterService : IAsyncDisposable
         var on = o.CompareNeighbours || o.BandActivity;
         var snap = _session.Snapshot;
         _feed.FollowNeighbours(on ? snap.Band : null, on ? ModeInfo.Name(snap.Mode) : null, on ? _feed.MyDxcc : null, o.BandActivity);
+        _session.SetBandActivityFeed(!o.BandActivity ? BandActivityFeed.Off
+            : _feed.MyDxcc is null ? BandActivityFeed.WaitingForMySpot
+            : _feed.NeighboursStopped ? BandActivityFeed.Stopped
+            : _feed.AllBandsStopped ? BandActivityFeed.CurrentBandOnly
+            : BandActivityFeed.AllBands);
+        if (_feed.MyDxcc is { } dxcc && (o.MyDxcc != dxcc || !Callsign.EqualsCall(o.MyDxccCall ?? string.Empty, _myCall)))
+        {
+            _settings.Update(x =>
+            {
+                x.PskReporter.MyDxcc = dxcc;
+                x.PskReporter.MyDxccCall = _myCall;
+            });
+        }
         if (_feed.AllBandsStopped && !_allBandsStopLogged)
         {
             _allBandsStopLogged = true;

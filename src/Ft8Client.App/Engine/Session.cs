@@ -53,6 +53,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private const int MaxNeighbourReports = 50000;
     private IReadOnlyDictionary<string, BandOpening> _openings = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
     private DateTime _openingsUtc;
+    private BandActivityFeed _bandFeed;
     private bool _openingsDirty;
     private StationTracker _tracker;
     private PileupTracker _pileups;
@@ -714,6 +715,17 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
+    /// <summary>Sets which bands the reports of stations near me are being followed on.</summary>
+    public void SetBandActivityFeed(BandActivityFeed feed)
+    {
+        lock (_gate)
+        {
+            if (_bandFeed == feed) return;
+            _bandFeed = feed;
+        }
+        Publish();
+    }
+
     /// <summary>
     /// Adds a report of another station, kept only when it is near me in this mode (on any band: the band menu shows
     /// them all). Shown at the next publish (they can arrive several a second, so they do not publish on their own).
@@ -816,6 +828,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 Neighbours = NeighbourComparison.Compare(_hearsMe.Reports, _neighbours, _config.MyCall, _config.MyGrid, _config.Band,
                     ModeInfo.Name(_config.Mode), _countries, now),
                 BandOpenings = Openings(now),
+                BandActivityFeed = _bandFeed,
                 Services = new Dictionary<string, ServiceStatus>(_services),
                 Contact = _engine.View,
                 Transmitting = _tx.Transmitting,

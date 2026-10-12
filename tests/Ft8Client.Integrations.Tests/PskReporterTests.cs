@@ -133,6 +133,24 @@ public class PskReporterTests
     }
 
     [Fact]
+    public async Task Feed_RememberedDxcc_UsedUntilMySignalGivesOne()
+    {
+        var port = FreePort();
+        var server = new MqttServerFactory().CreateMqttServer(BrokerOptions(port));
+        await server.StartAsync();
+        await using var feed = new PskFeedClient(Countries, "127.0.0.1", port, tls: false);
+
+        feed.RememberMyDxcc(1);
+        feed.MyDxcc.Should().Be(1);
+        feed.Start("W7LIT");
+        await WaitFor(() => feed.Connected);
+        await Publish(server);
+
+        await WaitFor(() => feed.MyDxcc == 291);
+        await server.StopAsync(new MqttServerStopOptions());
+    }
+
+    [Fact]
     public async Task Feed_FollowNeighbours_RaisesNeighbourReportsAndLearnsMyDxcc()
     {
         var port = FreePort();

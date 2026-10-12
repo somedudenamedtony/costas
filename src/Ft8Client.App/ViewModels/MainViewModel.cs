@@ -14,6 +14,7 @@ using Ft8Client.App.Engine;
 using Ft8Client.App.Services;
 using Ft8Client.Core;
 using Ft8Client.Core.Messages;
+using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Bands;
 using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Ranking;
@@ -510,14 +511,25 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         foreach (var b in _host.Frequencies.Bands(mode)) Reach.Bands.Add(b);
     }
 
-    // The band menu's activity rows, from PSK Reporter reports of stations near me.
+    // The band menu's activity rows, from PSK Reporter reports of stations near me. A band whose reports are not being
+    // received says why rather than "No spots", which would read as a closed band.
     private void ApplyBandOpenings(SessionSnapshot s)
     {
         var on = _host.Settings.Current.PskReporter is { FeedEnabled: true, BandActivity: true };
-        var live = on && s.BandOpenings.Count > 0;
-        var max = live ? s.BandOpenings.Values.Max(o => o.Spots) : 0;
+        var feed = on ? s.BandActivityFeed : BandActivityFeed.Off;
+        var current = s.Band.ToLowerInvariant();
+        bool Followed(string band) => feed == BandActivityFeed.AllBands || (feed == BandActivityFeed.CurrentBandOnly && band == current);
+        var openings = s.BandOpenings.Where(kv => Followed(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+        var live = openings.Count > 0;
+        var max = live ? openings.Values.Max(o => o.Spots) : 0;
         var units = SettingsMapper.Units(_host.Settings.Current);
-        foreach (var b in Bands) b.Apply(s.BandOpenings.GetValueOrDefault(b.Band), max, live, units);
+        var tip = BandOpeningText.NotFollowedTip(feed);
+        foreach (var b in Bands)
+        {
+            var reason = BandOpeningText.NotFollowed(feed, Followed(b.Band));
+            if (reason.Length > 0) b.ApplyNotFollowed(reason, tip);
+            else b.Apply(openings.GetValueOrDefault(b.Band), max, live, units);
+        }
     }
 
     private void RefreshBands(Mode mode)

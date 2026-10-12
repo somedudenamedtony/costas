@@ -107,4 +107,22 @@ public class BandOpeningsTests
         BandOpeningText.Spots(1240).Should().Be("1,240 spots");
         BandOpeningText.Spots(1).Should().Be("1 spot");
     }
+
+    [Theory]
+    [InlineData(BandActivityFeed.WaitingForMySpot, false, "Needs a spot of you")]
+    [InlineData(BandActivityFeed.CurrentBandOnly, false, "Too busy to follow")]
+    [InlineData(BandActivityFeed.Stopped, false, "Too busy to follow")]
+    [InlineData(BandActivityFeed.CurrentBandOnly, true, "")]
+    [InlineData(BandActivityFeed.AllBands, true, "")]
+    [InlineData(BandActivityFeed.Off, false, "")]
+    public void NotFollowed_Feed_SaysWhyOrNothing(BandActivityFeed feed, bool followed, string text)
+    {
+        BandOpeningText.NotFollowed(feed, followed).Should().Be(text);
+    }
+
+    [Fact]
+    public void NotFollowedTip_CurrentBandOnly_ExplainsTheLimit()
+    {
+        BandOpeningText.NotFollowedTip(BandActivityFeed.CurrentBandOnly).Should().Contain("6,000 reports a minute");
+    }
 }
