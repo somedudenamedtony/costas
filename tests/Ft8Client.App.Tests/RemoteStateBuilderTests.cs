@@ -56,7 +56,7 @@ public class RemoteStateBuilderTests
     {
         var s = RemoteStateBuilder.Build(Snap(), Now, Ctx, "you", null);
 
-        s.Line.Should().ContainSingle().Which.Should().Match<RemoteStation>(r => r.Call == "VE7XYZ" && r.Button == "Call" && r.Chance == "Good" && r.LastHeard == "20 seconds ago");
+        s.Line.Should().ContainSingle().Which.Should().Match<RemoteStation>(r => r.Call == "VE7XYZ" && r.Button == "Call" && r.Chance == "Good" && r.ChanceReason == "no reports yet" && r.LastHeard == "20 seconds ago");
         s.Repeats.Select(r => r.Call).Should().Equal("W1AW", "N0XYZ");
         s.Repeats[1].Button.Should().BeEmpty();
         s.Watching.Should().ContainSingle().Which.Reason.Should().NotBeEmpty();
