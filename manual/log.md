@@ -5,8 +5,22 @@ Press **Log** in the top bar or ++ctrl+4++.
 ![The Log view](images/log.png)
 
 Every contact, newest first: date, time (UTC), call, band, mode, report sent and received, grid, country, name, the
-need tag it had when you worked it, and its QRZ status. The status line at the bottom counts contacts and says when
-the log was last synced with QRZ.
+need tag it had when you worked it, whether it is confirmed, and its QRZ status. The status line at the bottom counts
+the contacts shown, their countries and how many are confirmed, and says when the log was last synced with QRZ.
+
+## Filters
+
+The row under the buttons narrows the list. The filters combine with each other and with the search box:
+
+| Filter | Choices |
+| --- | --- |
+| Band | All bands, or any band you have a contact on |
+| Mode | All modes, FT8 or FT4 |
+| Date | All time, Today (UTC), Last 7 days, Last 30 days, This year. Days are UTC days, as the log shows them |
+| Confirmed | Confirmed or not, Confirmed, Not confirmed |
+
+While a filter is set, the status line says *Showing 120 of 3,400 contacts* and **Clear filters** puts them all back.
+The search text is kept. The list shows the newest 5,000 matching contacts; the totals always count all of them.
 
 | Button | What it does |
 | --- | --- |
