@@ -20,6 +20,15 @@ public sealed class PskReporterOptions
     /// <summary>Follow stations near me on every band, to show in the band menu where they are being heard. Needs the feed.</summary>
     public bool BandActivity { get; set; } = true;
 
+    /// <summary>
+    /// My ADIF DXCC code as PSK Reporter last reported it, so stations near me can be followed from start-up rather than
+    /// only after my signal is spotted again. Valid for <see cref="MyDxccCall"/> only.
+    /// </summary>
+    public int? MyDxcc { get; set; }
+
+    /// <summary>The call <see cref="MyDxcc"/> was learned for.</summary>
+    public string? MyDxccCall { get; set; }
+
     /// <summary>Upload my reception spots. Off until the operator turns it on.</summary>
     public bool UploadSpots { get; set; }
 

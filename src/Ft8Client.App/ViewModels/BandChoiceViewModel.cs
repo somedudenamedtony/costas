@@ -41,7 +41,9 @@ public sealed partial class BandChoiceViewModel : ObservableObject
     [ObservableProperty]
     public partial bool HasActivity { get; set; }
 
-    /// <summary>"1,240 spots", or "No spots" when the feed is live but nobody near me is heard here.</summary>
+    /// <summary>
+    /// "1,240 spots", "No spots" when the feed is live but nobody near me is heard here, or why this band is not followed.
+    /// </summary>
     [ObservableProperty]
     public partial string SpotsText { get; set; } = string.Empty;
 
@@ -94,5 +96,19 @@ public sealed partial class BandChoiceViewModel : ObservableObject
         NeedText = opening is null ? string.Empty : BandOpeningText.Need(opening.NeededEntities);
         NeedTip = opening is null ? string.Empty : BandOpeningText.NeedTip(opening.NeededEntities);
         Tip = BandOpeningText.Basis(units);
+    }
+
+    /// <summary>Says why this band's reports are not being received, in place of its numbers.</summary>
+    /// <param name="text">"Too busy to follow".</param>
+    /// <param name="tip">The longer reason.</param>
+    public void ApplyNotFollowed(string text, string tip)
+    {
+        HasActivity = true;
+        SpotsText = text;
+        BarWidth = 0;
+        Continents = [];
+        NeedText = string.Empty;
+        NeedTip = string.Empty;
+        Tip = tip;
     }
 }

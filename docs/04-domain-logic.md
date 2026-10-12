@@ -238,7 +238,8 @@ The band menu shows, for each band, whether stations near me are being heard rig
 - A report counts when its sender is within 300 miles (482.8 km) of my grid, it is in my mode, it is not my own call, and it is no older than 15 minutes.
 - Per band: the number of reports (spots), the distinct senders, and the spots per receiver continent (from the country file).
 - Each continent chip is shaded by its spots: none 0, 1 to 9 light, 10 to 49 medium, 50 or more full.
-- The activity bar is scaled to the busiest band. A band with no spots says "No spots" while any band has spots; with no spots anywhere (feed off, my DXCC not known yet, the subscription stopped) the menu shows band names only.
+- The activity bar is scaled to the busiest band. A band with no spots says "No spots" while any band has spots; with no spots anywhere, or with the feed or setting off, the menu shows band names only.
+- A band whose reports are not being received never says "No spots", which would read as a closed band. Before my DXCC code is known every row says "Needs a spot of you". After the all-band subscription falls back to the current band, every other row says "Too busy to follow"; after following stops altogether, every row does. The tooltip gives the reason. Reports already held for a band that is no longer followed are not shown.
 - "You need": the receivers' countries with no contact in my log on that band, most spots first: "You need Mongolia", "You need Brazil +2". The tooltip lists them all. An empty log shows nothing here rather than every country.
 - Rebuilt at most once a slot while reports arrive; changing band keeps the reports, changing mode clears them.
 

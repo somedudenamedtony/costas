@@ -73,6 +73,22 @@ public class BandChoiceViewModelTests
     }
 
     [Fact]
+    public void ApplyNotFollowed_HadSpots_ShowsReasonWithoutNumbers()
+    {
+        var b = new BandChoiceViewModel("17m");
+        b.Apply(Opening(60, ("NA", 50)), 60, true, DistanceUnit.Miles);
+
+        b.ApplyNotFollowed("Too busy to follow", "why");
+
+        b.HasActivity.Should().BeTrue();
+        b.SpotsText.Should().Be("Too busy to follow");
+        b.BarWidth.Should().Be(0);
+        b.Continents.Should().BeEmpty();
+        b.NeedText.Should().BeEmpty();
+        b.Tip.Should().Be("why");
+    }
+
+    [Fact]
     public void Apply_FewSpots_BarStillVisible()
     {
         var b = new BandChoiceViewModel("12m");
