@@ -107,8 +107,12 @@ public sealed class ContactEngine
         StopReason = null;
     }
 
-    /// <summary>Flow A: call a station (answering its CQ, or replying to its report if it called me first).</summary>
-    public void CallStation(string call, string? grid, int snr, SlotParity dxParity, int dxOffsetHz, DateTime nowUtc)
+    /// <summary>
+    /// Flow A: call a station (answering its CQ, or replying to its report if it called me first). When
+    /// <paramref name="busyWith"/> names another station it is working right now, nothing is sent: the contact ends at
+    /// once as <see cref="ContactOutcome.AnsweredOther"/> so the operator sees why.
+    /// </summary>
+    public void CallStation(string call, string? grid, int snr, SlotParity dxParity, int dxOffsetHz, DateTime nowUtc, string? busyWith = null)
     {
         OperatorActivity(nowUtc);
         call = Callsign.Normalize(call);
@@ -118,6 +122,12 @@ public sealed class ContactEngine
         _c.Steps.AddRange(StepsFor(_c));
         RemoveWaiting(call);
         if (_stopped is { } s && Callsign.EqualsCall(s.Contact.DxCall, call)) ForgetStopped();
+        if (busyWith is not null)
+        {
+            _c.OtherCall = Callsign.Normalize(busyWith);
+            _c.BusyAtStart = true;
+            End(ContactOutcome.AnsweredOther, nowUtc, resume: false);
+        }
     }
 
     /// <summary>Starts calling CQ in slots of the given parity.</summary>
@@ -645,11 +655,12 @@ public sealed class ContactEngine
             ContactOutcome.Logged => $"Logged {c.DxCall}.",
             ContactOutcome.NoReply => $"No reply from {c.DxCall}.",
             ContactOutcome.Watchdog => "Stopped by watchdog.",
+            ContactOutcome.AnsweredOther when c.BusyAtStart => $"{c.DxCall} is in a contact with {c.OtherCall}. Not calling.",
             ContactOutcome.AnsweredOther => c.OtherCall is null ? $"{c.DxCall} answered someone else. Stopped calling." : $"{c.DxCall} answered {c.OtherCall} instead. Stopped calling.",
             _ => $"Stopped calling {c.DxCall}.",
         };
         return new ContactView(c.DxCall, c.DxGrid, c.Flow, c.Outcome, sentAny ? c.ReportSent : null, c.ReportReceived, steps, c.Logged,
-            !c.Logged && sentAny && c.ReportReceived is not null, status);
+            !c.Logged && sentAny && c.ReportReceived is not null, status) { MyParity = c.MyParity };
     }
 
     private sealed class Contact(ContactFlow flow, string dxCall, string? dxGrid, SlotParity myParity, int reportSent, int dxOffset)
@@ -685,6 +696,8 @@ public sealed class ContactEngine
         public ContactOutcome Outcome { get; set; } = ContactOutcome.InProgress;
 
         public string? OtherCall { get; set; }
+
+        public bool BusyAtStart { get; set; }
     }
 
     private sealed record Finished(string DxCall, ContactFlow Flow, SlotParity MyParity, DateTime LoggedUtc, Contact Contact);

@@ -14,7 +14,7 @@ The top card becomes the contact panel, and the red **ON AIR** banner shows whil
 
 | Part | What it shows |
 | --- | --- |
-| Caption | *Calling*, then *Contact in progress*, then *Logged* (or *Abandoned*, *No reply*, *Answered someone else*) |
+| Caption | *Calling*, then *Contact in progress*, then *Logged* (or *Abandoned*, *No reply*, *In another contact*) |
 | Callsign and need tag | Who you are working, and why you wanted them |
 | Subline | Name from QRZ (once the lookup arrives), country or state, distance |
 | **You sent** / **You received** | The signal reports, as they are exchanged |
@@ -52,8 +52,10 @@ When the other station does not answer, Costas tries again, and gives up after t
 what they missed.
 
 If the station you called answers someone else before it has replied to you (it sends its report or grid to another
-call), Costas stops calling it straight away. The panel shows *Answered someone else* for one slot and the status bar
-says, for example, *F5RXL answered K1ABC instead. Stopped calling.* If they come back to you within 5 minutes, they
+call), Costas stops calling it straight away. The panel shows *In another contact* for one slot with the reason under
+the callsign, for example *F5RXL answered K1ABC instead. Stopped calling.* If you call a station that is already
+exchanging reports with someone else, Costas sends nothing and the panel says *F5RXL is in a contact with K1ABC. Not
+calling.* If they come back to you within 5 minutes, they
 show in the Calling you bar with a **Resume** button, as below. A station that only signs off an earlier contact
 (RR73, 73) or calls CQ again does not end your call.
 

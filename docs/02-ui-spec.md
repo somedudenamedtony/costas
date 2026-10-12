@@ -86,7 +86,7 @@ Idle (no contact): caption "Not in a contact" (or "Calling CQ" with the subline 
 
 | Element | Content |
 | --- | --- |
-| Caption | "Contact in progress", or "Calling", "Logged", "No reply", "Answered someone else" |
+| Caption | "Contact in progress", or "Calling", "Logged", "No reply", "In another contact" (the subline then gives the reason: "N8WCR answered K1ABC instead. Stopped calling." or "N8WCR is in a contact with K1ABC. Not calling.") |
 | Callsign | 40 px, with the need tag beside it |
 | Subline | Name from QRZ lookup (blank until it arrives) · country or state · distance |
 | On-air panel | A bordered panel on the right of the card that holds everything about the next transmission, described below |
@@ -111,7 +111,7 @@ Each box has three lines: who ("You" or the DX call, semibold) with the UTC time
 | Done | Thin border, no fill | When sent or received | "Sent" or "Received" |
 | Now, transmitting | Critical fill, white text | When the transmission started | "Sending · 7 s left" |
 | Now, waiting | Accent tint, 2 px accent border | The slot the reply is due in | "Waiting for reply" |
-| Now, mine, not yet on the air | Accent tint, 2 px accent border | Blank | "Sending next slot" |
+| Now, mine, not yet on the air | Accent tint, 2 px accent border | Blank, or the slot time when it is not the next slot | "Sending next slot", or "Sending at HH:MM:SS" when my next slot is later (clicked too late in my own slot) |
 | Upcoming | Dashed border, secondary text | Blank, or the slot it is due in when it is the next reply | "Next", "Expected", or "Then logged" for my last step |
 | Repeated | As above with "×2" after the verb | Latest time | When a step was sent or received more than once |
 
@@ -152,7 +152,7 @@ Stations that are needed but not callable now. Columns: Call, Where, Why, signal
 
 ### Repeats
 
-Directly under Next in line. Stations heard now that are already worked (tier 5: this call on this band and mode), so the operator can work them again. Title "Repeats", subtitle "Heard now and already in your log on 20 m FT8." Columns are the same as Next in line, at the same widths so the two tables line up (owner request 2026-10-11): #, Call, Where, Why ("Worked before", secondary), Doing now (or, when not callable, the Watching reason in secondary text), Last heard, Hears you, dB, Signal sparkline, Chance, Last worked ("Today · 20 m", "Yesterday · 40 m", "2026-10-03 · 20 m": the most recent log contact with the call on any band or mode; tooltip gives the contact count, exact UTC time, band, mode and confirmation), and a Call button ("Answer" when the station is calling me; always enabled, also when not callable, owner request 2026-10-12). Callable stations first, then the line's ranking order. At most 8 rows, then "and N more". The list is held still while the pointer is over it or within 300 ms of a click, as Next in line. Empty state: "Nobody you have worked on 20 m is on the air right now."
+Directly under Next in line. Stations heard now that are already worked (tier 5: this call on this band and mode), so the operator can work them again. Title "Repeats", subtitle "Heard now and already in your log on 20 m FT8." Columns are the same as Next in line, at the same widths so the two tables line up (owner request 2026-10-11): #, Call, Where, Why ("Worked before", secondary), Doing now (or, when not callable, the Watching reason in secondary text), Last heard, Hears you, dB, Signal sparkline, Chance, Last worked ("Today · 20 m", "Yesterday · 40 m", "2026-10-03 · 20 m": the most recent log contact with the call on any band or mode; tooltip gives the contact count, exact UTC time, band, mode and confirmation), and a Call button ("Answer" when the station is calling me; always enabled, also when not callable, owner request 2026-10-12; a station in a contact with someone else is still not called, the contact ends at once as "In another contact", see 04-domain-logic.md). Callable stations first, then the line's ranking order. At most 8 rows, then "and N more". The list is held still while the pointer is over it or within 300 ms of a click, as Next in line. Empty state: "Nobody you have worked on 20 m is on the air right now."
 
 ### Right column
 

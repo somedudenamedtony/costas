@@ -7,9 +7,11 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Ft8Client.App.Engine;
+using Ft8Client.App.ViewModels;
 using Ft8Client.Audio.Backends;
 using Ft8Client.Audio.Timing;
 using Ft8Client.Core;
+using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Time;
 using Ft8Client.Data.Reference;
@@ -302,6 +304,63 @@ public class LateDecodeTests
 
         r.Sent.Last().Message.Should().Be("N8WCR W7LIT DN40", "the decodes came too late for this slot");
         r.Output.Played.Should().OnlyContain(p => p.Samples.Length == r.Output.SampleRate * 1264 / 100);
+    }
+
+    [Fact]
+    public async Task Call_StationInContactWithAnother_NotCalledAndCardSaysWhy()
+    {
+        var r = new Rig();
+        r.Decoder.Script(CqSlot, TimeSpan.FromSeconds(0.5), "K1ABC N8WCR -10");
+        await r.RunUntilAsync(CqSlot.AddSeconds(14.5));
+
+        r.Session.CallStation("N8WCR").Should().BeTrue();
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(2));
+
+        r.Sent.Should().BeEmpty();
+        r.Radio.PttLog.Should().BeEmpty();
+        var snap = r.Session.Snapshot;
+        snap.Contact!.Outcome.Should().Be(ContactOutcome.AnsweredOther);
+        var card = ContactPanelViewModel.From(snap.Contact, snap, r.Clock.UtcNow, DistanceUnit.Miles, null);
+        card.Caption.Should().Be("In another contact");
+        card.Subline.Should().Be("N8WCR is in a contact with K1ABC. Not calling.");
+        card.Active.Should().BeFalse();
+        card.Steps.Should().NotContain(st => st.Status.StartsWith("Sending", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Call_StationAnswersAnotherBeforeMyReply_StopsAndCardSaysWhy()
+    {
+        var r = new Rig();
+        await r.CallN8wcrAsync();
+        r.Decoder.Script(ReportSlot, TimeSpan.FromSeconds(0.5), TimeSpan.FromSeconds(0.3), "K1ABC N8WCR -10");
+
+        await r.RunUntilAsync(MySecondSlot.AddSeconds(14));
+
+        r.Sent.Should().ContainSingle("nothing more goes to a station working someone else");
+        var snap = r.Session.Snapshot;
+        var card = ContactPanelViewModel.From(snap.Contact!, snap, r.Clock.UtcNow, DistanceUnit.Miles, null);
+        card.Caption.Should().Be("In another contact");
+        card.Subline.Should().Be("N8WCR answered K1ABC instead. Stopped calling.");
+    }
+
+    [Fact]
+    public async Task Call_ClickedTooLateInMySlot_CardSaysWhenItWillSend()
+    {
+        var r = new Rig();
+        r.Decoder.Script(CqSlot, TimeSpan.FromSeconds(0.5), "CQ N8WCR EN81");
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(4));
+
+        r.Session.CallStation("N8WCR").Should().BeTrue();
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(4.2));
+
+        var snap = r.Session.Snapshot;
+        var card = ContactPanelViewModel.From(snap.Contact!, snap, r.Clock.UtcNow, DistanceUnit.Miles, null);
+        card.Steps[0].Status.Should().Be("Sending at 02:54:45", "the next slot is N8WCR's; mine is the one after");
+
+        await r.RunUntilAsync(ReportSlot.AddSeconds(1));
+        snap = r.Session.Snapshot;
+        card = ContactPanelViewModel.From(snap.Contact!, snap, r.Clock.UtcNow, DistanceUnit.Miles, null);
+        card.Steps[0].Status.Should().Be("Sending next slot");
     }
 
     /// <summary>Silent slot audio; the decoder below supplies the decodes.</summary>

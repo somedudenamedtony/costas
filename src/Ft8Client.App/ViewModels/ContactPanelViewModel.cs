@@ -87,6 +87,8 @@ public sealed class ContactPanelViewModel
         var parts = new List<string>();
         if (!string.IsNullOrWhiteSpace(qrzName)) parts.Add(qrzName);
         if (station is not null) parts.Add(StationText.Where(station, units));
+        // Why it stopped, on the card itself: "N8WCR answered K1ABC instead. Stopped calling."
+        if (c.Outcome == ContactOutcome.AnsweredOther) parts = [c.StatusText];
         var slotLen = ModeInfo.SlotLength(s.Mode);
         var currentSlot = SlotMath.SlotStart(nowUtc, s.Mode);
         var txIndex = TransmittingIndex(c, s, currentSlot);
@@ -118,8 +120,10 @@ public sealed class ContactPanelViewModel
                         break;
                     case StepState.Now when st.Mine:
                         look = StepLook.Waiting;
-                        time = string.Empty;
-                        status = $"Sending next slot{count}";
+                        // Name the slot it will really go in: after a click too late in my own slot that is two slots on.
+                        var due = NextOwnSlot(c.MyParity, s.Mode, currentSlot, nowUtc);
+                        time = due == currentSlot + slotLen ? string.Empty : Time(due);
+                        status = (due == currentSlot + slotLen ? "Sending next slot" : due == currentSlot ? "Sending this slot" : $"Sending at {Time(due)}") + count;
                         break;
                     case StepState.Now:
                         // The reply is due in the slot after my last transmission. While that transmission is still on the air the
@@ -169,6 +173,14 @@ public sealed class ContactPanelViewModel
             if (st.State == StepState.Now || (st.State == StepState.Done && st.TimeUtc >= currentSlot)) return i;
         }
         return -1;
+    }
+
+    // The start of the slot my next transmission can go in: this one while its Tx start is still ahead, else the next of my parity.
+    private static DateTime NextOwnSlot(SlotParity mine, Mode mode, DateTime currentSlot, DateTime nowUtc)
+    {
+        if (SlotMath.Parity(currentSlot, mode) == mine && nowUtc < currentSlot + TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode))) return currentSlot;
+        var next = currentSlot + ModeInfo.SlotLength(mode);
+        return SlotMath.Parity(next, mode) == mine ? next : next + ModeInfo.SlotLength(mode);
     }
 
     // The slot after my last transmission before this step, or the next slot when I have not sent yet.
