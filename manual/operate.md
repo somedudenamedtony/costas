@@ -91,7 +91,8 @@ It has the same columns as Next in line, lined up under them, with two differenc
 
 - **Why** always reads *Worked before*.
 - **Doing now** says why they cannot be called right now instead, in grey: *In a contact with EA5HVK*, *Went quiet
-  2 minutes ago*, and the **Call** button is greyed out until they can.
+  2 minutes ago*. The **Call** button still works, so you can call them anyway; they may not answer until they are
+  free.
 
 **Last worked** shows when and on which band you last worked them: *Today · 20 m*, *Yesterday · 40 m*,
 *2026-10-03 · 20 m*. Hover for the number of contacts, the exact time, the mode and whether it is confirmed.
