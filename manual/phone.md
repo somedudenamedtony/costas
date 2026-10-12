@@ -6,23 +6,21 @@ you turn it on.
 
 ![The phone page in a contact](images/phone-contact.png){ width="320" }
 
-## Turning it on
+## Turning it on and pairing a phone
 
-1. On the station computer, open **Settings › Phone**, tick **Let a paired phone on this network operate the
-   station**, and press **Save**. The default port is `8073`.
-2. The first time, Windows asks whether Costas may use the network. Allow it on **private networks**.
-3. Open **Settings › Phone** again. It shows the address to open on the phone, for example
-   `http://192.168.1.20:8073/`.
-
-## Pairing a phone
-
-1. In **Settings › Phone**, press **Pair a phone**. A six-digit code appears. It works once, for 10 minutes, and five
-   wrong tries cancel it.
-2. On the phone, open the address and type the code.
+1. On the station computer, open **Settings › Mobile connection** and tick **Let a paired phone on this network
+   operate the station**. It starts at once; there is no need to save first.
+2. If Windows asks whether Costas may use the network, choose **Allow** for private networks. Phones cannot connect
+   until you do.
+3. A **Pair a phone** card appears with the address to open on the phone, for example `http://192.168.1.20:8073/`,
+   and a large six-digit code.
+4. On the phone, open the address and type the code.
 
 ![Pairing a phone](images/phone-pair.png){ width="320" }
 
-The phone stays paired until you press **Forget paired phones** in Settings. Pairing again after that is quick.
+The code works once, only while the Settings window is open, for up to 10 minutes, and five wrong tries cancel it.
+Press **New code** for another. The phone stays paired until you press **Forget paired phones**; to pair another
+phone, open **Settings › Mobile connection** again and press **Pair a phone**.
 
 ## What the phone can do
 

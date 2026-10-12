@@ -143,7 +143,7 @@ public sealed class RemoteServer : IAsyncDisposable
         if (token is null)
         {
             Log.Information("Remote pairing refused from {Address}", ctx.Connection.RemoteIpAddress);
-            return Results.Json(new { error = "That code is wrong or has expired. Open Settings, Phone, and press Pair a phone for a new one." },
+            return Results.Json(new { error = "That code is wrong or has expired. Open Settings, Mobile connection, on the station computer for a new one." },
                 statusCode: StatusCodes.Status403Forbidden);
         }
         Log.Information("Phone paired from {Address}", ctx.Connection.RemoteIpAddress);
