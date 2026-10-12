@@ -210,7 +210,7 @@
                 </StackPanel>
               </DockPanel>
               <!-- Next in line and Repeats share these columns so the two tables line up. -->
-              <Grid ColumnDefinitions="36,100,160,110,*,100,120,46,64,74,110,74" Margin="14,0,14,4">
+              <Grid ColumnDefinitions="36,100,160,150,*,100,120,46,64,74,110,74" Margin="14,0,14,4">
                 <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
                 <TextBlock Grid.Column="1" Text="Call" Classes="secondary" />
                 <TextBlock Grid.Column="2" Text="Where" Classes="secondary" />
@@ -240,12 +240,16 @@
                             BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
                       <Panel>
                         <Border Width="3" HorizontalAlignment="Left" Background="{Binding IsSelected, Converter={x:Static v:Converters.SelectedBar}}" />
-                        <Grid ColumnDefinitions="36,100,160,110,*,100,120,46,64,74,110,74" MinHeight="40" Margin="14,0">
+                        <Grid ColumnDefinitions="36,100,160,150,*,100,120,46,64,74,110,74" MinHeight="40" Margin="14,0">
                           <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                          <TextBlock Grid.Column="3" Text="{Binding Why}" VerticalAlignment="Center"
-                                     Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" FontWeight="{Binding WhyBold, Converter={x:Static v:Converters.Bold}}" />
+                          <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Why}" VerticalAlignment="Center"
+                                       Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" FontWeight="{Binding WhyBold, Converter={x:Static v:Converters.Bold}}" />
+                            <v:RarityMeter Level="{Binding RarityLevel}" IsVisible="{Binding HasRarity}" VerticalAlignment="Center"
+                                           ToolTip.Tip="{Binding RarityTip}" AutomationProperties.Name="{Binding RarityTip}" />
+                          </StackPanel>
                           <TextBlock Grid.Column="4" Text="{Binding DoingNow}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                           <TextBlock Grid.Column="5" Text="{Binding LastHeard}" Classes="secondary" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="6" Text="{Binding HearsYou}" VerticalAlignment="Center" TextWrapping="Wrap" />
@@ -303,7 +307,7 @@
             <TextBlock Text="Repeats" Classes="title" Margin="14,0" />
             <TextBlock Text="{Binding RepeatsSubtitle}" Classes="secondary" Margin="14,2,14,6" />
             <!-- The same columns as Next in line. -->
-            <Grid ColumnDefinitions="36,100,160,110,*,100,120,46,64,74,110,74" Margin="14,0,14,4" IsVisible="{Binding !!Repeats.Count}">
+            <Grid ColumnDefinitions="36,100,160,150,*,100,120,46,64,74,110,74" Margin="14,0,14,4" IsVisible="{Binding !!Repeats.Count}">
               <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
               <TextBlock Grid.Column="1" Text="Call" Classes="secondary" />
               <TextBlock Grid.Column="2" Text="Where" Classes="secondary" />
@@ -320,7 +324,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:RepeatRowViewModel">
                   <Border BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
-                    <Grid ColumnDefinitions="36,100,160,110,*,100,120,46,64,74,110,74" MinHeight="36" Margin="14,0">
+                    <Grid ColumnDefinitions="36,100,160,150,*,100,120,46,64,74,110,74" MinHeight="36" Margin="14,0">
                       <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />

@@ -44,7 +44,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             Log = () => host.Session.LogIndex,
             QrzName = host.Session.NameOf,
             QrzLookup = host.Session.LookupOf,
+            MostWanted = host.MostWanted.Current,
         };
+        host.MostWanted.Changed += list => Dispatch(() => Operate.MostWanted = list);
         LoadMapChoices(host.Settings.Current.Map);
         Operate.Map.ChoicesChanged += SaveMapChoices;
         Raw = new RawDecodesViewModel(c => Call(c));

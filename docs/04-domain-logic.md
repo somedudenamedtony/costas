@@ -243,3 +243,18 @@ The band menu shows, for each band, whether stations near me are being heard rig
 - Rebuilt at most once a slot while reports arrive; changing band keeps the reports, changing mode clears them.
 
 This shows where the band is open from my area, not who I can hear: a receiver hearing my neighbour is a station listening on that band.
+
+## 15. Rarity (most wanted)
+
+Club Log publishes a most-wanted list of DXCC entities, ranked by how many of its users still need each one (owner request 2026-10-12). `MostWanted` (Core) maps it to country-file entity keys through the ADIF DXCC codes in the bundled `dxcc-adif.csv` (from AD1C's `cty.csv`, the same source and licence as `cty.dat`). `Rarity` turns a rank into a five-step meter:
+
+| Rank | Level | Label |
+| --- | --- | --- |
+| 1 to 25 | 5 | Very rare |
+| 26 to 75 | 4 | Rare |
+| 76 to 150 | 3 | Uncommon |
+| 151 to 250 | 2 | Fairly common |
+| 251 and up | 1 | Common |
+
+The meter is shown only on stations whose need tag is New country, and in the station details. It does not change the ranking. Without the list (never downloaded, Club Log unreachable) nothing is shown.
+

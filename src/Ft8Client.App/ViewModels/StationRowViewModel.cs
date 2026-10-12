@@ -10,6 +10,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ft8Client.Core;
 using Ft8Client.Core.Bands;
+using Ft8Client.Core.Geo;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Ranking;
@@ -26,8 +27,15 @@ public sealed partial class StationRowViewModel : ObservableObject
     /// <param name="nowUtc">Now.</param>
     /// <param name="last">The most recent log contact with this call on any band or mode, if any.</param>
     /// <param name="contacts">How many log contacts there are with this call.</param>
-    public StationRowViewModel(RankedStation r, int rank, DistanceUnit units, DateTime nowUtc, LogContact? last = null, int contacts = 0)
+    /// <param name="mostWantedRank">The station's entity on Club Log's most-wanted list, if known; shown for new countries.</param>
+    public StationRowViewModel(RankedStation r, int rank, DistanceUnit units, DateTime nowUtc, LogContact? last = null, int contacts = 0,
+                               int? mostWantedRank = null)
     {
+        if (r.Need.Tag == NeedTag.NewCountry && mostWantedRank is { } mw)
+        {
+            RarityLevel = Rarity.Level(mw);
+            RarityTip = Rarity.Describe(mw);
+        }
         LastWorked = last is null ? "Never" : StationText.LastWorked(last, nowUtc);
         LastWorkedTip = last is null ? "Not in your log yet" : LastWorkedText(last, contacts);
         Source = r;
@@ -102,6 +110,15 @@ public sealed partial class StationRowViewModel : ObservableObject
 
     /// <summary>Need tag colour.</summary>
     public TextKind WhyKind { get; }
+
+    /// <summary>Rarity meter, 1 to 5, for a new country on Club Log's most-wanted list; 0 hides it.</summary>
+    public int RarityLevel { get; }
+
+    /// <summary>"Rare: #61 on Club Log's most-wanted list", or blank.</summary>
+    public string RarityTip { get; } = string.Empty;
+
+    /// <summary>The rarity meter is shown.</summary>
+    public bool HasRarity => RarityLevel > 0;
 
     /// <summary>True for a bold need tag (new country, band, grid).</summary>
     public bool WhyBold => WhyKind is TextKind.Accent or TextKind.Caution;

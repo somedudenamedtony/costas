@@ -58,6 +58,12 @@ public sealed class StationDetailsViewModel
     /// <summary>"CQ 5 · ITU 8", blank when not known.</summary>
     public string Zones { get; private init; } = string.Empty;
 
+    /// <summary>"Rare: #61 on Club Log's most-wanted list", blank when not on the list or not loaded.</summary>
+    public string Rarity { get; private init; } = string.Empty;
+
+    /// <summary>The rarity line is shown.</summary>
+    public bool HasRarity => Rarity.Length > 0;
+
     /// <summary>"No QRZ details" hint when nothing was looked up.</summary>
     public string LookupNote { get; private init; } = string.Empty;
 
@@ -120,7 +126,7 @@ public sealed class StationDetailsViewModel
 
     /// <summary>Builds the details from whatever is known: the heard station, a QRZ lookup, or both.</summary>
     public static StationDetailsViewModel From(string call, Station? s, CallsignCacheEntry? q, LogIndex? log, DistanceUnit units, DateTime nowUtc,
-                                               string? name = null, Pileup? pileup = null, int txOffsetHz = 0, Mode mode = Mode.Ft8)
+                                               string? name = null, Pileup? pileup = null, int txOffsetHz = 0, Mode mode = Mode.Ft8, int? mostWantedRank = null)
     {
         var offset = q is null ? null : StationClock.Offset(q.GmtOffset, q.ObservesDst, s?.EntityKey, s?.Continent, nowUtc);
         return new StationDetailsViewModel
@@ -134,6 +140,7 @@ public sealed class StationDetailsViewModel
             LocalTime = StationClock.Describe(offset, nowUtc) ?? string.Empty,
             LicenseClass = LicenseText(q?.LicenseClass),
             Qsl = QslText(q),
+            Rarity = mostWantedRank is { } mw ? Core.Geo.Rarity.Describe(mw) : string.Empty,
             Zones = Join(" · ", q?.CqZone is { } cq ? $"CQ {cq}" : null, q?.ItuZone is { } itu ? $"ITU {itu}" : null),
             LookupNote = q is null && name is null ? "No QRZ details yet. They appear here when QRZ lookups are set up." : string.Empty,
             QrzUrl = "https://www.qrz.com/db/" + Uri.EscapeDataString(call),

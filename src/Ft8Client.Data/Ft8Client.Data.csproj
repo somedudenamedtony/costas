@@ -15,6 +15,7 @@
     <EmbeddedResource Include="Resources\cty.dat" LogicalName="cty.dat" />
     <EmbeddedResource Include="Resources\frequencies.json" LogicalName="frequencies.json" />
     <EmbeddedResource Include="Resources\world-outline.txt" LogicalName="world-outline.txt" />
+    <EmbeddedResource Include="Resources\dxcc-adif.csv" LogicalName="dxcc-adif.csv" />
     <None Include="Resources\cty.dat_LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>

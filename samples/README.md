@@ -15,3 +15,5 @@ captured by `scripts/capture-golden.sh`; its `# args:` line holds the decode con
 | `ft8/260101_000100.wav` | `ft8sim "W7LIT K1ABC FN42" ... -22` | A-priori decode with low confidence (`? a3`) |
 
 Callsigns in the simulated files are examples, used only by tests.
+
+`clublog/mostwanted.json` is Club Log's most-wanted list as downloaded on 2026-10-12 from `https://clublog.org/mostwanted.php?api=1`, for the parser tests.

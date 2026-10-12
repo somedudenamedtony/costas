@@ -199,6 +199,10 @@ Inbound messages (Reply 4, Halt Tx 8, Free Text 9, Highlight Callsign 13, and ot
 
 Test by decoding our own datagrams with a small reader in the test project and, manually, against GridTracker.
 
+## 7a. Club Log most-wanted list
+
+`GET https://clublog.org/mostwanted.php?api=1` (confirmed 2026-10-12, no account or key) returns a JSON object of rank to ADIF DXCC code, both as strings: `{"1":"344","2":"123",...}`, about 340 entries. A saved answer is in `samples/clublog/mostwanted.json`. The app downloads it at start when the cached copy (`cache/clublog-mostwanted.json`) is missing or a week old, with the app's User-Agent and the usual timeout, and keeps using the cached copy when Club Log cannot be reached. An answer with fewer than 300 entries is ignored.
+
 ## 8. Country file
 
 `cty.dat` from https://www.country-files.com/ . Ship a copy in the app; "Update country file" in Settings downloads the current one (**VERIFY** the stable download URL), validates that it parses and has more than 300 entities, then swaps it in.

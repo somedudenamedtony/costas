@@ -74,4 +74,26 @@ public class StationRowViewModelTests
         row.Refresh(Heard.AddMinutes(2).AddSeconds(10));
         row.LastHeard.Should().Be("2 minutes ago");
     }
+
+    [Fact]
+    public void Constructor_NewCountryOnMostWanted_ShowsRarity()
+    {
+        var station = new Station { Call = "A35JT", LastHeardUtc = Heard, State = StationState.CallingCq };
+        var ranked = new RankedStation(station, new NeedResult(NeedTag.NewCountry, 1), new HearsYou(HearsYouKind.None), Chance.Good, true, null);
+
+        var row = new StationRowViewModel(ranked, 1, DistanceUnit.Miles, Heard, mostWantedRank: 61);
+
+        row.HasRarity.Should().BeTrue();
+        row.RarityLevel.Should().Be(4);
+        row.RarityTip.Should().Be("Rare: #61 on Club Log's most-wanted list");
+    }
+
+    [Fact]
+    public void Constructor_NewBand_NoRarity()
+    {
+        var station = new Station { Call = "A35JT", LastHeardUtc = Heard, State = StationState.CallingCq };
+        var ranked = new RankedStation(station, new NeedResult(NeedTag.NewBand, 2), new HearsYou(HearsYouKind.None), Chance.Good, true, null);
+
+        new StationRowViewModel(ranked, 1, DistanceUnit.Miles, Heard, mostWantedRank: 61).HasRarity.Should().BeFalse();
+    }
 }

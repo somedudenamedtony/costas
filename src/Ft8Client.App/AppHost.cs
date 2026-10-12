@@ -139,6 +139,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Decode journal and WAV saving (null in simulation).</summary>
     public RecordingService? Recording { get; private set; }
 
+    /// <summary>Club Log's most-wanted list for the rarity meter.</summary>
+    public MostWantedService MostWanted { get; private set; } = null!;
+
     /// <summary>Update checks.</summary>
     public UpdateService Updates { get; private set; } = null!;
 
@@ -277,6 +280,9 @@ public sealed class AppHost : IAsyncDisposable
 
         Psk = new PskReporterService(Session, Settings, Spots, Countries, Clock, uploadsAllowed: !Simulating);
         Psk.Start();
+
+        MostWanted = new MostWantedService(Paths, () => Settings.Current.Profile.Callsign, Clock);
+        _ = MostWanted.StartAsync();
 
         Updates = new UpdateService(Settings, Path.Combine(Paths.Temp, "updates"));
         Updates.Start();
