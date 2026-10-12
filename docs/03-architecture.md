@@ -120,6 +120,8 @@ Required from Milestone 0 so that everything can be built and tested without a r
 
 `App/Remote`: `RemoteControlService` runs Kestrel (ASP.NET Core) inside the app while Settings has it on. `GET /` serves one embedded HTML page, `POST /api/pair` swaps the one-time code for a device token, and `/ws` carries `RemoteState` (built from `SessionSnapshot` by `RemoteStateBuilder`, reusing the Operate view models' wording) down and commands up. `RemoteControl` holds the rules (pairing, sign-in, `ControlLease`, commands mapped onto `IRemoteTarget`, which `Session` implements) and is tested without the network. Requests from outside private, link-local and CGNAT ranges get 403; WebSockets from another origin are refused. Token hashes go in the OS credential store. The lease check runs every 250 ms on its own task and calls `Session.HaltAsync(reason)` when the controlling phone is silent for 15 s.
 
+The page's extra data (log, QRZ lookups, country file, most-wanted list, bands) reaches `RemoteStateBuilder` through `RemoteContext`, which `AppHost` fills in. Band and Tx offset changes go through `IRemoteTuning` (`HostTuning` calls `AppHost.SetBandAsync` and `Session.SetTxOffset` and saves settings, as the desk does). Each phone's open station sheet is a view-only `show` command kept per device in `RemoteControl`; it does not take the control lease.
+
 ## Configuration and storage
 
 Per-user data lives in `%LOCALAPPDATA%\Costas\` (on other platforms, the equivalent app-data folder): `costas.db`, `settings.json`, `logs\`, `wav\`, `cache\`. See `06-data-model.md`.
