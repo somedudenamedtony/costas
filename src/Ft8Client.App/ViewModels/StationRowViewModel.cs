@@ -142,9 +142,13 @@ public sealed partial class StationRowViewModel : ObservableObject
     /// <summary>Good is bold.</summary>
     public bool ChanceBold { get; }
 
-    /// <summary>Selected row.</summary>
+    /// <summary>The keyboard and click cursor (Enter calls it, the details flyout shows it). Not the station in contact.</summary>
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
+
+    /// <summary>The station I am in a contact with right now.</summary>
+    [ObservableProperty]
+    public partial bool IsInContact { get; set; }
 
     /// <summary>Updates the age text. Called on every timer tick so a held list does not show a stale age.</summary>
     public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - _heardEndUtc);

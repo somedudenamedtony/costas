@@ -129,6 +129,9 @@ public static class Converters
     /// <summary>Selected row left bar.</summary>
     public static readonly IValueConverter SelectedBar = new FuncValueConverter<bool, IBrush?>(b => b ? Brush("AccentBrush") : Brushes.Transparent);
 
+    /// <summary>Outline of the row the operator picked, kept apart from the in-contact tint.</summary>
+    public static readonly IValueConverter CursorOutline = new FuncValueConverter<bool, IBrush?>(b => b ? Brush("TextSecondaryBrush") : Brushes.Transparent);
+
     /// <summary>True when an int equals the parameter.</summary>
     public static readonly IValueConverter IntEquals = new IntEqualsConverter();
 
