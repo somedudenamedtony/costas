@@ -246,6 +246,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var tonight = TonightRows(s);
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
         Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current.Ranking);
+        Operate.ShowCqModifier(_host.Settings.Current.Operating.CqModifier);
         Operate.Apply(s, tonight.Rows, tonight.Total);
         Reach.ApplyNeighbours(s.Neighbours, s.Band, _host.Settings.Current.PskReporter is { FeedEnabled: true, CompareNeighbours: true });
         BarShowsCqAndSlot = ShowCqAndSlotInBar(Tab);
@@ -459,6 +460,14 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             return;
         }
         await _host.Session.TuneAsync(TuneSeconds);
+    }
+
+    /// <inheritdoc />
+    public void SetCqModifier(string modifier)
+    {
+        Activity();
+        if (_host.Settings.Current.Operating.CqModifier == modifier) return;
+        _host.Settings.Update(s => s.Operating.CqModifier = modifier);
     }
 
     /// <summary>Halt Tx: always enabled.</summary>

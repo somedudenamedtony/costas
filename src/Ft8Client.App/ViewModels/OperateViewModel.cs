@@ -193,6 +193,36 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial string CqText { get; set; } = "Call CQ";
 
+    /// <summary>The CQ modifiers in the picker beside Call CQ.</summary>
+    public ObservableCollection<CqModifierChoice> CqModifiers { get; } = new(CqModifierChoice.Common.Select(m => new CqModifierChoice(m)));
+
+    /// <summary>The CQ modifier in use; picking another saves it.</summary>
+    [ObservableProperty]
+    public partial CqModifierChoice? SelectedCqModifier { get; set; }
+
+    private bool _showingCqModifier;
+
+    /// <summary>Shows the modifier from settings in the picker, adding it to the choices if it is not a common one.</summary>
+    public void ShowCqModifier(string modifier)
+    {
+        var m = modifier.Trim().ToUpperInvariant();
+        if (SelectedCqModifier?.Modifier == m) return;
+        var choice = CqModifiers.FirstOrDefault(c => c.Modifier == m);
+        if (choice is null)
+        {
+            choice = new CqModifierChoice(m);
+            CqModifiers.Add(choice);
+        }
+        _showingCqModifier = true;
+        SelectedCqModifier = choice;
+        _showingCqModifier = false;
+    }
+
+    partial void OnSelectedCqModifierChanged(CqModifierChoice? value)
+    {
+        if (!_showingCqModifier && value is not null) _commands.SetCqModifier(value.Modifier);
+    }
+
     /// <summary>True while transmitting.</summary>
     [ObservableProperty]
     public partial bool Transmitting { get; set; }

@@ -69,6 +69,10 @@ of Next in line (it is now worked on this band) and your tallies update:
 Click **Call CQ** (or press ++ctrl+q++). Costas calls CQ in the parity set in **Settings › Transmitting › Call CQ in**
 (even or odd slots) until you click **Stop CQ**.
 
+To call a part of the world, pick it in the dropdown beside **Call CQ**: **CQ** for everyone, **CQ DX** for stations
+outside your country, **CQ NA**, **CQ EU** and the other continents, or **CQ POTA**. It applies from your next CQ,
+and is the same setting as **Settings › Transmitting › CQ**.
+
 When someone answers, Costas starts the contact with the first caller. Anyone else who calls you meanwhile waits in
 the **Calling you** bar.
 

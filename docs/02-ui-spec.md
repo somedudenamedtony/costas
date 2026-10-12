@@ -99,6 +99,7 @@ Idle (no contact): caption "Not in a contact" (or "Calling CQ" with the subline 
 | You sent / You received | The reports with "dB" after them. Shows "--" until exchanged |
 | Slot | "Transmitting" or "Receiving", the seconds left, and a progress bar (critical while transmitting). While transmitting it counts down to the end of the transmission, otherwise to the next slot |
 | Call CQ / Stop CQ | The same command as Ctrl+Q and the bottom bar's Call CQ button (shown on other views) |
+| CQ modifier | Owner request 2026-10-12. A dropdown beside Call CQ: CQ, CQ DX, CQ NA, CQ SA, CQ EU, CQ AS, CQ AF, CQ OC, CQ POTA, plus the Settings value if it is another one. Picking saves it as Settings › Transmitting › CQ modifier, so both always agree; it applies from the next CQ sent |
 | Resend | Sends the current step again in my next slot |
 | Log now | Logs the contact as it stands. Enabled once both reports are exchanged |
 | Abandon (Esc) | Stops transmitting, ends the contact, logs nothing |
