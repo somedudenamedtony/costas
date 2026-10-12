@@ -6,8 +6,10 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
+using Ft8Client.Core;
 using Ft8Client.Core.Remote;
 using Ft8Client.Core.Time;
 
@@ -24,7 +26,15 @@ public sealed class RemoteControl
     private readonly IRemoteTarget _target;
     private readonly IClock _clock;
     private readonly Action<string> _saveTokens;
+    private readonly IRemoteTuning? _tuning;
+    private readonly ConcurrentDictionary<string, string> _viewing = new(StringComparer.Ordinal);
     private readonly object _gate = new();
+
+    /// <summary>Lowest Tx offset the phone can set, as on the desk.</summary>
+    public const int MinOffsetHz = 200;
+
+    /// <summary>Highest Tx offset the phone can set, as on the desk.</summary>
+    public const int MaxOffsetHz = 2900;
 
     /// <summary>Creates the rules over a target session.</summary>
     /// <param name="target">The session.</param>
@@ -32,9 +42,12 @@ public sealed class RemoteControl
     /// <param name="tokens">The paired phones.</param>
     /// <param name="saveTokens">Saves the paired phones (to the OS credential store).</param>
     /// <param name="pairing">The pairing code.</param>
-    public RemoteControl(IRemoteTarget target, IClock clock, DeviceTokens tokens, Action<string> saveTokens, PairingGate? pairing = null)
+    /// <param name="tuning">Band and Tx offset changes; without it the phone cannot change them.</param>
+    public RemoteControl(IRemoteTarget target, IClock clock, DeviceTokens tokens, Action<string> saveTokens, PairingGate? pairing = null,
+                         IRemoteTuning? tuning = null)
     {
         _target = target;
+        _tuning = tuning;
         _clock = clock;
         Tokens = tokens;
         _saveTokens = saveTokens;
@@ -75,6 +88,7 @@ public sealed class RemoteControl
     {
         Tokens.Clear();
         _saveTokens(string.Empty);
+        _viewing.Clear();
         DeskActivity();
         Changed?.Invoke();
     }
@@ -85,6 +99,9 @@ public sealed class RemoteControl
         var holder = Lease.Holder;
         return holder is null ? "desk" : string.Equals(holder, deviceId, StringComparison.Ordinal) ? "you" : "other";
     }
+
+    /// <summary>The station <paramref name="deviceId"/> has open, or null.</summary>
+    public string? ViewingFor(string deviceId) => _viewing.TryGetValue(deviceId, out var call) ? call : null;
 
     /// <summary>Operator input at the desk: the desk is the control point again.</summary>
     public void DeskActivity()
@@ -107,6 +124,14 @@ public sealed class RemoteControl
         if (cmd.Type == "ping")
         {
             lock (_gate) Lease.Heartbeat(deviceId, now);
+            return null;
+        }
+        if (cmd.Type == "show")
+        {
+            // Looking at a station changes nothing at the station, so it does not take control.
+            var shown = cmd.Call?.Trim().ToUpperInvariant();
+            if (string.IsNullOrEmpty(shown)) _viewing.TryRemove(deviceId, out _);
+            else _viewing[deviceId] = shown;
             return null;
         }
         bool changed;
@@ -150,9 +175,44 @@ public sealed class RemoteControl
             case "jump" when cmd.Step is { } step:
                 _target.JumpTo(step);
                 return null;
+            case "band":
+                return await BandAsync(cmd).ConfigureAwait(false);
+            case "offset" when cmd.Hz is { } hz:
+                if (_tuning is null) return "The station cannot change that from the phone.";
+                if (hz is < MinOffsetHz or > MaxOffsetHz) return $"The offset must be between {MinOffsetHz} and {MaxOffsetHz} Hz.";
+                _tuning.SetTxOffset(hz);
+                return null;
+            case "offsetAuto":
+                if (_tuning is null) return "The station cannot change that from the phone.";
+                _tuning.SetTxOffset(null);
+                return null;
             default:
                 return "The station did not understand that.";
         }
+    }
+
+    // As the band menu on the desk: not while transmitting, and only to a band in the frequency table.
+    private async Task<string?> BandAsync(RemoteCommand cmd)
+    {
+        if (_tuning is null) return "The station cannot change that from the phone.";
+        if (_target.Snapshot.Transmitting) return "Wait until this transmission ends to change band.";
+        var mode = _target.Snapshot.Mode;
+        if (cmd.Mode is { Length: > 0 } m && !ModeInfo.TryParse(m, out mode)) return $"{m} is not a mode the station knows.";
+        var bands = _tuning.Bands(mode);
+        var band = cmd.Band?.Trim().Replace(" ", string.Empty, StringComparison.Ordinal) ?? _target.Snapshot.Band;
+        if (!bands.Contains(band, StringComparer.OrdinalIgnoreCase))
+        {
+            // A mode change keeps the band when it can, like the desk; otherwise the first band of that mode.
+            if (cmd.Band is { Length: > 0 } && cmd.Mode is null) return $"{cmd.Band} is not in the frequency table for {ModeInfo.Name(mode)}.";
+            if (bands.Count == 0) return $"There are no {ModeInfo.Name(mode)} frequencies in the frequency table.";
+            band = bands[0];
+        }
+        else
+        {
+            band = bands.First(b => string.Equals(b, band, StringComparison.OrdinalIgnoreCase));
+        }
+        await _tuning.SetBandAsync(band, mode).ConfigureAwait(false);
+        return null;
     }
 
     /// <summary>

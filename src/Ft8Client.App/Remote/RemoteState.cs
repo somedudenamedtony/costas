@@ -52,4 +52,70 @@ public sealed record RemoteState
 
     /// <summary>Next in line, best first.</summary>
     public IReadOnlyList<RemoteStation> Line { get; init; } = [];
+
+    /// <summary>The band, "20m".</summary>
+    public string Band { get; init; } = string.Empty;
+
+    /// <summary>The mode, "FT8".</summary>
+    public string Mode { get; init; } = string.Empty;
+
+    /// <summary>Bands for the current mode.</summary>
+    public IReadOnlyList<RemoteBand> Bands { get; init; } = [];
+
+    /// <summary>False while transmitting, as on the desk.</summary>
+    public bool CanChangeBand { get; init; }
+
+    /// <summary>"Receiving" or "Transmitting".</summary>
+    public string SlotLabel { get; init; } = string.Empty;
+
+    /// <summary>Milliseconds into the slot (or the transmission) when this state was built.</summary>
+    public int SlotIntoMs { get; init; }
+
+    /// <summary>Length of the slot (or the transmission) in milliseconds.</summary>
+    public int SlotLengthMs { get; init; }
+
+    /// <summary>"1,500 Hz · clear", as on the desk.</summary>
+    public string Offset { get; init; } = string.Empty;
+
+    /// <summary>The Tx offset in hertz.</summary>
+    public int OffsetHz { get; init; }
+
+    /// <summary>True when the Tx offset is picked automatically.</summary>
+    public bool OffsetAuto { get; init; }
+
+    /// <summary>"SWR 3.4 · ALC 70%" after a transmission outside limits, else blank.</summary>
+    public string Meter { get; init; } = string.Empty;
+
+    /// <summary>What to do about <see cref="Meter"/>.</summary>
+    public string MeterTip { get; init; } = string.Empty;
+
+    /// <summary>True when the meter warning is critical rather than a caution.</summary>
+    public bool MeterCritical { get; init; }
+
+    /// <summary>One line for QRZ and PSK Reporter when either is not working, else blank.</summary>
+    public string Services { get; init; } = string.Empty;
+
+    /// <summary>The band summary, or null before the first decode.</summary>
+    public RemoteSummary? Summary { get; init; }
+
+    /// <summary>Repeats: heard now and already worked on this band and mode.</summary>
+    public IReadOnlyList<RemoteStation> Repeats { get; init; } = [];
+
+    /// <summary>Watching: needed, but not callable now.</summary>
+    public IReadOnlyList<RemoteWatch> Watching { get; init; } = [];
+
+    /// <summary>Who hears me.</summary>
+    public RemoteSignal? Signal { get; init; }
+
+    /// <summary>"Worked tonight · 4".</summary>
+    public string TonightTitle { get; init; } = string.Empty;
+
+    /// <summary>Contacts made tonight, newest first.</summary>
+    public IReadOnlyList<RemoteTonight> Tonight { get; init; } = [];
+
+    /// <summary>Band activity, newest first.</summary>
+    public IReadOnlyList<RemoteDecode> Decodes { get; init; } = [];
+
+    /// <summary>The station this phone has open, or null.</summary>
+    public RemoteDetails? Details { get; init; }
 }
