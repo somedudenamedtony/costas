@@ -28,7 +28,7 @@ namespace Ft8Client.App.Engine;
 /// out through the transmitter, immutable snapshots to the UI. Headless; the UI only renders snapshots and sends
 /// commands. State changes happen under one lock; decoding and I/O happen outside it.
 /// </summary>
-public sealed class Session
+public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
 {
     private const int MaxRaw = 1500;
     private const int QuickSpanHz = 100;

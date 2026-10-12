@@ -1,0 +1,318 @@
+<!doctype html>
+<!-- Costas - a station-centric FT8/FT4 client. Copyright (C) 2026 Costas contributors. GPLv3 or later; see LICENSE. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#141414">
+<title>Costas remote</title>
+<style>
+:root{--bg:#141414;--card:#202020;--line:#333;--tx:#eee;--mut:#9a9a9a;--btn:#3a3a3a;--red:#e8584e;--halt:#b3261e;--grn:#4caf6a;--amb:#e0a83a;
+  --tag-bg:#2f4a36;--tag-tx:#9fe0b0;--warn-bg:#3b2a12;--warn-line:#6b4a1a;--warn-tx:#f3c77a;--accent:#58a6ff}
+@media (prefers-color-scheme: light){:root{--bg:#f3f3f3;--card:#fff;--line:#ddd;--tx:#1a1a1a;--mut:#666;--btn:#e4e4e4;--tag-bg:#dcf1e1;--tag-tx:#1f6b34;
+  --warn-bg:#fff4e0;--warn-line:#e8c27a;--warn-tx:#7a4d00;--accent:#0a66c2}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.35 "Segoe UI",system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+body{min-height:100vh;display:flex;flex-direction:column}
+button{font:inherit;color:inherit;border:0;border-radius:8px;background:var(--btn);padding:10px 12px;font-weight:600;cursor:pointer}
+button:disabled{opacity:.45}
+button.red{background:var(--red);color:#fff}
+.top{padding:12px 16px 10px;border-bottom:1px solid var(--line);font-size:13px;color:var(--mut);position:sticky;top:0;background:var(--bg);z-index:2}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:12px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mut)}
+.freq{font-size:21px;color:var(--tx);font-weight:600;margin-top:4px}
+.onair{background:var(--red);color:#fff;font-weight:700;padding:8px 16px;font-family:Consolas,monospace;font-size:14px}
+main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.lbl{font-size:12px;color:var(--mut)}
+.call{font-size:30px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sub{font-size:13px;color:var(--mut)}
+.reports{display:flex;gap:18px;margin-top:6px;font-size:13px;color:var(--mut)}.reports b{color:var(--tx);font-size:16px}
+.steps{display:flex;align-items:center;margin:12px 0 8px}
+.st{width:24px;height:24px;border-radius:50%;border:2px solid #666;font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--mut);flex:none}
+.st.done{background:var(--btn);border-color:var(--btn);color:var(--tx)}
+.st.sending{background:var(--red);border-color:var(--red);color:#fff}
+.st.waiting{border-color:var(--accent);color:var(--accent)}
+.bar{flex:1;height:2px;background:var(--line)}.bar.on{background:var(--mut)}
+.msgs{display:flex;flex-direction:column;gap:6px}
+.msg{border:1px dashed var(--line);border-radius:8px;padding:7px 10px}
+.msg .m{font-family:Consolas,monospace;font-size:14px}
+.msg .s{font-size:12px;color:var(--mut)}
+.msg.theirs{margin-left:18px}.msg.mine{margin-right:18px}
+.msg.done{border-style:solid}
+.msg.waiting{border:2px solid var(--accent)}
+.msg.sending{background:var(--red);border-color:var(--red);color:#fff}.msg.sending .s{color:#fff;opacity:.9}
+.msg.jump{cursor:pointer}
+.btns{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-top:12px}
+.list .it{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line)}
+.list .it:first-of-type{border-top:0}
+.c{font-weight:600;font-size:16px}.s{font-size:12px;color:var(--mut)}
+.tag{font-size:11px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--tag-bg);color:var(--tag-tx)}
+.head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.banner{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-tx);border-radius:12px;padding:12px;font-size:14px}
+.note{position:fixed;left:14px;right:14px;bottom:110px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;display:none;z-index:3}
+.haltbar{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 30%)}
+.halt{width:100%;background:var(--halt);color:#fff;border-radius:14px;padding:14px;font-size:19px;font-weight:800;letter-spacing:1px}
+.halt span{display:block;font-size:12px;font-weight:400;letter-spacing:0;opacity:.9;margin-top:2px}
+.halt.idle{background:#555}
+.pair{max-width:360px;margin:12vh auto 0;padding:0 20px;display:flex;flex-direction:column;gap:14px}
+.pair input{font:inherit;font-size:28px;letter-spacing:6px;text-align:center;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--tx)}
+.err{color:var(--red);font-size:14px;min-height:1.2em}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<section id="pairView" class="pair hidden">
+  <div class="freq">Pair this phone</div>
+  <div class="sub">On the station computer, open Settings, Phone, and press <b>Pair a phone</b>. Type the six-digit code here.</div>
+  <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000 000">
+  <button id="pairBtn" class="red">Pair</button>
+  <div id="pairErr" class="err"></div>
+</section>
+
+<section id="opView" class="hidden">
+  <div class="top">
+    <div class="row"><span id="station">Costas</span><span class="pill"><span id="linkDot" class="dot"></span><span id="link">Connecting…</span></span></div>
+    <div class="row"><div id="freq" class="freq">—</div><span class="pill"><span id="radioDot" class="dot"></span>Radio</span></div>
+    <div class="row" style="margin-top:3px"><span id="health"></span><span id="control"></span></div>
+  </div>
+  <div id="onair" class="onair hidden"></div>
+  <main>
+    <div id="fault" class="banner hidden"></div>
+    <div class="card"><div id="contactBody"></div><div id="contactBtns" class="btns"></div></div>
+    <div id="callers" class="card list hidden"></div>
+    <div id="line" class="card list"></div>
+  </main>
+  <div id="note" class="note"></div>
+  <div class="haltbar"><button id="halt" class="halt">HALT TX<span>Stops transmitting now. Receive keeps running.</span></button></div>
+</section>
+
+<script>
+"use strict";
+const KEY = "costas-remote-token";
+const $ = id => document.getElementById(id);
+let token = null, ws = null, state = null, pingAt = 0, lastMsg = 0, backoff = 1000, noteTimer = 0;
+
+function load() { try { return localStorage.getItem(KEY); } catch { return null; } }
+function save(t) { try { if (t) localStorage.setItem(KEY, t); else localStorage.removeItem(KEY); } catch { } }
+
+// Builds an element; text always goes through textContent, never HTML (callsigns and messages come off the air).
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined && text !== null) e.textContent = text;
+  return e;
+}
+function button(text, cls, onClick, disabled) {
+  const b = el("button", cls, text);
+  b.onclick = onClick;
+  b.disabled = !!disabled;
+  return b;
+}
+
+function showPair(msg) {
+  $("opView").classList.add("hidden");
+  $("pairView").classList.remove("hidden");
+  $("pairErr").textContent = msg || "";
+}
+function showOp() {
+  $("pairView").classList.add("hidden");
+  $("opView").classList.remove("hidden");
+}
+
+$("pairBtn").onclick = async () => {
+  const code = $("code").value.replace(/\D/g, "");
+  if (code.length !== 6) { $("pairErr").textContent = "The code has six digits."; return; }
+  $("pairBtn").disabled = true;
+  try {
+    const r = await fetch("/api/pair", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.token) { $("pairErr").textContent = j.error || "Pairing failed."; return; }
+    token = j.token; save(token); showOp(); connect();
+  } catch { $("pairErr").textContent = "Cannot reach the station. Is this phone on the same network?"; }
+  finally { $("pairBtn").disabled = false; }
+};
+
+function send(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify(obj)); return true; }
+  note("Not connected to the station.");
+  return false;
+}
+function cmd(type, extra) { send(Object.assign({ type }, extra || {})); }
+
+function connect() {
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(proto + "//" + location.host + "/ws");
+  setLink("amb", "Connecting…");
+  ws.onopen = () => { ws.send(JSON.stringify({ type: "hello", token })); };
+  ws.onmessage = ev => {
+    lastMsg = Date.now();
+    backoff = 1000;
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.type === "pong") { setLink("grn", "Link " + (Date.now() - pingAt) + " ms"); return; }
+    if (m.type === "state") {
+      state = m.state; render();
+      if (m.note) note(m.note);
+      if ($("link").textContent === "Connecting…" || $("link").textContent === "Reconnecting…") setLink("grn", "Connected");
+    }
+  };
+  ws.onclose = ev => {
+    ws = null;
+    if (ev.reason === "unpaired") { token = null; save(null); showPair("This phone is not paired any more. Pair it again."); return; }
+    setLink("amb", "Reconnecting…");
+    setTimeout(connect, backoff);
+    backoff = Math.min(backoff * 2, 5000);
+  };
+}
+
+// Heartbeat: the station stops transmitting when the phone in control is silent for 15 s.
+setInterval(() => {
+  if (ws && ws.readyState === WebSocket.OPEN) { pingAt = Date.now(); ws.send(JSON.stringify({ type: "ping" })); }
+  if (lastMsg && Date.now() - lastMsg > 4000 && ws) setLink("amb", "No answer from the station");
+}, 5000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && token && (!ws || ws.readyState > 1)) connect();
+});
+
+function setLink(color, text) {
+  $("linkDot").style.background = "var(--" + color + ")";
+  $("link").textContent = text;
+}
+function note(text) {
+  const n = $("note");
+  n.textContent = text; n.style.display = "block";
+  clearTimeout(noteTimer); noteTimer = setTimeout(() => n.style.display = "none", 4000);
+}
+
+$("halt").onclick = () => cmd("halt");
+
+function render() {
+  const s = state; if (!s) return;
+  $("station").textContent = "Costas · " + (s.myCall || "no callsign");
+  $("freq").textContent = s.frequency;
+  $("radioDot").style.background = s.radioOk ? "var(--grn)" : "var(--red)";
+  $("radioDot").parentElement.title = s.radio;
+  $("health").textContent = s.utc + " UTC · " + s.health;
+  $("control").textContent = s.control === "you" ? "You control" : s.control === "other" ? "Another phone controls" : "Desk controls";
+
+  const onair = $("onair");
+  onair.classList.toggle("hidden", !s.transmitting);
+  onair.textContent = s.transmitting ? "ON AIR  " + (s.onAir || "") : "";
+
+  const f = $("fault");
+  f.classList.toggle("hidden", !s.fault && s.radioOk);
+  f.textContent = s.fault || (!s.radioOk ? "Radio: " + s.radio : "");
+
+  renderContact(s);
+  renderCallers(s);
+  renderLine(s);
+
+  const busy = s.transmitting || s.callingCq || (s.contact && s.contact.active);
+  const h = $("halt");
+  h.classList.toggle("idle", !busy);
+  h.firstChild.textContent = busy ? "HALT TX" : "NOT TRANSMITTING";
+  h.lastChild.textContent = busy ? "Stops transmitting now. Receive keeps running." : "Radio is receiving only";
+}
+
+// Each part is rebuilt only when its data changed: a button replaced under a finger loses the tap.
+const cache = {};
+function changed(key, data) {
+  const j = JSON.stringify(data);
+  if (cache[key] === j) return false;
+  cache[key] = j;
+  return true;
+}
+
+function renderContact(s) {
+  const c = s.contact;
+  const idle = !c || !c.active && c.steps.length === 0;
+  const cqOff = !s.radioOk && !s.callingCq;
+  const btns = idle || !c.active
+    ? [[s.callingCq ? "Stop CQ" : "Call CQ", s.callingCq ? "red" : "", "cq", cqOff]]
+    : [["Resend", "", "resend", false]].concat(c.canLogNow ? [["Log now", "", "logNow", false]] : [], [["Abandon", "red", "abandon", false]]);
+  if (changed("contactBtns", btns)) {
+    $("contactBtns").replaceChildren(...btns.map(([text, cls, type, off]) => button(text, cls, () => cmd(type), off)));
+  }
+  if (!changed("contactBody", { c, cq: s.callingCq })) return;
+  const box = $("contactBody"); box.replaceChildren();
+  if (idle) {
+    box.append(el("div", "lbl", s.callingCq ? "Calling CQ" : "Not in a contact"));
+    box.append(el("div", "sub", s.callingCq ? "Waiting for a station to answer." : "Call a station in Next in line, or call CQ."));
+    return;
+  }
+  box.append(el("div", "lbl", c.caption));
+  const call = el("div", "call", c.call);
+  if (c.need) call.append(el("span", "tag", c.need));
+  box.append(call);
+  if (c.subline) box.append(el("div", "sub", c.subline));
+  const rep = el("div", "reports");
+  const sent = el("span", null, "Sent "); sent.append(el("b", null, c.sent));
+  const rcvd = el("span", null, "Received "); rcvd.append(el("b", null, c.received));
+  rep.append(sent, rcvd); box.append(rep);
+
+  // The progress strip, as on the desk.
+  const strip = el("div", "steps");
+  c.steps.forEach((st, i) => {
+    if (i > 0) strip.append(el("div", "bar" + (st.look !== "upcoming" ? " on" : "")));
+    strip.append(el("div", "st " + st.look, st.look === "done" ? "✓" : String(i + 1)));
+  });
+  box.append(strip);
+
+  // The messages around the current step (the strip shows the rest), so Calling you and Next in line stay near the top.
+  const msgs = el("div", "msgs");
+  let cur = c.steps.findIndex(x => x.look === "sending" || x.look === "waiting");
+  if (cur < 0) cur = c.steps.findIndex(x => x.look === "upcoming");
+  if (cur < 0 || !c.active) cur = Math.max(0, c.steps.map(x => x.look).lastIndexOf("done"));
+  const shown = c.active ? c.steps.slice(Math.max(0, cur - 1), cur + 2) : c.steps.slice(cur, cur + 1);
+  shown.forEach(st => {
+    const m = el("div", "msg " + (st.mine ? "mine " : "theirs ") + st.look + (st.canJump ? " jump" : ""));
+    const who = el("div", "s", st.who + (st.time ? " · " + st.time : ""));
+    m.append(who, el("div", "m", st.message), el("div", "s", st.status + (st.canJump ? " · tap to send this next" : "")));
+    if (st.canJump) m.onclick = () => cmd("jump", { step: st.index });
+    msgs.append(m);
+  });
+  box.append(msgs);
+}
+
+function renderCallers(s) {
+  if (!changed("callers", s.callers)) return;
+  const box = $("callers"); box.replaceChildren();
+  box.classList.toggle("hidden", s.callers.length === 0);
+  if (s.callers.length === 0) return;
+  const head = el("div", "head"); head.append(el("b", null, "Calling you"), el("span", "s", String(s.callers.length)));
+  box.append(head);
+  s.callers.forEach(w => {
+    const it = el("div", "it");
+    const left = el("div");
+    const c = el("div", "c", w.call + " ");
+    if (w.need) c.append(el("span", "tag", w.need));
+    left.append(c, el("div", "s", [w.place, w.line].filter(Boolean).join(" · ")));
+    if (w.note) left.append(el("div", "s", w.note));
+    it.append(left, button(w.button, "", () => cmd(w.command, { call: w.call }), w.queued));
+    box.append(it);
+  });
+}
+
+function renderLine(s) {
+  if (!changed("line", { line: s.line, ok: s.radioOk })) return;
+  const box = $("line"); box.replaceChildren();
+  const head = el("div", "head"); head.append(el("b", null, "Next in line"), el("span", "s", s.line.length ? "" : "Nobody to call yet"));
+  box.append(head);
+  s.line.forEach(r => {
+    const it = el("div", "it");
+    const left = el("div");
+    const c = el("div", "c", r.call + " ");
+    if (r.need) c.append(el("span", "tag", r.need));
+    left.append(c, el("div", "s", [r.doing, r.where, r.db + " dB"].filter(Boolean).join(" · ")));
+    it.append(left, button(r.button, "", () => cmd("call", { call: r.call }), !s.radioOk));
+    box.append(it);
+  });
+}
+
+token = load();
+if (token) { showOp(); connect(); } else showPair();
+</script>
+</body>
+</html>

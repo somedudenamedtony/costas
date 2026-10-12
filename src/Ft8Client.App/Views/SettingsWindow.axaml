@@ -335,6 +335,45 @@
         </ScrollViewer>
       </TabItem>
 
+      <!-- Phone -->
+      <TabItem Header="Phone">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Phone" />
+            <TextBlock Classes="intro" Text="Operate from a phone on your home network: see the contact, who is calling you and Next in line, call stations, call CQ and halt transmit. The phone opens a page in its browser; nothing to install." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Remote page" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <CheckBox Content="Let a paired phone on this network operate the station" IsChecked="{Binding RemoteEnabled}" />
+                <StackPanel Orientation="Horizontal" Spacing="8" IsEnabled="{Binding RemoteEnabled}">
+                  <TextBlock Text="Port" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding RemotePort}" Width="80" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="{Binding RemoteStatus}" />
+                <TextBlock Classes="help" Text="The first time, Windows asks whether Costas may use the network: allow it on private networks. Addresses outside your home network are refused." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Pair a phone" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="Pair a phone" Command="{Binding PairPhoneCommand}" IsEnabled="{Binding RemoteRunning}" />
+                  <Button Content="{Binding ForgetPhonesText}" Command="{Binding ForgetPhonesCommand}" IsVisible="{Binding HasPairedPhones}" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="{Binding PairingText}" FontWeight="SemiBold" IsVisible="{Binding PairingText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Classes="help" Text="Open the address above on the phone and type the code. The phone stays paired until you forget it here." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Safety" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <TextBlock Classes="help" Text="A phone takes control when it sends a command; a click or key press here takes it back. While a phone has control, transmit stops if the phone loses touch for 15 seconds (screen locked, browser closed, Wi-Fi lost), and the Tx watchdog is at most 3 minutes. Keep the page open on screen while you operate." />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <!-- 6 Appearance -->
       <TabItem Header="Appearance">
         <ScrollViewer>

@@ -19,6 +19,11 @@
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\costas.ico" />
+    <EmbeddedResource Include="Remote\index.html" LogicalName="Ft8Client.App.Remote.index.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Kestrel serves the remote page; HttpListener would need an admin URL reservation to listen beyond localhost. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Ft8Client.App.Tests" />

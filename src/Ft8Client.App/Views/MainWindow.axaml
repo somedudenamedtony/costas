@@ -151,6 +151,9 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+          <TextBlock Text="{Binding RemoteText}" ToolTip.Tip="{Binding RemoteTip}" VerticalAlignment="Center" FontWeight="SemiBold"
+                     Foreground="{DynamicResource AccentBrush}"
+                     IsVisible="{Binding RemoteText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
         <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                    Foreground="{Binding StatusKind, Converter={x:Static v:Converters.KindBrush}}" AutomationProperties.LiveSetting="Polite" />

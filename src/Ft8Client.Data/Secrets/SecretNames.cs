@@ -29,4 +29,7 @@ public static class SecretNames
 
     /// <summary>QRZ XML password.</summary>
     public const string QrzPassword = Prefix + "qrz-password";
+
+    /// <summary>Hashes of the tokens of phones paired for remote control.</summary>
+    public const string RemoteDevices = Prefix + "remote-devices";
 }
