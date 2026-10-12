@@ -11,10 +11,21 @@ should not need Settings while operating.
 | --- | --- |
 | **Band** | The band you are on, filled in at start-up. Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
 | **Mode** | FT8 or FT4. Changes the slot length and dial frequency. Locked while transmitting |
-| Frequency | The dial frequency read from the radio, in MHz |
+| Frequency | The dial frequency read from the radio, in MHz. Click it to type another frequency or use one you saved ([below](#typing-a-frequency)). Locked while transmitting |
 | **Operate**, **Raw decodes**, **Reach**, **Log** | The four views. ++ctrl+1++ to ++ctrl+4++ |
 | Clock | UTC. Turns amber with a tooltip when your clock is off by more than 0.5 s, red above 2 s |
 | **☰** | Mini mode, Settings, Station setup, Diagnostics, Keyboard shortcuts, About |
+
+### Typing a frequency
+
+DXpeditions often sit off the standard frequency (14.090 instead of 14.074, for example). Click the dial frequency,
+type the new one (`14.090`, `14090` in kHz, or `14.090.000` all work) and press **Tune** or ++enter++. Costas moves the
+radio there, and to that band if it is a different one. The usual transmit limits still apply: Costas will not tune
+outside the amateur bands, or to a band it has no transmit limits for.
+
+**Save the current frequency** adds the frequency the radio is on to *Your frequencies* in the same menu, so the next
+time it is one click. **Remove** takes one off the list. The standard frequencies are not saved there; they are what the
+**Band** menu picks.
 
 ![The menu](images/menu.png)
 

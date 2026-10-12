@@ -167,6 +167,17 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial string Frequency { get; set; } = string.Empty;
 
+    /// <summary>What the operator typed in the frequency menu.</summary>
+    [ObservableProperty]
+    public partial string DialEntry { get; set; } = string.Empty;
+
+    /// <summary>Why the frequency menu could not tune or save, or empty.</summary>
+    [ObservableProperty]
+    public partial string DialMessage { get; set; } = string.Empty;
+
+    /// <summary>Dial frequencies the operator saved, lowest first.</summary>
+    public ObservableCollection<SavedDialViewModel> SavedDials { get; } = [];
+
     /// <summary>Selected view: 0 Operate, 1 Raw decodes, 2 Reach, 3 Log.</summary>
     [ObservableProperty]
     public partial int Tab { get; set; }
@@ -572,6 +583,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         SelectedBand = BandPlan.Display(s.Operating.Band);
         if (int.TryParse(s.Operating.TxOffset, out var hz)) ManualOffset = hz.ToString(CultureInfo.InvariantCulture);
         _updatingBand = false;
+        RefreshSavedDials();
         Reach.MyCall = s.Profile.Callsign;
         Reach.MyGrid = s.Profile.Grid;
         Reach.Units = SettingsMapper.Units(s);
@@ -663,6 +675,60 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             _ => "off",
         };
         return new IndicatorViewModel(label, word, st.Health, st.Message);
+    }
+
+    /// <summary>Tunes to the frequency typed in the frequency menu.</summary>
+    [RelayCommand]
+    private async Task TuneDialAsync()
+    {
+        if (!DialText.TryParse(DialEntry, out var hz))
+        {
+            DialMessage = "Type a frequency such as 14.090 (MHz) or 14090 (kHz).";
+            return;
+        }
+        DialMessage = await _host.TuneDialAsync(hz) ?? string.Empty;
+        if (DialMessage.Length == 0) DialEntry = string.Empty;
+    }
+
+    /// <summary>Tunes to a saved frequency.</summary>
+    [RelayCommand]
+    private async Task UseSavedDialAsync(SavedDialViewModel? dial)
+    {
+        if (dial is not null) DialMessage = await _host.TuneDialAsync(dial.Hz) ?? string.Empty;
+    }
+
+    /// <summary>Saves the frequency the radio is on to the frequency menu.</summary>
+    [RelayCommand]
+    private void SaveDial()
+    {
+        var hz = _host.Session.Snapshot.DialHz;
+        if (_host.Frequencies.Entries.Any(e => e.DialHz == hz))
+        {
+            DialMessage = $"{DialText.Mhz(hz)} MHz is a standard frequency; it is already in the band menu.";
+            return;
+        }
+        if (_host.Settings.Current.Operating.SavedFrequencies.Contains(hz))
+        {
+            DialMessage = $"{DialText.Mhz(hz)} MHz is already saved.";
+            return;
+        }
+        _host.Settings.Update(s => s.Operating.SavedFrequencies.Add(hz));
+        DialMessage = string.Empty;
+    }
+
+    /// <summary>Removes a saved frequency.</summary>
+    [RelayCommand]
+    private void RemoveSavedDial(SavedDialViewModel? dial)
+    {
+        if (dial is not null) _host.Settings.Update(s => s.Operating.SavedFrequencies.Remove(dial.Hz));
+    }
+
+    private void RefreshSavedDials()
+    {
+        var saved = _host.Settings.Current.Operating.SavedFrequencies.Distinct().Order().ToList();
+        if (SavedDials.Select(d => d.Hz).SequenceEqual(saved)) return;
+        SavedDials.Clear();
+        foreach (var hz in saved) SavedDials.Add(new SavedDialViewModel(hz));
     }
 
     /// <summary>"14.074.000".</summary>

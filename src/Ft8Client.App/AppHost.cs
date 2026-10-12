@@ -350,6 +350,35 @@ public sealed class AppHost : IAsyncDisposable
     }
 
     /// <summary>
+    /// Tunes to a dial frequency the operator typed or saved, on the band it belongs to (changing band if needed).
+    /// The band-edge guard still applies to every transmission. Returns why it could not, or null.
+    /// </summary>
+    public async Task<string?> TuneDialAsync(long hz)
+    {
+        var mode = Session.Config.Mode;
+        if (BandPlan.BandOf(hz) is not { } band) return $"{DialText.Mhz(hz)} MHz is outside the amateur bands.";
+        if (!Frequencies.Entries.Any(e => string.Equals(e.Band, band, StringComparison.OrdinalIgnoreCase)))
+            return $"Costas has no transmit limits for {BandPlan.Display(band)}, so it does not tune there.";
+        if (!string.Equals(band, Session.Config.Band, StringComparison.OrdinalIgnoreCase))
+        {
+            Settings.Update(s => s.Operating.Band = band);
+            Session.SetBand(band, mode);
+        }
+        try
+        {
+            await _rig.SetFrequencyAsync(hz, _cts.Token).ConfigureAwait(false);
+            await _rig.SetModeAsync(RigMode.PktUsb, _cts.Token).ConfigureAwait(false);
+            Session.SetDial(hz);
+            return null;
+        }
+        catch (RigException ex)
+        {
+            Session.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, ex.Message, Clock.UtcNow));
+            return $"The radio did not take the frequency: {ex.Message}";
+        }
+    }
+
+    /// <summary>
     /// Opens the radio and the transmit audio output from the current settings, so Setup's transmit test uses the radio
     /// just chosen. Each is reopened only when its settings changed (or the radio is down). The input device is
     /// reopened by restarting the app in v1; the status says so when it changed.

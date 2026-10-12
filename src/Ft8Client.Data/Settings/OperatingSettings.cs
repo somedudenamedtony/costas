@@ -56,6 +56,9 @@ public sealed class OperatingSettings
     /// <summary>PTT lead before audio, in ms.</summary>
     public int PttLeadMs { get; set; } = 200;
 
+    /// <summary>Dial frequencies in hertz the operator saved from the frequency menu (DXpedition and other off-standard spots).</summary>
+    public List<long> SavedFrequencies { get; set; } = [];
+
     /// <summary>Clock offset above which transmit is blocked, in seconds.</summary>
     public double ClockBlockSeconds { get; set; } = 2.0;
 }
