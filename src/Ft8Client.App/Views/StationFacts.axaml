@@ -14,6 +14,7 @@
     <TextBlock Text="{Binding LicenseClass}" Classes="secondary" IsVisible="{Binding HasLicenseClass}" />
     <TextBlock Classes="secondary" IsVisible="{Binding HasQsl}" TextWrapping="Wrap"><Run Text="QSL: " /><Run Text="{Binding Qsl}" /></TextBlock>
     <TextBlock Text="{Binding Zones}" Classes="secondary" IsVisible="{Binding HasZones}" />
+    <TextBlock Text="{Binding Rarity}" Classes="secondary" IsVisible="{Binding HasRarity}" TextWrapping="Wrap" />
     <TextBlock Text="{Binding LookupNote}" Classes="secondary" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding HasLookupNote}" />
     <WrapPanel ItemSpacing="12">
       <Button Classes="link" Padding="0" Content="Open on QRZ.com" ToolTip.Tip="{Binding QrzUrl}"

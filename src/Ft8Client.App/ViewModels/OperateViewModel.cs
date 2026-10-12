@@ -212,6 +212,9 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial string OrderText { get; set; } = string.Empty;
 
+    /// <summary>Club Log's most-wanted list for the rarity meter; <see cref="Core.Geo.MostWanted.None"/> until loaded.</summary>
+    public Core.Geo.MostWanted MostWanted { get; set; } = Core.Geo.MostWanted.None;
+
     /// <summary>Details flyout: the station shown.</summary>
     [ObservableProperty]
     public partial StationDetailsViewModel? Details { get; set; }
@@ -362,7 +365,8 @@ public sealed partial class OperateViewModel : ObservableObject
         }
         _commands.Lookup(row.Call);
         Details = _snap is null
-            ? StationDetailsViewModel.From(row.Call, row.Source.Station, QrzLookup?.Invoke(row.Call), Log?.Invoke(), Units, _now())
+            ? StationDetailsViewModel.From(row.Call, row.Source.Station, QrzLookup?.Invoke(row.Call), Log?.Invoke(), Units, _now(),
+                mostWantedRank: MostWanted.RankOf(row.Source.Station.EntityKey))
             : DetailsFor(row.Call, _snap, _now(), row.Source.Station);
     }
 
@@ -370,7 +374,8 @@ public sealed partial class OperateViewModel : ObservableObject
     {
         var station = s.Stations.FirstOrDefault(x => Callsign.EqualsCall(x.Call, call)) ?? fallback;
         return StationDetailsViewModel.From(call, station, QrzLookup?.Invoke(call), Log?.Invoke(), Units, now, QrzName?.Invoke(call),
-            s.Pileups.GetValueOrDefault(Callsign.Normalize(call)), s.TxOffsetHz, s.Mode);
+            s.Pileups.GetValueOrDefault(Callsign.Normalize(call)), s.TxOffsetHz, s.Mode,
+            MostWanted.RankOf(station?.EntityKey));
     }
 
     /// <summary>Opens the station's QRZ page.</summary>
@@ -479,7 +484,8 @@ public sealed partial class OperateViewModel : ObservableObject
         Line.Clear();
         var i = 1;
         foreach (var r in list.Take(MaxLine))
-            Line.Add(new StationRowViewModel(r, i++, Units, now, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0));
+            Line.Add(new StationRowViewModel(r, i++, Units, now, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0,
+                MostWanted.RankOf(r.Station.EntityKey)));
         MoreText = list.Count > MaxLine ? $"and {list.Count - MaxLine} more" : string.Empty;
         LineEmpty = Line.Count == 0;
         var sel = Line.FirstOrDefault(r => r.Call == keep) ?? Line.FirstOrDefault();
