@@ -28,8 +28,9 @@ public sealed partial class StationRowViewModel : ObservableObject
     /// <param name="last">The most recent log contact with this call on any band or mode, if any.</param>
     /// <param name="contacts">How many log contacts there are with this call.</param>
     /// <param name="mostWantedRank">The station's entity on Club Log's most-wanted list, if known; shown for new countries.</param>
+    /// <param name="whyTip">Tooltip for Why: for a new band, the bands the country is already in the log on.</param>
     public StationRowViewModel(RankedStation r, int rank, DistanceUnit units, DateTime nowUtc, LogContact? last = null, int contacts = 0,
-                               int? mostWantedRank = null)
+                               int? mostWantedRank = null, string whyTip = "")
     {
         if (r.Need.Tag == NeedTag.NewCountry && mostWantedRank is { } mw)
         {
@@ -42,12 +43,14 @@ public sealed partial class StationRowViewModel : ObservableObject
         Rank = rank;
         Call = r.Station.Call;
         Where = StationText.Where(r.Station, units);
-        Why = StationText.Need(r.Need.Tag);
+        Why = StationText.Why(r.Need.Tag, r.Station.Grid);
+        WhyTip = string.IsNullOrEmpty(whyTip) ? null : whyTip;
         WhyKind = KindOf(r.Need.Tag);
         DoingNow = StationText.DoingNow(r.Station);
         HearsYou = StationText.Hears(r.Hears);
         Db = Report.Format(r.Station.LastSnr);
         Chance = StationText.Chance(r.Chance);
+        ChanceReason = StationText.ChanceReason(r.Hears);
         ChanceBold = r.Chance == Core.Ranking.Chance.Good;
         History = r.Station.SnrHistory;
         HistoryTip = HistoryText(r.Station.SnrHistory);
@@ -105,8 +108,11 @@ public sealed partial class StationRowViewModel : ObservableObject
 
     private DateTime _heardEndUtc;
 
-    /// <summary>Need tag text.</summary>
+    /// <summary>Need tag text, with the grid for a new grid: "New grid DO62".</summary>
     public string Why { get; }
+
+    /// <summary>Tooltip for <see cref="Why"/>, or null for none.</summary>
+    public string? WhyTip { get; }
 
     /// <summary>Need tag colour.</summary>
     public TextKind WhyKind { get; }
@@ -130,8 +136,11 @@ public sealed partial class StationRowViewModel : ObservableObject
     [ObservableProperty]
     public partial string LastHeard { get; private set; } = string.Empty;
 
-    /// <summary>Hears you.</summary>
+    /// <summary>Hears you (the phone remote shows it; the desk shows <see cref="ChanceReason"/>).</summary>
     public string HearsYou { get; }
+
+    /// <summary>What the chance is based on, beside it: "hears you at -07", "no reports yet".</summary>
+    public string ChanceReason { get; }
 
     /// <summary>SNR at my station.</summary>
     public string Db { get; }

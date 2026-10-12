@@ -111,7 +111,7 @@ public class RankerMockupScenarioTests
             "ZL2RPA | New Zealand | New country | Calling CQ, 6 slots | Yes, -22 | -19 | Fair",
             "JA1QRS | Japan | New band | Calling CQ, 3 slots | Japan does, at -17 | -08 | Good",
             "KH6TU | Hawaii | New band | Calling CQ, 4 slots, fading | Yes, -14 | -21 | Fair",
-            "VK3BMT | Australia | New grid | Calling CQ DX, 2 slots | No reports yet | -11 | Long shot",
+            "VK3BMT | Australia | New grid | Calling CQ DX, 2 slots | No reports yet | -11 | Fair",
             "VE7HLB | Canada | New call | Calling CQ, 2 slots | Yes, -10 | -10 | Good",
             "LU8DCM | Argentina | New call | Calling CQ, 2 slots | Yes, -20 | -12 | Fair",
             "PY2WRA | Brazil | New call | Calling CQ NA, 3 slots | Yes, -21 | -09 | Fair");
@@ -139,7 +139,10 @@ public class RankerMockupScenarioTests
     [Fact]
     public void Rank_SkipLongShots_MovesThemToWatching()
     {
-        var r = Rank(new RankingSettings { SkipLongShots = true });
+        // No reports and weaker than -18 dB: a long shot.
+        var stations = Stations().Select(x => x.Call == "VK3BMT" ? x with { LastSnr = -21 } : x).ToList();
+        var r = Ranker.Rank(new RankInput(stations, Log(), Reports(), new RankingSettings { SkipLongShots = true }, TestData.Countries.Lookup("W7LIT"),
+            "20m", "FT8", Now, TestData.Countries));
         r.Line.Select(x => x.Station.Call).Should().NotContain("VK3BMT");
         r.Watching.Should().Contain(x => x.Station.Call == "VK3BMT" && x.Reason!.Kind == WatchReasonKind.LongShot);
     }

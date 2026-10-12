@@ -95,4 +95,28 @@ public class LogIndexTests
         index.GridsWorkedOnBand("20m").Should().Be(3);
         index.ContactsWith("k1abc").Should().HaveCount(1);
     }
+
+    [Theory]
+    [InlineData("K1ABC", "20m", "FT8", true)]
+    [InlineData("k1abc", "20M", "ft8", true)]
+    [InlineData("K1ABC", "40m", "FT8", false)]
+    [InlineData("K2ABC", "20m", "FT4", false)]
+    [InlineData("ZL2RPA", "20m", "FT8", false)]
+    public void CallConfirmed_ThisBandAndMode_OnlyWhenConfirmed(string call, string band, string mode, bool expected)
+    {
+        Index().CallConfirmed(call, band, mode).Should().Be(expected);
+    }
+
+    [Fact]
+    public void BandsWorked_Entity_InBandPlanOrder()
+    {
+        var index = LogIndex.Build(
+        [
+            new LogContact("JA1AAA", "15m", "FT8", "PM95", "JA", null, false, D),
+            new LogContact("JA2BBB", "40m", "FT8", "PM84", "JA", null, false, D),
+            new LogContact("JA3CCC", "15m", "FT4", "PM74", "JA", null, false, D),
+        ]);
+        index.BandsWorked("JA").Should().Equal("40m", "15m");
+        index.BandsWorked("ZL").Should().BeEmpty();
+    }
 }

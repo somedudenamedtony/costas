@@ -78,7 +78,7 @@ The key and password are kept in Windows Credential Manager.
 
 ![Settings: PSK Reporter](images/settings-psk-reporter.png)
 
-- **Who hears me › Receive live reports of stations hearing my signal**: on. Powers the Reach view, *Hears you* and
+- **Who hears me › Receive live reports of stations hearing my signal**: on. Powers the Reach view and
   Chance.
 - **Who hears me › Compare my signal with stations near me**: on. Also receives reports of other stations within
   300 miles on your band, for *Compared with stations near you* in the Reach view. Nothing about them is saved.

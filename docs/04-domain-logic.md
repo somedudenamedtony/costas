@@ -102,7 +102,10 @@ Chance:
 | --- | --- |
 | Good | A direct or regional report of -18 dB or better, and S's SNR at my station is -15 dB or better |
 | Fair | A direct or regional report exists, but the Good rule fails |
-| Long shot | No direct or regional report in the last 15 minutes |
+| Fair | No direct or regional report in the last 15 minutes, and S's SNR at my station is -18 dB or better |
+| Long shot | No direct or regional report in the last 15 minutes, and S's SNR is below -18 dB |
+
+No reports mostly means nobody near S uploads to PSK Reporter, not that S cannot hear me, so a strong station without reports is Fair rather than Long shot (owner request 2026-10-12). It is never Good without a report.
 
 If PSK Reporter is unavailable, chance is computed from S's SNR alone: Good at -10 or better, Fair at -18 or better, else Long shot, and the Hears you column shows "—".
 
@@ -112,7 +115,7 @@ A station is **callable** when all hold: state is `CallingCq` (or, with "Only st
 
 - **Next in line**: callable, tier 1 to 4, passing the filters. Order by tier (ascending), then calling me first, then stations decoded in their latest own slot before CQ callers kept after a miss, then chance (Good, Fair, Long shot), then report strength (direct or regional, stronger first, none last), then S's SNR (stronger first), then callsign.
 - **Watching**: tier 1 to 4 and not callable. Order by tier, then most recently heard. Reason text from state.
-- **Already worked**: tier 5, kept out of Next in line and Watching and shown in the Repeats panel (callable first).
+- **Already worked**: tier 5, kept out of Next in line and Watching and shown in the Repeats panel (callable first, then not confirmed on this band and mode).
 - **Calling me**: stations in state `CallingMe` go to "Waiting for you" and are shown in the line with "Calling you" in Doing now, ranked first within their tier.
 
 Filters (ranking settings): prefer stations that hear me (when off, chance is ignored in ordering), only stations calling CQ, hide stations worked on this band, skip long shots.

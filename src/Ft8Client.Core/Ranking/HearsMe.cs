@@ -98,7 +98,9 @@ public sealed class HearsMe
         {
             return stationSnr >= -10 ? Chance.Good : stationSnr >= -18 ? Chance.Fair : Chance.LongShot;
         }
-        if (!hears.HasReport) return Chance.LongShot;
+        // No reports mostly means nobody near them uploads to PSK Reporter, not that they cannot hear me: rate by their
+        // signal, never better than Fair (owner request 2026-10-12).
+        if (!hears.HasReport) return stationSnr >= -18 ? Chance.Fair : Chance.LongShot;
         return hears.Snr >= -18 && stationSnr >= -15 ? Chance.Good : Chance.Fair;
     }
 }

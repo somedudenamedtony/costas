@@ -61,13 +61,12 @@ it is heard working someone else, and moves to Watching once the time is up.
 | **#** | Rank |
 | **Call** | Callsign |
 | **Where** | Country (or state for the USA, province for Canada) and distance |
-| **Why** | Why you need them: **New country**, **New band**, **New grid** or **New call**. A new country also gets a small rarity meter, five cells from common to very rare, from Club Log's most-wanted list. Hover for its rank |
+| **Why** | Why you need them: **New country**, **New band** (hover to see which bands you already have that country on), **New grid** with the grid, such as **New grid DO62**, or **New call**. A new country also gets a small rarity meter, five cells from common to very rare, from Club Log's most-wanted list. Hover for its rank |
 | **Doing now** | *Calling CQ, 3 slots*, *Calling CQ DX*, *Calling you*, and *fading* when their signal is dropping |
 | **Last heard** | How long ago their last decoded transmission ended, counting up every second |
-| **Hears you** | From PSK Reporter: *Yes, -22* (they reported you), *Japan does, at -17* (someone in their country or area did), *No reports yet*, or *—* without PSK Reporter |
 | **dB** | Their signal at your station |
 | **Signal** | A sparkline of their last 6 slots, gaps where they were not decoded. Hover for the values |
-| **Chance** | **Good**, Fair or Long shot, from whether they hear you and how strong they are |
+| **Chance** | **Good**, Fair or Long shot, with what it is based on beside it: *hears you at -22* (they reported you on PSK Reporter), *heard in Japan at -17* (someone in their country or area did), or *no reports yet*. With no reports, a station at -18 dB or better is Fair and a weaker one is a Long shot |
 | **Last worked** | Your most recent contact with that call on any band or mode (*2026-10-03 · 40 m*), or *Never*. Hover for the details |
 | button | **Call**, or **Answer** when they are calling you |
 
@@ -111,9 +110,10 @@ or someone you owe a better report. At most 8 rows; the rest are counted underne
 
 It has the same columns as Next in line, lined up under them, with two differences:
 
-- **Why** always reads *Worked before*.
+- **Why** says whether your contact with them on this band and mode is confirmed: ***Not confirmed*** or *Confirmed*.
+  Stations not confirmed are listed first, as working them again is the usual reason to call.
 - **Doing now** says why they cannot be called right now instead, in grey: *In a contact with EA5HVK*, *Went quiet
-  2 minutes ago*. The **Call** button still works, so you can call a station that went quiet or is finishing a
+  2 minutes ago* (counting up, like Last heard). The **Call** button still works, so you can call a station that went quiet or is finishing a
   contact. A station *in a contact* with someone else is not called: the contact card says *In another contact* and
   why (see [Making contacts](contacts.md)).
 

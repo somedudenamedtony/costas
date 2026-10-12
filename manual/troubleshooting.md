@@ -100,8 +100,8 @@ Costas works fine without QRZ: the list then ranks by signal only.
 ## PSK Reporter shows "unavailable"
 
 The live feed uses MQTT over TLS on TCP port 1884 (`mqtt.pskreporter.info`). Some networks and firewalls block it.
-Costas then falls back to querying PSK Reporter every 5 minutes, shown as *PSK Reporter · updated 6 min ago*. If both fail, *Hears you* and
-Reach stay empty; everything else still works.
+Costas then falls back to querying PSK Reporter every 5 minutes, shown as *PSK Reporter · updated 6 min ago*. If both fail, Chance comes from the signal alone and
+Reach stays empty; everything else still works.
 
 ## Windows says "Windows protected your PC"
 
