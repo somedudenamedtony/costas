@@ -8,6 +8,7 @@
 
 using Ft8Client.App.ViewModels;
 using Ft8Client.Core;
+using Ft8Client.Core.Pileups;
 using Ft8Client.Core.Stations;
 using Ft8Client.Data.Log;
 using Ft8Client.Data.Reference;
@@ -70,5 +71,32 @@ public class StationDetailsViewModelTests
         d.Location.Should().Be("Wellington, New Zealand");
         d.Grid.Should().Be("RE78");
         d.Bearing.Should().Be("—");
+    }
+
+    [Fact]
+    public void From_Pileup_ShowsCallersOffsetAndPicks()
+    {
+        var slot = new DateTime(2026, 7, 1, 17, 59, 30, DateTimeKind.Utc);
+        var pileup = new Pileup
+        {
+            Target = "W9RDL",
+            CallersSlotUtc = slot,
+            Callers = [new PileupCaller("W7XQ", slot, -6, 1330), new PileupCaller("K6ODE", slot, -9, 1560)],
+            Picks = [new PileupPick("W7XQ", slot, 2, true, true), new PileupPick("K6ODE", slot, 3, true, false)],
+        };
+
+        var d = StationDetailsViewModel.From("W9RDL", Heard("W9RDL"), null, null, DistanceUnit.Miles, Now, pileup: pileup, txOffsetHz: 1650);
+
+        d.HasPileup.Should().BeTrue();
+        d.PileupHeadline.Should().Be("2 stations called W9RDL at 17:59:30.");
+        d.PileupCallers.Should().Equal(new PileupCallerViewModel("W7XQ", "-06", "1330 Hz"), new PileupCallerViewModel("K6ODE", "-09", "1560 Hz"));
+        d.PileupOffset.Should().Be("Your offset, 1650 Hz, is clear of them.");
+        d.PileupPicks.Should().Be("Answered the strongest caller you heard in 1 of its last 2 contacts.");
+    }
+
+    [Fact]
+    public void From_NoPileup_SectionHidden()
+    {
+        StationDetailsViewModel.From("W9RDL", Heard("W9RDL"), null, null, DistanceUnit.Miles, Now).HasPileup.Should().BeFalse();
     }
 }

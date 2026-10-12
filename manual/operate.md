@@ -75,6 +75,17 @@ location, grid, bearing and your past contacts with that call:
 
 ![Station details](images/station-details.png)
 
+### Who else is calling
+
+When other stations are calling the one you selected, the details card adds a **Who else is calling** section:
+
+- how many stations called it in its latest answer slot, with each caller's signal at your station and audio offset;
+- whether your transmit offset is clear of them, or which caller is sitting on top of it;
+- once it has answered a few callers, how it chooses: *Answered the strongest caller you heard in 4 of its last 5 contacts.*
+
+It is built from your own decodes, so it only knows the callers you can hear, and a caller that is strong for you may be
+weak for them. The same section shows in the **About** card while you are calling that station.
+
 To call a station: click its **Call** button, double-click the row, or select it and press ++enter++.
 
 !!! note "Chance without PSK Reporter"

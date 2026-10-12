@@ -142,7 +142,7 @@ Behaviour:
 
 - Row 1 is highlighted as the selected row when nothing else is selected. Up and Down move the selection. Enter calls the selected row. Double-click calls that row.
 - Rows re-rank only at slot boundaries, after decodes arrive, and never while the pointer is over the list or within 300 ms of a click. A pending re-rank shows a "List updated" pill that applies on click or when the pointer leaves.
-- Selecting a row loads its QRZ lookup and shows a details flyout to the right of the row: name (with nickname), location, county, grid, bearing, the station's local time, licence class, how it QSLs (LoTW, eQSL, paper, manager), CQ and ITU zones, an "Open on QRZ.com" link and a "Photo" link when QRZ has one, and the operator's past contacts with that call (date, band, mode, confirmed). Lines with no data are left out; without a lookup it says "No QRZ details yet". The flyout refreshes when the lookup arrives.
+- Selecting a row loads its QRZ lookup and shows a details flyout to the right of the row: name (with nickname), location, county, grid, bearing, the station's local time, licence class, how it QSLs (LoTW, eQSL, paper, manager), CQ and ITU zones, an "Open on QRZ.com" link and a "Photo" link when QRZ has one, and the operator's past contacts with that call (date, band, mode, confirmed). Under the facts, **Who else is calling** (when anyone has been heard calling the station, or it has answered callers in the last 10 minutes; `04-domain-logic.md` section 12): the headline, the current callers (call, dB at my station, audio offset), where my transmit offset sits among them, and how the station has been choosing. Lines with no data are left out; without a lookup it says "No QRZ details yet". The flyout refreshes when the lookup arrives.
 - Local time uses QRZ's standard offset (`GMTOffset`) and daylight-saving flag (`DST`). Daylight saving is applied with the US/Canada rule or the EU rule; anywhere else that observes it, local time is left out rather than guessed.
 - Empty state: "Nobody you need is calling CQ right now." with the Watching list still shown.
 
@@ -156,7 +156,7 @@ Directly under Next in line. Stations heard now that are already worked (tier 5:
 
 ### Right column
 
-**About <call>** (top, only during a contact): the same facts as the station details flyout for the station in the contact, so the operator can see who they are working without selecting a row. The contact's station is looked up on QRZ when the contact starts.
+**About <call>** (top, only during a contact): the same facts as the station details flyout for the station in the contact, including Who else is calling, so the operator can see who they are working without selecting a row. The contact's station is looked up on QRZ when the contact starts.
 
 **Heard here** (first card below it): a map of the stations I decoded in the last 15 minutes, with choices that are remembered in settings (`Map`):
 

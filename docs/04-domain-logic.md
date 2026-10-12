@@ -209,3 +209,15 @@ While a transmission or test tone is on the air, the app reads the radio's ALC a
 | ALC ≥ 0.5 (half of Hamlib's 0 to 1 scale) | Caution | "ALC 70% on the last transmission: the audio is overdriving the radio. Lower Transmit level in Settings or the radio's USB audio level." |
 
 The result stays until a later transmission on the same band reads the meters again, and is cleared on a band change. A transmission whose radio reports neither meter leaves the previous result in place. The readings and warnings are displayed only: the app never stops, refuses or changes a transmission because of them (owner decision D13). **VERIFY** the ALC threshold on the IC-7300 and FT-710: Hamlib scales ALC differently per radio (on the FT-710 it reads 1.0 at a quarter of the radio's own meter).
+
+## 12. Pileup (who else is calling)
+
+`PileupTracker` (Core) watches who calls whom on the current band and mode, from my own decodes only, so the operator can see the competition before calling a station (owner request 2026-10-12). It changes nothing that goes out over the air.
+
+- A **caller** of station T is any station heard sending T its grid or a bare call (`T C DN13`, `T C`). Low-confidence decodes and unresolved calls are ignored. The latest slot in which anyone was heard calling T is T's current pileup, until T has had two chances to answer (four slots).
+- A **pick** is T sending a report to a station it was not already working (`C T -12`) right after a slot in which I heard T's callers. A grid or bare call from T is T calling someone, not a pick. A CQ from T ends its current partner.
+- A pick is **judged** when I heard the picked caller and at least one other in the slot before. It is a **strongest pick** when no other caller I heard was stronger at my station.
+- Callers and picks are kept for 10 minutes and cleared on a band or mode change.
+
+Texts (`PileupText`): "3 stations called JA6VQA at 20:29:30." (or "W7XQ called JA6VQA at 20:29:30."); "Answered the strongest caller you heard in 4 of its last 5 contacts." (from the last 5 judged picks, shown once there are at least 2); "Your offset, 1650 Hz, is clear of them." or "K6ODE is calling 30 Hz from your offset." (a caller within the mode's bandwidth of my transmit offset). These are what I hear, not what T hears: a caller that is strong here may be weak at T.
+

@@ -364,7 +364,8 @@ public sealed partial class OperateViewModel : ObservableObject
     private StationDetailsViewModel DetailsFor(string call, SessionSnapshot s, DateTime now, Station? fallback = null)
     {
         var station = s.Stations.FirstOrDefault(x => Callsign.EqualsCall(x.Call, call)) ?? fallback;
-        return StationDetailsViewModel.From(call, station, QrzLookup?.Invoke(call), Log?.Invoke(), Units, now, QrzName?.Invoke(call));
+        return StationDetailsViewModel.From(call, station, QrzLookup?.Invoke(call), Log?.Invoke(), Units, now, QrzName?.Invoke(call),
+            s.Pileups.GetValueOrDefault(Callsign.Normalize(call)), s.TxOffsetHz, s.Mode);
     }
 
     /// <summary>Opens the station's QRZ page.</summary>
