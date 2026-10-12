@@ -60,6 +60,10 @@
         <TextBlock Text="{Binding Frequency}" FontSize="24" FontWeight="SemiBold" Classes="num" Margin="12,0,0,0" VerticalAlignment="Center"
                    AutomationProperties.Name="Dial frequency" />
         <TextBlock Text="MHz" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,6" />
+        <!-- Hound mode for a Fox/Hound DXpedition: a mode of operating, so it sits with band and mode. -->
+        <ToggleButton Content="Hound" IsChecked="{Binding Hound, Mode=OneWay}" Command="{Binding ToggleHoundCommand}"
+                      IsEnabled="{Binding CanSwitchHound}" Margin="12,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Hound mode"
+                      ToolTip.Tip="Hound mode, for working a Fox/Hound DXpedition (FT8). Your calls go above 1000 Hz, your report goes on the Fox's frequency, and the contact is logged on its RR73. Call CQ is off. Turns off when you change band." />
       </StackPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}"

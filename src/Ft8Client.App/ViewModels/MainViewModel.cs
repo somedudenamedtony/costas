@@ -201,6 +201,15 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial string CqText { get; set; } = "Call CQ";
 
+    /// <summary>True in Hound mode (working a Fox/Hound DXpedition).</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ToggleCqCommand))]
+    public partial bool Hound { get; set; }
+
+    /// <summary>True when Hound mode can be switched: FT8, not transmitting.</summary>
+    [ObservableProperty]
+    public partial bool CanSwitchHound { get; set; } = true;
+
     /// <summary>True while transmitting.</summary>
     [ObservableProperty]
     public partial bool Transmitting { get; set; }
@@ -254,6 +263,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         NoRadioText = radio is null ? string.Empty : $"Radio not connected · {radio.Message}";
         CanChangeBand = !s.Transmitting;
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
+        Hound = s.Hound;
+        CanSwitchHound = !s.Transmitting && s.Mode == Mode.Ft8;
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
         (StatusText, StatusKind) = Status(s);
         (MeterText, MeterTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
@@ -427,11 +438,22 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     }
 
     /// <inheritdoc />
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanToggleCq))]
     public void ToggleCq()
     {
         Activity();
         _host.Session.ToggleCq();
+    }
+
+    // A Hound never calls CQ.
+    private bool CanToggleCq() => !Hound;
+
+    /// <summary>Turns Hound mode on or off (an operator command; it starts no transmission).</summary>
+    [RelayCommand]
+    private void ToggleHound()
+    {
+        Activity();
+        _host.Session.SetHound(!Hound);
     }
 
     /// <summary>Halt Tx: always enabled.</summary>
@@ -579,6 +601,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         // Shown while the ended contact stays in the top slot: "ZL2RPA answered K1ABC instead. Stopped calling."
         if (s.Contact is { Outcome: ContactOutcome.AnsweredOther } other) return (other.StatusText, TextKind.Caution);
         if (s.CallingCq) return (s.Transmitting ? "Transmitting CQ." : "Calling CQ.", s.Transmitting ? TextKind.Critical : TextKind.Normal);
+        if (s.Contact is { Outcome: ContactOutcome.NoReply, Flow: ContactFlow.Hound } fox) return (fox.StatusText, TextKind.Caution);
+        if (s.Hound) return ("Hound mode. Call the Fox: your calls go above 1000 Hz, and your report goes on its frequency.", TextKind.Normal);
         var top = s.Rank.Line.FirstOrDefault();
         return (top is null ? "Not in a contact." : $"Not in a contact. Enter calls {top.Station.Call}, the top of the line.", TextKind.Normal);
     }

@@ -193,6 +193,11 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial string CqText { get; set; } = "Call CQ";
 
+    /// <summary>True in Hound mode, where Call CQ is unavailable.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ToggleCqCommand))]
+    public partial bool Hound { get; set; }
+
     /// <summary>True while transmitting.</summary>
     [ObservableProperty]
     public partial bool Transmitting { get; set; }
@@ -234,6 +239,7 @@ public sealed partial class OperateViewModel : ObservableObject
         _inContact = s.Contact is { Outcome: ContactOutcome.InProgress } c ? c.DxCall : null;
         var now = _now();
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
+        Hound = s.Hound;
         Transmitting = s.Transmitting;
         UpdateSlot(now);
 
@@ -447,8 +453,10 @@ public sealed partial class OperateViewModel : ObservableObject
     private void LogNow() => _commands.LogNow();
 
     /// <summary>Call CQ, or stop.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanToggleCq))]
     private void ToggleCq() => _commands.ToggleCq();
+
+    private bool CanToggleCq() => !Hound;
 
     /// <summary>Abandon.</summary>
     [RelayCommand]
