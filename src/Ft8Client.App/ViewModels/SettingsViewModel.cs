@@ -16,6 +16,7 @@ using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Data.Secrets;
+using Ft8Client.Data.Settings;
 
 namespace Ft8Client.App.ViewModels;
 
@@ -24,6 +25,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly AppHost _host;
     private readonly string _loadedTxGain;
+    private readonly string _loadedProfile;
+    private ProfileDraft? _shownProfile;
 
     /// <summary>Creates the view model from current settings.</summary>
     public SettingsViewModel(AppHost host, bool rankingOnly = false)
@@ -31,9 +34,19 @@ public sealed partial class SettingsViewModel : ObservableObject
         _host = host;
         SelectedPage = rankingOnly ? WhoToCallPage : 0;
         var s = host.Settings.Current;
-        Callsign = s.Profile.Callsign;
-        Grid = s.Profile.Grid;
-        Power = s.Profile.PowerWatts.ToString(CultureInfo.InvariantCulture);
+        foreach (var p in s.Profiles)
+        {
+            Profiles.Add(new ProfileDraft
+            {
+                Id = p.Id, Name = p.Name, Callsign = p.Callsign, Grid = p.Grid, Power = p.PowerWatts.ToString(CultureInfo.InvariantCulture),
+                LogbookKey = host.Secrets.Get(SecretNames.QrzLogbookKey(p.Id)) ?? string.Empty,
+            });
+        }
+        _loadedProfile = s.Profile.Id;
+        var active = Profiles.First(d => d.Id == s.Profile.Id);
+        (Callsign, Grid, Power, LogbookKey) = (active.Callsign, active.Grid, active.Power, active.LogbookKey);
+        _shownProfile = active;
+        SelectedProfile = active;
         TxGain = _loadedTxGain = TxLevelController.LevelFor(s.Profile.Audio, s.Operating.Band).ToString("0.0", CultureInfo.InvariantCulture);
         TxGainLabel = $"Audio level on {s.Operating.Band} (dB)";
         AutoTxLevel = s.Profile.Audio.AutoTxLevel;
@@ -58,7 +71,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         LogbookEnabled = s.Qrz.LogbookEnabled;
         UploadOnComplete = s.Qrz.UploadOnComplete;
         SyncMinutes = s.Qrz.SyncMinutes.ToString(CultureInfo.InvariantCulture);
-        LogbookKey = host.Secrets.Get(SecretNames.QrzLogbookKey(s.Profile.Id)) ?? string.Empty;
         QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
         QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
         FeedEnabled = s.PskReporter.FeedEnabled;
@@ -143,6 +155,103 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Message line.</summary>
     [ObservableProperty]
     public partial string Message { get; set; } = string.Empty;
+
+    /// <summary>Station profiles as edited here.</summary>
+    public ObservableCollection<ProfileDraft> Profiles { get; } = [];
+
+    /// <summary>The profile the Station page shows, which becomes the active one on Save.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DeleteProfileCommand))]
+    public partial ProfileDraft? SelectedProfile { get; set; }
+
+    partial void OnSelectedProfileChanged(ProfileDraft? value)
+    {
+        // The list can briefly clear its selection while items change; keep showing the last profile.
+        if (value is null || ReferenceEquals(value, _shownProfile)) return;
+        StoreFields();
+        (Callsign, Grid, Power, LogbookKey) = (value.Callsign, value.Grid, value.Power, value.LogbookKey);
+        KeyStatus = string.Empty;
+        _shownProfile = value;
+    }
+
+    /// <summary>Adds a profile, a copy of the one shown (same radio and audio), and shows it.</summary>
+    [RelayCommand]
+    private void NewProfile()
+    {
+        StoreFields();
+        var from = SelectedProfile ?? Profiles[0];
+        var draft = new ProfileDraft
+        {
+            Id = "p" + Guid.NewGuid().ToString("N")[..8], CopyOf = from.Id, Name = NewProfileName(Profiles.Select(p => p.Name)),
+            Callsign = from.Callsign, Grid = from.Grid, Power = from.Power,
+        };
+        Profiles.Add(draft);
+        SelectedProfile = draft;
+        DeleteProfileCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Removes the profile shown. The last profile cannot be removed.</summary>
+    [RelayCommand(CanExecute = nameof(CanDeleteProfile))]
+    private void DeleteProfile()
+    {
+        if (SelectedProfile is not { } gone || Profiles.Count < 2) return;
+        _shownProfile = null;
+        Profiles.Remove(gone);
+        SelectedProfile = Profiles[0];
+        DeleteProfileCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanDeleteProfile() => Profiles.Count > 1;
+
+    /// <summary>"Portable", then "Portable 2", "Portable 3"… avoiding names in use.</summary>
+    public static string NewProfileName(IEnumerable<string> taken)
+    {
+        var names = new HashSet<string>(taken, StringComparer.OrdinalIgnoreCase);
+        if (!names.Contains("Portable")) return "Portable";
+        for (var i = 2; ; i++)
+        {
+            var n = $"Portable {i}";
+            if (!names.Contains(n)) return n;
+        }
+    }
+
+    private void StoreFields()
+    {
+        if (_shownProfile is null) return;
+        _shownProfile.Callsign = Callsign;
+        _shownProfile.Grid = Grid;
+        _shownProfile.Power = Power;
+        _shownProfile.LogbookKey = LogbookKey;
+    }
+
+    /// <summary>
+    /// Writes the edited profiles into settings: removed ones are dropped, new ones copied from their source, names, calls,
+    /// grids and power set, and <paramref name="active"/> made the active profile.
+    /// </summary>
+    public static void ApplyProfiles(AppSettings s, IReadOnlyList<ProfileDraft> drafts, string active)
+    {
+        static int Watts(string text, int fallback) =>
+            int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v, 1, 2000) : fallback;
+
+        var old = s.Profiles.ToList();
+        var result = new List<StationProfile>();
+        foreach (var d in drafts)
+        {
+            var p = old.FirstOrDefault(x => x.Id == d.Id);
+            if (p is null)
+            {
+                var source = old.FirstOrDefault(x => x.Id == d.CopyOf) ?? old.FirstOrDefault() ?? new StationProfile();
+                p = source.CopyAs(d.Id, d.Name);
+            }
+            p.Name = string.IsNullOrWhiteSpace(d.Name) ? p.Name : d.Name.Trim();
+            p.Callsign = d.Callsign.Trim().ToUpperInvariant();
+            p.Grid = d.Grid.Trim().ToUpperInvariant();
+            p.PowerWatts = Watts(d.Power, p.PowerWatts);
+            result.Add(p);
+        }
+        s.Profiles = result;
+        s.ActiveProfile = active;
+    }
 
     /// <summary>Call.</summary>
     [ObservableProperty]
@@ -609,14 +718,19 @@ public sealed partial class SettingsViewModel : ObservableObject
         static double Dbl(string s, double min, double max, double fallback) =>
             double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v, min, max) : fallback;
 
-        if (!Core.Messages.Callsign.IsValid(Callsign.Trim().ToUpperInvariant()))
+        StoreFields();
+        if (Profiles.FirstOrDefault(d => !Core.Messages.Callsign.IsValid(d.Callsign.Trim().ToUpperInvariant())) is { } bad)
         {
-            Message = "Enter a valid callsign (Station page).";
+            Message = Profiles.Count > 1 ? $"Enter a valid callsign for the {bad.Name} profile (Station page)." : "Enter a valid callsign (Station page).";
+            SelectedProfile = bad;
             SelectedPage = 0;
             return;
         }
+        var activeId = (SelectedProfile ?? Profiles[0]).Id;
+        var removed = _host.Settings.Current.Profiles.Select(p => p.Id).Where(id => Profiles.All(d => d.Id != id)).ToList();
         _host.Settings.Update(s =>
         {
+            ApplyProfiles(s, Profiles, activeId);
             s.Ranking.TierOrder = SettingsMapper.TierNames(TierOrder.Select(t => t.Tag));
             s.Ranking.PreferHearsMe = PreferHearsMe;
             s.Ranking.OnlyCallingCq = OnlyCallingCq;
@@ -624,9 +738,6 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Ranking.SkipLongShots = SkipLongShots;
             s.Ranking.ConfirmedOnly = ConfirmedOnly;
             s.Ranking.KeepCqCallersMinutes = KeepMinutesFor(KeepCqCallers);
-            s.Profile.Callsign = Callsign.Trim().ToUpperInvariant();
-            s.Profile.Grid = Grid.Trim().ToUpperInvariant();
-            s.Profile.PowerWatts = Int(Power, 1, 2000, s.Profile.PowerWatts);
             // Only a level typed here replaces the band's level, so one automatic level set meanwhile is kept.
             if (TxGain.Trim() != _loadedTxGain)
             {
@@ -673,12 +784,14 @@ public sealed partial class SettingsViewModel : ObservableObject
                 s.Developer.SimulatedPartner = SimulatedPartner;
             }
         });
-        var id = _host.Settings.Current.Profile.Id;
-        Set(SecretNames.QrzLogbookKey(id), LogbookKey.Trim());
+        foreach (var d in Profiles) Set(SecretNames.QrzLogbookKey(d.Id), d.LogbookKey.Trim());
+        foreach (var id in removed) _host.Secrets.Delete(SecretNames.QrzLogbookKey(id));
         Set(SecretNames.QrzUsername, QrzUser.Trim());
         Set(SecretNames.QrzPassword, QrzPassword);
         _host.TxLevel.Apply();
         _host.RebuildLogIndex();
+        // Another profile may use another radio or audio device.
+        if (activeId != _loadedProfile) _ = _host.ReopenDevicesAsync();
         Close?.Invoke();
     }
 
