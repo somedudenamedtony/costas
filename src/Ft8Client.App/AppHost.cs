@@ -7,6 +7,7 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Ft8Client.App.Engine;
+using Ft8Client.App.Remote;
 using Ft8Client.App.Services;
 using Ft8Client.Audio.Backends;
 using Ft8Client.Audio.Timing;
@@ -144,6 +145,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>WSJT-X UDP interop.</summary>
     public UdpInteropService Udp { get; private set; } = null!;
 
+    /// <summary>Remote control from a phone on the home network.</summary>
+    public RemoteControlService Remote { get; private set; } = null!;
+
     /// <summary>PSK Reporter feed, query and uploads.</summary>
     public PskReporterService Psk { get; private set; } = null!;
 
@@ -280,6 +284,9 @@ public sealed class AppHost : IAsyncDisposable
         Udp = new UdpInteropService(Session, Settings, offAir: Simulating);
         log.Stored += Udp.OnLogged;
         Udp.Start();
+
+        Remote = new RemoteControlService(Session, Settings, Secrets, Clock);
+        Remote.Start();
 
         if (!Simulating)
         {
@@ -557,6 +564,7 @@ public sealed class AppHost : IAsyncDisposable
             Log.Error(ex, "Halt on exit failed");
         }
         _cts.Cancel();
+        if (Remote is not null) await Remote.DisposeAsync().ConfigureAwait(false);
         _loop?.Dispose();
         _pump?.Dispose();
         _input?.Dispose();

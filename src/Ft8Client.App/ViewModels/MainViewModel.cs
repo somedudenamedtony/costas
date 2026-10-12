@@ -56,6 +56,25 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Modes = ["FT8", "FT4"];
         ApplySettings();
         _host.Settings.Changed += _ => Dispatch(ApplySettings);
+        _host.Remote.Changed += () => Dispatch(UpdateRemote);
+        UpdateRemote();
+    }
+
+    /// <summary>"Phone in control" or "Phone connected" in the bottom bar, or blank.</summary>
+    [ObservableProperty]
+    public partial string RemoteText { get; set; } = string.Empty;
+
+    /// <summary>Tooltip for <see cref="RemoteText"/>.</summary>
+    [ObservableProperty]
+    public partial string RemoteTip { get; set; } = string.Empty;
+
+    private void UpdateRemote()
+    {
+        var r = _host.Remote;
+        (RemoteText, RemoteTip) = !r.Running ? (string.Empty, string.Empty)
+            : r.Control.Lease.IsHeld ? ("Phone in control", "A phone is the control point. Transmit stops if it loses touch for 15 seconds. Click or press a key here to take control back.")
+            : r.Connected > 0 ? ("Phone connected", "A phone has the remote page open. It takes control when it sends a command.")
+            : (string.Empty, string.Empty);
     }
 
     /// <summary>Marshals to the UI thread (set by the view).</summary>
@@ -432,8 +451,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _ = _host.Session.AbandonAsync();
     }
 
-    /// <summary>Any key or click: resets the Tx watchdog.</summary>
-    public void Activity() => _host.Session.Activity();
+    /// <summary>Any key or click: resets the Tx watchdog, and makes the desk the control point again.</summary>
+    public void Activity()
+    {
+        _host.Remote.Control.DeskActivity();
+        _host.Session.Activity();
+    }
 
     private void ApplySettings()
     {

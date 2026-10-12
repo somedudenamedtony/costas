@@ -62,6 +62,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         UdpEnabled = s.Udp.Enabled;
         UdpAddress = s.Udp.Address;
         UdpPort = s.Udp.Port.ToString(CultureInfo.InvariantCulture);
+        RemoteEnabled = s.Remote.Enabled;
+        RemotePort = s.Remote.Port.ToString(CultureInfo.InvariantCulture);
+        RefreshRemote();
         SaveWav = s.Files.SaveWav;
         Retention = s.Files.RetentionDays.ToString(CultureInfo.InvariantCulture);
         Theme = s.Appearance.Theme;
@@ -346,6 +349,65 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string UdpPort { get; set; }
 
+    /// <summary>Serve the remote page.</summary>
+    [ObservableProperty]
+    public partial bool RemoteEnabled { get; set; }
+
+    /// <summary>Remote page port.</summary>
+    [ObservableProperty]
+    public partial string RemotePort { get; set; }
+
+    /// <summary>Where to point the phone, or why the page is not served.</summary>
+    [ObservableProperty]
+    public partial string RemoteStatus { get; set; } = string.Empty;
+
+    /// <summary>The pairing code line, or blank.</summary>
+    [ObservableProperty]
+    public partial string PairingText { get; set; } = string.Empty;
+
+    /// <summary>True while the page is served (pairing works).</summary>
+    [ObservableProperty]
+    public partial bool RemoteRunning { get; set; }
+
+    /// <summary>"Forget 2 paired phones".</summary>
+    [ObservableProperty]
+    public partial string ForgetPhonesText { get; set; } = string.Empty;
+
+    /// <summary>True when any phone is paired.</summary>
+    [ObservableProperty]
+    public partial bool HasPairedPhones { get; set; }
+
+    /// <summary>Opens a pairing code for a new phone.</summary>
+    [RelayCommand]
+    private void PairPhone()
+    {
+        var code = _host.Remote.Control.Pairing.Open(_host.Clock.UtcNow);
+        PairingText = $"Pairing code: {code[..3]} {code[3..]}. Type it on the phone within 10 minutes. It works once.";
+    }
+
+    /// <summary>Forgets every paired phone: each must be paired again.</summary>
+    [RelayCommand]
+    private void ForgetPhones()
+    {
+        _host.Remote.Control.ForgetPhones();
+        PairingText = "Paired phones forgotten. Each phone must be paired again.";
+        RefreshRemote();
+    }
+
+    private void RefreshRemote()
+    {
+        var r = _host.Remote;
+        RemoteRunning = r.Running;
+        var urls = r.Urls();
+        RemoteStatus = r.Problem is { } p ? p
+            : !r.Running ? (RemoteEnabled ? "Save to start the remote page." : "Off.")
+            : urls.Count == 0 ? "On, but this computer has no address on a home network."
+            : $"On your phone, open {string.Join(" or ", urls)}" + (r.Connected > 0 ? $" · {r.Connected} connected now" : string.Empty);
+        var n = r.Control.Tokens.Count;
+        HasPairedPhones = n > 0;
+        ForgetPhonesText = n == 1 ? "Forget the paired phone" : $"Forget {n} paired phones";
+    }
+
     /// <summary>Check for newer builds.</summary>
     [ObservableProperty]
     public partial bool CheckUpdates { get; set; }
@@ -489,6 +551,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Udp.Enabled = UdpEnabled;
             s.Udp.Address = UdpAddress.Trim();
             s.Udp.Port = Int(UdpPort, 1, 65535, 2237);
+            s.Remote.Enabled = RemoteEnabled;
+            s.Remote.Port = Int(RemotePort, 1024, 65535, 8073);
             s.Files.SaveWav = SaveWav;
             s.Files.RetentionDays = Int(Retention, 1, 3650, 30);
             s.Appearance.Theme = Theme;

@@ -29,7 +29,7 @@ namespace Ft8Client.App.Engine;
 /// out through the transmitter, immutable snapshots to the UI. Headless; the UI only renders snapshots and sends
 /// commands. State changes happen under one lock; decoding and I/O happen outside it.
 /// </summary>
-public sealed class Session
+public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
 {
     private const int MaxRaw = 1500;
     private const int QuickSpanHz = 100;
@@ -71,6 +71,7 @@ public sealed class Session
     private DateTime? _finishedShownAt;
     private DateTime _lastContactUtc = DateTime.MinValue;
     private SessionSnapshot _snapshot = new();
+    private int? _watchdogCap;
 
     /// <summary>Creates a session.</summary>
     public Session(SessionConfig config, IDecoder decoder, ISlotSource source, Transmitter tx, IClock clock, CountryFile countries,
@@ -560,12 +561,46 @@ public sealed class Session
     }
 
     /// <summary>Halt Tx: drop PTT now and stop sequencing.</summary>
-    public async Task HaltAsync()
+    public Task HaltAsync() => HaltAsync(null);
+
+    /// <summary>Halt Tx with a reason for the bottom bar (for a stop the operator did not ask for).</summary>
+    public async Task HaltAsync(string? reason)
     {
-        lock (_gate) _engine.Halt(_clock.UtcNow);
+        lock (_gate)
+        {
+            _engine.Halt(_clock.UtcNow);
+            if (reason is not null) _fault = reason;
+        }
         await _tx.HaltAsync().ConfigureAwait(false);
         Publish();
     }
+
+    /// <summary>
+    /// Caps the Tx watchdog (minutes) while a remote device has control, or removes the cap with null. The operator's
+    /// setting is kept and applies again once the cap is removed.
+    /// </summary>
+    public void SetWatchdogCap(int? minutes)
+    {
+        lock (_gate)
+        {
+            if (_watchdogCap == minutes) return;
+            _watchdogCap = minutes;
+            _engine.Configure(_config.MyCall, _config.MyGrid, CappedContact());
+        }
+    }
+
+    /// <summary>True when something is (or is about to be) transmitted: CQ running, a contact in progress, or on the air.</summary>
+    public bool WantsTransmit
+    {
+        get
+        {
+            lock (_gate) return _engine.CallingCq || _engine.InContact || _tx.Transmitting;
+        }
+    }
+
+    private ContactSettings CappedContact() => _watchdogCap is { } cap && cap < _config.Contact.WatchdogMinutes
+        ? _config.Contact with { WatchdogMinutes = cap }
+        : _config.Contact;
 
     /// <summary>Sets a fixed transmit offset, or automatic with null.</summary>
     public void SetTxOffset(int? hz)
@@ -614,7 +649,7 @@ public sealed class Session
         {
             var stationChanged = config.MyCall != _config.MyCall || config.MyGrid != _config.MyGrid;
             _config = config;
-            _engine.Configure(config.MyCall, config.MyGrid, config.Contact);
+            _engine.Configure(config.MyCall, config.MyGrid, CappedContact());
             if (stationChanged)
             {
                 _tracker.SetMyStation(config.MyCall, config.MyGrid);

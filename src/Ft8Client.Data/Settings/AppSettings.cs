@@ -38,6 +38,9 @@ public sealed class AppSettings
     /// <summary>UDP.</summary>
     public UdpOptions Udp { get; set; } = new();
 
+    /// <summary>Remote control from a phone.</summary>
+    public RemoteOptions Remote { get; set; } = new();
+
     /// <summary>Files.</summary>
     public FilesOptions Files { get; set; } = new();
 
