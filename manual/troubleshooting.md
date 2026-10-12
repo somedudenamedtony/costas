@@ -56,8 +56,16 @@ Use [Station setup › Transmit test](setup.md#4-transmit-test) into a dummy loa
 The bottom bar shows, for example, *SWR 3.4 · ALC 70%*. Hover for advice.
 
 - **SWR 2 or more**: check the antenna and tuner. At 3 or more, fix it before sending again.
-- **ALC 50% or more**: the audio is overdriving the radio and the signal will be distorted. Lower
-  **Settings › Transmitting › Audio level** or the radio's USB audio input level until ALC barely moves.
+- **ALC 50% or more**: the audio is overdriving the radio and the signal will be distorted. With automatic
+  level on, Costas has already lowered its level for the next transmission and the advice says by how much; it
+  settles within a few transmissions. With it off, lower **Settings › Transmitting › Audio level** or the radio's USB
+  audio input level until ALC barely moves.
+
+### Automatic level keeps rising but ALC never moves
+
+Automatic level stops 6 dB above the level you typed in Settings. If ALC still reads nothing there, the audio may not
+be reaching the radio: check the audio output device in Station setup, that the radio takes its transmit audio from
+USB in data mode, and the radio's USB audio input level. The app log notes when the level reaches its highest.
 
 ## Receiving
 

@@ -211,7 +211,21 @@ While a transmission or test tone is on the air, the app reads the radio's ALC a
 | SWR ≥ 2.0 | Caution | "SWR 2.3 on the last transmission. Check the antenna or tuner." |
 | ALC ≥ 0.5 (half of Hamlib's 0 to 1 scale) | Caution | "ALC 70% on the last transmission: the audio is overdriving the radio. Lower Transmit level in Settings or the radio's USB audio level." |
 
-The result stays until a later transmission on the same band reads the meters again, and is cleared on a band change. A transmission whose radio reports neither meter leaves the previous result in place. The readings and warnings are displayed only: the app never stops, refuses or changes a transmission because of them (owner decision D13). **VERIFY** the ALC threshold on the IC-7300 and FT-710: Hamlib scales ALC differently per radio (on the FT-710 it reads 1.0 at a quarter of the radio's own meter).
+The result stays until a later transmission on the same band reads the meters again, and is cleared on a band change. A transmission whose radio reports neither meter leaves the previous result in place. The readings never stop or refuse a transmission, and never change one on the air (owner decision D13). Automatic transmit level (below) uses the ALC to set the level of the next transmission. **VERIFY** the ALC threshold on the IC-7300 and FT-710: Hamlib scales ALC differently per radio (on the FT-710 it reads 1.0 at a quarter of the radio's own meter).
+
+### Automatic transmit level
+
+On by default (Settings › Transmitting), owner request 2026-10-12. After each transmission or tone whose radio reported ALC, `TxLevelTuner` (Core) moves the audio level for the next one so ALC sits just where it starts to act: full power without ALC compression. Using the median ALC of the transmission on Hamlib's scale:
+
+| Median ALC | Change |
+| --- | --- |
+| below 0.02 (not acting) | up 0.5 dB, never above the lowest level that made ALC act on this band (less 0.5 dB), the level the operator set plus 6 dB, or 0 dBFS |
+| 0.02 to 0.25 | none |
+| 0.25 to 0.5 | down 1 dB |
+| 0.5 to 0.75 | down 3 dB |
+| 0.75 or more | down 6 dB, never below -40 dBFS |
+
+The lowest level that made ALC act is kept for the session per band, so the level does not swing back and forth; after 10 quiet transmissions held just below it (the radio's power may have been turned up) it is forgotten and the level probes upward again. The level is saved per band (`TxGainByBand` in the station profile); a band with no level of its own uses the level in Settings. Typing a level in Settings sets the current band's level and the base for the 6 dB cap. A radio that reports no ALC, or automatic level turned off, leaves the level alone. When it lowered the level, the ALC warning says so instead of telling the operator to lower it. **VERIFY** the 0.02 and 0.25 thresholds on the FT-710 and IC-7300 (where the radio's own ALC meter sits at each).
 
 ## 12. Pileup (who else is calling)
 
