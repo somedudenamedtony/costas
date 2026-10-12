@@ -8,6 +8,7 @@
 
 using System.Globalization;
 using Ft8Client.App.Engine;
+using Ft8Client.Integrations.Wsjtx;
 
 namespace Ft8Client.App.ViewModels;
 
@@ -24,8 +25,11 @@ public sealed class RawLineViewModel
     /// <summary>Builds a line.</summary>
     /// <param name="l">The decode line.</param>
     /// <param name="localZone">Zone for the Local column; the machine's zone when null.</param>
-    public RawLineViewModel(RawDecodeLine l, TimeZoneInfo? localZone = null)
+    /// <param name="highlight">Colours another program asked for this line's callsign, if any.</param>
+    public RawLineViewModel(RawDecodeLine l, TimeZoneInfo? localZone = null, WsjtxHighlight? highlight = null)
     {
+        Background = highlight?.Background;
+        Foreground = highlight?.Foreground;
         var d = l.Decode;
         var utc = DateTime.SpecifyKind(d.SlotStartUtc, DateTimeKind.Utc);
         Utc = utc.ToString("HHmmss", CultureInfo.InvariantCulture);
@@ -62,6 +66,12 @@ public sealed class RawLineViewModel
 
     /// <summary>Colour: to me critical, CQ accent.</summary>
     public TextKind Kind { get; }
+
+    /// <summary>Background colour from another program's highlight; null for none.</summary>
+    public WsjtxColor? Background { get; }
+
+    /// <summary>Text colour from another program's highlight; null to use <see cref="Kind"/>.</summary>
+    public WsjtxColor? Foreground { get; }
 
     /// <summary>Sender, for double-click.</summary>
     public string? Sender { get; }

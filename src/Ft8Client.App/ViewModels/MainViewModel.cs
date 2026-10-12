@@ -62,6 +62,27 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _host.Settings.Changed += _ => Dispatch(ApplySettings);
         _host.Remote.Changed += () => Dispatch(UpdateRemote);
         UpdateRemote();
+        _host.Udp.Inbound += m => Dispatch(() => OnUdp(m));
+    }
+
+    // Reply, Halt Tx and Highlight Callsign from GridTracker, JTAlert and the like. A Reply is the operator's click in
+    // that program, so it calls exactly as a double-click in Raw decodes would.
+    private void OnUdp(Integrations.Wsjtx.WsjtxInboundMessage m)
+    {
+        switch (m)
+        {
+            case Integrations.Wsjtx.WsjtxReply r:
+                if (UdpReplyRule.Sender(r, _host.Session.Snapshot.RawDecodes) is { } call) Call(call);
+                else StatusText = $"Another program asked to reply to \"{r.Message.Trim()}\". Only a recent CQ or a station calling you can be called that way.";
+                break;
+            case Integrations.Wsjtx.WsjtxHaltTx:
+                Halt();
+                break;
+            case Integrations.Wsjtx.WsjtxHighlight h:
+                Raw.Highlight(h);
+                Dispatch(Raw.ApplyHighlights);
+                break;
+        }
     }
 
     /// <summary>"Phone in control" or "Phone connected" in the bottom bar, or blank.</summary>

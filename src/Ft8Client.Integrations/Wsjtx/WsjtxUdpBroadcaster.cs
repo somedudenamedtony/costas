@@ -12,8 +12,9 @@ using System.Net.Sockets;
 namespace Ft8Client.Integrations.Wsjtx;
 
 /// <summary>
-/// Sends WSJT-X UDP datagrams to one address (unicast or multicast) from one socket. Inbound datagrams are read and
-/// ignored (v1 does not act on them). Send failures never throw: interop is optional.
+/// Sends WSJT-X UDP datagrams to one address (unicast or multicast) from one socket, and passes on the datagrams other
+/// programs send back to that socket (WSJT-X servers reply to the address the client sends from). Send failures never
+/// throw: interop is optional.
 /// </summary>
 public sealed class WsjtxUdpBroadcaster : IDisposable
 {
@@ -43,6 +44,12 @@ public sealed class WsjtxUdpBroadcaster : IDisposable
         _udp.Client.Bind(new IPEndPoint(ip.AddressFamily == AddressFamily.InterNetworkV6 ? IPAddress.IPv6Any : IPAddress.Any, 0));
         _ = Task.Run(DrainAsync);
     }
+
+    /// <summary>
+    /// A datagram arrived from another program, with its sender. Only from this computer when sending to a loopback
+    /// address. Raised on a thread-pool thread.
+    /// </summary>
+    public event Action<byte[], IPEndPoint>? Received;
 
     /// <summary>Datagrams sent.</summary>
     public int Sent => Volatile.Read(ref _sent);
@@ -76,7 +83,10 @@ public sealed class WsjtxUdpBroadcaster : IDisposable
         {
             try
             {
-                await _udp.ReceiveAsync(_cts.Token).ConfigureAwait(false);
+                var r = await _udp.ReceiveAsync(_cts.Token).ConfigureAwait(false);
+                // With a loopback target, only programs on this computer may talk back.
+                if (IPAddress.IsLoopback(_target.Address) && !IPAddress.IsLoopback(r.RemoteEndPoint.Address)) continue;
+                Received?.Invoke(r.Buffer, r.RemoteEndPoint);
             }
             catch (OperationCanceledException)
             {

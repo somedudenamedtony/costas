@@ -20,3 +20,5 @@ bar or ++ctrl+2++.
   the top.
 - Type in **Filter by callsign or text** to show only matching lines.
 - Double-click a line to call its sender.
+- Programs such as JTAlert and GridTracker can colour callsigns here (for example, ones you need), as they do in
+  WSJT-X. See [Other loggers](log.md#other-loggers).
