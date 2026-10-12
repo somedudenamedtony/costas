@@ -78,7 +78,10 @@ public sealed class RemoteControlService : IAsyncDisposable
         _ = ApplyAsync(_settings.Current.Remote);
     }
 
-    /// <summary>The addresses to open on a phone: one per local IPv4 address of this computer.</summary>
+    /// <summary>
+    /// The addresses to open on a phone: one per local IPv4 address of this computer, the most likely first (an adapter
+    /// with a default gateway, which is the home network, before virtual adapters such as WSL or Hyper-V).
+    /// </summary>
     public IReadOnlyList<string> Urls()
     {
         var port = _settings.Current.Remote.Port;
@@ -86,10 +89,14 @@ public sealed class RemoteControlService : IAsyncDisposable
         {
             return [.. NetworkInterface.GetAllNetworkInterfaces()
                 .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-                .SelectMany(n => n.GetIPProperties().UnicastAddresses)
-                .Select(a => a.Address)
-                .Where(a => a.AddressFamily == AddressFamily.InterNetwork && LocalNetwork.Contains(a) && !System.Net.IPAddress.IsLoopback(a))
-                .Select(a => $"http://{a}:{port}/")
+                .Select(n => (Props: n.GetIPProperties(), n.NetworkInterfaceType))
+                .SelectMany(n => n.Props.UnicastAddresses.Select(a => (a.Address,
+                    Gateway: n.Props.GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork && !g.Address.Equals(System.Net.IPAddress.Any)),
+                    Physical: n.NetworkInterfaceType is NetworkInterfaceType.Ethernet or NetworkInterfaceType.Wireless80211)))
+                .Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork && LocalNetwork.Contains(a.Address) && !System.Net.IPAddress.IsLoopback(a.Address))
+                .OrderByDescending(a => a.Gateway)
+                .ThenByDescending(a => a.Physical)
+                .Select(a => $"http://{a.Address}:{port}/")
                 .Distinct()];
         }
         catch (NetworkInformationException)

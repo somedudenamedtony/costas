@@ -95,10 +95,11 @@ The key and password are kept in Windows Credential Manager.
   and JTAlert on the same computer.
 - **Save received audio**: none, only slots with decodes, or all, as WAV files, kept for 30 days by default.
 
-## Phone
+## Mobile connection
 
-- **Let a paired phone on this network operate the station**: off by default. **Port**: `8073`.
-- **Pair a phone** shows a one-time code to type on the phone; **Forget paired phones** unpairs them all.
+- **Let a paired phone on this network operate the station**: off by default. Takes effect at once and shows a
+  **Pair a phone** card with the address and a large one-time code.
+- **Forget paired phones** unpairs them all. **Port**: `8073`, applied when you save.
 
 See [Operating from a phone](phone.md).
 

@@ -22,5 +22,6 @@ public partial class SettingsWindow : Window
         {
             if (DataContext is SettingsViewModel vm) vm.Close += Close;
         };
+        Closed += (_, _) => (DataContext as SettingsViewModel)?.Detach();
     }
 }
