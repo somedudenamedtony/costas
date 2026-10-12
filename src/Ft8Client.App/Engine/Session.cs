@@ -368,6 +368,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         PreparedTx? pending;
         bool held;
         TxHold? hold = null;
+        var stopTune = false;
         var txStart = slot + TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode));
         var pttDue = txStart - _config.PttLead;
         lock (_gate)
@@ -386,6 +387,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 if (pending is not null) _tx.CancelPending();
                 return;
             }
+            stopTune = _tx.CurrentMessage == TuneMessage;
             if (pending is not null && pending.Plan.Message == plan.Message)
             {
                 // The decodes did not change the message: send it now instead of waiting out the hold.
@@ -401,6 +403,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         }
+        // A Tune tone still on the air gives way to the message the operator just asked for.
+        if (stopTune) _ = _tx.HaltAsync();
 
         var prepared = _tx.Prepare(plan, mode, offset, guard, out var refusal, hold);
         if (prepared is null)
@@ -594,6 +598,31 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _watchdogCap = minutes;
             _engine.Configure(_config.MyCall, _config.MyGrid, CappedContact());
         }
+    }
+
+    /// <summary>Message text of a Tune tone while it is on the air.</summary>
+    public const string TuneMessage = "Tune";
+
+    /// <summary>
+    /// Tune, from an operator's click: a steady tone at the Tx offset for up to <paramref name="seconds"/>, with PTT on
+    /// now. Refused while CQ, a contact or another transmission is under way, and by the same radio, audio and band
+    /// guards as any transmission. Returns null once the tone is on the air, otherwise why not.
+    /// </summary>
+    public async Task<string?> TuneAsync(double seconds)
+    {
+        TxGuardInput guard;
+        int offset;
+        lock (_gate)
+        {
+            if (_engine.CallingCq || _engine.InContact || _tx.Transmitting) return "Tune is only available while nothing else is being sent.";
+            offset = _txOffset;
+            guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
+                _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
+        }
+        var why = await _tx.TuneAsync(offset, seconds, guard).ConfigureAwait(false);
+        lock (_gate) _fault = why is null ? null : "No tune tone was sent. " + why;
+        Publish();
+        return why;
     }
 
     /// <summary>True when something is (or is about to be) transmitted: CQ running, a contact in progress, or on the air.</summary>

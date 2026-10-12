@@ -157,6 +157,7 @@ From top to bottom:
 | Status text | One line: *Not in a contact. Enter calls NT2A, the top of the line.*, *Transmitting to F5RXL.*, *Waiting for F5RXL.*, or a fault in red |
 | **Tx offset 1650 Hz · clear** | Your transmit audio offset. Click to choose **Automatic (picks a clear spot)**, the default, or type a fixed value (200 to 2900 Hz) and press **Use** |
 | **Call CQ** | Starts calling CQ in the next slot. Becomes **Stop CQ** while running. ++ctrl+q++ |
+| **Tune** | Sends a steady tone at your transmit offset for up to 10 seconds, for an antenna tuner. Becomes **Stop tune** while the tone is on. Available only when nothing else is being sent; calling a station or CQ stops it |
 | **Halt Tx** | Always available. Drops PTT at once and stops sequencing. ++esc++ does the same |
 | Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar |
 | Meter warning | Appears only when the last transmission's SWR or ALC was high, for example *SWR 3.4 · ALC 70%* |

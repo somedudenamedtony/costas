@@ -343,7 +343,7 @@ public sealed class Transmitter
         var tone = new float[n];
         var amp = Math.Pow(10, GainDb / 20);
         for (var i = 0; i < n; i++) tone[i] = (float)(amp * Math.Sin(2 * Math.PI * (offsetHz + 25) * i / _output.SampleRate));
-        var tx = new PreparedTx(new TxPlan(_clock.UtcNow, "Tune", null, null), Mode.Ft8, offsetHz, tone, _output.SampleRate);
+        var tx = new PreparedTx(new TxPlan(_clock.UtcNow, Session.TuneMessage, null, null), Mode.Ft8, offsetHz, tone, _output.SampleRate);
         lock (_gate)
         {
             _ptt = true;

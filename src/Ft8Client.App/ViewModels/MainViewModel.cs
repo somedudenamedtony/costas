@@ -205,6 +205,14 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial bool Transmitting { get; set; }
 
+    /// <summary>"Tune", or "Stop tune" while the tone is on the air.</summary>
+    [ObservableProperty]
+    public partial string TuneText { get; set; } = "Tune";
+
+    /// <summary>True when Tune can be pressed: nothing else is being sent, or the tone is on and can be stopped.</summary>
+    [ObservableProperty]
+    public partial bool CanTune { get; set; } = true;
+
     /// <summary>"Receiving" or "Transmitting".</summary>
     [ObservableProperty]
     public partial string SlotLabel { get; set; } = "Receiving";
@@ -254,6 +262,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         NoRadioText = radio is null ? string.Empty : $"Radio not connected · {radio.Message}";
         CanChangeBand = !s.Transmitting;
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
+        var tuning = s.TransmittingMessage == Session.TuneMessage;
+        TuneText = tuning ? "Stop tune" : "Tune";
+        CanTune = tuning || (!s.Transmitting && !s.CallingCq && s.Contact is not { Outcome: ContactOutcome.InProgress });
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
         (StatusText, StatusKind) = Status(s);
         (MeterText, MeterTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
@@ -432,6 +443,22 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         Activity();
         _host.Session.ToggleCq();
+    }
+
+    /// <summary>How long a Tune tone lasts unless stopped sooner (the Tune watchdog).</summary>
+    public const double TuneSeconds = 10;
+
+    /// <summary>Tune: a steady tone for an antenna tuner, or Stop tune while it is on the air.</summary>
+    [RelayCommand]
+    private async Task TuneAsync()
+    {
+        Activity();
+        if (_host.Session.Snapshot.TransmittingMessage == Session.TuneMessage)
+        {
+            await _host.Session.HaltAsync();
+            return;
+        }
+        await _host.Session.TuneAsync(TuneSeconds);
     }
 
     /// <summary>Halt Tx: always enabled.</summary>
