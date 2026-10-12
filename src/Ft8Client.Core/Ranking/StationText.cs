@@ -110,6 +110,7 @@ public static class StationText
         WatchReasonKind.Finishing => r.OtherCall is null ? "Finishing a contact" : $"Finishing a contact with {r.OtherCall}",
         WatchReasonKind.JustFinished => r.OtherCall is null ? "Just finished a contact" : $"Just finished with {r.OtherCall}",
         WatchReasonKind.NotCallingYou => $"Calling CQ {r.Modifier}",
+        WatchReasonKind.Contest => $"Contest (CQ {r.Modifier}), needs an exchange",
         WatchReasonKind.Unresolved => "Call not resolved",
         _ => "Long shot",
     };

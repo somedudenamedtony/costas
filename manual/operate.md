@@ -129,6 +129,10 @@ air, it says so.
 Stations you need that you cannot call yet: they went quiet, or are in a contact with someone else
 (*In a contact with EA5HVK*, *Finishing a contact with K7RGB*). They move into Next in line when that changes.
 
+A station calling CQ in a contest (`CQ RU`, `CQ FD`, `CQ WW`, `CQ TEST` and the like) is listed here as *Contest
+(CQ RU), needs an exchange*. It expects a contest exchange, and Costas only sends the standard one, so it is not
+offered as a station to call.
+
 Stations you have already worked on this band are not in Watching; they are in [Repeats](#repeats).
 
 ## Right column

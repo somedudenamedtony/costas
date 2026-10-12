@@ -26,6 +26,9 @@ public enum WatchReasonKind
     /// <summary>Its CQ modifier excludes me.</summary>
     NotCallingYou,
 
+    /// <summary>Calling CQ in a contest, which expects an exchange the standard contact cannot send.</summary>
+    Contest,
+
     /// <summary>Its call is hashed and could not be resolved.</summary>
     Unresolved,
 
