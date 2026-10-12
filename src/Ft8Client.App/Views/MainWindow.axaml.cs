@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(200) };
     private MiniWindow? _mini;
     private bool _closing;
+    private bool _wired;
 
     /// <summary>Creates the window.</summary>
     public MainWindow()
@@ -35,7 +36,10 @@ public partial class MainWindow : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-        if (Vm is not { } vm) return;
+        // Avalonia raises Opened again each time a hidden window is shown, which happens on every
+        // return from mini mode; wiring twice would open every dialog twice and tick twice.
+        if (_wired || Vm is not { } vm) return;
+        _wired = true;
         var w = vm.Host.Settings.Current.Window;
         Width = Math.Max(MinWidth, w.Width);
         Height = Math.Max(MinHeight, w.Height);
