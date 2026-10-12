@@ -86,6 +86,11 @@ public sealed record SessionSnapshot
     /// <summary>The message being transmitted now, or null.</summary>
     public string? TransmittingMessage { get; init; }
 
+    /// <summary>
+    /// Until when the radio's own antenna tuner is counted as tuning after Tune started it (the Tune limit), or null.
+    /// </summary>
+    public DateTime? RigTuningUntilUtc { get; init; }
+
     /// <summary>True while calling CQ.</summary>
     public bool CallingCq { get; init; }
 

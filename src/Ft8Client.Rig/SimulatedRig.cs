@@ -98,6 +98,23 @@ public sealed class SimulatedRig(IClock clock, long frequencyHz = 14_074_000) : 
     /// <inheritdoc />
     public Task<int?> ReadPowerWattsAsync(CancellationToken ct) => Task.FromResult(PowerWatts);
 
+    /// <summary>True to act as a radio with its own antenna tuner. Off by default.</summary>
+    public bool HasTuner { get; set; }
+
+    /// <summary>How many times the radio's tuner was started.</summary>
+    public int TunerStarts { get; private set; }
+
+    /// <inheritdoc />
+    public Task<bool> StartTunerAsync(CancellationToken ct)
+    {
+        lock (_gate)
+        {
+            if (!HasTuner) return Task.FromResult(false);
+            TunerStarts++;
+            return Task.FromResult(true);
+        }
+    }
+
     /// <inheritdoc />
     public Task SetSplitAsync(bool on, long txHz, CancellationToken ct)
     {

@@ -64,6 +64,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private EntityMatch? _myEntity;
     private long _dialHz;
     private int _txOffset = 1500;
+    private DateTime? _rigTuningUntil;
     private bool _txOffsetClear = true;
     private DateTime? _lastDecodedSlot;
     private TimeSpan _lastDecodeTime;
@@ -580,6 +581,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             _engine.Halt(_clock.UtcNow);
+            _rigTuningUntil = null;
             if (reason is not null) _fault = reason;
         }
         await _tx.HaltAsync().ConfigureAwait(false);
@@ -604,9 +606,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     public const string TuneMessage = "Tune";
 
     /// <summary>
-    /// Tune, from an operator's click: a steady tone at the Tx offset for up to <paramref name="seconds"/>, with PTT on
-    /// now. Refused while CQ, a contact or another transmission is under way, and by the same radio, audio and band
-    /// guards as any transmission. Returns null once the tone is on the air, otherwise why not.
+    /// Tune, from an operator's click (owner request 2026-10-12): starts the radio's own antenna tuner when it has one
+    /// and accepts the command, otherwise a steady tone at the Tx offset for up to <paramref name="seconds"/>, with PTT
+    /// on now. Refused while CQ, a contact or another transmission is under way, and by the same radio, audio and band
+    /// guards as any transmission. Returns null once the tuner or tone is going, otherwise why not.
     /// </summary>
     public async Task<string?> TuneAsync(double seconds)
     {
@@ -614,10 +617,21 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         int offset;
         lock (_gate)
         {
-            if (_engine.CallingCq || _engine.InContact || _tx.Transmitting) return "Tune is only available while nothing else is being sent.";
+            if (_engine.CallingCq || _engine.InContact || _tx.Transmitting || _rigTuningUntil > _clock.UtcNow)
+                return "Tune is only available while nothing else is being sent.";
             offset = _txOffset;
             guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
+        }
+        if (await _tx.StartRigTunerAsync(offset, guard).ConfigureAwait(false))
+        {
+            lock (_gate)
+            {
+                _rigTuningUntil = _clock.UtcNow + TimeSpan.FromSeconds(seconds);
+                _fault = null;
+            }
+            Publish();
+            return null;
         }
         var why = await _tx.TuneAsync(offset, seconds, guard).ConfigureAwait(false);
         lock (_gate) _fault = why is null ? null : "No tune tone was sent. " + why;
@@ -863,6 +877,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 Transmitting = _tx.Transmitting,
                 TransmittingMessage = _tx.CurrentMessage,
                 CallingCq = _engine.CallingCq,
+                RigTuningUntilUtc = _rigTuningUntil is { } until && until > now ? until : null,
                 TxOffsetHz = _txOffset,
                 TxOffsetClear = _txOffsetClear,
                 TxOffsetAuto = _config.FixedTxOffsetHz is null,

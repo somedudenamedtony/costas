@@ -87,6 +87,54 @@ public class SessionTuneTests
     }
 
     [Fact]
+    public async Task TuneAsync_RadioHasTuner_StartsItWithoutKeyingAudio()
+    {
+        _rig.HasTuner = true;
+
+        var why = await _session.TuneAsync(10);
+
+        why.Should().BeNull();
+        _rig.TunerStarts.Should().Be(1);
+        _rig.PttLog.Should().NotContain(p => p.On);
+        _session.Snapshot.RigTuningUntilUtc.Should().Be(_clock.UtcNow.AddSeconds(10));
+    }
+
+    [Fact]
+    public async Task TuneAsync_RadioTunerRunning_SecondTuneRefused()
+    {
+        _rig.HasTuner = true;
+        await _session.TuneAsync(10);
+
+        (await _session.TuneAsync(10)).Should().NotBeNull();
+        _rig.TunerStarts.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task HaltAsync_RadioTunerRunning_EndsTuneState()
+    {
+        _rig.HasTuner = true;
+        await _session.TuneAsync(10);
+
+        await _session.HaltAsync();
+
+        _session.Snapshot.RigTuningUntilUtc.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TuneAsync_RadioTunerTimeLimit_EndsAfterTenSeconds()
+    {
+        _rig.HasTuner = true;
+        await _session.TuneAsync(10);
+
+        _clock.Advance(TimeSpan.FromSeconds(11));
+        _session.Publish();
+
+        _session.Snapshot.RigTuningUntilUtc.Should().BeNull();
+        (await _session.TuneAsync(10)).Should().BeNull();
+        _rig.TunerStarts.Should().Be(2);
+    }
+
+    [Fact]
     public async Task HaltAsync_DuringTune_ReleasesPtt()
     {
         await _session.TuneAsync(10);

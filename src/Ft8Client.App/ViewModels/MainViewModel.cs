@@ -284,9 +284,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         NoRadioText = radio is null ? string.Empty : $"Radio not connected · {radio.Message}";
         CanChangeBand = !s.Transmitting;
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
-        var tuning = s.TransmittingMessage == Session.TuneMessage;
-        TuneText = tuning ? "Stop tune" : "Tune";
-        CanTune = tuning || (!s.Transmitting && !s.CallingCq && s.Contact is not { Outcome: ContactOutcome.InProgress });
+        UpdateTune(s);
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
         (StatusText, StatusKind) = Status(s);
         (MeterText, MeterTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
@@ -316,6 +314,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var left = (int)Math.Ceiling((len - into).TotalSeconds);
         SlotRemaining = $"{left} s to next slot";
         SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+        UpdateTune(_host.Session.Snapshot);
         Operate.Tick();
         Mini.Refresh(SelectedBand, SelectedMode);
     }
@@ -470,12 +469,24 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>How long a Tune tone lasts unless stopped sooner (the Tune watchdog).</summary>
     public const double TuneSeconds = 10;
 
-    /// <summary>Tune: a steady tone for an antenna tuner, or Stop tune while it is on the air.</summary>
+    // A Tune tone on the air, or the radio's own tuner started by Tune and not yet past the Tune limit.
+    private bool Tuning(SessionSnapshot s) => s.TransmittingMessage == Session.TuneMessage || s.RigTuningUntilUtc > _host.Clock.UtcNow;
+
+    private void UpdateTune(SessionSnapshot s)
+    {
+        var tuning = Tuning(s);
+        TuneText = tuning ? "Stop tune" : "Tune";
+        CanTune = tuning || (!s.Transmitting && !s.CallingCq && s.Contact is not { Outcome: ContactOutcome.InProgress });
+    }
+
+    /// <summary>
+    /// Tune: starts the radio's own tuner, or a steady tone when the radio has none; Stop tune while either is going.
+    /// </summary>
     [RelayCommand]
     private async Task TuneAsync()
     {
         Activity();
-        if (_host.Session.Snapshot.TransmittingMessage == Session.TuneMessage)
+        if (Tuning(_host.Session.Snapshot))
         {
             await _host.Session.HaltAsync();
             return;
@@ -625,6 +636,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     internal static (string, TextKind) Status(SessionSnapshot s)
     {
         if (s.Fault is { } f) return (f, TextKind.Critical);
+        if (s.RigTuningUntilUtc is not null) return ("The radio's antenna tuner is tuning.", TextKind.Critical);
         if (s.Contact is { Outcome: ContactOutcome.InProgress } c)
         {
             if (!s.Transmitting) return ($"Waiting for {c.DxCall}.", TextKind.Normal);
