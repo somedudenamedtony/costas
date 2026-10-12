@@ -247,6 +247,7 @@ Texts (`PileupText`): "3 stations called JA6VQA at 20:29:30." (or "W7XQ called J
 - The differences are grouped by the receiver's continent (country file). A continent is shown once 3 receivers or more are shared. Each row has the median of my reports, the median of theirs, and the median difference.
 - Texts (`NeighbourText`): a difference under 3 dB is "Level"; otherwise "7 dB weaker" or "3 dB stronger". The summary takes the continent with the largest difference: "7 dB weaker than stations near you into Europe." or "Level with stations near you.".
 - The neighbours' power is not known: a neighbour running 500 W makes me look weaker. The comparison is shown as data, never used for ranking or transmit.
+- **Daily history** (`NeighbourHistory`, owner approval 2026-10-12): every 5 minutes while the comparison has rows, each continent's difference is added to that UTC day's counts for my call, band and mode (stored in `neighbour-history.json`, `06-data-model.md`). A period's figure is the median of every sample in it. Texts (`NeighbourHistoryText`) are exact dB, "level" only at 0: without a mark, the last 7 days against the 7 before ("Into Europe: 4 dB behind neighbours this past week, 7 dB behind the week before."); with a marked change, the days from the mark on against the 14 days before it ("Into Europe: 2 dB behind neighbours since your change on 9 Oct, 7 dB behind in the two weeks before."). Not recorded in simulation or while the comparison is off.
 
 ## 14. Band openings from my area
 
