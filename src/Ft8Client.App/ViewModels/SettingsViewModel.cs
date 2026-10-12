@@ -58,6 +58,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
         QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
         FeedEnabled = s.PskReporter.FeedEnabled;
+        CompareNeighbours = s.PskReporter.CompareNeighbours;
         UploadSpots = s.PskReporter.UploadSpots;
         UdpEnabled = s.Udp.Enabled;
         UdpAddress = s.Udp.Address;
@@ -330,6 +331,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool FeedEnabled { get; set; }
 
+    /// <summary>Compare my signal with stations near me.</summary>
+    [ObservableProperty]
+    public partial bool CompareNeighbours { get; set; }
+
     /// <summary>Upload spots.</summary>
     [ObservableProperty]
     public partial bool UploadSpots { get; set; }
@@ -485,6 +490,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Qrz.UploadOnComplete = UploadOnComplete;
             s.Qrz.SyncMinutes = Int(SyncMinutes, 5, 1440, 15);
             s.PskReporter.FeedEnabled = FeedEnabled;
+            s.PskReporter.CompareNeighbours = CompareNeighbours;
             s.PskReporter.UploadSpots = UploadSpots;
             s.Udp.Enabled = UdpEnabled;
             s.Udp.Address = UdpAddress.Trim();

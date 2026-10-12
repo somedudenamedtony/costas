@@ -15,6 +15,7 @@ using Ft8Client.Core.Geo;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Pileups;
+using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Stations;
@@ -49,8 +50,10 @@ public sealed class Session
     private readonly Dictionary<string, ServiceStatus> _services = new(StringComparer.Ordinal);
     private readonly Dictionary<string, CallsignCacheEntry> _lookups = new(StringComparer.Ordinal);
     private readonly List<TonightContact> _tonight = [];
+    private const int MaxNeighbourReports = 20000;
     private StationTracker _tracker;
     private PileupTracker _pileups;
+    private readonly List<NeighbourReport> _neighbours = [];
     private SessionConfig _config;
     private LogIndex _logIndex = LogIndex.Empty;
     private HearsMe _hearsMe;
@@ -591,6 +594,7 @@ public sealed class Session
             _engine.Abandon(_clock.UtcNow);
             _engine.StopCq(_clock.UtcNow);
             _hearsMe = new HearsMe(band, _hearsMe.Available);
+            _neighbours.Clear();
             _recentOffsets.Clear();
             _slotCounts.Clear();
             _activity.Clear();
@@ -666,6 +670,23 @@ public sealed class Session
         Publish();
     }
 
+    /// <summary>
+    /// Adds a report of another station, kept only when it is near me on this band and mode. Shown at the next publish
+    /// (they can arrive several a second, so they do not publish on their own).
+    /// </summary>
+    public void AddNeighbourReport(NeighbourReport r)
+    {
+        lock (_gate)
+        {
+            if (r.Band != _config.Band || r.Mode != ModeInfo.Name(_config.Mode) || Callsign.EqualsCall(r.SenderCall, _config.MyCall)) return;
+            if (Grid.ToLatLon(_config.MyGrid) is not { } me || !NeighbourComparison.IsNeighbour(me, r.SenderGrid)) return;
+            _neighbours.Add(r);
+            var since = _clock.UtcNow - NeighbourComparison.Window;
+            if (_neighbours.Count > MaxNeighbourReports || _neighbours[0].TimeUtc < since) _neighbours.RemoveAll(x => x.TimeUtc < since);
+            if (_neighbours.Count > MaxNeighbourReports) _neighbours.RemoveRange(0, _neighbours.Count - MaxNeighbourReports);
+        }
+    }
+
     /// <summary>Adds QRZ lookup results (fresh or from the cache) and publishes once.</summary>
     public void SetLookups(IEnumerable<CallsignCacheEntry> entries)
     {
@@ -735,6 +756,8 @@ public sealed class Session
                 LogIsEmpty = _logIndex.IsEmpty,
                 Tonight = _tonight.ToList(),
                 Reports = _hearsMe.Reports.OrderByDescending(r => r.TimeUtc).ToList(),
+                Neighbours = NeighbourComparison.Compare(_hearsMe.Reports, _neighbours, _config.MyCall, _config.MyGrid, _config.Band,
+                    ModeInfo.Name(_config.Mode), _countries, now),
                 Services = new Dictionary<string, ServiceStatus>(_services),
                 Contact = _engine.View,
                 Transmitting = _tx.Transmitting,

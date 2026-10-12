@@ -9,6 +9,7 @@
 using Ft8Client.Core;
 using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Pileups;
+using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Stations;
@@ -60,6 +61,9 @@ public sealed record SessionSnapshot
 
     /// <summary>Contacts this session.</summary>
     public IReadOnlyList<TonightContact> Tonight { get; init; } = [];
+
+    /// <summary>How I compare with stations near me on this band and mode.</summary>
+    public NeighbourResult Neighbours { get; init; } = NeighbourResult.Empty;
 
     /// <summary>Reports of my signal on this band, newest first.</summary>
     public IReadOnlyList<ReceptionReport> Reports { get; init; } = [];

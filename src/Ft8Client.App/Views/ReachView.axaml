@@ -48,6 +48,29 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <TextBlock Text="Compared with stations near you" Classes="title" Margin="0,12,0,0" />
+            <TextBlock Text="{Binding NeighbourHeadline}" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding NeighbourBasis}" Classes="secondary" FontSize="12" TextWrapping="Wrap"
+                       IsVisible="{Binding NeighbourBasis, Converter={x:Static v:Converters.NotEmpty}}" />
+            <Grid ColumnDefinitions="110,50,50,70,*" IsVisible="{Binding HasNeighbourRows}">
+              <TextBlock Text="Toward" Classes="secondary" /><TextBlock Grid.Column="1" Text="You" Classes="secondary" />
+              <TextBlock Grid.Column="2" Text="Them" Classes="secondary" /><TextBlock Grid.Column="3" Text="Receivers" Classes="secondary" />
+              <TextBlock Grid.Column="4" Text="Difference" Classes="secondary" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding NeighbourRows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:NeighbourRowViewModel">
+                  <Grid ColumnDefinitions="110,50,50,70,*" MinHeight="28">
+                    <TextBlock Text="{Binding Toward}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding Mine}" Classes="num" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding Theirs}" Classes="num secondary" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="3" Text="{Binding Receivers}" Classes="num secondary" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="4" Text="{Binding Difference}" VerticalAlignment="Center" FontWeight="SemiBold"
+                               Foreground="{Binding Weaker, Converter={x:Static v:Converters.CautionWhen}}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <TextBlock Text="You are at the centre, north is up. Bigger, darker dots are stronger reports. Hover over a dot for its call."
                        Classes="secondary" TextWrapping="Wrap" Margin="0,12,0,0" />
             <TextBlock Text="Scroll or use + and − to zoom, drag to move around, double-click to see the whole map."

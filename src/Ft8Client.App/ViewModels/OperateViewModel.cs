@@ -17,6 +17,7 @@ using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
+using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Stations;
 using Ft8Client.Core.Time;
@@ -170,6 +171,10 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>Best report.</summary>
     [ObservableProperty]
     public partial string SignalBest { get; set; } = "—";
+
+    /// <summary>"7 dB weaker than stations near you into Europe.", or blank when there is not enough to compare.</summary>
+    [ObservableProperty]
+    public partial string SignalNeighbours { get; set; } = string.Empty;
 
     /// <summary>Worked tonight title.</summary>
     [ObservableProperty]
@@ -503,6 +508,7 @@ public sealed partial class OperateViewModel : ObservableObject
     {
         SignalTitle = $"Your signal on {band}";
         var available = s.Services.TryGetValue(ServiceNames.Psk, out var psk) ? psk : null;
+        SignalNeighbours = NeighbourText.Headline(s.Neighbours);
         SignalSource = available?.Health switch
         {
             Core.Services.ServiceHealth.Ok => "PSK Reporter · live",

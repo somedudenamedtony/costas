@@ -80,6 +80,8 @@ The key and password are kept in Windows Credential Manager.
 
 - **Who hears me › Receive live reports of stations hearing my signal**: on. Powers the Reach view, *Hears you* and
   Chance.
+- **Who hears me › Compare my signal with stations near me**: on. Also receives reports of other stations within
+  300 miles on your band, for *Compared with stations near you* in the Reach view. Nothing about them is saved.
 - **Share what I hear › Send the stations I decode to PSK Reporter**: off. Helps other operators see where their
   signals reach. Sent every few minutes, never in simulation.
 

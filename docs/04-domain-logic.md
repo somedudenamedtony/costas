@@ -221,3 +221,13 @@ The result stays until a later transmission on the same band reads the meters ag
 
 Texts (`PileupText`): "3 stations called JA6VQA at 20:29:30." (or "W7XQ called JA6VQA at 20:29:30."); "Answered the strongest caller you heard in 4 of its last 5 contacts." (from the last 5 judged picks, shown once there are at least 2); "Your offset, 1650 Hz, is clear of them." or "K6ODE is calling 30 Hz from your offset." (a caller within the mode's bandwidth of my transmit offset). These are what I hear, not what T hears: a caller that is strong here may be weak at T.
 
+## 13. Compared with stations near me
+
+`NeighbourComparison` (Core) answers "is it the band or my station?" by comparing how PSK Reporter receivers hear me with how they hear other stations near me, on the same band and mode, over the last 30 minutes (owner request 2026-10-12).
+
+- A **neighbour** is a station whose reported locator is within 300 miles (482.8 km) of my grid, other than me. Without my grid there is nothing to compare.
+- For each receiver that heard both me and at least one neighbour: my median report there minus the neighbours' median report there. Comparing at the same receiver cancels out that receiver's antenna, noise and distance.
+- The differences are grouped by the receiver's continent (country file). A continent is shown once 3 receivers or more are shared. Each row has the median of my reports, the median of theirs, and the median difference.
+- Texts (`NeighbourText`): a difference under 3 dB is "Level"; otherwise "7 dB weaker" or "3 dB stronger". The summary takes the continent with the largest difference: "7 dB weaker than stations near you into Europe." or "Level with stations near you.".
+- The neighbours' power is not known: a neighbour running 500 W makes me look weaker. The comparison is shown as data, never used for ranking or transmit.
+

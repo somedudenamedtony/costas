@@ -8,6 +8,7 @@
 
 using System.Net;
 using Ft8Client.Core.Geo;
+using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Time;
 using Ft8Client.Data.Reference;
@@ -129,6 +130,47 @@ public class PskReporterTests
         await WaitFor(() => feed.Connected, 30);
         feed.Connections.Should().Be(2);
         await server.StopAsync(new MqttServerStopOptions());
+    }
+
+    [Fact]
+    public async Task Feed_FollowNeighbours_RaisesNeighbourReportsAndLearnsMyDxcc()
+    {
+        var port = FreePort();
+        var server = new MqttServerFactory().CreateMqttServer(BrokerOptions(port));
+        await server.StartAsync();
+        var neighbours = new List<NeighbourReport>();
+        await using var feed = new PskFeedClient(Countries, "127.0.0.1", port, tls: false);
+        feed.NeighbourReport += r =>
+        {
+            lock (neighbours) neighbours.Add(r);
+        };
+        feed.Start("W7LIT");
+        await WaitFor(() => feed.Connected);
+        await Publish(server);
+        await WaitFor(() => feed.MyDxcc is not null);
+        feed.MyDxcc.Should().Be(291);
+
+        feed.FollowNeighbours("20m", "FT8", 291);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+        var line = """{"sq":1,"f":14075500,"md":"FT8","rp":-12,"t":1767495300,"sc":"K7AAA","sl":"DN41","rc":"DL1ABC","rl":"JO62","sa":291,"ra":230,"b":"20m"}""";
+        var msg = new MqttApplicationMessageBuilder().WithTopic("pskr/filter/v2/20m/FT8/K7AAA/DL1ABC/DN41/JO62/291/230").WithPayload(line).Build();
+        await server.InjectApplicationMessage(new InjectedMqttApplicationMessage(msg) { SenderClientId = "test" }, TestContext.Current.CancellationToken);
+        await WaitFor(() =>
+        {
+            lock (neighbours) return neighbours.Count > 0;
+        });
+        lock (neighbours)
+        {
+            neighbours.Should().ContainSingle().Which.Should().Be(new NeighbourReport("K7AAA", "DN41", "DL1ABC", "20m", "FT8", -12,
+                DateTimeOffset.FromUnixTimeSeconds(1767495300).UtcDateTime));
+        }
+        await server.StopAsync(new MqttServerStopOptions());
+    }
+
+    [Fact]
+    public void NeighbourTopicFor_BandModeDxcc_FiltersOnSenderEntity()
+    {
+        PskFeedClient.NeighbourTopicFor("20M", "ft8", 291).Should().Be("pskr/filter/v2/20m/FT8/+/+/+/+/291/#");
     }
 
     private static async Task Publish(MqttServer server)

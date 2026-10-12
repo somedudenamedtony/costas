@@ -135,6 +135,9 @@ public static class Converters
     /// <summary>True when a string is not empty.</summary>
     public static readonly IValueConverter NotEmpty = new FuncValueConverter<string?, bool>(s => !string.IsNullOrEmpty(s));
 
+    /// <summary>Caution brush when true, else the default foreground.</summary>
+    public static readonly IValueConverter CautionWhen = new FuncValueConverter<bool, IBrush?>(b => b ? Brush("CautionBrush") : null);
+
     /// <summary>Transmitting colours the Halt button.</summary>
     public static readonly IValueConverter CriticalWhen = new FuncValueConverter<bool, IBrush?>(b => b ? Brush("CriticalBrush") : null);
 

@@ -38,6 +38,11 @@ Press **Reach** in the top bar (++ctrl+3++), or **Open reach view** under *Your 
 - **Who heard you**: the reporting stations with where, distance, bearing, dB, age and whether they are in your log.
   Sortable. Double-click a row for that station's details.
 - **By band, last 24 hours**: how many stations heard you on each band, the farthest and the median report.
+- **Compared with stations near you**: is it the band, or your station? PSK Reporter also hears the other stations
+  within 300 miles of you. For every receiver that heard both you and one of them in the last 30 minutes, Costas
+  compares the two reports, then sums it up per continent: *7 dB weaker than stations near you into Europe.* A
+  continent shows once 3 receivers have heard both. The same line appears under *Your signal* on the Operate screen.
+  Bear in mind a neighbour running more power than you makes you look weaker.
 
 Reports appear a few minutes after you transmit. Until then the view says *No reports yet*.
 

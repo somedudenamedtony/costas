@@ -14,6 +14,7 @@ using Ft8Client.Core.Bands;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
+using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Data.Log;
 
@@ -72,6 +73,21 @@ public sealed partial class ReachViewModel : ObservableObject
     /// <summary>By band, last 24 hours.</summary>
     public ObservableCollection<BandReachRowViewModel> ByBand { get; } = [];
 
+    /// <summary>Compared with stations near you: one row per continent.</summary>
+    public ObservableCollection<NeighbourRowViewModel> NeighbourRows { get; } = [];
+
+    /// <summary>"7 dB weaker than stations near you into Europe.", or the reason there is nothing to compare yet.</summary>
+    [ObservableProperty]
+    public partial string NeighbourHeadline { get; set; } = string.Empty;
+
+    /// <summary>The comparison table is shown.</summary>
+    [ObservableProperty]
+    public partial bool HasNeighbourRows { get; set; }
+
+    /// <summary>"Compared with 9 stations within 300 miles, last 30 minutes."</summary>
+    [ObservableProperty]
+    public partial string NeighbourBasis { get; set; } = string.Empty;
+
     /// <summary>Distance units.</summary>
     public DistanceUnit Units { get; set; } = DistanceUnit.Miles;
 
@@ -116,6 +132,32 @@ public sealed partial class ReachViewModel : ObservableObject
             ByBand.Add(new BandReachRowViewModel(BandPlan.Display(g.Key), bp.Count.ToString(CultureInfo.InvariantCulture),
                 StationText.Distance(bp.Max(p => p.Km), Units), Report.Format(snrs[snrs.Count / 2]), g.Key == Band));
         }
+    }
+
+    /// <summary>Shows the neighbour comparison for the current band (from the session; it covers the last 30 minutes).</summary>
+    public void ApplyNeighbours(NeighbourResult r, string band, bool enabled)
+    {
+        NeighbourRows.Clear();
+        HasNeighbourRows = false;
+        if (!enabled)
+        {
+            NeighbourHeadline = "Turned off in Settings, PSK Reporter.";
+            NeighbourBasis = string.Empty;
+            return;
+        }
+        if (band != Band)
+        {
+            NeighbourHeadline = $"Shown for the band you are on, {BandPlan.Display(band)}.";
+            NeighbourBasis = string.Empty;
+            return;
+        }
+        foreach (var row in r.Rows)
+            NeighbourRows.Add(new NeighbourRowViewModel(NeighbourText.Continent(row.Continent), row.Receivers.ToString(CultureInfo.InvariantCulture),
+                Report.Format(row.MyMedian), Report.Format(row.TheirMedian), NeighbourText.Difference(row.DiffDb), row.DiffDb));
+        HasNeighbourRows = NeighbourRows.Count > 0;
+        NeighbourHeadline = r.Rows.Count > 0 ? NeighbourText.Headline(r)
+            : "Not enough shared reports yet. It needs 3 receivers on one continent that heard both you and a station near you.";
+        NeighbourBasis = r.Neighbours > 0 ? NeighbourText.Basis(r, Units) : string.Empty;
     }
 
     private ReceptionReport ToReport(SpotRecord s) =>

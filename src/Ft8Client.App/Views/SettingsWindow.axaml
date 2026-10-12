@@ -287,6 +287,8 @@
               <TextBlock Classes="label" Text="Who hears me" />
               <StackPanel Grid.Column="1">
                 <CheckBox Content="Receive live reports of stations hearing my signal" IsChecked="{Binding FeedEnabled}" />
+                <CheckBox Content="Compare my signal with stations near me" IsChecked="{Binding CompareNeighbours}" IsEnabled="{Binding FeedEnabled}" />
+                <TextBlock Classes="help" Text="Also receives reports of stations within 300 miles on your band, so the Reach view can show where you are stronger or weaker than them." TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">

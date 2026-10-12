@@ -206,6 +206,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
         Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current.Ranking);
         Operate.Apply(s, tonight.Rows, tonight.Total);
+        Reach.ApplyNeighbours(s.Neighbours, s.Band, _host.Settings.Current.PskReporter is { FeedEnabled: true, CompareNeighbours: true });
         BarShowsCqAndSlot = ShowCqAndSlotInBar(Tab);
         FillLookups(s);
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
