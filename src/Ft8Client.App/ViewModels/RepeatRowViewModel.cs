@@ -84,7 +84,10 @@ public sealed partial class RepeatRowViewModel : ObservableObject
     /// <summary>What the station is doing, or why it cannot be called right now.</summary>
     public string DoingNow { get; }
 
-    /// <summary>True when the station can be called now (the button is enabled).</summary>
+    /// <summary>
+    /// True when the station is calling CQ or calling me now. When false, Doing now shows why in grey; the Call button
+    /// stays enabled so the operator can still call them (owner request 2026-10-12).
+    /// </summary>
     public bool CanCall { get; }
 
     /// <summary>SNR at my station.</summary>
