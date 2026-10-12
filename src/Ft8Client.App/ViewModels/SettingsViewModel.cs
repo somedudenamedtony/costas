@@ -59,6 +59,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
         FeedEnabled = s.PskReporter.FeedEnabled;
         CompareNeighbours = s.PskReporter.CompareNeighbours;
+        BandActivity = s.PskReporter.BandActivity;
         UploadSpots = s.PskReporter.UploadSpots;
         UdpEnabled = s.Udp.Enabled;
         UdpAddress = s.Udp.Address;
@@ -338,6 +339,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool CompareNeighbours { get; set; }
 
+    /// <summary>Show in the band menu where stations near me are heard on every band.</summary>
+    [ObservableProperty]
+    public partial bool BandActivity { get; set; }
+
     /// <summary>Upload spots.</summary>
     [ObservableProperty]
     public partial bool UploadSpots { get; set; }
@@ -553,6 +558,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Qrz.SyncMinutes = Int(SyncMinutes, 5, 1440, 15);
             s.PskReporter.FeedEnabled = FeedEnabled;
             s.PskReporter.CompareNeighbours = CompareNeighbours;
+            s.PskReporter.BandActivity = BandActivity;
             s.PskReporter.UploadSpots = UploadSpots;
             s.Udp.Enabled = UdpEnabled;
             s.Udp.Address = UdpAddress.Trim();

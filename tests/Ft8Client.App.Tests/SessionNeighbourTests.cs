@@ -75,14 +75,42 @@ public class SessionNeighbourTests
     }
 
     [Fact]
-    public void SetBand_ClearsNeighbourReports()
+    public void AddNeighbourReport_OtherBands_ShownAsBandOpenings()
     {
         var d = new Driver();
         var t = d.Clock.UtcNow.AddMinutes(-5);
         d.Session.AddNeighbourReport(new NeighbourReport("K7AAA", "DN41", "DL1ABC", "20m", "FT8", -12, t));
-        d.Session.SetBand("20m", Mode.Ft8);
+        d.Session.AddNeighbourReport(new NeighbourReport("K7BBB", "DN41", "PY2ABC", "15m", "FT8", -15, t));
+        d.Session.AddNeighbourReport(new NeighbourReport("K7BBB", "DN41", "LU1ABC", "15m", "FT8", -15, t));
         d.Session.Publish();
 
+        var o = d.Session.Snapshot.BandOpenings;
+        o.Keys.Should().BeEquivalentTo("20m", "15m");
+        o["15m"].SpotsByContinent.Should().Contain("SA", 2);
+    }
+
+    [Fact]
+    public void SetBand_SameMode_KeepsReportsForTheBandMenu()
+    {
+        var d = new Driver();
+        var t = d.Clock.UtcNow.AddMinutes(-5);
+        d.Session.AddNeighbourReport(new NeighbourReport("K7AAA", "DN41", "DL1ABC", "20m", "FT8", -12, t));
+        d.Session.SetBand("40m", Mode.Ft8);
+        d.Session.Publish();
+
+        d.Session.Snapshot.BandOpenings.Should().ContainKey("20m");
         d.Session.Snapshot.Neighbours.Neighbours.Should().Be(0);
+    }
+
+    [Fact]
+    public void SetBand_OtherMode_ClearsNeighbourReports()
+    {
+        var d = new Driver();
+        var t = d.Clock.UtcNow.AddMinutes(-5);
+        d.Session.AddNeighbourReport(new NeighbourReport("K7AAA", "DN41", "DL1ABC", "20m", "FT8", -12, t));
+        d.Session.SetBand("20m", Mode.Ft4);
+        d.Session.Publish();
+
+        d.Session.Snapshot.BandOpenings.Should().BeEmpty();
     }
 }

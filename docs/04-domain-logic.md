@@ -231,3 +231,15 @@ Texts (`PileupText`): "3 stations called JA6VQA at 20:29:30." (or "W7XQ called J
 - Texts (`NeighbourText`): a difference under 3 dB is "Level"; otherwise "7 dB weaker" or "3 dB stronger". The summary takes the continent with the largest difference: "7 dB weaker than stations near you into Europe." or "Level with stations near you.".
 - The neighbours' power is not known: a neighbour running 500 W makes me look weaker. The comparison is shown as data, never used for ranking or transmit.
 
+## 14. Band openings from my area
+
+The band menu shows, for each band, whether stations near me are being heard right now and where. Source: PSK Reporter reports of senders in my DXCC entity on every band in my mode (`05-integrations.md` section 7), the same reports the neighbour comparison uses for the current band.
+
+- A report counts when its sender is within 300 miles (482.8 km) of my grid, it is in my mode, it is not my own call, and it is no older than 15 minutes.
+- Per band: the number of reports (spots), the distinct senders, and the spots per receiver continent (from the country file).
+- Each continent chip is shaded by its spots: none 0, 1 to 9 light, 10 to 49 medium, 50 or more full.
+- The activity bar is scaled to the busiest band. A band with no spots says "No spots" while any band has spots; with no spots anywhere (feed off, my DXCC not known yet, the subscription stopped) the menu shows band names only.
+- "You need": the receivers' countries with no contact in my log on that band, most spots first: "You need Mongolia", "You need Brazil +2". The tooltip lists them all. An empty log shows nothing here rather than every country.
+- Rebuilt at most once a slot while reports arrive; changing band keeps the reports, changing mode clears them.
+
+This shows where the band is open from my area, not who I can hear: a receiver hearing my neighbour is a station listening on that band.

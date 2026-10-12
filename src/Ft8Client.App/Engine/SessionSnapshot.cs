@@ -65,6 +65,9 @@ public sealed record SessionSnapshot
     /// <summary>How I compare with stations near me on this band and mode.</summary>
     public NeighbourResult Neighbours { get; init; } = NeighbourResult.Empty;
 
+    /// <summary>Per band (ADIF, lower case): where stations near me are heard right now, for the band menu.</summary>
+    public IReadOnlyDictionary<string, BandOpening> BandOpenings { get; init; } = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
+
     /// <summary>Reports of my signal on this band, newest first.</summary>
     public IReadOnlyList<ReceptionReport> Reports { get; init; } = [];
 

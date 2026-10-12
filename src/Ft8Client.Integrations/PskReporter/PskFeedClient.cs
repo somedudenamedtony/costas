@@ -43,6 +43,7 @@ public sealed class PskFeedClient : IAsyncDisposable
     private readonly object _topicGate = new();
     private string? _neighbourTopic;
     private string? _subscribedNeighbourTopic;
+    private (string? Band, string? Mode, int? Dxcc) _followed;
     private int _neighbourCount;
     private DateTime _neighbourMinute;
 
@@ -70,6 +71,11 @@ public sealed class PskFeedClient : IAsyncDisposable
     /// <summary>True when neighbour reports came too fast and following them was stopped.</summary>
     public bool NeighboursStopped { get; private set; }
 
+    /// <summary>
+    /// True when neighbour reports on every band came too fast; the feed then follows the current band only.
+    /// </summary>
+    public bool AllBandsStopped { get; private set; }
+
     /// <summary>Raised when the connection state changes.</summary>
     public event Action<ServiceStatus>? StatusChanged;
 
@@ -82,19 +88,22 @@ public sealed class PskFeedClient : IAsyncDisposable
     /// <summary>The topic filter for a call.</summary>
     public static string TopicFor(string call) => $"pskr/filter/v2/+/+/{Callsign.Normalize(call)}/#";
 
-    /// <summary>The topic filter for every sender in one DXCC entity on one band and mode.</summary>
+    /// <summary>The topic filter for every sender in one DXCC entity on one band (<c>+</c> for every band) and mode.</summary>
     public static string NeighbourTopicFor(string band, string mode, int dxcc) =>
         $"pskr/filter/v2/{band.ToLowerInvariant()}/{mode.ToUpperInvariant()}/+/+/+/+/{dxcc}/#";
 
     /// <summary>
     /// Follows the reports of stations in DXCC entity <paramref name="dxcc"/> on <paramref name="band"/> and
-    /// <paramref name="mode"/>, replacing any earlier choice; null for any of them stops following.
+    /// <paramref name="mode"/>, replacing any earlier choice; null for any of them stops following. With
+    /// <paramref name="allBands"/> it follows every band (for the band menu), unless that proved too busy.
     /// </summary>
-    public void FollowNeighbours(string? band, string? mode, int? dxcc)
+    public void FollowNeighbours(string? band, string? mode, int? dxcc, bool allBands = false)
     {
-        var topic = band is null || mode is null || dxcc is null || NeighboursStopped ? null : NeighbourTopicFor(band, mode, dxcc.Value);
+        var topic = band is null || mode is null || dxcc is null || NeighboursStopped ? null
+            : NeighbourTopicFor(allBands && !AllBandsStopped ? "+" : band, mode, dxcc.Value);
         lock (_topicGate)
         {
+            _followed = (band, mode, dxcc);
             if (topic == _neighbourTopic) return;
             _neighbourTopic = topic;
         }
@@ -231,7 +240,16 @@ public sealed class PskFeedClient : IAsyncDisposable
             _neighbourCount = 0;
         }
         if (++_neighbourCount <= MaxNeighbourReportsPerMinute) return false;
-        if (!NeighboursStopped)
+        string? topic;
+        lock (_topicGate) topic = _neighbourTopic;
+        if (topic is not null && topic.StartsWith("pskr/filter/v2/+/", StringComparison.Ordinal))
+        {
+            // Every band is too busy: fall back to the current band, which the neighbour comparison needs.
+            AllBandsStopped = true;
+            var (band, mode, dxcc) = _followed;
+            FollowNeighbours(band, mode, dxcc);
+        }
+        else if (!NeighboursStopped)
         {
             NeighboursStopped = true;
             FollowNeighbours(null, null, null);
