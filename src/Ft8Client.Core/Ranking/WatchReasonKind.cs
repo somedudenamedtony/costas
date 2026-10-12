@@ -31,4 +31,7 @@ public enum WatchReasonKind
 
     /// <summary>Left out of the line by the "skip long shots" filter.</summary>
     LongShot,
+
+    /// <summary>A Fox running a Fox/Hound DXpedition, while Hound mode is off.</summary>
+    Fox,
 }

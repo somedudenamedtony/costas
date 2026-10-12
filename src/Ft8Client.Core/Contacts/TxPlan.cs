@@ -13,4 +13,8 @@ namespace Ft8Client.Core.Contacts;
 /// <param name="Message">Message text, exactly as shown to the operator.</param>
 /// <param name="DxCall">The station it is for, or null for CQ.</param>
 /// <param name="DxOffsetHz">The DX station's offset (for decoding its reply), if any.</param>
-public sealed record TxPlan(DateTime SlotStartUtc, string Message, string? DxCall, int? DxOffsetHz);
+/// <param name="TxOffsetHz">
+/// The audio offset this message must go out on, or null for the session's transmit offset. Set for a Hound's
+/// R-report, which goes on the frequency the Fox answered on.
+/// </param>
+public sealed record TxPlan(DateTime SlotStartUtc, string Message, string? DxCall, int? DxOffsetHz, int? TxOffsetHz = null);

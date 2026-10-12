@@ -111,6 +111,7 @@ public static class StationText
         WatchReasonKind.JustFinished => r.OtherCall is null ? "Just finished a contact" : $"Just finished with {r.OtherCall}",
         WatchReasonKind.NotCallingYou => $"Calling CQ {r.Modifier}",
         WatchReasonKind.Unresolved => "Call not resolved",
+        WatchReasonKind.Fox => "Fox/Hound DXpedition. Turn on Hound to call it",
         _ => "Long shot",
     };
 
