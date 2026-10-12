@@ -376,9 +376,16 @@
         <!-- Watching -->
         <Border Classes="card" Padding="0,10,0,6">
           <StackPanel>
-            <TextBlock Text="Watching" Classes="title" Margin="14,0" />
-            <TextBlock Text="Needed, but not callable right now. They join the line when that changes." Classes="secondary" Margin="14,2,14,6" />
-            <ItemsControl ItemsSource="{Binding Watching}">
+            <!-- With only new calls and grids in it, Watching folds to one line; a new country or band always shows its rows. -->
+            <DockPanel Margin="14,0">
+              <Button DockPanel.Dock="Right" Classes="link" Command="{Binding ToggleWatchingCommand}" IsVisible="{Binding WatchingCanFold}"
+                      Content="{Binding WatchingOpened, Converter={x:Static v:OperateView.WatchingToggleText}}" AutomationProperties.Name="Show or hide Watching" />
+              <TextBlock Text="Watching" Classes="title" />
+            </DockPanel>
+            <TextBlock Text="{Binding WatchingSummaryText}" Classes="secondary" Margin="14,2,14,6" IsVisible="{Binding WatchingFolded}" />
+            <TextBlock Text="Needed, but not callable right now. They join the line when that changes." Classes="secondary" Margin="14,2,14,6"
+                       IsVisible="{Binding !WatchingFolded}" />
+            <ItemsControl ItemsSource="{Binding Watching}" IsVisible="{Binding !WatchingFolded}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:WatchRowViewModel">
                   <Border BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">

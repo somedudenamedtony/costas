@@ -133,6 +133,10 @@ A station calling CQ in a contest (`CQ RU`, `CQ FD`, `CQ WW`, `CQ TEST` and the 
 (CQ RU), needs an exchange*. It expects a contest exchange, and Costas only sends the standard one, so it is not
 offered as a station to call.
 
+When everyone in Watching is only a new call or a new grid, the list folds to one line, such as *12 needed stations
+busy: 11 new calls, 1 new grid*. **Show all** opens it and **Fold** closes it again; Costas remembers your choice until
+you change it. A new country or a new band is never folded away: as soon as one is in Watching, its rows show.
+
 Stations you have already worked on this band are not in Watching; they are in [Repeats](#repeats).
 
 ## Right column

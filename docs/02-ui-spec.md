@@ -149,7 +149,7 @@ Behaviour:
 
 ### Watching
 
-Stations that are needed but not callable now. Columns: Call, Where, Why, signal sparkline (as in Next in line), reason. Reasons: "Went quiet 45 seconds ago", "In a contact with EA5HVK", "Finishing a contact with K7RGB". Rows are secondary text. Maximum 8 rows.
+Stations that are needed but not callable now. Columns: Call, Where, Why, signal sparkline (as in Next in line), reason. Reasons: "Went quiet 45 seconds ago", "In a contact with EA5HVK", "Finishing a contact with K7RGB". Rows are secondary text. Maximum 8 rows. When no row is a new country or new band, the list folds to one line under the title ("12 needed stations busy: 11 new calls, 1 new grid") with a "Show all" link; once opened it stays open ("Fold" link) until the operator folds it (product review 2026-10-12).
 
 ### Repeats
 

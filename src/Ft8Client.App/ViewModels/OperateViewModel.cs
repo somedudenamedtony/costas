@@ -74,11 +74,31 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>QRZ lookup data provider (held in memory; never goes to the network).</summary>
     public Func<string, CallsignCacheEntry?>? QrzLookup { get; set; }
 
+    /// <summary>Opens or folds the Watching list.</summary>
+    [RelayCommand]
+    private void ToggleWatching() => WatchingOpened = !WatchingOpened;
+
     /// <summary>Line rows.</summary>
     public ObservableCollection<StationRowViewModel> Line { get; } = [];
 
     /// <summary>Watching rows.</summary>
     public ObservableCollection<WatchRowViewModel> Watching { get; } = [];
+
+    /// <summary>True when Watching holds only new calls and grids, so it can fold to one line.</summary>
+    [ObservableProperty]
+    public partial bool WatchingCanFold { get; set; }
+
+    /// <summary>True when the operator opened a folded Watching list; kept until they fold it again.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WatchingFolded))]
+    public partial bool WatchingOpened { get; set; }
+
+    /// <summary>True while Watching shows its one-line summary instead of rows.</summary>
+    public bool WatchingFolded => WatchingCanFold && !WatchingOpened;
+
+    /// <summary>"12 needed stations busy: 11 new calls, 1 new grid".</summary>
+    [ObservableProperty]
+    public partial string WatchingSummaryText { get; set; } = string.Empty;
 
     /// <summary>Repeats: stations heard now that are already in the log on this band and mode.</summary>
     public ObservableCollection<RepeatRowViewModel> Repeats { get; } = [];
@@ -283,6 +303,9 @@ public sealed partial class OperateViewModel : ObservableObject
 
         Watching.Clear();
         foreach (var w in s.Rank.Watching.Take(MaxWatching)) Watching.Add(new WatchRowViewModel(w, now, Units));
+        WatchingCanFold = WatchingSummary.CanFold(s.Rank.Watching);
+        WatchingSummaryText = WatchingSummary.Text(s.Rank.Watching);
+        OnPropertyChanged(nameof(WatchingFolded));
         var band = BandPlan.Display(s.Band);
         RepeatsSubtitle = $"Heard now and already in your log on {band} {ModeInfo.Name(s.Mode)}.";
         RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {band} is on the air right now.";
