@@ -336,7 +336,6 @@
                       <TextBlock Grid.Column="10" Text="{Binding LastWorked}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                  ToolTip.Tip="{Binding LastWorkedTip}" />
                       <Button Grid.Column="11" Content="{Binding CallText}" VerticalAlignment="Center" HorizontalAlignment="Right"
-                              IsEnabled="{Binding CanCall}"
                               Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CallRepeatCommand}" CommandParameter="{Binding}"
                               AutomationProperties.Name="{Binding Call, StringFormat='Call or answer {0} again'}" />
                     </Grid>
