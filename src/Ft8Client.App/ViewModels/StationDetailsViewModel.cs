@@ -9,6 +9,8 @@
 using System.Globalization;
 using Ft8Client.Core;
 using Ft8Client.Core.Logbook;
+using Ft8Client.Core.Messages;
+using Ft8Client.Core.Pileups;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Stations;
 using Ft8Client.Core.Time;
@@ -92,9 +94,33 @@ public sealed class StationDetailsViewModel
     /// <summary>"No contacts with this call yet" when empty.</summary>
     public bool NoPast => Past.Count == 0;
 
+    /// <summary>Pileup: "3 stations called JA6VQA at 20:29:30.", blank with no current callers.</summary>
+    public string PileupHeadline { get; private init; } = string.Empty;
+
+    /// <summary>Pileup: the current callers, strongest first.</summary>
+    public IReadOnlyList<PileupCallerViewModel> PileupCallers { get; private init; } = [];
+
+    /// <summary>Pileup: "Answered the strongest caller you heard in 4 of its last 5 contacts.", or blank.</summary>
+    public string PileupPicks { get; private init; } = string.Empty;
+
+    /// <summary>Pileup: where my offset sits among the callers, or blank.</summary>
+    public string PileupOffset { get; private init; } = string.Empty;
+
+    /// <summary>The "Who else is calling" section is shown.</summary>
+    public bool HasPileup => PileupHeadline.Length > 0 || PileupPicks.Length > 0;
+
+    /// <inheritdoc cref="HasPileup" />
+    public bool HasPileupHeadline => PileupHeadline.Length > 0;
+
+    /// <inheritdoc cref="HasPileup" />
+    public bool HasPileupPicks => PileupPicks.Length > 0;
+
+    /// <inheritdoc cref="HasPileup" />
+    public bool HasPileupOffset => PileupOffset.Length > 0;
+
     /// <summary>Builds the details from whatever is known: the heard station, a QRZ lookup, or both.</summary>
     public static StationDetailsViewModel From(string call, Station? s, CallsignCacheEntry? q, LogIndex? log, DistanceUnit units, DateTime nowUtc,
-                                               string? name = null)
+                                               string? name = null, Pileup? pileup = null, int txOffsetHz = 0, Mode mode = Mode.Ft8)
     {
         var offset = q is null ? null : StationClock.Offset(q.GmtOffset, q.ObservesDst, s?.EntityKey, s?.Continent, nowUtc);
         return new StationDetailsViewModel
@@ -115,6 +141,11 @@ public sealed class StationDetailsViewModel
             Past = (log?.ContactsWith(call) ?? []).OrderByDescending(c => c.DateUtc)
                 .Select(c => new PastContactViewModel(c.DateUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), c.Band, c.ModeKey,
                     c.Confirmed ? "Confirmed" : string.Empty)).ToList(),
+            PileupHeadline = pileup is null ? string.Empty : PileupText.Headline(pileup),
+            PileupCallers = pileup?.Callers.Select(c => new PileupCallerViewModel(c.Call, Report.Format(c.Snr),
+                c.OffsetHz.ToString(CultureInfo.InvariantCulture) + " Hz")).ToList() ?? [],
+            PileupPicks = pileup is null ? string.Empty : PileupText.Picks(pileup),
+            PileupOffset = pileup is null ? string.Empty : PileupText.Offset(pileup, txOffsetHz, mode),
         };
     }
 

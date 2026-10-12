@@ -14,6 +14,7 @@ using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
+using Ft8Client.Core.Pileups;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Stations;
@@ -49,6 +50,7 @@ public sealed class Session
     private readonly Dictionary<string, CallsignCacheEntry> _lookups = new(StringComparer.Ordinal);
     private readonly List<TonightContact> _tonight = [];
     private StationTracker _tracker;
+    private PileupTracker _pileups;
     private SessionConfig _config;
     private LogIndex _logIndex = LogIndex.Empty;
     private HearsMe _hearsMe;
@@ -83,6 +85,7 @@ public sealed class Session
         _frequencies = frequencies;
         _log = log;
         _tracker = new StationTracker(config.MyCall, config.MyGrid, countries, config.Mode);
+        _pileups = new PileupTracker(config.Mode);
         _hearsMe = new HearsMe(config.Band, available: false);
         _myEntity = countries.Lookup(config.MyCall);
         _dialHz = frequencies.Find(config.Band, config.Mode)?.DialHz ?? 14_074_000;
@@ -303,6 +306,7 @@ public sealed class Session
 
             _tracker.KeepFor = _config.Ranking.KeepCqCallers;
             _tracker.ApplySlot(slot, heard);
+            _pileups.ApplySlot(slot, heard);
             FeedEngine(slot, mode, heard, now);
 
             _slotCounts.Add((slot, result.Decodes.Count));
@@ -579,6 +583,7 @@ public sealed class Session
             _config = _config with { Band = band, Mode = mode };
             _dialHz = _frequencies.Find(band, mode)?.DialHz ?? _dialHz;
             _tracker = new StationTracker(_config.MyCall, _config.MyGrid, _countries, mode);
+            _pileups = new PileupTracker(mode);
             foreach (var (call, e) in _lookups) _tracker.SetLookup(call, e.Grid, e.State, e.City);
             _engine.Abandon(_clock.UtcNow);
             _engine.StopCq(_clock.UtcNow);
@@ -740,6 +745,7 @@ public sealed class Session
                 Waiting = _engine.Waiting.ToList(),
                 TxMeters = _txMeters,
                 Activity = _activity.ToList(),
+                Pileups = _pileups.All(now),
             };
             _snapshot = snap;
         }

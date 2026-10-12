@@ -8,6 +8,7 @@
 
 using Ft8Client.Core;
 using Ft8Client.Core.Contacts;
+using Ft8Client.Core.Pileups;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Stations;
@@ -101,4 +102,7 @@ public sealed record SessionSnapshot
 
     /// <summary>Per-slot activity on this band over the last hour, oldest first.</summary>
     public IReadOnlyList<SlotActivity> Activity { get; init; } = [];
+
+    /// <summary>Who is calling whom, by the station being called (stations with current callers or recent picks).</summary>
+    public IReadOnlyDictionary<string, Pileup> Pileups { get; init; } = new Dictionary<string, Pileup>();
 }
