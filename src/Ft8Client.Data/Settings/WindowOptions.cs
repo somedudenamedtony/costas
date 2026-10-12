@@ -22,4 +22,10 @@ public sealed class WindowOptions
 
     /// <summary>Top, or null.</summary>
     public int? Y { get; set; }
+
+    /// <summary>Mini mode strip: left, or null to centre it the first time.</summary>
+    public int? MiniX { get; set; }
+
+    /// <summary>Mini mode strip: top, or null.</summary>
+    public int? MiniY { get; set; }
 }

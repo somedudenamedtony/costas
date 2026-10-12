@@ -76,6 +76,8 @@
         <Button Content="☰" AutomationProperties.Name="Menu" Padding="10,4">
           <Button.Flyout>
             <MenuFlyout>
+              <MenuItem Header="Mini mode" InputGesture="Ctrl+M" Command="{Binding OpenCommand}" CommandParameter="mini" />
+              <Separator />
               <MenuItem Header="Settings" Command="{Binding OpenCommand}" CommandParameter="settings" />
               <MenuItem Header="Station setup" Command="{Binding OpenCommand}" CommandParameter="setup" />
               <MenuItem Header="Diagnostics" Command="{Binding OpenCommand}" CommandParameter="diagnostics" />

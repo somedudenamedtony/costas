@@ -18,6 +18,8 @@ namespace Ft8Client.App.Views;
 public partial class MainWindow : Window
 {
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(200) };
+    private MiniWindow? _mini;
+    private bool _closing;
 
     /// <summary>Creates the window.</summary>
     public MainWindow()
@@ -41,6 +43,7 @@ public partial class MainWindow : Window
         vm.Host.Session.Changed += s => Dispatcher.UIThread.Post(() => vm.Apply(s));
         vm.Apply(vm.Host.Session.Snapshot);
         vm.OpenDialog += OpenDialog;
+        vm.Mini.ExpandRequested += CloseMini;
         _timer.Tick += (_, _) => vm.Tick();
         _timer.Start();
         if (!vm.Host.Settings.Current.SetupComplete) Dispatcher.UIThread.Post(() => OpenDialog("setup"));
@@ -49,6 +52,8 @@ public partial class MainWindow : Window
     /// <inheritdoc />
     protected override void OnClosing(WindowClosingEventArgs e)
     {
+        _closing = true;
+        _mini?.Close();
         if (Vm is { } vm)
         {
             var size = ClientSize;
@@ -66,6 +71,11 @@ public partial class MainWindow : Window
     private void OpenDialog(string name)
     {
         if (Vm is not { } vm) return;
+        if (name == "mini")
+        {
+            OpenMini(vm);
+            return;
+        }
         Window w = name switch
         {
             "setup" => new SetupWindow { DataContext = new SetupViewModel(vm.Host) },
@@ -76,6 +86,37 @@ public partial class MainWindow : Window
         };
         w.ShowDialog(this);
     }
+
+    // Mini mode replaces the main window until the operator expands it or closes the strip.
+    private void OpenMini(MainViewModel vm)
+    {
+        if (_mini is not null) return;
+        _mini = new MiniWindow { DataContext = vm.Mini, Escape = vm.Escape };
+        if (vm.Host.Settings.Current.Window is { MiniX: { } x, MiniY: { } y }) _mini.Position = new Avalonia.PixelPoint(x, y);
+        else _mini.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        _mini.Closing += (_, _) => SaveMiniPosition(vm);
+        _mini.Closed += (_, _) =>
+        {
+            _mini = null;
+            if (_closing) return;
+            Show();
+            Activate();
+        };
+        _mini.Show();
+        Hide();
+    }
+
+    private void SaveMiniPosition(MainViewModel vm)
+    {
+        if (_mini is not { } m) return;
+        vm.Host.Settings.Update(s =>
+        {
+            s.Window.MiniX = m.Position.X;
+            s.Window.MiniY = m.Position.Y;
+        });
+    }
+
+    private void CloseMini() => _mini?.Close();
 
     private void OnKey(object? sender, KeyEventArgs e)
     {
@@ -103,6 +144,10 @@ public partial class MainWindow : Window
                 break;
             case Key.D1 or Key.D2 or Key.D3 or Key.D4 when ctrl:
                 vm.Tab = e.Key - Key.D1;
+                e.Handled = true;
+                break;
+            case Key.M when ctrl:
+                OpenDialog("mini");
                 e.Handled = true;
                 break;
             case Key.F1:

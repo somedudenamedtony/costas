@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ft8Client.App.ViewModels"
+        xmlns:v="using:Ft8Client.App.Views"
+        x:Class="Ft8Client.App.Views.MiniWindow"
+        x:DataType="vm:MiniViewModel"
+        Icon="/Assets/costas.ico"
+        Title="Costas" Width="480" SizeToContent="Height" CanResize="False" Topmost="True" ShowInTaskbar="True">
+  <!-- Mini mode: the band, the slot, and either the top of the line or the contact in progress. Outlined red while keyed, like the main window. -->
+  <Border Classes="frame" Classes.onair="{Binding Transmitting}" BorderThickness="3">
+    <Border.Styles>
+      <Style Selector="Border.frame"><Setter Property="BorderBrush" Value="Transparent" /></Style>
+      <Style Selector="Border.frame.onair"><Setter Property="BorderBrush" Value="{DynamicResource OnAirBrush}" /></Style>
+      <Style Selector="Button.halt.onair"><Setter Property="Background" Value="{DynamicResource CriticalBrush}" /></Style>
+    </Border.Styles>
+    <StackPanel Margin="10,8,10,10" Spacing="8">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Content="⤢" Command="{Binding ExpandCommand}" Padding="8,2" Margin="8,0,0,0"
+                ToolTip.Tip="Open the full window" AutomationProperties.Name="Open the full window" />
+        <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" FontSize="12" VerticalAlignment="Center"
+                   Foreground="{Binding CountKind, Converter={x:Static v:Converters.KindBrush}}" />
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Text="{Binding BandMode}" FontSize="12" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding SlotText}" FontSize="12" Classes="num"
+                     Foreground="{Binding SlotKind, Converter={x:Static v:Converters.KindBrush}}" />
+        </StackPanel>
+      </DockPanel>
+      <DockPanel MinHeight="30">
+        <Button DockPanel.Dock="Right" Content="Halt" Command="{Binding HaltCommand}" MinWidth="60" Margin="8,0,0,0"
+                AutomationProperties.Name="Halt transmit" ToolTip.Tip="Stop transmitting (Esc)"
+                Classes="halt" Classes.onair="{Binding Transmitting}" />
+        <Button DockPanel.Dock="Right" Content="Call" Classes="accent" Command="{Binding CallTopCommand}" MinWidth="60" Margin="8,0,0,0"
+                IsVisible="{Binding HasTop}" AutomationProperties.Name="{Binding Call, StringFormat='Call {0}'}" />
+        <Panel>
+          <!-- Idle: the station at the top of the line. -->
+          <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasTop}" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Call}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Detail}" Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="170" />
+            <TextBlock Text="{Binding Why}" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" />
+          </StackPanel>
+          <TextBlock Text="Nobody to call yet." Classes="secondary" IsVisible="{Binding Empty}" VerticalAlignment="Center" />
+          <!-- In a contact: who, how far along, and the message on the air or being waited for. -->
+          <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding InContact}" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Call}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <ItemsControl ItemsSource="{Binding Steps}" VerticalAlignment="Center" AutomationProperties.Name="Contact progress">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:StepViewModel">
+                  <StackPanel Orientation="Horizontal">
+                    <Border Width="10" Height="10" CornerRadius="5" BorderThickness="1.5" ToolTip.Tip="{Binding Status}"
+                            Background="{Binding Look, Converter={x:Static v:Converters.MarkerFill}}"
+                            BorderBrush="{Binding Look, Converter={x:Static v:Converters.MarkerStroke}}" />
+                    <Rectangle Width="12" Height="2" VerticalAlignment="Center" IsVisible="{Binding !Last}"
+                               Fill="{Binding NextReached, Converter={x:Static v:Converters.TrackBrush}}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding Message}" Classes="message secondary" FontSize="12" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" MaxWidth="170" />
+          </StackPanel>
+        </Panel>
+      </DockPanel>
+    </StackPanel>
+  </Border>
+</Window>

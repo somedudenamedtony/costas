@@ -11,6 +11,7 @@ Press ++f1++ in Costas to see this list.
 | ++ctrl+r++ | Resend |
 | ++ctrl+l++ | Log now |
 | ++ctrl+1++ to ++ctrl+4++ | Operate, Raw decodes, Reach, Log |
+| ++ctrl+m++ | [Mini mode](operate.md#mini-mode): a small strip that stays on top |
 | ++f1++ | This list |
 
 ![The shortcuts window](images/shortcuts.png){ width="460" }
