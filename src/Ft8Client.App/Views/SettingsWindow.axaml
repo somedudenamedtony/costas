@@ -77,10 +77,11 @@
             <TextBlock Classes="page" Text="Transmitting" />
             <TextBlock Classes="intro" Text="How contacts are run once you start one. Nothing is sent unless you click Call or Call CQ." />
             <Grid Classes="field" ColumnDefinitions="210,*">
-              <TextBlock Classes="label" Text="Audio level (dB)" />
+              <TextBlock Classes="label" Text="{Binding TxGainLabel}" />
               <StackPanel Grid.Column="1">
                 <TextBox Text="{Binding TxGain}" Width="90" HorizontalAlignment="Left" />
-                <TextBlock Classes="help" Text="Level of the transmit audio sent to the radio, from -40 to 0. Lower it if the radio's ALC moves." />
+                <CheckBox IsChecked="{Binding AutoTxLevel}" Content="Adjust automatically from the radio's ALC" />
+                <TextBlock Classes="help" Text="Level of the transmit audio sent to the radio on this band, from -40 to 0. Automatic adjustment changes it between transmissions so the radio's ALC barely moves, and remembers it per band. It rises at most 6 dB above a level you type here. Turn it off to keep the level fixed." />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">

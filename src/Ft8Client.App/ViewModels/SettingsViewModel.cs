@@ -10,6 +10,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Ft8Client.App.Engine;
 using Ft8Client.App.Services;
 using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Logbook;
@@ -22,6 +23,7 @@ namespace Ft8Client.App.ViewModels;
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly AppHost _host;
+    private readonly string _loadedTxGain;
 
     /// <summary>Creates the view model from current settings.</summary>
     public SettingsViewModel(AppHost host, bool rankingOnly = false)
@@ -32,7 +34,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         Callsign = s.Profile.Callsign;
         Grid = s.Profile.Grid;
         Power = s.Profile.PowerWatts.ToString(CultureInfo.InvariantCulture);
-        TxGain = s.Profile.Audio.TxGainDb.ToString("0.0", CultureInfo.InvariantCulture);
+        TxGain = _loadedTxGain = TxLevelController.LevelFor(s.Profile.Audio, s.Operating.Band).ToString("0.0", CultureInfo.InvariantCulture);
+        TxGainLabel = $"Audio level on {s.Operating.Band} (dB)";
+        AutoTxLevel = s.Profile.Audio.AutoTxLevel;
         Watchdog = s.Operating.WatchdogMinutes.ToString(CultureInfo.InvariantCulture);
         RetryLimit = s.Operating.RetryLimit.ToString(CultureInfo.InvariantCulture);
         Signoff = s.Operating.Signoff;
@@ -154,9 +158,16 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string Power { get; set; }
 
-    /// <summary>Tx gain dBFS.</summary>
+    /// <summary>Tx gain dBFS on the current band.</summary>
     [ObservableProperty]
     public partial string TxGain { get; set; }
+
+    /// <summary>"Audio level on 20m (dB)".</summary>
+    public string TxGainLabel { get; }
+
+    /// <summary>Adjust the transmit level from the radio's ALC.</summary>
+    [ObservableProperty]
+    public partial bool AutoTxLevel { get; set; }
 
     /// <summary>Watchdog minutes.</summary>
     [ObservableProperty]
@@ -616,7 +627,14 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Profile.Callsign = Callsign.Trim().ToUpperInvariant();
             s.Profile.Grid = Grid.Trim().ToUpperInvariant();
             s.Profile.PowerWatts = Int(Power, 1, 2000, s.Profile.PowerWatts);
-            s.Profile.Audio.TxGainDb = Dbl(TxGain, -40, 0, -6);
+            // Only a level typed here replaces the band's level, so one automatic level set meanwhile is kept.
+            if (TxGain.Trim() != _loadedTxGain)
+            {
+                var gain = Dbl(TxGain, -40, 0, s.Profile.Audio.TxGainDb);
+                s.Profile.Audio.TxGainDb = gain;
+                s.Profile.Audio.TxGainByBand[s.Operating.Band] = gain;
+            }
+            s.Profile.Audio.AutoTxLevel = AutoTxLevel;
             s.Operating.WatchdogMinutes = Int(Watchdog, 1, 60, 6);
             s.Operating.RetryLimit = Int(RetryLimit, 1, 20, 4);
             s.Operating.Signoff = Signoff;
@@ -659,7 +677,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Set(SecretNames.QrzLogbookKey(id), LogbookKey.Trim());
         Set(SecretNames.QrzUsername, QrzUser.Trim());
         Set(SecretNames.QrzPassword, QrzPassword);
-        _host.Transmitter.GainDb = _host.Settings.Current.Profile.Audio.TxGainDb;
+        _host.TxLevel.Apply();
         _host.RebuildLogIndex();
         Close?.Invoke();
     }

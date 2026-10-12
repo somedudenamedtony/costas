@@ -86,7 +86,9 @@ radio on a busy FT8 frequency. The text beside it tells you what it sees:
 power meter. Afterwards Costas shows whether the radio reported transmitting, and the ALC and SWR it read during
 the tone, with a warning if either is high. Tick **The radio transmitted** if it did. You can skip this step.
 
-If ALC moves a lot, lower **Settings › Transmitting › Audio level** or the radio's USB audio input level until it
+With **Settings › Transmitting › Adjust automatically from the radio's ALC** on (the default), Costas uses the ALC
+from this tone and every later transmission to set its own audio level, so you do not need to adjust it. With it off,
+if ALC moves a lot, lower **Settings › Transmitting › Audio level** or the radio's USB audio input level until it
 barely moves.
 
 ## 5. Clock check

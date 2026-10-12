@@ -127,6 +127,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>The transmitter.</summary>
     public Transmitter Transmitter { get; private set; } = null!;
 
+    /// <summary>The transmit audio level per band, adjusted from the radio's ALC when automatic level is on.</summary>
+    public TxLevelController TxLevel { get; private set; } = null!;
+
     /// <summary>Reads ALC and SWR while transmitting.</summary>
     public TxMeterMonitor TxMeters { get; private set; } = null!;
 
@@ -250,12 +253,13 @@ public sealed class AppHost : IAsyncDisposable
             OpenAudio(recorder);
         }
 
-        Transmitter = new Transmitter(_rig, _output, Clock, Frequencies) { GainDb = s.Profile.Audio.TxGainDb };
+        Transmitter = new Transmitter(_rig, _output, Clock, Frequencies);
+        TxLevel = new TxLevelController(Transmitter, Settings);
         var log = new DatabaseSessionLog(Qsos, Uploads, s.Profile.Id, () => Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
             () => TxMeters.PowerWatts);
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
         TxMeters = new TxMeterMonitor(Transmitter, () => _rig);
-        TxMeters.Measured += Session.SetTxMeters;
+        TxMeters.Measured += r => Session.SetTxMeters(TxLevel.OnMeasured(r));
         if (partner is not null) Session.Transmitting += partner.OnTransmitted;
         Session.SlotDecoded += (slot, mode, decodes) => BandStats.Add(slot, Settings.Current.Operating.Band, ModeInfo.Name(mode), decodes.Count);
         Session.SetLogIndex(LogIndexBuilder.Build(Qsos, config.MyCall, Countries));
@@ -311,7 +315,11 @@ public sealed class AppHost : IAsyncDisposable
 
         _ = Task.Run(ClockCheckLoopAsync);
         _ = Task.Run(RigPollLoopAsync);
-        Settings.Changed += _ => Session.Reconfigure(SettingsMapper.ToConfig(Settings.Current));
+        Settings.Changed += _ =>
+        {
+            TxLevel.Apply();
+            Session.Reconfigure(SettingsMapper.ToConfig(Settings.Current));
+        };
     }
 
     /// <summary>Rebuilds the log index from the database (after sync, import or edit).</summary>

@@ -26,6 +26,9 @@ public static class TxMeterCheck
     /// <summary>SWR at or above this risks the radio; check the antenna before sending again.</summary>
     public const double SwrCritical = 3.0;
 
+    /// <summary>The advice that ends an ALC warning, replaced when automatic transmit level has already acted.</summary>
+    public const string AlcAdvice = "Lower Transmit level in Settings or the radio's USB audio level.";
+
     /// <summary>Summarises the readings of one transmission.</summary>
     public static TxMeterResult Evaluate(IEnumerable<TxMeterReading> readings)
     {
@@ -48,7 +51,7 @@ public static class TxMeterCheck
         {
             if (level == TxMeterLevel.Ok) level = TxMeterLevel.Caution;
             parts.Add($"ALC {Math.Round(a * 100).ToString("0", CultureInfo.InvariantCulture)}% on the last transmission: "
-                    + "the audio is overdriving the radio. Lower Transmit level in Settings or the radio's USB audio level.");
+                    + "the audio is overdriving the radio. " + AlcAdvice);
         }
         return new TxMeterResult(alc, swr, level, parts.Count == 0 ? null : string.Join(" ", parts));
     }

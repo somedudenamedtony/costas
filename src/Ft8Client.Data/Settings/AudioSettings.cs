@@ -17,6 +17,15 @@ public sealed class AudioSettings
     /// <summary>Playback device id.</summary>
     public string? OutputId { get; set; }
 
-    /// <summary>Transmit digital gain in dBFS.</summary>
+    /// <summary>
+    /// Transmit digital gain in dBFS as the operator set it: used on a band with no level of its own, and the base that
+    /// automatic level may rise at most 6 dB above.
+    /// </summary>
     public double TxGainDb { get; set; } = -6.0;
+
+    /// <summary>Transmit level per band in dBFS ("20m" → -7.5), set by the operator or by automatic level.</summary>
+    public Dictionary<string, double> TxGainByBand { get; set; } = [];
+
+    /// <summary>Adjust the transmit level after each transmission from the radio's ALC meter.</summary>
+    public bool AutoTxLevel { get; set; } = true;
 }
