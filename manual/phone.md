@@ -24,14 +24,42 @@ phone, open **Settings › Mobile connection** again and press **Pair a phone**.
 
 ## What the phone can do
 
-- See the band and frequency, the radio, the clock and the decoder, and what is on the air.
-- Follow the contact on the same five-step strip as the desk. Tap one of your upcoming steps to send it next.
-- **Resend**, **Log now** (once both reports are exchanged) and **Abandon**.
-- **Call CQ** or **Stop CQ**.
-- Answer stations in **Calling you**, and call stations in **Next in line**.
-- **HALT TX** is always at the bottom of the screen.
+The top of the page shows the band and frequency, the radio, the clock and the decoder, who is in control, and a
+countdown bar for the current slot (red while you transmit). Below it, five tabs cover what the desk's Operate view
+shows. **HALT TX** is always at the bottom of the screen.
 
-Settings, the log, band changes and the waterfall stay on the desk.
+![The Stations tab](images/phone-stations.png){ width="320" }
+
+| Tab | What it shows |
+|---|---|
+| **Operate** | The contact on the same five-step strip as the desk (tap one of your upcoming steps to send it next), with **Resend**, **Log now** and **Abandon**; **Call CQ** or **Stop CQ**; **Calling you**; and **Next in line** with the same columns as the desk: what each station is doing, where it is, its signal, whether it hears you, your chance, and when you last worked it |
+| **Stations** | The band summary (stations heard, countries, calling CQ, you need), **Repeats** (stations already in your log on this band and mode) and **Watching** (needed, but not callable right now, and why) |
+| **Decodes** | Band activity, newest first. Messages to you are highlighted, CQs are blue and your own transmissions are grey |
+| **Signal** | Who hears you, from PSK Reporter: how many stations and countries in the last 15 minutes, the farthest and best reports, and the latest reports |
+| **Log** | The contacts you made tonight |
+
+Under the top bar the page also shows the radio's SWR or ALC warning after a transmission that read outside limits,
+and a line when QRZ, PSK Reporter or the audio device is not working.
+
+### Station details
+
+Tap a call anywhere (a row in a list, a line in Decodes, a report) to open what the desk's details flyout shows:
+name and location from QRZ, grid, bearing, local time, QSL methods, zones, what it is doing now, a pile-up summary
+and your past contacts with it. When the station can be called, the sheet has a **Call** (or **Answer**) button.
+
+![Station details on the phone](images/phone-details.png){ width="320" }
+
+### Band, mode and Tx offset
+
+Tap the frequency at the top to change band or mode, or the transmit offset. These work like the band menu and the
+offset box on the desk: band changes wait until the current transmission ends, changing band ends a contact or CQ
+(the phone asks first), and a fixed offset must be between 200 and 2900 Hz. Changes are saved, so the desk shows
+them too.
+
+![Band and offset on the phone](images/phone-band.png){ width="320" }
+
+Settings, editing the log and the waterfall stay on the desk. Opening a station's details or switching tabs does not
+take control; calling, answering, band and offset changes do.
 
 ## Who is in control
 

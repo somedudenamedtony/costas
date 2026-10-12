@@ -291,7 +291,16 @@ public sealed class AppHost : IAsyncDisposable
         log.Stored += Udp.OnLogged;
         Udp.Start();
 
-        Remote = new RemoteControlService(Session, Settings, Secrets, Clock);
+        Remote = new RemoteControlService(Session, Settings, Secrets, Clock, new HostTuning(this), () => new RemoteContext
+        {
+            Units = SettingsMapper.Units(Settings.Current),
+            QrzName = Session.NameOf,
+            QrzLookup = Session.LookupOf,
+            Log = () => Session.LogIndex,
+            Countries = Countries,
+            MostWantedRank = MostWanted.Current.RankOf,
+            Bands = Frequencies.Bands,
+        });
         Remote.Start();
 
         if (!Simulating)

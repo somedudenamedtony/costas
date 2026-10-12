@@ -29,6 +29,7 @@ public sealed class RemoteControlService : IAsyncDisposable
     private readonly Session _session;
     private readonly AppSettingsAccessor _settings;
     private readonly IClock _clock;
+    private readonly Func<RemoteContext> _context;
     private readonly CancellationTokenSource _cts = new();
     private readonly SemaphoreSlim _switch = new(1, 1);
     private RemoteServer? _server;
@@ -37,16 +38,24 @@ public sealed class RemoteControlService : IAsyncDisposable
     private Task _loop = Task.CompletedTask;
 
     /// <summary>Creates the service.</summary>
-    public RemoteControlService(Session session, AppSettingsAccessor settings, ISecretStore secrets, IClock clock)
+    /// <param name="session">The session.</param>
+    /// <param name="settings">Settings.</param>
+    /// <param name="secrets">Where the paired phones are kept.</param>
+    /// <param name="clock">Clock.</param>
+    /// <param name="tuning">Band and Tx offset changes.</param>
+    /// <param name="context">The log, QRZ, country file and bands the phone's state is built from.</param>
+    public RemoteControlService(Session session, AppSettingsAccessor settings, ISecretStore secrets, IClock clock, IRemoteTuning? tuning = null,
+                                Func<RemoteContext>? context = null)
     {
         _session = session;
         _settings = settings;
         _clock = clock;
+        _context = context ?? (() => new RemoteContext { Units = SettingsMapper.Units(settings.Current), QrzName = session.NameOf });
         Control = new RemoteControl(session, clock, DeviceTokens.Parse(secrets.Get(SecretNames.RemoteDevices)), t =>
         {
             if (t.Length == 0) secrets.Delete(SecretNames.RemoteDevices);
             else secrets.Set(SecretNames.RemoteDevices, t);
-        });
+        }, tuning: tuning);
         Control.Changed += () =>
         {
             _dirty = true;
@@ -143,7 +152,7 @@ public sealed class RemoteControlService : IAsyncDisposable
     }
 
     private RemoteState StateFor(string deviceId) =>
-        RemoteStateBuilder.Build(_session.Snapshot, _clock.UtcNow, SettingsMapper.Units(_settings.Current), _session.NameOf, Control.ControlFor(deviceId));
+        RemoteStateBuilder.Build(_session.Snapshot, _clock.UtcNow, _context(), Control.ControlFor(deviceId), Control.ViewingFor(deviceId));
 
     private async Task LoopAsync()
     {

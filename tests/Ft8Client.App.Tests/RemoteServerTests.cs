@@ -35,7 +35,8 @@ public sealed class RemoteServerTests : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         _control = new RemoteControl(_target, _clock, new DeviceTokens(), _ => { }, new PairingGate(() => 271828));
-        _server = new RemoteServer(_control, id => RemoteStateBuilder.Build(_target.Snapshot, _clock.UtcNow, DistanceUnit.Miles, _ => null, _control.ControlFor(id)));
+        _server = new RemoteServer(_control, id => RemoteStateBuilder.Build(_target.Snapshot, _clock.UtcNow, new RemoteContext { Units = DistanceUnit.Miles },
+            _control.ControlFor(id), _control.ViewingFor(id)));
         _port = FreePort();
         await _server.StartAsync(_port);
         _http.BaseAddress = new Uri($"http://127.0.0.1:{_port}/");
@@ -81,6 +82,22 @@ public sealed class RemoteServerTests : IAsyncLifetime
         var after = await ReceiveAsync(ws);
         after.GetProperty("state").GetProperty("control").GetString().Should().Be("you");
         _target.Calls.Should().Equal("call VE7XYZ");
+    }
+
+    [Fact]
+    public async Task Socket_Show_SendsThatStationsDetailsWithoutTakingControl()
+    {
+        var token = await PairAsync();
+        using var ws = await ConnectAsync();
+        await SendAsync(ws, new { type = "hello", token });
+        var first = await ReceiveAsync(ws);
+        first.GetProperty("state").GetProperty("details").ValueKind.Should().Be(JsonValueKind.Null);
+
+        await SendAsync(ws, new { type = "show", call = "ve7xyz" });
+        var after = await ReceiveAsync(ws);
+        after.GetProperty("state").GetProperty("details").GetProperty("call").GetString().Should().Be("VE7XYZ");
+        after.GetProperty("state").GetProperty("control").GetString().Should().Be("desk");
+        _target.Calls.Should().BeEmpty();
     }
 
     [Fact]

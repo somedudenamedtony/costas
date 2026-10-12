@@ -48,7 +48,7 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 .list .it{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line)}
 .list .it:first-of-type{border-top:0}
 .c{font-weight:600;font-size:16px}.s{font-size:12px;color:var(--mut)}
-.tag{font-size:11px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--tag-bg);color:var(--tag-tx)}
+.tag{white-space:nowrap;font-size:11px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--tag-bg);color:var(--tag-tx)}
 .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
 .banner{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-tx);border-radius:12px;padding:12px;font-size:14px}
 .note{position:fixed;left:14px;right:14px;bottom:110px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;display:none;z-index:3}
@@ -60,6 +60,34 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 .pair input{font:inherit;font-size:28px;letter-spacing:6px;text-align:center;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--tx)}
 .err{color:var(--red);font-size:14px;min-height:1.2em}
 .hidden{display:none!important}
+.slot{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px}
+.slot .track{flex:1;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.slot .fill{height:100%;width:0;background:var(--accent)}
+.slot.tx .fill{background:var(--red)}
+.tunebtn{background:none;padding:0;font-weight:600;text-align:left}
+.tunebtn::after{content:" ▾";font-size:14px;color:var(--mut)}
+.tabs{display:flex;gap:4px;padding:8px 14px 0;overflow-x:auto;scrollbar-width:none}
+.tabs button{flex:1 0 auto;padding:7px 10px;font-size:13px;background:var(--card);border:1px solid var(--line)}
+.tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.mini{font-size:12px;color:var(--mut)}
+.it .left{min-width:0;flex:1;cursor:pointer}
+.it > button{flex:none;max-width:48%}
+.it .left .c{overflow:hidden;text-overflow:ellipsis}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0 4px;text-align:center}
+.stats b{display:block;font-size:22px}.stats span{font-size:11px;color:var(--mut)}
+.dec{font-family:Consolas,monospace;font-size:12.5px;display:grid;grid-template-columns:3.6em 2.6em 3em 1fr;gap:0 6px;padding:4px 0;border-top:1px solid var(--line);cursor:pointer}
+.dec:first-of-type{border-top:0}
+.dec .msgt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dec .cty{grid-column:4;font-family:"Segoe UI",system-ui,sans-serif;font-size:11px;color:var(--mut)}
+.dec.cq .msgt{color:var(--accent)}.dec.me{background:var(--warn-bg)}.dec.me .msgt{color:var(--red);font-weight:700}.dec.tx{color:var(--mut)}
+.shade{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:5;display:flex;align-items:flex-end}
+.sheet{background:var(--card);width:100%;max-height:85vh;overflow-y:auto;border-radius:16px 16px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}.kv span:nth-child(odd){color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.grid button.on,.seg button.on{background:var(--accent);color:#fff}
+.seg{display:flex;gap:6px}.seg button{flex:1}
+.offset{display:flex;gap:6px}.offset input{flex:1;min-width:0;font:inherit;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--tx)}
+.warnline{font-size:13px}
 </style>
 </head>
 <body>
@@ -75,16 +103,34 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 <section id="opView" class="hidden">
   <div class="top">
     <div class="row"><span id="station">Costas</span><span class="pill"><span id="linkDot" class="dot"></span><span id="link">Connecting…</span></span></div>
-    <div class="row"><div id="freq" class="freq">—</div><span class="pill"><span id="radioDot" class="dot"></span>Radio</span></div>
+    <div class="row"><button id="freq" class="freq tunebtn" title="Band, mode and Tx offset">—</button><span class="pill"><span id="radioDot" class="dot"></span>Radio</span></div>
     <div class="row" style="margin-top:3px"><span id="health"></span><span id="control"></span></div>
+    <div id="slot" class="slot"><span id="slotLabel">Receiving</span><div class="track"><div id="slotFill" class="fill"></div></div><span id="slotLeft"></span></div>
   </div>
   <div id="onair" class="onair hidden"></div>
+  <nav id="tabs" class="tabs">
+    <button data-tab="operate">Operate</button><button data-tab="stations">Stations</button><button data-tab="decodes">Decodes</button><button data-tab="signal">Signal</button><button data-tab="log">Log</button>
+  </nav>
   <main>
     <div id="fault" class="banner hidden"></div>
-    <div class="card"><div id="contactBody"></div><div id="contactBtns" class="btns"></div></div>
-    <div id="callers" class="card list hidden"></div>
-    <div id="line" class="card list"></div>
+    <div id="meter" class="banner warnline hidden"></div>
+    <div id="services" class="mini hidden"></div>
+    <div data-pane="operate">
+      <div class="card"><div id="contactBody"></div><div id="contactBtns" class="btns"></div></div>
+      <div id="callers" class="card list hidden" style="margin-top:12px"></div>
+      <div id="line" class="card list" style="margin-top:12px"></div>
+    </div>
+    <div data-pane="stations">
+      <div id="summary" class="card"></div>
+      <div id="repeats" class="card list" style="margin-top:12px"></div>
+      <div id="watching" class="card list" style="margin-top:12px"></div>
+    </div>
+    <div data-pane="decodes"><div id="decodes" class="card"></div></div>
+    <div data-pane="signal"><div id="signal" class="card list"></div></div>
+    <div data-pane="log"><div id="tonight" class="card list"></div></div>
   </main>
+  <div id="detailsShade" class="shade hidden"><div id="details" class="sheet"></div></div>
+  <div id="tuneShade" class="shade hidden"><div id="tune" class="sheet"></div></div>
   <div id="note" class="note"></div>
   <div class="haltbar"><button id="halt" class="halt">HALT TX<span>Stops transmitting now. Receive keeps running.</span></button></div>
 </section>
@@ -146,7 +192,10 @@ function connect() {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   ws = new WebSocket(proto + "//" + location.host + "/ws");
   setLink("amb", "Connecting…");
-  ws.onopen = () => { ws.send(JSON.stringify({ type: "hello", token })); };
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: "hello", token }));
+    if (viewing) ws.send(JSON.stringify({ type: "show", call: viewing }));
+  };
   ws.onmessage = ev => {
     lastMsg = Date.now();
     backoff = 1000;
@@ -205,9 +254,23 @@ function render() {
   f.classList.toggle("hidden", !s.fault && s.radioOk);
   f.textContent = s.fault || (!s.radioOk ? "Radio: " + s.radio : "");
 
+  const m = $("meter");
+  m.classList.toggle("hidden", !s.meter);
+  m.textContent = s.meter ? "Last transmission: " + s.meter + (s.meterTip ? ". " + s.meterTip : "") : "";
+  m.style.color = s.meterCritical ? "var(--red)" : "";
+  $("services").classList.toggle("hidden", !s.services);
+  $("services").textContent = s.services || "";
+
+  slotAt = Date.now(); renderSlot();
   renderContact(s);
   renderCallers(s);
   renderLine(s);
+  renderStations(s);
+  renderDecodes(s);
+  renderSignal(s);
+  renderTonight(s);
+  renderDetails(s);
+  renderTune(s);
 
   const busy = s.transmitting || s.callingCq || (s.contact && s.contact.active);
   const h = $("halt");
@@ -285,7 +348,8 @@ function renderCallers(s) {
   box.append(head);
   s.callers.forEach(w => {
     const it = el("div", "it");
-    const left = el("div");
+    const left = el("div", "left");
+    left.onclick = () => openDetails(w.call);
     const c = el("div", "c", w.call + " ");
     if (w.need) c.append(el("span", "tag", w.need));
     left.append(c, el("div", "s", [w.place, w.line].filter(Boolean).join(" · ")));
@@ -295,21 +359,214 @@ function renderCallers(s) {
   });
 }
 
+// A list whose rows are rebuilt only when they change; the "last heard" ages tick in place, so a tap is never lost.
+function list(box, key, title, sub, rows, empty, build) {
+  const ages = rows.map(r => r.lastHeard || "");
+  const shape = rows.map(r => Object.assign({}, r, { lastHeard: undefined }));
+  if (changed(key, { title, sub, shape, empty, ok: state.radioOk })) {
+    box.replaceChildren();
+    const head = el("div", "head"); head.append(el("b", null, title), el("span", "s", rows.length ? sub : ""));
+    box.append(head);
+    if (rows.length === 0 && empty) box.append(el("div", "s", empty));
+    box._ages = rows.map(r => build(r));
+    box.append(...box._ages.map(x => x.item));
+  }
+  (box._ages || []).forEach((x, i) => { if (x.age) x.age.textContent = ages[i] ? (x.age.previousSibling ? " · " : "") + "Heard " + ages[i] : ""; });
+}
+
+// A station row: tap the call for its details; the button calls or answers it.
+function stationRow(r, command) {
+  const it = el("div", "it");
+  const left = el("div", "left");
+  const c = el("div", "c", r.call + " ");
+  if (r.need) c.append(el("span", "tag", r.need));
+  left.append(c, el("div", "s", [r.doing, r.where, r.db ? r.db + " dB" : ""].filter(Boolean).join(" · ")));
+  const more = [r.hearsYou, r.chance ? r.chance + " chance" : "", r.lastWorked && r.lastWorked !== "Never" ? "Last worked " + r.lastWorked : ""].filter(Boolean).join(" · ");
+  const line3 = el("div", "s", more);
+  const age = el("span");
+  line3.append(age);
+  left.append(line3);
+  left.onclick = () => openDetails(r.call);
+  it.append(left);
+  if (r.button) it.append(button(r.button, "", () => cmd(command || "call", { call: r.call }), !state.radioOk));
+  return { item: it, age };
+}
+
 function renderLine(s) {
-  if (!changed("line", { line: s.line, ok: s.radioOk })) return;
-  const box = $("line"); box.replaceChildren();
-  const head = el("div", "head"); head.append(el("b", null, "Next in line"), el("span", "s", s.line.length ? "" : "Nobody to call yet"));
-  box.append(head);
-  s.line.forEach(r => {
+  list($("line"), "line", "Next in line", String(s.line.length), s.line, "Nobody you need is calling CQ right now.", r => stationRow(r));
+}
+
+function renderStations(s) {
+  if (changed("summary", s.summary)) {
+    const box = $("summary"); box.replaceChildren();
+    const u = s.summary;
+    if (!u) { box.append(el("b", null, "Band"), el("div", "s", "Nothing decoded yet on this band.")); }
+    else {
+      box.append(el("b", null, u.title));
+      const g = el("div", "stats");
+      [[u.stationsHeard, "Stations heard"], [u.countries, "Countries"], [u.callingCq, "Calling CQ"], [u.youNeed, "You need"]].forEach(([v, l]) => {
+        const d = el("div"); d.append(el("b", null, v), el("span", null, l)); g.append(d);
+      });
+      box.append(g, el("div", "s", u.caption));
+    }
+  }
+  list($("repeats"), "repeats", "Repeats", "Already in your log on " + s.frequency.split(" · ")[1], s.repeats,
+    "Nobody you have worked on this band is on the air right now.", r => stationRow(r));
+  list($("watching"), "watching", "Watching", "Needed, not callable now", s.watching, "Nobody needed is waiting to become callable.", w => {
     const it = el("div", "it");
-    const left = el("div");
-    const c = el("div", "c", r.call + " ");
-    if (r.need) c.append(el("span", "tag", r.need));
-    left.append(c, el("div", "s", [r.doing, r.where, r.db + " dB"].filter(Boolean).join(" · ")));
-    it.append(left, button(r.button, "", () => cmd("call", { call: r.call }), !s.radioOk));
+    const left = el("div", "left");
+    const c = el("div", "c", w.call + " ");
+    if (w.need) c.append(el("span", "tag", w.need));
+    left.append(c, el("div", "s", [w.where, w.reason].filter(Boolean).join(" · ")));
+    left.onclick = () => openDetails(w.call);
+    it.append(left);
+    return { item: it };
+  });
+}
+
+function renderDecodes(s) {
+  if (!changed("decodes", s.decodes)) return;
+  const box = $("decodes"); box.replaceChildren();
+  const head = el("div", "head"); head.append(el("b", null, "Band activity"), el("span", "s", "Newest first · tap a line for the station"));
+  box.append(head);
+  if (s.decodes.length === 0) box.append(el("div", "s", "Nothing decoded yet."));
+  s.decodes.forEach(d => {
+    const row = el("div", "dec " + d.kind);
+    row.append(el("span", null, d.utc), el("span", null, d.db), el("span", null, d.hz), el("span", "msgt", d.message));
+    if (d.country) row.append(el("span", "cty", d.country));
+    if (d.sender) row.onclick = () => openDetails(d.sender);
+    box.append(row);
+  });
+}
+
+function renderSignal(s) {
+  const g = s.signal;
+  if (!changed("signal", g)) return;
+  const box = $("signal"); box.replaceChildren();
+  if (!g) return;
+  const head = el("div", "head"); head.append(el("b", null, g.title), el("span", "s", g.source));
+  box.append(head, el("div", null, g.headline));
+  const kv = el("div", "kv"); kv.style.margin = "8px 0";
+  kv.append(el("span", null, "Farthest"), el("span", null, g.farthest), el("span", null, "Best report"), el("span", null, g.best));
+  box.append(kv);
+  if (g.neighbours) box.append(el("div", "s", g.neighbours));
+  g.reports.forEach(r => {
+    const it = el("div", "it");
+    const left = el("div", "left");
+    left.append(el("div", "c", r.call), el("div", "s", r.where));
+    left.onclick = () => openDetails(r.call);
+    it.append(left, el("div", "s", r.db + " dB · " + r.age));
     box.append(it);
   });
 }
+
+function renderTonight(s) {
+  list($("tonight"), "tonight", s.tonightTitle, "", s.tonight, "No contacts yet tonight.", t => {
+    const it = el("div", "it");
+    const left = el("div", "left");
+    const c = el("div", "c", t.call + " ");
+    if (t.need) c.append(el("span", "tag", t.need));
+    left.append(c, el("div", "s", [t.place, t.band].filter(Boolean).join(" · ")));
+    left.onclick = () => openDetails(t.call);
+    it.append(left, el("div", "s", t.time));
+    return { item: it };
+  });
+}
+
+// The station sheet: what the desk's details flyout shows, with Call or Answer.
+let viewing = null;
+function openDetails(call) { viewing = call; cmd("show", { call }); }
+function closeDetails() { viewing = null; $("detailsShade").classList.add("hidden"); cmd("show", { call: "" }); cache.details = null; }
+$("detailsShade").onclick = e => { if (e.target === $("detailsShade")) closeDetails(); };
+
+function renderDetails(s) {
+  const d = viewing && s.details && s.details.call === viewing.toUpperCase() ? s.details : null;
+  $("detailsShade").classList.toggle("hidden", !d);
+  if (!d) return;
+  const heard = d.heard;
+  if (changed("details", Object.assign({}, d, { heard: !!heard, ok: s.radioOk }))) {
+    const box = $("details"); box.replaceChildren();
+    const top = el("div", "row");
+    const c = el("div", "call", d.call);
+    if (d.need) c.append(el("span", "tag", d.need));
+    top.append(c, button("Close", "", closeDetails));
+    box.append(top, el("div", null, d.name), el("div", "sub", [d.location, d.county].filter(Boolean).join(" · ")));
+    box._heard = el("div", "sub");
+    box.append(box._heard);
+    if (d.rarity) box.append(el("div", "warnline", d.rarity));
+    const kv = el("div", "kv");
+    [["Grid", d.grid], ["Bearing", d.bearing], ["Local time", d.localTime], ["Licence", d.licenseClass], ["QSL", d.qsl], ["Zones", d.zones]]
+      .filter(([, v]) => v).forEach(([k, v]) => kv.append(el("span", null, k), el("span", null, v)));
+    box.append(kv);
+    if (d.pileup) box.append(el("div", "sub", d.pileup));
+    if (d.lookupNote) box.append(el("div", "s", d.lookupNote));
+    box.append(el("b", null, "Your contacts"));
+    if (d.past.length === 0) box.append(el("div", "s", "No contacts with this call yet."));
+    d.past.forEach(p => box.append(el("div", "s", [p.date, p.band, p.mode, p.confirmed].filter(Boolean).join(" · "))));
+    if (d.button) box.append(button(d.button, "red", () => { cmd(d.command, { call: d.call }); closeDetails(); }, !s.radioOk));
+  }
+  $("details")._heard.textContent = heard ? "Heard now: " + heard : "Not heard on this band right now.";
+}
+
+// Band, mode and Tx offset, as the band menu and offset box on the desk.
+let tuning = false;
+$("freq").onclick = () => { tuning = true; cache.tune = null; render(); };
+$("tuneShade").onclick = e => { if (e.target === $("tuneShade")) { tuning = false; render(); } };
+
+function changeBand(band, mode) {
+  const s = state;
+  const busy = s.callingCq || (s.contact && s.contact.active);
+  if (busy && !confirm("Changing band ends " + (s.callingCq ? "calling CQ" : "this contact") + ". Change band?")) return;
+  cmd("band", { band, mode });
+}
+
+function renderTune(s) {
+  $("tuneShade").classList.toggle("hidden", !tuning);
+  if (!tuning || !changed("tune", { b: s.bands, band: s.band, mode: s.mode, can: s.canChangeBand, o: s.offset, a: s.offsetAuto })) return;
+  const box = $("tune"); box.replaceChildren();
+  const top = el("div", "row"); top.append(el("b", null, "Band and offset"), button("Close", "", () => { tuning = false; render(); }));
+  box.append(top);
+  if (!s.canChangeBand) box.append(el("div", "s", "Wait until this transmission ends to change band."));
+  const seg = el("div", "seg");
+  ["FT8", "FT4"].forEach(m => seg.append(button(m, s.mode === m ? "on" : "", () => { if (s.mode !== m) changeBand(s.band, m); }, !s.canChangeBand)));
+  box.append(el("div", "lbl", "Mode"), seg, el("div", "lbl", "Band"));
+  const grid = el("div", "grid");
+  s.bands.forEach(b => grid.append(button(b.name, b.key === s.band ? "on" : "", () => { if (b.key !== s.band) changeBand(b.key); }, !s.canChangeBand)));
+  if (s.bands.length === 0) box.append(el("div", "s", "Band changes are not available from the phone."));
+  box.append(grid, el("div", "lbl", "Tx offset · " + s.offset));
+  const row = el("div", "offset");
+  const input = el("input"); input.type = "number"; input.inputMode = "numeric"; input.min = 200; input.max = 2900; input.step = 10;
+  input.value = s.offsetHz; input.setAttribute("aria-label", "Tx offset in hertz");
+  row.append(input, button("Use", "", () => cmd("offset", { hz: parseInt(input.value, 10) })));
+  box.append(row, button("Automatic (picks a clear spot)", s.offsetAuto ? "on" : "", () => cmd("offsetAuto")),
+    el("div", "s", "Or type a fixed offset from 200 to 2900 Hz and press Use."));
+}
+
+// The slot countdown runs on the phone between states, from the station's position in the slot.
+let slotAt = 0;
+function renderSlot() {
+  const s = state; if (!s || !s.slotLengthMs) return;
+  const into = Math.min(s.slotLengthMs, s.slotIntoMs + (Date.now() - slotAt));
+  $("slot").classList.toggle("tx", s.transmitting);
+  $("slotLabel").textContent = s.slotLabel;
+  $("slotFill").style.width = (100 * into / s.slotLengthMs).toFixed(1) + "%";
+  $("slotLeft").textContent = Math.max(0, Math.ceil((s.slotLengthMs - into) / 1000)) + " s";
+}
+setInterval(renderSlot, 200);
+
+// Tabs; the one in use is remembered on this phone.
+const TAB = "costas-remote-tab";
+let tab = "operate";
+try { tab = localStorage.getItem(TAB) || "operate"; } catch { }
+function showTab(t) {
+  tab = t;
+  try { localStorage.setItem(TAB, t); } catch { }
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  document.querySelectorAll("[data-pane]").forEach(p => p.classList.toggle("hidden", p.dataset.pane !== t));
+}
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+if (!document.querySelector('[data-pane="' + tab + '"]')) tab = "operate";
+showTab(tab);
 
 token = load();
 if (token) { showOp(); connect(); } else showPair();
