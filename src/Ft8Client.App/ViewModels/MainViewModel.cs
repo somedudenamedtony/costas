@@ -121,7 +121,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public partial int Tab { get; set; }
 
     /// <summary>
-    /// The bottom bar shows Call CQ and the slot countdown unless the contact card is on screen, which has its own.
+    /// The bottom bar shows Call CQ and the slot countdown only on views other than Operate, whose contact card has its own.
     /// Halt Tx stays in the bar regardless.
     /// </summary>
     [ObservableProperty]
@@ -206,7 +206,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
         Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current.Ranking);
         Operate.Apply(s, tonight.Rows, tonight.Total);
-        BarShowsCqAndSlot = ShowCqAndSlotInBar(Tab, Operate.InContact);
+        BarShowsCqAndSlot = ShowCqAndSlotInBar(Tab);
         FillLookups(s);
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
         Raw.Apply(s.RawDecodes);
@@ -270,12 +270,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _updatingBand = false;
     }
 
-    /// <summary>False while the Operate view shows the contact card, whose on-air panel has Call CQ and the countdown.</summary>
-    public static bool ShowCqAndSlotInBar(int tab, bool inContact) => !(tab == 0 && inContact);
+    /// <summary>False on the Operate view, whose contact card always has Call CQ and the countdown.</summary>
+    public static bool ShowCqAndSlotInBar(int tab) => tab != 0;
 
     partial void OnTabChanged(int value)
     {
-        BarShowsCqAndSlot = ShowCqAndSlotInBar(value, Operate.InContact);
+        BarShowsCqAndSlot = ShowCqAndSlotInBar(value);
         if (value == 2)
         {
             Reach.Band = _host.Session.Config.Band;

@@ -112,6 +112,9 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>True while the top slot shows a contact.</summary>
     public bool InContact => Contact is not null;
 
+    /// <summary>What the contact card at the top shows: the contact, or the idle card when there is none.</summary>
+    public ContactPanelViewModel Panel => Contact ?? (_snap?.CallingCq == true ? ContactPanelViewModel.IdleCallingCq : ContactPanelViewModel.Idle);
+
     /// <summary>Selected line row.</summary>
     [ObservableProperty]
     public partial StationRowViewModel? Selected { get; set; }
@@ -252,6 +255,7 @@ public sealed partial class OperateViewModel : ObservableObject
         Summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty);
         Contact = s.Contact is null ? null : ContactPanelViewModel.From(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall));
         OnPropertyChanged(nameof(InContact));
+        OnPropertyChanged(nameof(Panel));
         Calling = s.Contact is null ? null : DetailsFor(s.Contact.DxCall, s, now);
         // A lookup may have arrived since the flyout opened.
         if (Details is not null) Details = DetailsFor(Details.Call, s, now);

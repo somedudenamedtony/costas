@@ -53,6 +53,29 @@ public sealed class ContactPanelViewModel
     /// <summary>The contact is still running.</summary>
     public bool Active { get; private init; }
 
+    /// <summary>True when there are steps to show in the conversation strip.</summary>
+    public bool HasSteps => Steps.Count > 0;
+
+    /// <summary>The card when no contact is running: nothing exchanged, no strip, contact buttons disabled.</summary>
+    public static ContactPanelViewModel Idle { get; } = new()
+    {
+        Caption = "Not in a contact",
+        Call = "—",
+        Subline = "Call a station in Next in line, or call CQ.",
+        Sent = NotYet,
+        Received = NotYet,
+    };
+
+    /// <summary>The idle card while calling CQ with no contact yet.</summary>
+    public static ContactPanelViewModel IdleCallingCq { get; } = new()
+    {
+        Caption = "Calling CQ",
+        Call = "—",
+        Subline = "Waiting for a station to answer.",
+        Sent = NotYet,
+        Received = NotYet,
+    };
+
     /// <summary>The strip, one box per step in order.</summary>
     public IReadOnlyList<StepViewModel> Steps { get; private init; } = [];
 

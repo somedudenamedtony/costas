@@ -33,56 +33,9 @@
     <ScrollViewer x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
       <StackPanel Spacing="12" Margin="0,0,12,0">
 
-        <!-- Top slot: band summary (idle) -->
-        <Border Classes="card" Padding="18,14" IsVisible="{Binding !InContact}">
-          <Grid ColumnDefinitions="*,*,*" DataContext="{Binding Summary}" x:DataType="vm:SummaryViewModel">
-            <StackPanel Grid.Column="0" Spacing="6">
-              <TextBlock Text="{Binding Title}" Classes="title" />
-              <WrapPanel ItemSpacing="22" LineSpacing="6">
-                <StackPanel><TextBlock Text="{Binding StationsHeard}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Stations heard" Classes="secondary" /></StackPanel>
-                <StackPanel><TextBlock Text="{Binding Countries}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Countries" Classes="secondary" /></StackPanel>
-                <StackPanel><TextBlock Text="{Binding CallingCq}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Calling CQ" Classes="secondary" /></StackPanel>
-                <StackPanel><TextBlock Text="{Binding YouNeed}" FontSize="26" FontWeight="SemiBold" Classes="num" Foreground="{DynamicResource AccentTextBrush}" /><TextBlock Text="You need" Classes="secondary" /></StackPanel>
-              </WrapPanel>
-              <TextBlock Text="{Binding Caption}" Classes="secondary num" TextWrapping="Wrap" Margin="0,0,12,0" />
-              <TextBlock Text="{Binding LogNotice}" IsVisible="{Binding HasLogNotice}" Foreground="{DynamicResource CautionBrush}" TextWrapping="Wrap" Margin="0,0,12,0" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Spacing="6" Margin="12,0">
-              <TextBlock Text="Heard from" Classes="title" />
-              <ItemsControl ItemsSource="{Binding Continents}">
-                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ContinentBar">
-                    <Grid RowDefinitions="72,Auto" Margin="2,0">
-                      <Grid Grid.Row="0" VerticalAlignment="Bottom">
-                        <StackPanel VerticalAlignment="Bottom">
-                          <TextBlock Text="{Binding Count}" HorizontalAlignment="Center" FontWeight="SemiBold" Classes="num" />
-                          <Border Height="{Binding BarHeight}" MinHeight="2" Background="{DynamicResource AccentBrush}" Margin="4,2,4,0" />
-                        </StackPanel>
-                      </Grid>
-                      <TextBlock Grid.Row="1" Text="{Binding Name}" Classes="secondary" HorizontalAlignment="Center" FontSize="12" Margin="0,4,0,0" />
-                    </Grid>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-            <Grid Grid.Column="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-              <TextBlock Grid.ColumnSpan="2" Text="{Binding LogTitle}" Classes="title" Margin="0,0,0,6" />
-              <TextBlock Grid.Row="1" Text="Countries" Classes="secondary" Margin="0,2,16,2" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LogCountries}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
-              <TextBlock Grid.Row="2" Text="US states" Classes="secondary" Margin="0,2,16,2" />
-              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LogStates}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
-              <TextBlock Grid.Row="3" Text="Grid squares" Classes="secondary" Margin="0,2,16,2" />
-              <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding LogGrids}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
-              <TextBlock Grid.Row="4" Text="Tonight" Classes="secondary" Margin="0,2,16,2" />
-              <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Tonight}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
-            </Grid>
-          </Grid>
-        </Border>
-
-        <!-- Top slot: contact -->
-        <Border Classes="card" Padding="18,12" IsVisible="{Binding InContact}">
-          <StackPanel DataContext="{Binding Contact}" x:DataType="vm:ContactPanelViewModel" Spacing="4">
+        <!-- Top slot: the contact card, always shown. With no contact it is idle: no call, empty reports, the countdown and Call CQ. -->
+        <Border Classes="card" Padding="18,12">
+          <StackPanel DataContext="{Binding Panel}" x:DataType="vm:ContactPanelViewModel" Spacing="4">
             <DockPanel>
               <!-- On-air panel: the reports, the slot countdown and every control that acts on this contact or the next transmission, together. -->
               <Border DockPanel.Dock="Right" VerticalAlignment="Top" CornerRadius="8" Padding="14,10" BorderThickness="1"
@@ -134,7 +87,7 @@
               </StackPanel>
             </DockPanel>
             <!-- The conversation strip: a progress track with one marker per step, and the boxes below it, mine raised and theirs lowered. -->
-            <ItemsControl ItemsSource="{Binding Steps}" Margin="0,8,0,0" AutomationProperties.Name="Conversation">
+            <ItemsControl ItemsSource="{Binding Steps}" Margin="0,8,0,0" AutomationProperties.Name="Conversation" IsVisible="{Binding HasSteps}">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:StepViewModel">
@@ -185,6 +138,53 @@
             </ItemsControl>
           </StackPanel>
         </Border>
+        <!-- Top slot: band summary (idle) -->
+        <Border Classes="card" Padding="18,14" IsVisible="{Binding !InContact}">
+          <Grid ColumnDefinitions="*,*,*" DataContext="{Binding Summary}" x:DataType="vm:SummaryViewModel">
+            <StackPanel Grid.Column="0" Spacing="6">
+              <TextBlock Text="{Binding Title}" Classes="title" />
+              <WrapPanel ItemSpacing="22" LineSpacing="6">
+                <StackPanel><TextBlock Text="{Binding StationsHeard}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Stations heard" Classes="secondary" /></StackPanel>
+                <StackPanel><TextBlock Text="{Binding Countries}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Countries" Classes="secondary" /></StackPanel>
+                <StackPanel><TextBlock Text="{Binding CallingCq}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Calling CQ" Classes="secondary" /></StackPanel>
+                <StackPanel><TextBlock Text="{Binding YouNeed}" FontSize="26" FontWeight="SemiBold" Classes="num" Foreground="{DynamicResource AccentTextBrush}" /><TextBlock Text="You need" Classes="secondary" /></StackPanel>
+              </WrapPanel>
+              <TextBlock Text="{Binding Caption}" Classes="secondary num" TextWrapping="Wrap" Margin="0,0,12,0" />
+              <TextBlock Text="{Binding LogNotice}" IsVisible="{Binding HasLogNotice}" Foreground="{DynamicResource CautionBrush}" TextWrapping="Wrap" Margin="0,0,12,0" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="6" Margin="12,0">
+              <TextBlock Text="Heard from" Classes="title" />
+              <ItemsControl ItemsSource="{Binding Continents}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ContinentBar">
+                    <Grid RowDefinitions="72,Auto" Margin="2,0">
+                      <Grid Grid.Row="0" VerticalAlignment="Bottom">
+                        <StackPanel VerticalAlignment="Bottom">
+                          <TextBlock Text="{Binding Count}" HorizontalAlignment="Center" FontWeight="SemiBold" Classes="num" />
+                          <Border Height="{Binding BarHeight}" MinHeight="2" Background="{DynamicResource AccentBrush}" Margin="4,2,4,0" />
+                        </StackPanel>
+                      </Grid>
+                      <TextBlock Grid.Row="1" Text="{Binding Name}" Classes="secondary" HorizontalAlignment="Center" FontSize="12" Margin="0,4,0,0" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+            <Grid Grid.Column="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.ColumnSpan="2" Text="{Binding LogTitle}" Classes="title" Margin="0,0,0,6" />
+              <TextBlock Grid.Row="1" Text="Countries" Classes="secondary" Margin="0,2,16,2" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LogCountries}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
+              <TextBlock Grid.Row="2" Text="US states" Classes="secondary" Margin="0,2,16,2" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LogStates}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
+              <TextBlock Grid.Row="3" Text="Grid squares" Classes="secondary" Margin="0,2,16,2" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding LogGrids}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
+              <TextBlock Grid.Row="4" Text="Tonight" Classes="secondary" Margin="0,2,16,2" />
+              <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Tonight}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
+            </Grid>
+          </Grid>
+        </Border>
+
 
         <!-- Next in line -->
         <Border Classes="card">
