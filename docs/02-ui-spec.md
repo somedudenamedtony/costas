@@ -216,9 +216,12 @@ Mockup: `setup` (step 2). A left rail lists the six steps; the right pane holds 
 
 ## Settings
 
-Sections: Station profiles · Radio · Audio · Transmit (power, watchdog minutes, retry limit, RR73 or RRR, CQ modifier, my grid in my answer to a CQ on or off, `73` or `RR73` as my last message when answering, optional free text up to 13 characters sent after it, a preview of every message as it will be sent, auto-log on or off) · Ranking (also how long CQ callers stay in Next in line after they were last heard: only while heard every slot, or 1 to 15 minutes, default 2) · QRZ · PSK Reporter (receive feed on or off, upload my spots on or off) · Interop (UDP address and port) · Files (WAV saving: none, decoded, all; retention days) · Appearance (theme, units).
+Sections: Station profiles · Radio · Audio · Transmit (power, watchdog minutes, retry limit, RR73 or RRR, CQ modifier, my grid in my answer to a CQ on or off, `73` or `RR73` as my last message when answering, optional free text up to 13 characters sent after it, a preview of every message as it will be sent, auto-log on or off) · Ranking (also how long CQ callers stay in Next in line after they were last heard: only while heard every slot, or 1 to 15 minutes, default 2) · QRZ · PSK Reporter (receive feed on or off, upload my spots on or off) · Interop (UDP address and port) · Files (WAV saving: none, decoded, all; retention days) · Phone (remote page on or off, port, pair a phone, forget paired phones) · Appearance (theme, units).
 
-## Diagnostics
+## Phone (remote page)
+
+A single page served by the app to a paired phone on the home network (owner decision 2026-10-12). Top: my call, frequency, band and mode, link state, radio dot, UTC, clock and decoder, and who has control ("You control", "Desk controls", "Another phone controls"). An ON AIR line with the message while transmitting. A yellow banner for the fault line (for example "Transmit stopped at 20:31:15: lost touch with the phone."). The contact card with the same wording and five-step strip as the desk, the messages around the current step (tap an upcoming one of mine to jump), and Resend, Log now and Abandon; when idle, Call CQ or Stop CQ. Calling you and Next in line (up to 8) with their buttons. HALT TX pinned to the bottom ("NOT TRANSMITTING" in grey when nothing is going out). The desk's bottom bar shows "Phone in control" or "Phone connected".
+
 
 Audio dropouts, decode time per slot, median DT of decodes, clock offset, CAT round-trip time, ALC and SWR of the last transmission, `jt9` and `rigctld` process state and restarts, QRZ and PSK Reporter connection state and last error, upload queue length. A button "Save diagnostics bundle" writes a zip of logs and settings (with secrets removed).
 
