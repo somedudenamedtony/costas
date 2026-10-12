@@ -113,6 +113,10 @@ public sealed partial class RepeatRowViewModel : ObservableObject
     [ObservableProperty]
     public partial string LastHeard { get; private set; } = string.Empty;
 
+    /// <summary>The station I am in a contact with right now.</summary>
+    [ObservableProperty]
+    public partial bool IsInContact { get; set; }
+
     /// <summary>Updates the age text on every timer tick.</summary>
     public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - _heardEndUtc);
 }

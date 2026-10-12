@@ -126,6 +126,13 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial string? SelectedBand { get; set; }
 
+    /// <summary>
+    /// The band menu's row for <see cref="SelectedBand"/>. The menu binds to this rather than to a selected value: refilling
+    /// the rows (start-up, mode change) drops the menu's selection without changing the value, which left the box empty.
+    /// </summary>
+    [ObservableProperty]
+    public partial BandChoiceViewModel? SelectedBandChoice { get; set; }
+
     /// <summary>Selected mode.</summary>
     [ObservableProperty]
     public partial string SelectedMode { get; set; } = "FT8";
@@ -238,6 +245,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
         Raw.Apply(s.RawDecodes);
         Frequency = FormatFrequency(s.DialHz);
+        FollowBand(s.Band);
         Transmitting = s.Transmitting;
         OnAirText = s.TransmittingMessage is { Length: > 0 } msg ? $"ON AIR · {msg}" : "ON AIR";
         var radio = s.Services.TryGetValue(ServiceNames.Radio, out var r) ? r : null;
@@ -278,12 +286,29 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Mini.Refresh(SelectedBand, SelectedMode);
     }
 
+    partial void OnSelectedBandChoiceChanged(BandChoiceViewModel? value)
+    {
+        // The menu clears its selection while the rows are refilled; that is not a choice.
+        if (value is not null) SelectedBand = value.Name;
+    }
+
     partial void OnSelectedBandChanged(string? value)
     {
+        SelectedBandChoice = Bands.FirstOrDefault(b => b.Name == value);
         if (_updatingBand || value is null) return;
         var band = value.Replace(" ", string.Empty, StringComparison.Ordinal);
         ModeInfo.TryParse(SelectedMode, out var mode);
         _ = _host.SetBandAsync(band, mode);
+    }
+
+    // The band menu shows the band the session is on, whoever changed it.
+    private void FollowBand(string band)
+    {
+        var shown = BandPlan.Display(band);
+        if (shown == SelectedBand) return;
+        _updatingBand = true;
+        SelectedBand = shown;
+        _updatingBand = false;
     }
 
     partial void OnSelectedModeChanged(string value)
@@ -501,6 +526,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _updatingBand = true;
         Bands.Clear();
         foreach (var b in _host.Frequencies.Bands(mode)) Bands.Add(new BandChoiceViewModel(b));
+        SelectedBandChoice = Bands.FirstOrDefault(b => b.Name == SelectedBand);
         _updatingBand = keep;
         ApplyBandOpenings(_host.Session.Snapshot);
     }

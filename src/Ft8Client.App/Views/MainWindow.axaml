@@ -19,7 +19,7 @@
       <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
         <TextBlock Text="Band" VerticalAlignment="Center" />
         <!-- The open list shows, per band, where stations near me are heard right now (PSK Reporter); the closed box shows only the band. -->
-        <ComboBox ItemsSource="{Binding Bands}" SelectedValueBinding="{ReflectionBinding Name}" SelectedValue="{Binding SelectedBand}"
+        <ComboBox ItemsSource="{Binding Bands}" SelectedItem="{Binding SelectedBandChoice}"
                   IsEnabled="{Binding CanChangeBand}" MinWidth="80" MaxDropDownHeight="520" AutomationProperties.Name="Band">
           <ComboBox.SelectionBoxItemTemplate>
             <DataTemplate x:DataType="vm:BandChoiceViewModel"><TextBlock Text="{Binding Name}" /></DataTemplate>

@@ -43,6 +43,7 @@ public sealed partial class OperateViewModel : ObservableObject
     private readonly LineStabilizer<IReadOnlyList<RankedStation>> _repeats;
     private DateTime? _lastRankedSlot;
     private SessionSnapshot? _snap;
+    private string? _inContact;
 
     /// <summary>Creates the view model.</summary>
     public OperateViewModel(IOperateCommands commands, Func<DateTime> now)
@@ -230,6 +231,7 @@ public sealed partial class OperateViewModel : ObservableObject
     public void Apply(SessionSnapshot s, IReadOnlyList<TonightRowViewModel> tonight, int tonightTotal)
     {
         _snap = s;
+        _inContact = s.Contact is { Outcome: ContactOutcome.InProgress } c ? c.DxCall : null;
         var now = _now();
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
         Transmitting = s.Transmitting;
@@ -243,6 +245,7 @@ public sealed partial class OperateViewModel : ObservableObject
             _repeats.Offer(RepeatOrder(s.Rank.Worked));
         }
         ListUpdated = _line.HasPending;
+        MarkInContact();
         // Lookups arrive between re-ranks; show them now rather than at the next slot.
         var byCall = s.Stations.ToDictionary(x => x.Call, StringComparer.Ordinal);
         foreach (var row in Line)
@@ -488,9 +491,19 @@ public sealed partial class OperateViewModel : ObservableObject
                 MostWanted.RankOf(r.Station.EntityKey)));
         MoreText = list.Count > MaxLine ? $"and {list.Count - MaxLine} more" : string.Empty;
         LineEmpty = Line.Count == 0;
-        var sel = Line.FirstOrDefault(r => r.Call == keep) ?? Line.FirstOrDefault();
+        // Only a row the operator picked stays selected; nothing is selected for them, so the highlight never
+        // points at a station they are not working.
+        var sel = Line.FirstOrDefault(r => r.Call == keep);
         foreach (var r in Line) r.IsSelected = ReferenceEquals(r, sel);
         Selected = sel;
+        MarkInContact();
+    }
+
+    // Highlights the station in contact in Next in line and Repeats.
+    private void MarkInContact()
+    {
+        foreach (var r in Line) r.IsInContact = _inContact is not null && Callsign.EqualsCall(r.Call, _inContact);
+        foreach (var r in Repeats) r.IsInContact = _inContact is not null && Callsign.EqualsCall(r.Call, _inContact);
     }
 
     private void ApplyRepeats(IReadOnlyList<RankedStation> list)
@@ -501,6 +514,7 @@ public sealed partial class OperateViewModel : ObservableObject
         var i = 1;
         foreach (var r in list.Take(MaxRepeats))
             Repeats.Add(new RepeatRowViewModel(r, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0, Units, now, i++));
+        MarkInContact();
         RepeatsMoreText = list.Count > MaxRepeats ? $"and {list.Count - MaxRepeats} more" : string.Empty;
         if (_snap is not null)
             RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {BandPlan.Display(_snap.Band)} is on the air right now.";

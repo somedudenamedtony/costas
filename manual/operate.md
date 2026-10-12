@@ -9,7 +9,7 @@ should not need Settings while operating.
 
 | Item | What it does |
 | --- | --- |
-| **Band** | Changes band. Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
+| **Band** | The band you are on, filled in at start-up. Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
 | **Mode** | FT8 or FT4. Changes the slot length and dial frequency. Locked while transmitting |
 | Frequency | The dial frequency read from the radio, in MHz |
 | **Operate**, **Raw decodes**, **Reach**, **Log** | The four views. ++ctrl+1++ to ++ctrl+4++ |
@@ -78,7 +78,10 @@ them (the same options as [Settings › Who to call](settings.md#who-to-call)).
 The list never reshuffles under your mouse. If it needs to re-rank while you are pointing at it, a **List updated**
 pill appears; it applies when you click it or move the pointer away.
 
-Selecting a row (click, or ++up++ / ++down++) shows a details card with the station's name (from QRZ lookups),
+The station you are in a contact with is tinted, with a bar down its left edge, the same in Repeats. That tint
+only ever marks the station you are working.
+
+Selecting a row (click, or ++up++ / ++down++) outlines it and shows a details card with the station's name (from QRZ lookups),
 location, grid, bearing and your past contacts with that call:
 
 ![Station details](images/station-details.png)
