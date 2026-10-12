@@ -70,6 +70,16 @@
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button Content="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CqText}"
                             Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ToggleCqCommand}" MinWidth="80" />
+                    <ComboBox ItemsSource="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CqModifiers}"
+                              SelectedItem="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SelectedCqModifier}"
+                              MinWidth="96" AutomationProperties.Name="CQ modifier"
+                              ToolTip.Tip="What your CQ says: CQ for everyone, CQ DX for stations outside your country, CQ NA and the like for one continent. Applies to your next CQ.">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CqModifierChoice">
+                          <TextBlock Text="{Binding Label}" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
                     <Button Content="Resend" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ResendCommand}" IsEnabled="{Binding Active}" />
                     <Button Content="Log now" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).LogNowCommand}" IsEnabled="{Binding CanLogNow}" />
                     <Button Content="Abandon (Esc)" Classes="critical" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).AbandonCommand}" IsEnabled="{Binding Active}" />
@@ -452,14 +462,16 @@
           <StackPanel Spacing="6">
             <TextBlock Text="{Binding SignalTitle}" Classes="title" />
             <TextBlock Text="{Binding SignalSource}" Classes="secondary" FontSize="12" Margin="0,-4,0,0" />
-            <Grid ColumnDefinitions="128,*">
-              <v:ReachPlot Width="124" Height="124" Points="{Binding ReachPoints}" Centre="{Binding ReachCentre}" Compact="True" />
-              <StackPanel Grid.Column="1" Spacing="4" Margin="8,0,0,0">
-                <TextBlock Text="{Binding SignalHeadline}" TextWrapping="Wrap" />
+            <!-- No map here: Heard here's "Who heard you" rings already show these stations on a map. -->
+            <TextBlock Text="{Binding SignalHeadline}" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel>
                 <TextBlock Text="Farthest" Classes="secondary" FontSize="12" />
-                <TextBlock Text="{Binding SignalFarthest}" />
+                <TextBlock Text="{Binding SignalFarthest}" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
                 <TextBlock Text="Best report" Classes="secondary" FontSize="12" />
-                <TextBlock Text="{Binding SignalBest}" />
+                <TextBlock Text="{Binding SignalBest}" TextTrimming="CharacterEllipsis" />
               </StackPanel>
             </Grid>
             <TextBlock Text="{Binding SignalNeighbours}" TextWrapping="Wrap" IsVisible="{Binding SignalNeighbours, Converter={x:Static v:Converters.NotEmpty}}"

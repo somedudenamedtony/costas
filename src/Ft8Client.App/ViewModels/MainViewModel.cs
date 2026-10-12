@@ -62,6 +62,27 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _host.Settings.Changed += _ => Dispatch(ApplySettings);
         _host.Remote.Changed += () => Dispatch(UpdateRemote);
         UpdateRemote();
+        _host.Udp.Inbound += m => Dispatch(() => OnUdp(m));
+    }
+
+    // Reply, Halt Tx and Highlight Callsign from GridTracker, JTAlert and the like. A Reply is the operator's click in
+    // that program, so it calls exactly as a double-click in Raw decodes would.
+    private void OnUdp(Integrations.Wsjtx.WsjtxInboundMessage m)
+    {
+        switch (m)
+        {
+            case Integrations.Wsjtx.WsjtxReply r:
+                if (UdpReplyRule.Sender(r, _host.Session.Snapshot.RawDecodes) is { } call) Call(call);
+                else StatusText = $"Another program asked to reply to \"{r.Message.Trim()}\". Only a recent CQ or a station calling you can be called that way.";
+                break;
+            case Integrations.Wsjtx.WsjtxHaltTx:
+                Halt();
+                break;
+            case Integrations.Wsjtx.WsjtxHighlight h:
+                Raw.Highlight(h);
+                Dispatch(Raw.ApplyHighlights);
+                break;
+        }
     }
 
     /// <summary>"Phone in control" or "Phone connected" in the bottom bar, or blank.</summary>
@@ -205,6 +226,14 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial bool Transmitting { get; set; }
 
+    /// <summary>"Tune", or "Stop tune" while the tone is on the air.</summary>
+    [ObservableProperty]
+    public partial string TuneText { get; set; } = "Tune";
+
+    /// <summary>True when Tune can be pressed: nothing else is being sent, or the tone is on and can be stopped.</summary>
+    [ObservableProperty]
+    public partial bool CanTune { get; set; } = true;
+
     /// <summary>"Receiving" or "Transmitting".</summary>
     [ObservableProperty]
     public partial string SlotLabel { get; set; } = "Receiving";
@@ -238,6 +267,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var tonight = TonightRows(s);
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
         Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current.Ranking);
+        Operate.ShowCqModifier(_host.Settings.Current.Operating.CqModifier);
         Operate.Apply(s, tonight.Rows, tonight.Total);
         Reach.ApplyNeighbours(s.Neighbours, s.Band, _host.Settings.Current.PskReporter is { FeedEnabled: true, CompareNeighbours: true });
         BarShowsCqAndSlot = ShowCqAndSlotInBar(Tab);
@@ -254,6 +284,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         NoRadioText = radio is null ? string.Empty : $"Radio not connected · {radio.Message}";
         CanChangeBand = !s.Transmitting;
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
+        UpdateTune(s);
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
         (StatusText, StatusKind) = Status(s);
         (MeterText, MeterTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
@@ -283,6 +314,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var left = (int)Math.Ceiling((len - into).TotalSeconds);
         SlotRemaining = $"{left} s to next slot";
         SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+        UpdateTune(_host.Session.Snapshot);
         Operate.Tick();
         Mini.Refresh(SelectedBand, SelectedMode);
     }
@@ -434,6 +466,42 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _host.Session.ToggleCq();
     }
 
+    /// <summary>How long a Tune tone lasts unless stopped sooner (the Tune watchdog).</summary>
+    public const double TuneSeconds = 10;
+
+    // A Tune tone on the air, or the radio's own tuner started by Tune and not yet past the Tune limit.
+    private bool Tuning(SessionSnapshot s) => s.TransmittingMessage == Session.TuneMessage || s.RigTuningUntilUtc > _host.Clock.UtcNow;
+
+    private void UpdateTune(SessionSnapshot s)
+    {
+        var tuning = Tuning(s);
+        TuneText = tuning ? "Stop tune" : "Tune";
+        CanTune = tuning || (!s.Transmitting && !s.CallingCq && s.Contact is not { Outcome: ContactOutcome.InProgress });
+    }
+
+    /// <summary>
+    /// Tune: starts the radio's own tuner, or a steady tone when the radio has none; Stop tune while either is going.
+    /// </summary>
+    [RelayCommand]
+    private async Task TuneAsync()
+    {
+        Activity();
+        if (Tuning(_host.Session.Snapshot))
+        {
+            await _host.Session.HaltAsync();
+            return;
+        }
+        await _host.Session.TuneAsync(TuneSeconds);
+    }
+
+    /// <inheritdoc />
+    public void SetCqModifier(string modifier)
+    {
+        Activity();
+        if (_host.Settings.Current.Operating.CqModifier == modifier) return;
+        _host.Settings.Update(s => s.Operating.CqModifier = modifier);
+    }
+
     /// <summary>Halt Tx: always enabled.</summary>
     [RelayCommand]
     private void Halt()
@@ -568,6 +636,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     internal static (string, TextKind) Status(SessionSnapshot s)
     {
         if (s.Fault is { } f) return (f, TextKind.Critical);
+        if (s.RigTuningUntilUtc is not null) return ("The radio's antenna tuner is tuning.", TextKind.Critical);
         if (s.Contact is { Outcome: ContactOutcome.InProgress } c)
         {
             if (!s.Transmitting) return ($"Waiting for {c.DxCall}.", TextKind.Normal);

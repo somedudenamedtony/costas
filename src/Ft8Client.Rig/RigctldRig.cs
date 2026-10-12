@@ -217,6 +217,21 @@ public sealed class RigctldRig : IRig
     }
 
     /// <inheritdoc />
+    public async Task<bool> StartTunerAsync(CancellationToken ct)
+    {
+        var c = _client;
+        if (c is null || !ProcessRunning) return false;
+        try
+        {
+            return (await c.SendAsync("G TUNE", ct).ConfigureAwait(false)).Ok;
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task SetSplitAsync(bool on, long txHz, CancellationToken ct)
     {
         if (on)

@@ -19,8 +19,9 @@ using Serilog;
 namespace Ft8Client.App.Services;
 
 /// <summary>
-/// WSJT-X UDP interop, outbound only: heartbeat every 15 s, status on change, decodes, clear on band change, logged
-/// contacts (both forms) and close on exit. Lets GridTracker, JTAlert and loggers follow this app unchanged.
+/// WSJT-X UDP interop. Out: heartbeat every 15 s, status on change, decodes, clear on band change, logged contacts (both
+/// forms) and close on exit. In: Reply, Halt Tx and Highlight Callsign addressed to this app, passed on through
+/// <see cref="Inbound"/>. Lets GridTracker, JTAlert and loggers follow and drive this app unchanged.
 /// </summary>
 public sealed class UdpInteropService : IDisposable
 {
@@ -47,6 +48,11 @@ public sealed class UdpInteropService : IDisposable
         _offAir = offAir;
         _heartbeat = new Timer(_ => Send(WsjtxMessages.Heartbeat(ClientId, AppInfo.Version, string.Empty)));
     }
+
+    /// <summary>
+    /// Reply, Halt Tx or Highlight Callsign from another program, addressed to this app. Raised on a thread-pool thread.
+    /// </summary>
+    public event Action<WsjtxInboundMessage>? Inbound;
 
     /// <summary>Opens the socket and starts sending.</summary>
     public void Start()
@@ -87,6 +93,7 @@ public sealed class UdpInteropService : IDisposable
             try
             {
                 _udp = new WsjtxUdpBroadcaster(t.Address, t.Port);
+                _udp.Received += OnReceived;
             }
             catch (Exception ex) when (ex is FormatException or System.Net.Sockets.SocketException or ArgumentException)
             {
@@ -120,6 +127,21 @@ public sealed class UdpInteropService : IDisposable
         var name = ModeInfo.Name(mode);
         foreach (var d in decodes)
             Send(WsjtxMessages.Decode(ClientId, new WsjtxDecode(slot, d.Snr, d.Dt, d.OffsetHz, name, d.Text, d.LowConfidence, _offAir)));
+    }
+
+    private void OnReceived(byte[] datagram, System.Net.IPEndPoint from)
+    {
+        var m = WsjtxInbound.Parse(datagram);
+        if (m is null || m.TargetId != ClientId) return;
+        if (m is not WsjtxHighlight) Log.Information("UDP {Kind} from {From}", m.GetType().Name, from);
+        try
+        {
+            Inbound?.Invoke(m);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "UDP {Kind} from {From} not handled", m.GetType().Name, from);
+        }
     }
 
     private void OnBandChanged() => Send(WsjtxMessages.Clear(ClientId));

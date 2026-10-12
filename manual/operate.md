@@ -129,6 +129,10 @@ air, it says so.
 Stations you need that you cannot call yet: they went quiet, or are in a contact with someone else
 (*In a contact with EA5HVK*, *Finishing a contact with K7RGB*). They move into Next in line when that changes.
 
+A station calling CQ in a contest (`CQ RU`, `CQ FD`, `CQ WW`, `CQ TEST` and the like) is listed here as *Contest
+(CQ RU), needs an exchange*. It expects a contest exchange, and Costas only sends the standard one, so it is not
+offered as a station to call.
+
 Stations you have already worked on this band are not in Watching; they are in [Repeats](#repeats).
 
 ## Right column
@@ -139,7 +143,7 @@ From top to bottom:
   [Maps and who hears you](maps.md#heard-here).
 - **Band activity, last hour**: a bar per minute of decodes per slot (grey) and needed stations per slot (blue),
   with a sentence saying whether the band is busier or quieter than half an hour ago.
-- **Your signal on 20 m**: a small Reach map, how many stations hear you, the farthest and the best report.
+- **Your signal on 20 m**: how many stations hear you, the farthest and the best report.
   **Open reach view** goes to the full view.
 - **Worked tonight**: your latest contacts this session with their QRZ upload state. **Show all in the log** opens
   the Log view.
@@ -153,6 +157,7 @@ From top to bottom:
 | Status text | One line: *Not in a contact. Enter calls NT2A, the top of the line.*, *Transmitting to F5RXL.*, *Waiting for F5RXL.*, or a fault in red |
 | **Tx offset 1650 Hz · clear** | Your transmit audio offset. Click to choose **Automatic (picks a clear spot)**, the default, or type a fixed value (200 to 2900 Hz) and press **Use** |
 | **Call CQ** | Starts calling CQ in the next slot. Becomes **Stop CQ** while running. ++ctrl+q++ |
+| **Tune** | Starts your radio's own antenna tuner, as its TUNE button would. If the radio has no tuner Costas can start (or its tuner is switched off), Costas sends a steady tone at your transmit offset for up to 10 seconds instead, for an external tuner. Becomes **Stop tune** for up to 10 seconds; click it to stop. Available only when nothing else is being sent; calling a station or CQ stops the tone |
 | **Halt Tx** | Always available. Drops PTT at once and stops sequencing. ++esc++ does the same |
 | Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar |
 | Meter warning | Appears only when the last transmission's SWR or ALC was high, for example *SWR 3.4 · ALC 70%* |
