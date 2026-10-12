@@ -64,10 +64,27 @@ public class OperateSlotTests
     }
 
     [Theory]
-    [InlineData(0, true, false)]
-    [InlineData(0, false, true)]
-    [InlineData(1, true, true)]
-    [InlineData(3, true, true)]
-    public void ShowCqAndSlotInBar_ContactCardOnScreen_HidesThemFromBar(int tab, bool inContact, bool expected) =>
-        MainViewModel.ShowCqAndSlotInBar(tab, inContact).Should().Be(expected);
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(3, true)]
+    public void ShowCqAndSlotInBar_OperateView_HidesThemFromBar(int tab, bool expected) =>
+        MainViewModel.ShowCqAndSlotInBar(tab).Should().Be(expected);
+
+    [Fact]
+    public void Panel_NoContact_ShowsIdleCard()
+    {
+        var vm = Apply(false, false, Slot);
+
+        vm.InContact.Should().BeFalse();
+        vm.Panel.Caption.Should().Be("Not in a contact");
+        vm.Panel.Sent.Should().Be("--");
+        vm.Panel.Received.Should().Be("--");
+        vm.Panel.HasSteps.Should().BeFalse();
+        vm.Panel.Active.Should().BeFalse();
+        vm.Panel.CanLogNow.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Panel_CallingCqWithNoContact_SaysCallingCq() =>
+        Apply(false, true, Slot).Panel.Caption.Should().Be("Calling CQ");
 }
