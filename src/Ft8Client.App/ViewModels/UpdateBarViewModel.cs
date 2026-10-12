@@ -56,8 +56,8 @@ public sealed partial class UpdateBarViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Downloads and verifies the installer, starts it silently (no installer windows) and closes the app so it can be
-    /// upgraded; the installer reopens Costas when it has finished.
+    /// Downloads and verifies the installer, starts the unattended upgrade (a progress window, nothing to click) and
+    /// closes the app so it can be upgraded; Costas reopens when the installer has finished.
     /// </summary>
     [RelayCommand]
     private async Task Install()
@@ -78,8 +78,8 @@ public sealed partial class UpdateBarViewModel : ObservableObject
                 Detail = "Downloaded. Finish the contact, then press Update again.";
                 return;
             }
-            Detail = "Updating; Costas will reopen in a moment…";
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true, Arguments = SilentInstallArguments });
+            Detail = "Updating; Costas will reopen when the update has installed…";
+            _updates.StartInstallerAndReopen(path);
             _shutdown();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or InvalidDataException
@@ -92,13 +92,6 @@ public sealed partial class UpdateBarViewModel : ObservableObject
             Busy = false;
         }
     }
-
-    /// <summary>
-    /// Inno Setup switches for an unattended upgrade: no windows or prompts, no reboot, and reopen Costas afterwards
-    /// (<c>/RELAUNCH=1</c>, read by <c>installer/Costas.iss</c>). The install mode (current user or all users) follows
-    /// the existing install; an all-users install still shows Windows' administrator prompt.
-    /// </summary>
-    internal const string SilentInstallArguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /RELAUNCH=1";
 
     /// <summary>Opens the release page.</summary>
     [RelayCommand]

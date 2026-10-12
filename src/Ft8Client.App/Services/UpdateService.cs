@@ -6,6 +6,7 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using System.Diagnostics;
 using Ft8Client.Core;
 using Ft8Client.Integrations.Net;
 using Ft8Client.Integrations.Updates;
@@ -23,16 +24,21 @@ public sealed class UpdateService : IDisposable
 
     private readonly AppSettingsAccessor _settings;
     private readonly string _downloadFolder;
+    private readonly string _logFolder;
     private readonly HttpMessageHandler? _handler;
     private readonly Uri? _apiBase;
     private readonly Timer _timer;
     private readonly SemaphoreSlim _checking = new(1, 1);
 
-    /// <summary>Creates the service. <paramref name="handler"/> and <paramref name="apiBase"/> replace the network in tests.</summary>
-    public UpdateService(AppSettingsAccessor settings, string downloadFolder, HttpMessageHandler? handler = null, Uri? apiBase = null)
+    /// <summary>
+    /// Creates the service. The installer writes its log to <paramref name="logFolder"/> (kept, unlike downloads).
+    /// <paramref name="handler"/> and <paramref name="apiBase"/> replace the network in tests.
+    /// </summary>
+    public UpdateService(AppSettingsAccessor settings, string downloadFolder, string logFolder, HttpMessageHandler? handler = null, Uri? apiBase = null)
     {
         _settings = settings;
         _downloadFolder = downloadFolder;
+        _logFolder = logFolder;
         _handler = handler;
         _apiBase = apiBase;
         _timer = new Timer(_ => _ = CheckAsync(CancellationToken.None));
@@ -112,6 +118,45 @@ public sealed class UpdateService : IDisposable
         using var http = HttpFactory.Create(_settings.Current.Profile.Callsign, _handler, TimeSpan.FromMinutes(15));
         return await new UpdateDownloader(http).DownloadAsync(release, _downloadFolder, progress, ct).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Starts the verified installer for an unattended upgrade and, once it has finished (or failed), reopens Costas.
+    /// The caller then closes the app so its files can be replaced. The installer shows only its progress window
+    /// (<c>/SILENT</c>): no pages, questions or buttons. Reopening is done by a hidden <c>cmd</c> that waits for the
+    /// installer rather than by the installer itself, so the app comes back even when the upgrade fails.
+    /// </summary>
+    public void StartInstallerAndReopen(string installerPath)
+    {
+        var app = Environment.ProcessPath ?? throw new InvalidOperationException("The app's own path is unknown.");
+        Directory.CreateDirectory(_logFolder);
+        var log = Path.Combine(_logFolder, $"update-{DateTime.UtcNow:yyyyMMdd-HHmmss}.log");
+        Log.Information("Updating: {Installer}, log {Log}, then reopening {App}", installerPath, log, app);
+        Process.Start(InstallAndReopenCommand(installerPath, log, app, _downloadFolder));
+    }
+
+    /// <summary>
+    /// The hidden <c>cmd</c> that runs the installer, waits for it, and starts the app again. Inside double quotes
+    /// <c>cmd</c> takes <c>&amp;</c>, <c>^</c> and spaces literally, and Windows paths cannot contain a quote.
+    /// </summary>
+    internal static ProcessStartInfo InstallAndReopenCommand(string installer, string log, string app, string workingDirectory)
+    {
+        var cmd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe");
+        var script = $"start \"\" /wait \"{installer}\" {InstallerArguments} \"/LOG={log}\" & start \"\" \"{app}\"";
+        return new ProcessStartInfo(cmd, $"/d /s /c \"{script}\"")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            // Not the app's folder, so nothing here holds a handle in it while the installer replaces files.
+            WorkingDirectory = workingDirectory,
+        };
+    }
+
+    /// <summary>
+    /// Inno Setup switches for an unattended upgrade: the progress window only, no message boxes, no reboot, no
+    /// Cancel. The install mode (current user or all users) follows the existing install; an all-users install still
+    /// shows Windows' administrator prompt.
+    /// </summary>
+    internal const string InstallerArguments = "/SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL";
 
     /// <summary>Does not offer the available release again.</summary>
     public void Skip()
