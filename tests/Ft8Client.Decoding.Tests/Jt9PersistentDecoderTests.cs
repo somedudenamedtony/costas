@@ -119,7 +119,9 @@ public class Jt9PersistentDecoderTests
 
         early.Status.Should().Be(DecodeStatus.Ok, early.Message);
         full.Status.Should().Be(DecodeStatus.Ok, full.Message);
-        full.Decodes.Select(d => d.Text).Should().Contain(early.Decodes.Select(d => d.Text)).And.OnlyHaveUniqueItems();
+        // The early list may be empty (FluentAssertions refuses Contain with an empty expectation), so check it is a subset.
+        early.Decodes.Select(d => d.Text).Should().BeSubsetOf(full.Decodes.Select(d => d.Text));
+        full.Decodes.Select(d => d.Text).Should().OnlyHaveUniqueItems();
         full.Decodes.Select(d => d.Text).Should().Contain("CQ F5RXL IN94");
         full.Decodes.Should().HaveCountGreaterThan(15);
     }
