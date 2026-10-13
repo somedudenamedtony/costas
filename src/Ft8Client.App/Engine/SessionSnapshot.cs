@@ -44,9 +44,6 @@ public sealed record SessionSnapshot
     /// <summary>The band summary.</summary>
     public BandSummary? Summary { get; init; }
 
-    /// <summary>True in Hound mode (working a Fox/Hound DXpedition).</summary>
-    public bool Hound { get; init; }
-
     /// <summary>Recent raw decodes, oldest first.</summary>
     public IReadOnlyList<RawDecodeLine> RawDecodes { get; init; } = [];
 

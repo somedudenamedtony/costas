@@ -74,8 +74,8 @@ public static class Ranker
     public static WatchReason? NotCallableReason(Station s, RankInput input)
     {
         if (s.Call.StartsWith('<')) return new WatchReason(WatchReasonKind.Unresolved);
-        // A Fox is always working Hounds, so it is never "in a contact" to a Hound; without Hound mode it cannot be worked.
-        if (s.RunsFox && s.HeardInLastOwnSlot) return input.Hound ? null : new WatchReason(WatchReasonKind.Fox);
+        // A Fox is always working Hounds, so it is never "in a contact" to a Hound: calling it starts a Hound contact.
+        if (s.RunsFox && s.HeardInLastOwnSlot) return null;
         if (!s.HeardInLastOwnSlot)
         {
             // A CQ caller missed in a slot or two is usually still calling (a fade or a busy slot): keep it listed

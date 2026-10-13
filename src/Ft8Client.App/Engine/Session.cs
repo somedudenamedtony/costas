@@ -105,6 +105,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         _txOffset = config.FixedTxOffsetHz ?? 1500;
         _engine = new ContactEngine(config.MyCall, config.MyGrid, config.Contact, clock.UtcNow);
         _engine.Logged += OnLogged;
+        _engine.IsFox = call => _tracker.Find(call)?.RunsFox == true; // read under _gate, as every engine call is
         _tx.Started += OnTxStarted;
         _tx.Ended += (_, _) => Publish();
         _tx.Fault += OnTxFault;
@@ -281,10 +282,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         if (_engine.InContact && _engine.DxOffsetHz is { } dx)
         {
             // A Fox answers on any of its streams, all below 1000 Hz: search the whole Fox range, not just around it.
-            if (_engine.Hound)
+            if (_engine.InHoundContact)
             {
                 return new DecodeContext(_config.MyCall, myGrid, _engine.DxCall, _engine.DxGrid, LowHz: 100,
-                    HighHz: Math.Max(TxOffsetPicker.HoundLowHz, dx + QuickSpanHz), Depth: 3, QsoProgress: _engine.QsoProgress, RxOffsetHz: dx);
+                    HighHz: Math.Max(TxOffsetPicker.HoundLowHz, dx + QuickSpanHz), Depth: 3, QsoProgress: _engine.QsoProgress, RxOffsetHz: dx) { Hound = true };
             }
             return new DecodeContext(_config.MyCall, myGrid, _engine.DxCall, _engine.DxGrid, LowHz: Math.Max(100, dx - QuickSpanHz),
                 HighHz: dx + QuickSpanHz, Depth: 3, QsoProgress: _engine.QsoProgress, RxOffsetHz: dx);
@@ -334,7 +335,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             return new DecodeContext(_config.MyCall, Grid.Grid4(_config.MyGrid) ?? string.Empty, _engine.DxCall, _engine.DxGrid,
-                QsoProgress: _engine.QsoProgress, RxOffsetHz: _engine.DxOffsetHz ?? _txOffset);
+                QsoProgress: _engine.QsoProgress, RxOffsetHz: _engine.DxOffsetHz ?? _txOffset)
+            {
+                Hound = _engine.InHoundContact, // jt9 decodes as a Hound (WSJT-X special operation 7) while I work a Fox
+            };
         }
     }
 
@@ -414,9 +418,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
 
     private void UpdateTxOffset(Mode mode)
     {
-        // A Hound calls at 1000 Hz or above: a fixed offset below that gives way to a clear spot above it.
-        var minHz = _engine.Hound ? TxOffsetPicker.HoundLowHz : TxOffsetPicker.LowHz;
-        if (_config.FixedTxOffsetHz is { } fixedHz && fixedHz >= minHz)
+        if (_engine.InHoundContact) return; // the offset chosen when calling the Fox holds for the contact
+        if (_config.FixedTxOffsetHz is { } fixedHz)
         {
             _txOffset = fixedHz;
             _txOffsetClear = true;
@@ -425,7 +428,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         if (_engine.InContact) return; // never change during a contact
         var myParity = _engine.CallingCq ? _engine.CqParity : _config.CqParity;
         var slots = _recentOffsets.Where(x => x.Parity == myParity).Reverse().Take(4).Select(x => (IReadOnlyList<int>)x.Offsets).ToList();
-        var c = TxOffsetPicker.Choose(slots, mode, _txOffset, minHz);
+        var c = TxOffsetPicker.Choose(slots, mode, _txOffset);
         _txOffset = c.OffsetHz;
         _txOffsetClear = c.Clear;
     }
@@ -580,8 +583,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 if (s is null) return false;
                 // A station heard working someone else (reports or grids exchanged, not signing off) will not hear me:
                 // the contact ends at once and says so rather than calling into its contact.
-                var busyWith = s is { State: StationState.InContact, Partner: { } p } && !Callsign.EqualsCall(p, _config.MyCall) && !_engine.Hound ? p : null;
-                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, busyWith);
+                var busyWith = s is { State: StationState.InContact, Partner: { } p } && !Callsign.EqualsCall(p, _config.MyCall) ? p : null;
+                // A Fox (Fox/Hound DXpedition) is worked as a Hound: my calls at 1000 Hz or above, where it listens.
+                if (s.RunsFox) HoundCallOffset(SlotMath.Opposite(s.Parity));
+                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, busyWith, fox: s.RunsFox);
             }
             _fault = null;
         }
@@ -589,41 +594,31 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         return true;
     }
 
-    /// <summary>Starts or stops calling CQ. Refused in Hound mode.</summary>
+    // Moves my offset to 1000 Hz or above for calling a Fox: the fixed offset if it is that high, else a clear spot there.
+    // Under _gate. The offset then holds until the Hound contact ends.
+    private void HoundCallOffset(SlotParity myParity)
+    {
+        if (_config.FixedTxOffsetHz is { } f && f >= TxOffsetPicker.HoundLowHz)
+        {
+            _txOffset = f;
+            return;
+        }
+        var slots = _recentOffsets.Where(x => x.Parity == myParity).Reverse().Take(4).Select(x => (IReadOnlyList<int>)x.Offsets).ToList();
+        var c = TxOffsetPicker.Choose(slots, _config.Mode, _txOffset, TxOffsetPicker.HoundLowHz);
+        _txOffset = c.OffsetHz;
+        _txOffsetClear = c.Clear;
+    }
+
+    /// <summary>Starts or stops calling CQ.</summary>
     public void ToggleCq()
     {
         lock (_gate)
         {
             if (_engine.CallingCq) _engine.StopCq(_clock.UtcNow);
-            else if (_engine.Hound)
-            {
-                _fault = "Hound mode is on, and a Hound doesn't call CQ. Call the Fox instead.";
-                Publish();
-                return;
-            }
             else _engine.CallCq(_config.CqParity, _clock.UtcNow);
             _fault = null;
         }
         AfterCommand();
-    }
-
-    /// <summary>
-    /// Turns Hound mode on or off, for working a Fox/Hound DXpedition (FT8 only). A contact in progress ends and CQ
-    /// stops. Returns false when refused (FT4).
-    /// </summary>
-    public bool SetHound(bool on)
-    {
-        lock (_gate)
-        {
-            if (on && _config.Mode != Mode.Ft8) return false;
-            if (_engine.Hound == on) return true;
-            _engine.SetHound(on, _clock.UtcNow);
-            _fault = null;
-            UpdateTxOffset(_config.Mode);
-        }
-        _tx.CancelPending();
-        Publish();
-        return true;
     }
 
     /// <summary>Answers a waiting caller now.</summary>
@@ -756,7 +751,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             _config = _config with { FixedTxOffsetHz = hz };
-            if (hz is { } v && (!_engine.Hound || v >= TxOffsetPicker.HoundLowHz)) _txOffset = v;
+            if (hz is { } v && (!_engine.InHoundContact || v >= TxOffsetPicker.HoundLowHz)) _txOffset = v;
             else UpdateTxOffset(_config.Mode);
         }
         Publish();
@@ -775,7 +770,6 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             foreach (var (call, e) in _lookups) _tracker.SetLookup(call, e.Grid, e.State, e.City);
             _engine.Abandon(_clock.UtcNow);
             _engine.StopCq(_clock.UtcNow);
-            _engine.SetHound(false, _clock.UtcNow); // a Fox is on one frequency; Hound mode stays with it
             _hearsMe = new HearsMe(band, _hearsMe.Available);
             // Reports of nearby stations cover every band (for the band menu); only a mode change makes them irrelevant.
             if (mode != oldMode)
@@ -960,7 +954,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             var now = _clock.UtcNow;
             var stations = _tracker.Stations.ToList();
             var rank = Ranker.Rank(new RankInput(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity,
-                _config.Band, ModeInfo.Name(_config.Mode), now, _countries, _engine.Hound, _lotwUsers));
+                _config.Band, ModeInfo.Name(_config.Mode), now, _countries, Lotw: _lotwUsers));
             var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, ModeInfo.Name(_config.Mode), now, _slotCounts, _tonight,
                 _config.Ranking);
             snap = new SessionSnapshot
@@ -990,7 +984,6 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 Transmitting = _tx.Transmitting,
                 TransmittingMessage = _tx.CurrentMessage,
                 CallingCq = _engine.CallingCq,
-                Hound = _engine.Hound,
                 RigTuningUntilUtc = _rigTuningUntil is { } until && until > now ? until : null,
                 TxOffsetHz = _txOffset,
                 TxOffsetClear = _txOffsetClear,

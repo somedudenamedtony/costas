@@ -48,7 +48,6 @@ public sealed class ContactEngine
     private Stopped? _stopped;
     private string? _extraMessage;
     private SlotParity _extraParity;
-    private bool _hound;
 
     /// <summary>Creates the engine.</summary>
     public ContactEngine(string myCall, string myGrid, ContactSettings settings, DateTime nowUtc)
@@ -83,8 +82,14 @@ public sealed class ContactEngine
     /// <summary>The DX station's audio offset, for the decoder's receive frequency.</summary>
     public int? DxOffsetHz => _c?.DxOffset;
 
-    /// <summary>True in Hound mode: calling a station starts a <see cref="ContactFlow.Hound"/> contact and CQ is not sent.</summary>
-    public bool Hound => _hound;
+    /// <summary>True while a <see cref="ContactFlow.Hound"/> contact (with a Fox) is in progress.</summary>
+    public bool InHoundContact => _c?.Flow == ContactFlow.Hound;
+
+    /// <summary>
+    /// Tells the engine which stations run Fox/Hound, so a Fox's report that the operator answers from Waiting for you
+    /// continues as a Hound contact. Null treats no station as a Fox.
+    /// </summary>
+    public Func<string, bool>? IsFox { get; set; }
 
     /// <summary>The DX station's grid, if known.</summary>
     public string? DxGrid => _c?.DxGrid;
@@ -110,20 +115,6 @@ public sealed class ContactEngine
         _settings = settings;
     }
 
-    /// <summary>
-    /// Turns Hound mode on or off (an operator command). Changing it ends a contact in progress (logging nothing) and
-    /// stops CQ, since a Hound never calls CQ and an ordinary contact cannot continue as a Hound one.
-    /// </summary>
-    public void SetHound(bool on, DateTime nowUtc)
-    {
-        OperatorActivity(nowUtc);
-        if (_hound == on) return;
-        _hound = on;
-        _cqRunning = false;
-        _extraMessage = null;
-        if (_c is not null) End(ContactOutcome.Abandoned, nowUtc, resume: false);
-    }
-
     /// <summary>Records operator input (key or click) for the watchdog.</summary>
     public void OperatorActivity(DateTime nowUtc)
     {
@@ -134,21 +125,23 @@ public sealed class ContactEngine
     /// <summary>
     /// Flow A: call a station (answering its CQ, or replying to its report if it called me first). When
     /// <paramref name="busyWith"/> names another station it is working right now, nothing is sent: the contact ends at
-    /// once as <see cref="ContactOutcome.AnsweredOther"/> so the operator sees why. In Hound mode the station is a Fox,
-    /// which is always working someone: it is called as a Hound and <paramref name="busyWith"/> is ignored.
+    /// once as <see cref="ContactOutcome.AnsweredOther"/> so the operator sees why. With <paramref name="fox"/> the
+    /// station runs Fox/Hound: it is called as a Hound (<see cref="ContactFlow.Hound"/>), and since a Fox is always working
+    /// someone, <paramref name="busyWith"/> is ignored.
     /// </summary>
-    public void CallStation(string call, string? grid, int snr, SlotParity dxParity, int dxOffsetHz, DateTime nowUtc, string? busyWith = null)
+    public void CallStation(string call, string? grid, int snr, SlotParity dxParity, int dxOffsetHz, DateTime nowUtc, string? busyWith = null,
+                            bool fox = false)
     {
         OperatorActivity(nowUtc);
         call = Callsign.Normalize(call);
         _finished = null;
         _extraMessage = null;
-        var flow = _hound ? ContactFlow.Hound : ContactFlow.AnswerCq;
+        var flow = fox ? ContactFlow.Hound : ContactFlow.AnswerCq;
         _c = new Contact(flow, call, Grid.Grid4(grid), SlotMath.Opposite(dxParity), Report.Clamp(snr), dxOffsetHz);
         _c.Steps.AddRange(StepsFor(_c));
         RemoveWaiting(call);
         if (_stopped is { } s && Callsign.EqualsCall(s.Contact.DxCall, call)) ForgetStopped();
-        if (busyWith is not null && !_hound)
+        if (busyWith is not null && !fox)
         {
             _c.OtherCall = Callsign.Normalize(busyWith);
             _c.BusyAtStart = true;
@@ -156,11 +149,10 @@ public sealed class ContactEngine
         }
     }
 
-    /// <summary>Starts calling CQ in slots of the given parity. Does nothing in Hound mode.</summary>
+    /// <summary>Starts calling CQ in slots of the given parity.</summary>
     public void CallCq(SlotParity parity, DateTime nowUtc)
     {
         OperatorActivity(nowUtc);
-        if (_hound) return;
         _cqRunning = true;
         _cqParity = parity;
     }
@@ -559,7 +551,7 @@ public sealed class ContactEngine
     {
         var parity = SlotMath.Opposite(w.Parity);
         _extraMessage = null;
-        if (_hound && w.Kind == MessageKind.Report)
+        if (w.Kind == MessageKind.Report && IsFox?.Invoke(w.Call) == true)
         {
             // A Fox's report with no Hound contact running (I stopped calling it): my R-report on its frequency.
             var c = new Contact(ContactFlow.Hound, w.Call, w.Grid, parity, Report.Clamp(w.Snr), w.OffsetHz)
