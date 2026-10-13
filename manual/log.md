@@ -38,6 +38,12 @@ and callsign, your power, the name, state and country from QRZ lookups when avai
 other FT8 loggers use (`FT8 Sent: -01 Rcvd: -13`). Power comes from the radio when
 it can report its power setting; otherwise from **Settings › Station › Power (watts)**.
 
+When the station was spotted on pota.app at a park on the band you worked it on, the contact also gets the ADIF
+fields `SIG` = `POTA` and `SIG_INFO` = the park reference (such as `US-1234`). These go to QRZ, into ADIF exports and
+to other programs over UDP. A station calling CQ POTA that nobody has spotted is logged without a park, since Costas
+does not know which one it is. Parks already in your log (from `SIG`/`SIG_INFO`, or `POTA_REF` in imported files)
+are what decide *New park* or *Park* on the Operate screen, and imported park fields are kept on export.
+
 ## QRZ logbook
 
 With a QRZ logbook API key (set in [setup](setup.md#6-qrz-and-psk-reporter) or

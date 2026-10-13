@@ -237,6 +237,13 @@
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Parks on the Air" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Show which park a station is activating (POTA spots)" IsChecked="{Binding PotaSpots}" />
+                <TextBlock Classes="help" Text="Reads the public spot list at pota.app every two minutes and shows New park or Park with the reference under Why. It does not change the order of the list. A park you work is written to the log." TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Keep CQ callers listed" />
               <StackPanel Grid.Column="1">
                 <ComboBox ItemsSource="{Binding KeepCqCallersChoices}" SelectedItem="{Binding KeepCqCallers}" MinWidth="200"

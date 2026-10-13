@@ -66,6 +66,11 @@ line*.
 - **Keep CQ callers listed**: 2 minutes. How long a station calling CQ stays in Next in line after it was last heard.
   Choices run from *Only while heard every slot* (the list drops a station the first slot it is missed) to 15
   minutes. A station heard working someone else leaves the list straight away whatever this says.
+- **Parks on the Air: Show which park a station is activating (POTA spots)**: on. Costas reads the public spot list
+  at pota.app every two minutes while it runs and shows *New park* or *Park* with the reference under **Why**
+  ([Operate](operate.md#next-in-line)). It does not change the order of the list. When you log a contact with a
+  spotted activator, the park goes into the log (see [Log](log.md#what-costas-logs)). If pota.app cannot be reached,
+  the **POTA** indicator says so and Costas tries again less often; nothing else is affected. Off makes no requests.
 
 ## QRZ
 

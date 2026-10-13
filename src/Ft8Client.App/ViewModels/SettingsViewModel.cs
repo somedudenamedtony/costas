@@ -74,6 +74,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
         QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
         FeedEnabled = s.PskReporter.FeedEnabled;
+        PotaSpots = s.Pota.SpotsEnabled;
         CompareNeighbours = s.PskReporter.CompareNeighbours;
         BandActivity = s.PskReporter.BandActivity;
         UploadSpots = s.PskReporter.UploadSpots;
@@ -458,6 +459,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool FeedEnabled { get; set; }
 
+    /// <summary>Read the POTA spot feed to show parks under Why.</summary>
+    [ObservableProperty]
+    public partial bool PotaSpots { get; set; }
+
     /// <summary>Compare my signal with stations near me.</summary>
     [ObservableProperty]
     public partial bool CompareNeighbours { get; set; }
@@ -762,6 +767,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Qrz.UploadOnComplete = UploadOnComplete;
             s.Qrz.SyncMinutes = Int(SyncMinutes, 5, 1440, 15);
             s.PskReporter.FeedEnabled = FeedEnabled;
+            s.Pota.SpotsEnabled = PotaSpots;
             s.PskReporter.CompareNeighbours = CompareNeighbours;
             s.PskReporter.BandActivity = BandActivity;
             s.PskReporter.UploadSpots = UploadSpots;

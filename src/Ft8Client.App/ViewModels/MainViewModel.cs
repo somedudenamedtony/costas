@@ -46,8 +46,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             QrzName = host.Session.NameOf,
             QrzLookup = host.Session.LookupOf,
             MostWanted = host.MostWanted.Current,
+            Parks = host.Pota.Current,
         };
         host.MostWanted.Changed += list => Dispatch(() => Operate.MostWanted = list);
+        host.Pota.Changed += parks => Dispatch(() => Operate.Parks = parks);
         LoadMapChoices(host.Settings.Current.Map);
         Operate.Map.ChoicesChanged += SaveMapChoices;
         Raw = new RawDecodesViewModel(c => Call(c));
@@ -308,6 +310,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Indicators.Add(Indicator("Audio", s, ServiceNames.Audio));
         Indicators.Add(Indicator("QRZ", s, ServiceNames.Qrz));
         Indicators.Add(Indicator("PSK Reporter", s, ServiceNames.Psk));
+        Indicators.Add(Indicator("POTA", s, ServiceNames.Pota));
         var offset = s.ClockOffsetSeconds;
         ClockKind = offset is { } o && Math.Abs(o) > _host.Settings.Current.Operating.ClockBlockSeconds ? TextKind.Critical
             : offset is { } o2 && Math.Abs(o2) > ClockEstimate.WarnSeconds ? TextKind.Caution : TextKind.Normal;

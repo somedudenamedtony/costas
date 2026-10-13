@@ -64,8 +64,14 @@ public sealed class StationDetailsViewModel
     /// <summary>The rarity line is shown.</summary>
     public bool HasRarity => Rarity.Length > 0;
 
+    /// <summary>"New park US-1234 · Example Lake State Park, US-WI" (POTA), blank when not activating.</summary>
+    public string Park { get; private init; } = string.Empty;
+
+    /// <summary>The park line is shown.</summary>
+    public bool HasPark => Park.Length > 0;
+
     /// <summary>The confirmation and awards group has at least one known fact.</summary>
-    public bool HasConfirmationDetails => HasQsl || HasRarity;
+    public bool HasConfirmationDetails => HasQsl || HasRarity || HasPark;
 
     /// <summary>"No QRZ details" hint when nothing was looked up.</summary>
     public string LookupNote { get; private init; } = string.Empty;
@@ -129,7 +135,8 @@ public sealed class StationDetailsViewModel
 
     /// <summary>Builds the details from whatever is known: the heard station, a QRZ lookup, or both.</summary>
     public static StationDetailsViewModel From(string call, Station? s, CallsignCacheEntry? q, LogIndex? log, DistanceUnit units, DateTime nowUtc,
-                                               string? name = null, Pileup? pileup = null, int txOffsetHz = 0, Mode mode = Mode.Ft8, int? mostWantedRank = null)
+                                               string? name = null, Pileup? pileup = null, int txOffsetHz = 0, Mode mode = Mode.Ft8, int? mostWantedRank = null,
+                                               Core.Pota.ParkInfo? park = null)
     {
         var offset = q is null ? null : StationClock.Offset(q.GmtOffset, q.ObservesDst, s?.EntityKey, s?.Continent, nowUtc);
         return new StationDetailsViewModel
@@ -144,6 +151,7 @@ public sealed class StationDetailsViewModel
             LicenseClass = LicenseText(q?.LicenseClass),
             Qsl = QslText(q),
             Rarity = mostWantedRank is { } mw ? Core.Geo.Rarity.Describe(mw) : string.Empty,
+            Park = Core.Pota.PotaText.Details(park),
             Zones = Join(" · ", q?.CqZone is { } cq ? $"CQ {cq}" : null, q?.ItuZone is { } itu ? $"ITU {itu}" : null),
             LookupNote = q is null && name is null ? "No QRZ details yet. They appear here when QRZ lookups are set up." : string.Empty,
             QrzUrl = "https://www.qrz.com/db/" + Uri.EscapeDataString(call),

@@ -11,6 +11,7 @@ using Ft8Client.App.Services;
 using Ft8Client.Core;
 using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Logbook;
+using Ft8Client.Data.Adif;
 using Ft8Client.Data.Database;
 using Ft8Client.Data.Log;
 
@@ -24,11 +25,11 @@ public class DatabaseSessionLogTests
     private static readonly LogContext Context = new("20m", Mode.Ft8, 14_075_500, "W7LIT", "DN40", 25, new NeedResult(NeedTag.NewCall, 1),
         null, null, null, null, null);
 
-    private static QsoRecord Write(Func<int?>? radioPower)
+    private static QsoRecord Write(Func<int?>? radioPower, Func<string, string, string?>? parkFor = null)
     {
         var db = new SqliteDatabase(Path.Combine(Directory.CreateTempSubdirectory("ft8log").FullName, "log.db"));
         var qsos = new QsoRepository(db);
-        new DatabaseSessionLog(qsos, new UploadQueueRepository(db), "home", () => false, radioPower).Write(Entry, Context).Should().BeTrue();
+        new DatabaseSessionLog(qsos, new UploadQueueRepository(db), "home", () => false, radioPower, parkFor).Write(Entry, Context).Should().BeTrue();
         return qsos.List().Single();
     }
 
@@ -49,5 +50,24 @@ public class DatabaseSessionLogTests
     {
         Write(() => null).TxPwr.Should().Be("25");
         Write(null).TxPwr.Should().Be("25");
+    }
+
+    [Fact]
+    public void Write_SpottedPark_AdifHasSigAndSigInfo()
+    {
+        var q = Write(null, (call, band) => call == "K1ABC" && band == "20m" ? "US-1234" : null);
+
+        var r = AdifMapper.ToAdif(q);
+        r["sig"].Should().Be("POTA");
+        r["sig_info"].Should().Be("US-1234");
+    }
+
+    [Fact]
+    public void Write_NoPark_NoSigFields()
+    {
+        var q = Write(null, (_, _) => null);
+
+        q.RawAdif.Should().BeNull();
+        AdifMapper.ToAdif(q)["sig"].Should().BeNull();
     }
 }
