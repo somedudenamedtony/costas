@@ -169,7 +169,7 @@ public partial class MainWindow : Window
                 vm.LogNow();
                 e.Handled = true;
                 break;
-            case Key.D1 or Key.D2 or Key.D3 or Key.D4 when ctrl:
+            case Key.D1 or Key.D2 or Key.D3 or Key.D4 or Key.D5 when ctrl:
                 vm.Tab = e.Key - Key.D1;
                 e.Handled = true;
                 break;

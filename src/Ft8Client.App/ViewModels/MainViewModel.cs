@@ -57,6 +57,14 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         };
         LogView = new LogViewModel(host.Qsos, host.Countries, () => (host.Settings.Current.Profile.Id, host.Settings.Current.Profile.Callsign),
             host.Qrz.SyncNowAsync, () => host.Qrz.LastSyncUtc, host.RebuildLogIndex);
+        var heard = new HeardHistoryService(host.Paths.Journal, host.Countries, host.Clock);
+        Awards = new AwardsViewModel(() => host.Session.LogIndex, host.Countries, heard, () => host.Clock.UtcNow, a => Dispatch(a));
+        StationDetailsViewModel.HeardHistory = (call, key) =>
+        {
+            _ = heard.RefreshIfOlderThan(HeardHistoryService.MaxAge);
+            return heard.Describe(key ?? host.Countries.Lookup(call)?.Entity.Key, withName: true);
+        };
+        _ = heard.Refresh();
         Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
             () => Shutdown());
         Mini = new MiniViewModel(Operate, this, () => HaltCommand.Execute(null));
@@ -138,6 +146,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>Log view.</summary>
     public LogViewModel LogView { get; }
 
+    /// <summary>Awards view.</summary>
+    public AwardsViewModel Awards { get; }
+
     /// <summary>The host (for dialogs).</summary>
     public AppHost Host => _host;
 
@@ -170,7 +181,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial string Frequency { get; set; } = string.Empty;
 
-    /// <summary>Selected view: 0 Operate, 1 Raw decodes, 2 Reach, 3 Log.</summary>
+    /// <summary>Selected view: 0 Operate, 1 Raw decodes, 2 Reach, 3 Log, 4 Awards.</summary>
     [ObservableProperty]
     public partial int Tab { get; set; }
 
@@ -372,6 +383,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             Reach.Refresh();
         }
         if (value == 3) LogView.Refresh();
+        if (value == 4) Awards.Refresh();
     }
 
     // ------------------------------------------------------------ commands

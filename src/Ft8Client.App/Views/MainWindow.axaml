@@ -70,6 +70,8 @@
                 Content="Reach" Command="{Binding ShowTabCommand}" CommandParameter="2" ToolTip.Tip="Who is hearing your signal, from PSK Reporter" />
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}"
                 Content="Log" Command="{Binding ShowTabCommand}" CommandParameter="3" ToolTip.Tip="Your contacts: search, edit, import and export" />
+        <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}"
+                Content="Awards" Command="{Binding ShowTabCommand}" CommandParameter="4" ToolTip.Tip="DXCC, WAS, WAZ and VUCC progress, and when you hear the countries you still need" />
         <TextBlock Text="{Binding ClockText}" FontSize="16" FontWeight="SemiBold" Classes="num" Margin="12,0,4,0" VerticalAlignment="Center"
                    Foreground="{Binding ClockKind, Converter={x:Static v:Converters.KindBrush}}" ToolTip.Tip="{Binding ClockTip}"
                    AutomationProperties.Name="UTC clock" />
@@ -132,6 +134,7 @@
       <v:RawDecodesView DataContext="{Binding Raw}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}" />
       <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
       <v:LogView DataContext="{Binding LogView}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}" />
+      <v:AwardsView DataContext="{Binding Awards}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}" />
     </Panel>
 
     <!-- Bottom bar -->

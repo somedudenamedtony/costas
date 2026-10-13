@@ -10,7 +10,7 @@
     <TextBlock Grid.Row="3" Text="Ctrl+Q" FontWeight="SemiBold" /><TextBlock Grid.Row="3" Grid.Column="1" Text="Call CQ / stop CQ" Margin="0,0,0,8" />
     <TextBlock Grid.Row="4" Text="Ctrl+R" FontWeight="SemiBold" /><TextBlock Grid.Row="4" Grid.Column="1" Text="Resend" Margin="0,0,0,8" />
     <TextBlock Grid.Row="5" Text="Ctrl+L" FontWeight="SemiBold" /><TextBlock Grid.Row="5" Grid.Column="1" Text="Log now" Margin="0,0,0,8" />
-    <TextBlock Grid.Row="6" Text="Ctrl+1 … 4" FontWeight="SemiBold" /><TextBlock Grid.Row="6" Grid.Column="1" Text="Operate, Raw decodes, Reach, Log" Margin="0,0,0,8" />
+    <TextBlock Grid.Row="6" Text="Ctrl+1 … 5" FontWeight="SemiBold" /><TextBlock Grid.Row="6" Grid.Column="1" Text="Operate, Raw decodes, Reach, Log, Awards" Margin="0,0,0,8" />
     <TextBlock Grid.Row="7" Text="Ctrl+M" FontWeight="SemiBold" /><TextBlock Grid.Row="7" Grid.Column="1" Text="Mini mode: a small strip that stays on top" Margin="0,0,0,8" />
     <TextBlock Grid.Row="8" Text="F1" FontWeight="SemiBold" /><TextBlock Grid.Row="8" Grid.Column="1" Text="This list" />
   </Grid>
