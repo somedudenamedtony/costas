@@ -283,3 +283,15 @@ Club Log publishes a most-wanted list of DXCC entities, ranked by how many of it
 
 The meter is shown only on stations whose need tag is New country, and in the station details. It does not change the ranking. Without the list (never downloaded, Club Log unreachable) nothing is shown.
 
+## 16. Hunt list (alerts)
+
+Owner request 2026-10-12, via the review ideas. The operator lists targets (`HuntTarget`, Core): a country (entity key), a call, a US state, a grid (four characters) or any new country, each on one band or any band. `HuntWatcher` checks candidates and returns alerts. **An alert only notifies: it never changes band, starts a contact or transmits.**
+
+- Candidates come from my own decodes (every kind) and, when the operator allows it, from PSK Reporter on any band (countries and calls only; topics `pskr/filter/v2/+/+/<CALL>/#` and `pskr/filter/v2/+/+/+/+/+/+/<dxcc>/<my dxcc>/#`). A report counts when its receiver is within `nearbyKm` (default 1,000 km) of my grid and is at most 15 minutes old, and only for FT8 and FT4. Above 1,200 hunt reports a minute the client stops following hunt targets (VERIFY V20).
+- A target is done when the log has it on its band (any band for an any-band target); with "count only confirmed" on, a country stays wanted until confirmed, and so do a state or grid on an any-band target. Any new country matches an entity not yet worked on any band.
+- Each target alerts once per band, then stays quiet on that band for 30 minutes.
+- Alerts show in a bar under the top bar (with Go to band, which only changes band and mode), the band menu ("Hunting: …"), mini mode and the phone page. A chime on the default speakers and a taskbar flash are optional (on).
+
+## 17. LoTW confirmations in ranking
+
+`LogIndex.Build` takes a `ConfirmationSource`: `Lotw` (default) counts only `lotw_confirmed`; `Any` also counts QRZ and card confirmations. When "count only confirmed" is on, stations that uploaded to LoTW in the last year (`LotwUsers`) sort ahead of others within the same tier, after calling me and heard in the last slot. Owner to confirm both defaults.

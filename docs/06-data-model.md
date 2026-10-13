@@ -46,6 +46,8 @@ CREATE TABLE qso (
   tx_pwr           TEXT,
   comment          TEXT,
   confirmed        INTEGER NOT NULL DEFAULT 0, -- 1 if any confirmation field says so
+  lotw_confirmed   INTEGER NOT NULL DEFAULT 0, -- 1 if LoTW confirmed it (migration 003)
+  lotw_upload_state TEXT   NOT NULL DEFAULT 'none', -- none | uploaded (signed through TQSL)
   need_tier        INTEGER,                   -- tier at the time of the contact (local contacts only)
   source           TEXT    NOT NULL,          -- 'local', 'qrz', 'adif'
   qrz_logid        INTEGER UNIQUE,
@@ -203,8 +205,12 @@ Plain text, one line per event, monthly files. Compatible in spirit with WSJT-X 
   "ranking": {
     "tierOrder": ["country", "band", "grid", "call"],
     "preferHearsMe": true, "onlyCallingCq": true, "hideWorked": true, "skipLongShots": false,
-    "confirmedOnly": false
+    "confirmedOnly": false, "confirmedBy": "lotw"
   },
+  "lotw": { "enabled": false, "username": "", "downloadHours": 12, "tqslPath": null, "stationLocation": "",
+            "uploadOnComplete": false, "userList": true },
+  "hunt": { "targets": [{ "kind": "country", "value": "KL", "band": "40m" }], "watchAllBands": true,
+            "nearbyKm": 1000, "sound": true },
   "qrz": { "logbookEnabled": true, "lookupEnabled": true, "syncMinutes": 15, "uploadOnComplete": true },
   "pskReporter": { "feedEnabled": true, "uploadSpots": false },
   "udp": { "enabled": true, "address": "127.0.0.1", "port": 2237 },
