@@ -51,7 +51,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         LoadMapChoices(host.Settings.Current.Map);
         Operate.Map.ChoicesChanged += SaveMapChoices;
         Raw = new RawDecodesViewModel(c => Call(c));
-        Reach = new ReachViewModel(host.Spots, host.Countries, () => host.Session.LogIndex, () => host.Clock.UtcNow);
+        Reach = new ReachViewModel(host.Spots, host.Countries, () => host.Session.LogIndex, () => host.Clock.UtcNow)
+        {
+            BandActivity = Bands,
+        };
         LogView = new LogViewModel(host.Qsos, host.Countries, () => (host.Settings.Current.Profile.Id, host.Settings.Current.Profile.Callsign),
             host.Qrz.SyncNowAsync, () => host.Qrz.LastSyncUtc, host.RebuildLogIndex);
         Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
@@ -598,6 +601,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             if (reason.Length > 0) b.ApplyNotFollowed(reason, tip);
             else b.Apply(openings.GetValueOrDefault(b.Band), max, live, units);
         }
+        Reach.BandActivityStatus = !on ? "Turn on live reports and band activity in Settings, PSK Reporter."
+            : Bands.Any(b => b.HasActivity) ? string.Empty : "Waiting for reports of nearby stations.";
     }
 
     private void RefreshBands(Mode mode)

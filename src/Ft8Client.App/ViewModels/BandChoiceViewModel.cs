@@ -15,7 +15,7 @@ using Ft8Client.Core.Neighbours;
 namespace Ft8Client.App.ViewModels;
 
 /// <summary>
-/// One band in the band menu: its name and, when PSK Reporter shows stations near me on it, how busy it is, where they
+/// One band in Reach’s activity list: its name and, when PSK Reporter shows stations near me on it, how busy it is, where they
 /// are heard and which of those countries I need there. The rows persist; <see cref="Apply"/> updates them in place.
 /// </summary>
 public sealed partial class BandChoiceViewModel : ObservableObject
