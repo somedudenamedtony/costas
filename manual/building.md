@@ -37,6 +37,14 @@ Decode one recording through `jt9`:
 dotnet run --project tools/Ft8Client.DecodeCli -- samples/ft8/210703_133430.wav
 ```
 
+`--keep-running` decodes every file through one `jt9` that stays running, as the app does, so a portable call heard
+in one file resolves in the next. `--live` also replays each FT8 file against the real slot clock and prints when the
+early pass and the full decode finished, which is the way to measure decode speed on your PC:
+
+```
+dotnet run --project tools/Ft8Client.DecodeCli -- --live samples/ft8/210703_133430.wav samples/ft8/181201_180245.wav
+```
+
 ## Installer
 
 `scripts/build-installer.ps1` builds `artifacts/Costas-Setup-<version>.exe` with `jt9` and Hamlib bundled. CI builds

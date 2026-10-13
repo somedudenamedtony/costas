@@ -29,7 +29,7 @@ Options confirmed from the source option table:
 | `-M`, `-N THREADS` | Multithreaded FT8 decoder and its thread count (0 to 12) |
 | `-m THREADS` | FFT threads |
 | `-q` | Quiet: no `<DecodeFinished>` line |
-| `-s KEY` | Shared-memory mode (not used in v1) |
+| `-s KEY` | Shared-memory mode: stays running and takes its input from a `QSharedMemory` segment (see below) |
 
 Positional arguments are WAV files: `jt9 [OPTIONS] file1 [file2 ...]`.
 
@@ -48,9 +48,24 @@ Positional arguments are WAV files: `jt9 [OPTIONS] file1 [file2 ...]`.
 ### Details to settle in Milestone 0
 
 - **VERIFY** the correct `-p` value and sample count for FT4.
-- **VERIFY** whether hashed callsigns (`<...>`) resolve across separate `jt9` runs. If the hash table lives only in process memory, nonstandard calls heard in an earlier slot will show as `<...>` in file mode. If so, keep our own table of full calls seen and substitute when the 10, 12 or 22-bit hash matches, or accept the limitation until streaming mode.
+- Hashed callsigns (`<...>`) do not resolve across separate `jt9` runs (V3); shared-memory mode keeps them.
 - **VERIFY** which files `jt9.exe` needs beside it (FFTW, Fortran runtime DLLs). During development, run it in place from an installed WSJT-X (`C:\WSJT\wsjtx\bin\jt9.exe`, path configurable). For release, bundle that set under `third_party/wsjtx/` with the GPLv3 licence text and a link to the exact source.
 - Measure decode time on the busiest sample. If it exceeds 1.2 s, try `-M -N 4`.
+
+### Running it (shared-memory mode)
+
+Confirmed from WSJT-X 2.7.0 and 3.0.2 (`main.cpp`, `widgets/mainwindow.cpp`, `lib/jt9a.f90`, `lib/shmem.cpp`, `commons.h`) and run against both `jt9` builds:
+
+```
+jt9 -s <key> -w 1 -m <FFT threads> -e <bin dir> -a <data dir> -t <temp dir>
+```
+
+- `jt9` attaches to the `QSharedMemory` with that key; the creator (Costas) makes it first. Qt's native name is `qipc_sharedmemory_` + the key's ASCII letters + the SHA-1 of the key in lower-case hex. On Windows that is the name of a page-file mapping (`OpenFileMapping`); on Linux it is a file in Qt's temp folder (`TMPDIR`), and the segment is System V, keyed by `ftok(file, 'Q')`. If it cannot attach, `jt9` aborts.
+- The segment holds `dec_data`: `int ipc[3]`, spectra (`ss`, `savg`, `sred`), the audio `short d2[1800*12000]` at byte offset 5,075,032, then `params` at 48,275,032 (236 bytes in 2.7, 344 in 3.0, which appends the multithreaded decoder's fields). Size 48,275,376 serves both. WSJT-X 3.2 and later change the layout entirely (a new IPC header), so only 2.7.x and 3.0.x are fed this way; the version is read from `wsjtx_app_version -v` beside `jt9`.
+- Handshake: write `params` and the audio, then set `ipc[1]` = 1. `jt9` clears it, decodes, prints its decodes and `<DecodeFinished>`, then waits for `ipc[2]` = 1. `ipc[1]` = 999 makes it exit. `jt9` takes Qt's lock on the segment around these checks; Costas does not need it, because it writes `ipc[1]` last and never while a request is running.
+- FT8 is decoded in three requests, as WSJT-X does: `nzhsym` 41 with the first 41 × 3456 samples, 47 with 47 × 3456, and 50 with all of them, `ndiskdat` false. The 50 pass relies on the 41 and 47 passes having filled its buffers; with `ndiskdat` true, `jt9` runs all three itself on one request (as for a file), which is what Costas sends when there was no early pass. The early pass stops early when the PC clock says the slot is more than 13.4 s in.
+- Hashed calls resolve across requests (`<PJ4/K1ABC> W7LIT DN40` after `CQ PJ4/K1ABC`), and the DX call in `params` is added to the table, so the other station's hashed call resolves even if its full call was never heard.
+- SuperFox: in Hound mode (`nexp_decode` 7) with `b_superfox` set, the Fox's (even) slots are decoded only for SuperFox at `nfqso` 750 Hz, `ntol` 100. WSJT-X 3.0.2 prints the Fox's messages as normal decode lines and a `$VERIFY$ <fox call> <code>` line; the 2.7.0-rc3 Ubuntu build printed nothing for the same `sfoxsim` file.
 
 ### Licensing
 
