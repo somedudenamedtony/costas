@@ -15,7 +15,8 @@ namespace Ft8Client.Rig;
 /// <param name="Baud">Baud rate, or null for the model default.</param>
 /// <param name="Ptt"><c>cat</c>, <c>rts</c>, <c>dtr</c> or <c>vox</c>.</param>
 /// <param name="PttPort">Separate serial port for RTS or DTR PTT.</param>
-public sealed record RigctldOptions(string ExecutablePath, int Model, string? SerialPort, int? Baud, string Ptt = "cat", string? PttPort = null)
+/// <param name="Config">Extra Hamlib settings for <c>-C</c> (<c>civaddr=0x94,retry=3</c>), or null.</param>
+public sealed record RigctldOptions(string ExecutablePath, int Model, string? SerialPort, int? Baud, string Ptt = "cat", string? PttPort = null, string? Config = null)
 {
     /// <summary>The command-line arguments, binding to 127.0.0.1 only.</summary>
     public IReadOnlyList<string> Arguments(int tcpPort)
@@ -30,6 +31,7 @@ public sealed record RigctldOptions(string ExecutablePath, int Model, string? Se
             case "dtr": a.AddRange(["-P", "DTR"]); break;
         }
         if (!string.IsNullOrEmpty(PttPort) && Ptt is "rts" or "dtr") a.AddRange(["-p", PttPort]);
+        if (!string.IsNullOrWhiteSpace(Config)) a.AddRange(["-C", Config.Trim()]);
         a.AddRange(["-T", "127.0.0.1", "-t", tcpPort.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
         return a;
     }

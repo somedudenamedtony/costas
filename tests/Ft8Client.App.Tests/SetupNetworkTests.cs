@@ -28,4 +28,18 @@ public class SetupNetworkTests
     {
         SetupViewModel.IsNetworkAddress(address).Should().Be(expected);
     }
+
+    [Theory]
+    [InlineData("", true)]
+    [InlineData(null, true)]
+    [InlineData("civaddr=0x94", true)]
+    [InlineData(" civaddr=0x94 , retry=3 ", true)]
+    [InlineData("civaddr", false)]
+    [InlineData("civaddr=0x94,", false)]
+    [InlineData("civaddr=0x94 retry=3", false)]
+    [InlineData("-m 2", false)]
+    public void HamlibConfig_NameValuePairs_Validates(string? config, bool expected)
+    {
+        SetupViewModel.IsHamlibConfig(config).Should().Be(expected);
+    }
 }

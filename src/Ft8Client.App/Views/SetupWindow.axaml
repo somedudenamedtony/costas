@@ -32,7 +32,7 @@
           <CheckBox Content="My radio has no CAT control: use audio and VOX only" IsChecked="{Binding AudioOnly}" />
           <TextBlock Text="{Binding ModelListProblem}" IsVisible="{Binding ModelListProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                      TextWrapping="Wrap" Foreground="{DynamicResource AccentTextBrush}" />
-          <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10" IsEnabled="{Binding !AudioOnly}">
+          <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10" IsEnabled="{Binding !AudioOnly}">
             <TextBlock Grid.Row="0" Text="Manufacturer" VerticalAlignment="Center" />
             <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Manufacturers}" SelectedItem="{Binding Manufacturer}" Width="300"
                       PlaceholderText="Choose…" MaxDropDownHeight="360" />
@@ -49,6 +49,12 @@
             <ComboBox Grid.Row="3" Grid.Column="1" IsVisible="{Binding !IsNetwork}" ItemsSource="{Binding BaudChoices}" SelectedItem="{Binding BaudChoice}" Width="300" />
             <TextBlock Grid.Row="4" Text="Transmit (PTT)" VerticalAlignment="Center" />
             <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding PttChoices}" SelectedItem="{Binding PttChoice}" Width="300" />
+            <TextBlock Grid.Row="5" Text="PTT port" VerticalAlignment="Center" IsVisible="{Binding UsesPttLine}" />
+            <ComboBox Grid.Row="5" Grid.Column="1" ItemsSource="{Binding PttPortChoices}" SelectedItem="{Binding PttPortChoice}" Width="300"
+                      IsVisible="{Binding UsesPttLine}" ToolTip.Tip="The serial port whose RTS or DTR line keys the radio, if it is not the CAT port." />
+            <TextBlock Grid.Row="6" Text="Hamlib settings" VerticalAlignment="Center" />
+            <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding HamlibConfig}" Width="300" HorizontalAlignment="Left" PlaceholderText="Optional, for example civaddr=0x94"
+                     ToolTip.Tip="Extra Hamlib settings as name=value pairs separated by commas. For an Icom radio whose CI-V address is not the default, enter civaddr= and the address set in the radio, for example civaddr=0x94." />
           </Grid>
           <StackPanel Spacing="8" IsEnabled="{Binding !AudioOnly}" Margin="130,0,0,0">
             <StackPanel Orientation="Horizontal" Spacing="8">
