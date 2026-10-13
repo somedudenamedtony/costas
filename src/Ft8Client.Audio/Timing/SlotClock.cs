@@ -92,7 +92,7 @@ public sealed class SlotClock
         SlotMark.PttOn => TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode) - PttLeadMs),
         SlotMark.TxStart => TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode)),
         SlotMark.EarlyDecode when mode == Mode.Ft8 => TimeSpan.FromSeconds(11.85),
-        _ => mode == Mode.Ft8 ? TimeSpan.FromSeconds(13.6) : TimeSpan.FromSeconds(6.1),
+        _ => ModeInfo.Slotted(mode) == Mode.Ft8 ? TimeSpan.FromSeconds(13.6) : TimeSpan.FromSeconds(6.1),
     };
 
     /// <summary>Checks the time and raises any marks that are due, in order.</summary>

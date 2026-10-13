@@ -105,7 +105,7 @@ Accept:
 
 ## M9 · Keyboard modes groundwork (no visible change)
 
-Spec: `09-keyboard-modes.md`, owner decision D18. Steps 1 to 3 of its section 12: the mode definitions, `IContactEngine`, and heard events from text.
+Spec: `09-keyboard-modes.md`, owner decision D18. Step 1 of its section 12: the mode definitions. Every FT-only helper (slot timing, `jt9` arguments, the FT8/FT4 encoder, the slot clock) refuses the keyboard modes instead of treating them as FT4, and `ModeInfo.TryParse` accepts only the modes that can be operated, so nothing can select PSK or RTTY before M10. Steps 2 and 3 (`IContactEngine` and heard events from text) moved to M12 and M10, where their second implementations arrive.
 
 Accept:
 - Automated: every existing test passes unchanged. FT8 and FT4 behaviour, timing and messages are identical.
@@ -115,7 +115,7 @@ Accept:
 
 Build:
 - `Ft8Client.Modems`: channel finder, PSK demodulator with AFC and squelch, Varicode.
-- `KeyboardSession` (receive only), stations from text, the mode in the Mode menu with its dial frequencies and radio mode.
+- Heard events from text (section 12 step 3), `KeyboardSession` (receive only), stations from text, `ModeInfo.Operable` gains PSK31 and PSK63, the mode in the Mode menu with its dial frequencies and radio mode.
 - Operate: Next in line, waterfall tags and Raw decodes in PSK.
 
 Resolve VERIFY: V22 (dial frequencies) for 20 m and 40 m.
@@ -136,7 +136,7 @@ Accept:
 ## M12 · Keyboard transmit and contacts
 
 Build:
-- PSK and RTTY modulators, type-ahead, macros with fields, and the keyboard contact engine with exchange capture.
+- `IContactEngine` (section 12 step 2), PSK and RTTY modulators, type-ahead, macros with fields, and the keyboard contact engine with exchange capture.
 - The conversation box, logging, the keyboard watchdog, the RTTY power cap and the PSK ALC target.
 
 Accept:

@@ -186,7 +186,7 @@ There is a watchdog for the keyboard modes:
 
 ## 12. Code structure
 
-These steps come in order. Steps 1 to 3 change nothing the operator can see.
+These steps come in order. Step 1 (M9) changes nothing the operator can see. Steps 2 and 3 are made with the code that first needs them (M12 and M10), so neither interface is designed before it has two users.
 
 1. **Mode definitions.**
    - `Mode` gains `Psk31`, `Psk63` and `Rtty`.
