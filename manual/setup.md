@@ -38,7 +38,7 @@ Enter its listening address in **Server (host:port)**, for example `127.0.0.1:45
 on this PC. Keep the launcher running: it owns the radio's COM port and sets the radio model
 and baud rate. Costas connects over TCP, so it does not check or scan COM ports or baud rates.
 
-If flrig controls the radio, choose **FLRig** as the manufacturer (the model fills in by itself), then enter flrig's XML-RPC address in
+If flrig controls the radio, choose **FLRig** as the manufacturer, then enter flrig's XML-RPC address in
 **Flrig server (host:port)**. Costas fills in flrig's default, `127.0.0.1:12345`; change it when flrig
 runs on another PC or listens on another port (flrig's *Config › Setup › Server* page shows both).
 Keep flrig running: it owns the radio's COM port. TRXManager and ACLog work the same way.

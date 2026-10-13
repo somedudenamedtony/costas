@@ -36,8 +36,8 @@
             <TextBlock Grid.Row="0" Text="Manufacturer" VerticalAlignment="Center" />
             <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Manufacturers}" SelectedItem="{Binding Manufacturer}" Width="300"
                       PlaceholderText="Choose…" MaxDropDownHeight="360" />
-            <TextBlock Grid.Row="1" Text="Model" VerticalAlignment="Center" />
-            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Models}" SelectedItem="{Binding Model}" Width="300"
+            <TextBlock Grid.Row="1" Text="Model" VerticalAlignment="Center" IsVisible="{Binding ShowModel}" />
+            <ComboBox Grid.Row="1" Grid.Column="1" IsVisible="{Binding ShowModel}" ItemsSource="{Binding Models}" SelectedItem="{Binding Model}" Width="300"
                       PlaceholderText="Choose…" MaxDropDownHeight="360">
               <ComboBox.ItemTemplate><DataTemplate x:DataType="rig:HamlibModel"><TextBlock Text="{Binding Model}" /></DataTemplate></ComboBox.ItemTemplate>
             </ComboBox>

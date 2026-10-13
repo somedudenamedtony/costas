@@ -191,6 +191,9 @@ public sealed partial class SetupViewModel : ObservableObject
     /// <summary>The selected model uses a TCP server instead of a serial port.</summary>
     public bool IsNetwork => Model?.IsNetwork == true;
 
+    /// <summary>False when the manufacturer has only one model (FLRig and similar): it is picked already, so the row is hidden.</summary>
+    public bool ShowModel => Models.Count != 1;
+
     /// <summary>The program the selected network model connects to: "rigctld", "flrig".</summary>
     public string ServerName => Model?.ServerName ?? "rigctld";
 
@@ -321,6 +324,7 @@ public sealed partial class SetupViewModel : ObservableObject
         Models.Clear();
         foreach (var m in _allModels.Where(m => string.Equals(m.Manufacturer, value, StringComparison.Ordinal))) Models.Add(m);
         Model = PickModel(Models, Model);
+        OnPropertyChanged(nameof(ShowModel));
         Readback = string.Empty;
     }
 
