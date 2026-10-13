@@ -144,6 +144,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Decoder runs started so far (full, quick and early), so tests can wait for each to reach the decoder.</summary>
     internal int DecodesStarted { get; private set; }
 
+    /// <summary>Decoder runs whose result has been applied (or dropped), so tests can wait for each to finish.</summary>
+    internal int DecodesApplied => Volatile.Read(ref _decodesApplied);
+
+    private int _decodesApplied;
+
     /// <summary>The configuration.</summary>
     public SessionConfig Config
     {
@@ -225,6 +230,18 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
 
     private async Task EarlyDecodeAsync(IEarlyDecoder early, SlotAudio audio, DecodeContext ctx)
     {
+        try
+        {
+            await ApplyEarlyDecodeAsync(early, audio, ctx).ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.Increment(ref _decodesApplied);
+        }
+    }
+
+    private async Task ApplyEarlyDecodeAsync(IEarlyDecoder early, SlotAudio audio, DecodeContext ctx)
+    {
         DecodeResult result;
         try
         {
@@ -257,7 +274,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             DecodesStarted++;
-            var full = Task.Run(() => DecodeAsync(audio, CancellationToken.None));
+            var full = Task.Run(() => FullDecodeAsync(audio));
             if (QuickContext() is { } quick)
             {
                 DecodesStarted++;
@@ -295,6 +312,18 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     }
 
     private async Task QuickDecodeAsync(SlotAudio audio, DecodeContext ctx)
+    {
+        try
+        {
+            await ApplyQuickDecodeAsync(audio, ctx).ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.Increment(ref _decodesApplied);
+        }
+    }
+
+    private async Task ApplyQuickDecodeAsync(SlotAudio audio, DecodeContext ctx)
     {
         DecodeResult result;
         try
@@ -339,6 +368,18 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             {
                 Hound = _engine.InHoundContact, // jt9 decodes as a Hound (WSJT-X special operation 7) while I work a Fox
             };
+        }
+    }
+
+    private async Task FullDecodeAsync(SlotAudio audio)
+    {
+        try
+        {
+            await DecodeAsync(audio, CancellationToken.None).ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.Increment(ref _decodesApplied);
         }
     }
 

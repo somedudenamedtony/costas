@@ -107,6 +107,12 @@ public class EarlyDecodeTests
                     await Task.Delay(1);
                 }
                 Decoder.ReleaseDue(Clock.UtcNow);
+                // A released decode is applied on another thread: wait until it has been, so assertions never race it.
+                for (var i = 0; Session.DecodesApplied < Decoder.Released; i++)
+                {
+                    if (i > 2000) throw new InvalidOperationException("A decode was never applied.");
+                    await Task.Delay(1);
+                }
             }
         }
     }
@@ -139,6 +145,13 @@ public class EarlyDecodeTests
         private int _calls;
 
         public int EarlyCalls { get; private set; }
+
+        public int Released
+        {
+            get { lock (_gate) return _released; }
+        }
+
+        private int _released;
 
         public int Calls
         {
@@ -180,6 +193,7 @@ public class EarlyDecodeTests
             {
                 due = _parked.Where(p => p.Due <= now).ToList();
                 _parked.RemoveAll(p => p.Due <= now);
+                _released += due.Count;
             }
             foreach (var p in due)
             {
