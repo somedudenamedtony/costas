@@ -27,7 +27,7 @@ A headless core owns audio, timing, the radio, station state and contact state. 
 | Project | Responsibility | May reference |
 | --- | --- | --- |
 | `Ft8Client.Core` | Messages, callsigns, grids, country file, station tracker, need tiers, ranking, contact engine, FT8/FT4 encoder and waveform maths. Pure logic | nothing |
-| `Ft8Client.Audio` | `IAudioBackend`, WASAPI implementation, resampler, ring buffers, `SlotClock`, `SlotRecorder`, `TxPlayer` | Core |
+| `Ft8Client.Audio` | `IAudioBackend`, WASAPI (Windows) and PortAudio (Linux) implementations, resampler, ring buffers, `SlotClock`, `SlotRecorder`, `TxPlayer` | Core |
 | `Ft8Client.Decoding` | `IDecoder`, `Jt9Decoder` (process host), output parser, WAV writer | Core |
 | `Ft8Client.Rig` | `IRig`, `RigctldRig` (process host and TCP client), `SimulatedRig`, serial port scan | Core |
 | `Ft8Client.Data` | SQLite schema and migrations, repositories, ADIF reader and writer, settings, secret store, `LogIndex` | Core |
@@ -95,7 +95,7 @@ When transmitting in a slot, nothing is recorded or decoded for that slot.
 
 ## Threads
 
-- **Audio threads** (WASAPI callbacks): copy samples to or from a single-producer single-consumer ring buffer. No allocation, locks, logging or exceptions.
+- **Audio threads** (WASAPI callbacks, PortAudio's blocking read and write threads on Linux): copy samples to or from a single-producer single-consumer ring buffer. No allocation, locks, logging or exceptions.
 - **Slot thread**: one dedicated thread drives `SlotClock` with a high-resolution timer and schedules PTT and Tx start. It never waits on I/O.
 - **Worker tasks**: decoding, rig polling (1 s), QRZ, PSK Reporter, database writes. All async, all cancellable.
 - **UI thread**: rendering only. Snapshots are immutable, so no locks are shared with the core.
@@ -145,3 +145,5 @@ Serilog, rolling daily files, 14 days kept. Levels: Information for slot summari
 ## Portability rules
 
 Windows-only code is confined to: `WasapiAudioBackend`, the credential store implementation, the job-object helper and the installer. Everything else must compile and run on macOS and Linux.
+
+Linux (D17) uses `PortAudioBackend` over the distribution's `libportaudio2` (ALSA, which also reaches PulseAudio and PipeWire through their `pulse` and `pipewire` devices). Device ids are `host API:device name`; a stored id whose ALSA card number has changed (`(hw:N,M)`) still finds its device. PortAudio lists devices as they were when it started, so the list is refreshed by restarting PortAudio when no stream is open. `jt9` and `rigctld` come from the distribution's `wsjtx` and `libhamlib-utils` packages, found on the PATH. The Linux build is a receive-only preview: `Transmitter.DisabledReason` refuses every transmission, Tune and tuner start before PTT is touched. CI checks the Linux audio path end to end: a PulseAudio null sink is the loopback, and `PortAudioLoopbackTests` plays rendered FT8 and FT4 through it, captures it back and decodes it with `jt9` (measured 2026-10-13 on a VM: exact text, DT +0.10 s for output and input latency together).

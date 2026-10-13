@@ -44,6 +44,31 @@ upgraded too, and its data is moved to the Costas data folder on first start.
 
 Uninstalling removes the program but keeps your data folder, so a reinstall picks up where you left off.
 
+## Linux (preview) {#linux-preview}
+
+Each release also has a Linux build, `Costas-<version>-linux-x64.tar.gz`. It is a **receive-only preview**: Costas
+decodes, ranks stations, logs, uploads to QRZ and reports to PSK Reporter, but it does not transmit on Linux yet.
+**Call**, **Tune** and the transmit test say *the Linux version is a receive-only preview* and the radio is never
+keyed. Transmit will be turned on once the Linux audio has been checked with a real radio.
+
+1. Install what Costas uses from your distribution. On Debian and Ubuntu:
+
+        sudo apt install wsjtx libhamlib-utils libportaudio2 libsecret-tools
+
+    `wsjtx` provides the `jt9` decoder, `libhamlib-utils` provides `rigctld` for radio control, `libportaudio2` is
+    the audio library, and `libsecret-tools` lets Costas keep your QRZ key in the desktop keyring (without it, the
+    key is asked for again each time Costas starts).
+2. For a USB CAT cable, add yourself to the `dialout` group (`sudo usermod -aG dialout $USER`), then log out and in.
+3. Download the tarball from the [Releases page](https://github.com/somedudenamedtony/costas/releases/latest),
+   unpack it and run `./Costas`. `README.txt` inside says how to add it to your desktop's menu.
+
+In Setup's audio step, pick the radio's USB sound card (often *USB Audio CODEC*). If it is busy because PipeWire or
+PulseAudio holds it, pick **pulse** or **pipewire** and choose the radio's sound card in your desktop's sound
+settings instead.
+
+Updates: the update bar works the same, but **Update** opens the release page; download the new tarball and unpack
+it over the old folder. Your log and settings live in `~/.local/share/Costas/` and are kept.
+
 ## Next
 
 Start Costas. The first time, it opens [Set up Costas](setup.md).

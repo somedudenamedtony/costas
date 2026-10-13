@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Costas
+Comment=FT8 and FT4 for amateur radio
+Exec=Costas
+Icon=costas
+Terminal=false
+Categories=HamRadio;Network;

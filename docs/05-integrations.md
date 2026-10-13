@@ -260,7 +260,7 @@ NAudio, WASAPI shared mode by default. Identify devices by their endpoint ID and
 
 ## 10. Update check
 
-GitHub Releases for `somedudenamedtony/costas` (public). CI publishes every green build of `main` as release `v<version>` with `Costas-Setup-<version>.exe` and `Costas-Setup-<version>.exe.sha256` attached.
+GitHub Releases for `somedudenamedtony/costas` (public). CI publishes every green build of `main` as release `v<version>` with `Costas-Setup-<version>.exe` and `Costas-Setup-<version>.exe.sha256` attached, plus the Linux preview `Costas-<version>-linux-x64.tar.gz` and its `.sha256`. On Linux the update bar's Update opens the release page instead of downloading an installer.
 
 - `GET https://api.github.com/repos/somedudenamedtony/costas/releases/latest` with the app's User-Agent and `Accept: application/vnd.github+json`. Unauthenticated limit is 60 requests an hour per address; the app asks at start and then once a day. 404 (no release yet, or the repository is private) means "no update", not an error.
 - The checksum comes from the asset's `digest` field (`sha256:<hex>`) when GitHub provides it, otherwise from the `.sha256` asset. With neither, the app refuses to install the download.
