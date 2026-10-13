@@ -74,6 +74,9 @@ public sealed record SessionSnapshot
     /// <summary>Reports of my signal on this band, newest first.</summary>
     public IReadOnlyList<ReceptionReport> Reports { get; init; } = [];
 
+    /// <summary>Five-minute distinct receiver counts for this band and mode over the last hour.</summary>
+    public IReadOnlyList<ReceptionBucket> ReceptionHistory { get; init; } = [];
+
     /// <summary>Statuses by service name: radio, audio, decoder, qrz, psk.</summary>
     public IReadOnlyDictionary<string, ServiceStatus> Services { get; init; } = new Dictionary<string, ServiceStatus>();
 

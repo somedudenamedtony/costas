@@ -6,6 +6,8 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using Ft8Client.Core.Ranking;
+
 namespace Ft8Client.App.Remote;
 
 /// <summary>Who hears me: the "Your signal" panel of the Operate view.</summary>
@@ -17,4 +19,8 @@ namespace Ft8Client.App.Remote;
 /// <param name="Neighbours">How nearby stations are doing, or blank.</param>
 /// <param name="Reports">Latest reports, newest first.</param>
 public sealed record RemoteSignal(string Title, string Headline, string Source, string Farthest, string Best, string Neighbours,
-                                  IReadOnlyList<RemoteReport> Reports);
+                                  IReadOnlyList<RemoteReport> Reports)
+{
+    /// <summary>Five-minute distinct receiver counts for the current band and mode.</summary>
+    public IReadOnlyList<ReceptionBucket> History { get; init; } = [];
+}

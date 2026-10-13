@@ -143,7 +143,7 @@ From top to bottom:
   [Maps and who hears you](maps.md#heard-here).
 - **Band activity, last hour**: a bar per minute of decodes per slot (grey) and needed stations per slot (blue),
   with a sentence saying whether the band is busier or quieter than half an hour ago.
-- **Your signal on 20 m**: how many stations hear you, the farthest and the best report.
+- **Your signal on 20 m**: how many stations hear you, the farthest and the best report, plus a graph of distinct receivers in five-minute intervals over the last hour. Each receiver counts once per interval. Times are local and the faded final bar is still incomplete. History stays available when you switch back to a band or mode during this session; recent stored reports refill it at start-up, and changing your station clears the in-memory counts. Reports may arrive late, and transmitting less or losing the feed can lower counts even when the band has not changed.
   **Open reach view** goes to the full view.
 - **Worked tonight**: your latest contacts this session with their QRZ upload state. **Show all in the log** opens
   the Log view.
