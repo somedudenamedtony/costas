@@ -18,6 +18,7 @@ using Ft8Client.Core.Geo;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Time;
 using Ft8Client.Data;
+using Ft8Client.Data.Adif;
 using Ft8Client.Data.Database;
 using Ft8Client.Data.Log;
 using Ft8Client.Data.Reference;
@@ -145,6 +146,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Club Log's most-wanted list for the rarity meter.</summary>
     public MostWantedService MostWanted { get; private set; } = null!;
 
+    /// <summary>POTA spots and worked parks, for the park line under Why.</summary>
+    public PotaService Pota { get; private set; } = null!;
+
     /// <summary>Update checks.</summary>
     public UpdateService Updates { get; private set; } = null!;
 
@@ -256,7 +260,7 @@ public sealed class AppHost : IAsyncDisposable
         Transmitter = new Transmitter(_rig, _output, Clock, Frequencies);
         TxLevel = new TxLevelController(Transmitter, Settings);
         var log = new DatabaseSessionLog(Qsos, Uploads, s.Profile.Id, () => Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
-            () => TxMeters.PowerWatts);
+            () => TxMeters.PowerWatts, (call, band) => Pota?.ParkFor(call, band));
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
         TxMeters = new TxMeterMonitor(Transmitter, () => _rig);
         TxMeters.Measured += r => Session.SetTxMeters(TxLevel.OnMeasured(r));
@@ -288,6 +292,12 @@ public sealed class AppHost : IAsyncDisposable
         MostWanted = new MostWantedService(Paths, () => Settings.Current.Profile.Callsign, Clock);
         _ = MostWanted.StartAsync();
 
+        Pota = new PotaService(() => Settings.Current.Pota.SpotsEnabled, () => Settings.Current.Profile.Callsign, Clock,
+            st => Session.SetService(ServiceNames.Pota, st));
+        Pota.SetWorked(WorkedParksFromLog());
+        log.Stored += Pota.OnLogged;
+        Pota.Start();
+
         Updates = new UpdateService(Settings, Path.Combine(Paths.Temp, "updates"), Paths.Logs);
         Updates.Start();
 
@@ -318,12 +328,21 @@ public sealed class AppHost : IAsyncDisposable
         Settings.Changed += _ =>
         {
             TxLevel.Apply();
+            Pota.Wake();
             Session.Reconfigure(SettingsMapper.ToConfig(Settings.Current));
         };
     }
 
     /// <summary>Rebuilds the log index from the database (after sync, import or edit).</summary>
-    public void RebuildLogIndex() => Session.SetLogIndex(LogIndexBuilder.Build(Qsos, Settings.Current.Profile.Callsign, Countries));
+    public void RebuildLogIndex()
+    {
+        Session.SetLogIndex(LogIndexBuilder.Build(Qsos, Settings.Current.Profile.Callsign, Countries));
+        Pota?.SetWorked(WorkedParksFromLog());
+    }
+
+    // Parks in the log under this station call, like the log index.
+    private Core.Pota.WorkedParks WorkedParksFromLog() =>
+        PotaAdif.Worked(Qsos.List().Where(q => string.Equals(q.StationCallsign, Settings.Current.Profile.Callsign, StringComparison.OrdinalIgnoreCase)));
 
     /// <summary>Changes band and mode: sets the dial through the radio.</summary>
     public async Task SetBandAsync(string band, Mode mode)
@@ -596,6 +615,7 @@ public sealed class AppHost : IAsyncDisposable
         Qrz?.Dispose();
         Udp?.Dispose();
         Updates?.Dispose();
+        Pota?.Dispose();
         Recording?.Dispose();
         if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);
         await _rig.DisposeAsync().ConfigureAwait(false);
