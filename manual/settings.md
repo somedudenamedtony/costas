@@ -8,6 +8,13 @@ Radio, audio devices and the transmit test are not here: they are in **☰ › S
 
 ![Settings: Station](images/settings-station.png)
 
+- **Station profile**: which setup you are operating from. Each profile keeps its own callsign, grid, power, radio,
+  audio devices and QRZ logbook key, so a portable or park setup with a `/P` call or another grid is one choice away.
+  **New profile** adds a copy of the profile shown (same radio and audio) called *Portable*; rename it in **Name**.
+  **Delete** removes the profile shown (the last one cannot be removed). The profile shown when you press **Save** is
+  the one Costas uses from then on; if it uses another radio or sound card, Costas reconnects to it. Set a profile's
+  radio and audio in **Station setup** while it is the active one. Worked-before and log totals count the contacts
+  logged under that profile's callsign.
 - **Callsign** and **Grid square** (4 or 6 characters). Used in every message you send and to work out distances.
 - **Power (watts)**: recorded in the log when the radio cannot report its own power setting. It does not change the
   radio's power.
@@ -61,6 +68,11 @@ line*.
 - **Keep CQ callers listed**: 2 minutes. How long a station calling CQ stays in Next in line after it was last heard.
   Choices run from *Only while heard every slot* (the list drops a station the first slot it is missed) to 15
   minutes. A station heard working someone else leaves the list straight away whatever this says.
+- **Parks on the Air: Show which park a station is activating (POTA spots)**: on. Costas reads the public spot list
+  at pota.app every two minutes while it runs and shows *New park* or *Park* with the reference under **Why**
+  ([Operate](operate.md#next-in-line)). It does not change the order of the list. When you log a contact with a
+  spotted activator, the park goes into the log (see [Log](log.md#what-costas-logs)). If pota.app cannot be reached,
+  the **POTA** indicator says so and Costas tries again less often; nothing else is affected. Off makes no requests.
 
 ## Hunt list
 

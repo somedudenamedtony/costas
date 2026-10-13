@@ -31,4 +31,7 @@ public static class ServiceNames
 
     /// <summary>PSK Reporter.</summary>
     public const string Psk = "psk";
+
+    /// <summary>The POTA spot feed.</summary>
+    public const string Pota = "pota";
 }

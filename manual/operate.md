@@ -11,10 +11,21 @@ should not need Settings while operating.
 | --- | --- |
 | **Band** | The band you are on, filled in at start-up. Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
 | **Mode** | FT8 or FT4. Changes the slot length and dial frequency. Locked while transmitting |
-| Frequency | The dial frequency read from the radio, in MHz |
-| **Operate**, **Raw decodes**, **Reach**, **Log** | The four views. ++ctrl+1++ to ++ctrl+4++ |
+| Frequency | The dial frequency read from the radio, in MHz. Click it to type another frequency or use one you saved ([below](#typing-a-frequency)). Locked while transmitting |
+| **Operate**, **Raw decodes**, **Reach**, **Log**, **Awards** | The five views. ++ctrl+1++ to ++ctrl+5++ |
 | Clock | UTC. Turns amber with a tooltip when your clock is off by more than 0.5 s, red above 2 s |
 | **☰** | Mini mode, Settings, Station setup, Diagnostics, Keyboard shortcuts, About |
+
+### Typing a frequency
+
+DXpeditions often sit off the standard frequency (14.090 instead of 14.074, for example). Click the dial frequency,
+type the new one (`14.090`, `14090` in kHz, or `14.090.000` all work) and press **Tune** or ++enter++. Costas moves the
+radio there, and to that band if it is a different one. The usual transmit limits still apply: Costas will not tune
+outside the amateur bands, or to a band it has no transmit limits for.
+
+**Save the current frequency** adds the frequency the radio is on to *Your frequencies* in the same menu, so the next
+time it is one click. **Remove** takes one off the list. The standard frequencies are not saved there; they are what the
+**Band** menu picks.
 
 ![The menu](images/menu.png)
 
@@ -60,7 +71,7 @@ it is heard working someone else, and moves to Watching once the time is up.
 | **#** | Rank |
 | **Call** | Callsign |
 | **Where** | Country (or state for the USA, province for Canada) and distance |
-| **Why** | Why you need them: **New country**, **New band** (hover to see which bands you already have that country on), **New grid** with the grid, such as **New grid DO62**, or **New call**. A new country also gets a small rarity meter, five cells from common to very rare, from Club Log's most-wanted list. Hover for its rank |
+| **Why** | Why you need them: **New country**, **New band** (hover to see which bands you already have that country on), **New grid** with the grid, such as **New grid DO62**, or **New call**. A new country also gets a small rarity meter, five cells from common to very rare, from Club Log's most-wanted list. Hover for its rank. A station activating a park for Parks on the Air gets a second line: **New park US-1234** when that park is not in your log yet, *Park US-1234* when it is, or *POTA* when it is calling CQ POTA but nobody has spotted it on this band yet. Hover for the park's name. The park line never changes the order |
 | **Doing now** | *Calling CQ, 3 slots*, *Calling CQ DX*, *Calling you*, and *fading* when their signal is dropping |
 | **Last heard** | How long ago their last decoded transmission ended, counting up every second |
 | **dB** | Their signal at your station |
@@ -80,7 +91,8 @@ The station you are in a contact with is tinted, with a bar down its left edge, 
 only ever marks the station you are working.
 
 Selecting a row (click, or ++up++ / ++down++) outlines it and shows a details card with the station's name (from QRZ lookups),
-location, grid, bearing and your past contacts with that call:
+location, grid, bearing and your past contacts with that call. For a station at a park it adds the park, such as
+*New park US-1234 · Example Lake State Park, US-WI*:
 
 ![Station details](images/station-details.png)
 
@@ -134,6 +146,10 @@ A station calling CQ in a contest (`CQ RU`, `CQ FD`, `CQ WW`, `CQ TEST` and the 
 (CQ RU), needs an exchange*. It expects a contest exchange, and Costas only sends the standard one, so it is not
 offered as a station to call.
 
+When everyone in Watching is only a new call or a new grid, the list folds to one line, such as *12 needed stations
+busy: 11 new calls, 1 new grid*. **Show all** opens it and **Fold** closes it again; Costas remembers your choice until
+you change it. A new country or a new band is never folded away: as soon as one is in Watching, its rows show.
+
 Stations you have already worked on this band are not in Watching; they are in [Repeats](#repeats).
 
 ## Right column
@@ -162,7 +178,7 @@ From top to bottom:
 | **Halt Tx** | Always available. Drops PTT at once and stops sequencing. ++esc++ does the same |
 | Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar |
 | Meter warning | Appears only when the last transmission's SWR or ALC was high, for example *SWR 3.4 · ALC 70%* |
-| Indicators | **Radio**, **Audio**, **QRZ**, **PSK Reporter**: a dot and a word each. Click to open Diagnostics |
+| Indicators | **Radio**, **Audio**, **QRZ**, **PSK Reporter**, **POTA**: a dot and a word each. Click to open Diagnostics |
 
 ![Transmit offset flyout](images/tx-offset.png)
 

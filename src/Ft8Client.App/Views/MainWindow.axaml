@@ -59,8 +59,42 @@
         <TextBlock Text="Mode" VerticalAlignment="Center" Margin="8,0,0,0" />
         <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" IsEnabled="{Binding CanChangeBand}" MinWidth="70"
                   AutomationProperties.Name="Mode" />
-        <TextBlock Text="{Binding Frequency}" FontSize="24" FontWeight="SemiBold" Classes="num" Margin="12,0,0,0" VerticalAlignment="Center"
-                   AutomationProperties.Name="Dial frequency" />
+        <!-- Click the dial to type a frequency (DXpeditions often sit off the standard one) or to use one you saved. -->
+        <Button Classes="link" Margin="12,0,0,0" Padding="0" VerticalAlignment="Center" IsEnabled="{Binding CanChangeBand}"
+                ToolTip.Tip="Type a frequency, or use one you saved" AutomationProperties.Name="Dial frequency">
+          <TextBlock Text="{Binding Frequency}" FontSize="24" FontWeight="SemiBold" Classes="num" TextDecorations="{x:Null}" />
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+              <StackPanel Spacing="8" Width="280">
+                <TextBlock Text="Dial frequency" Classes="title" />
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBox Text="{Binding DialEntry}" Width="130" PlaceholderText="14.090" AutomationProperties.Name="Frequency in megahertz">
+                    <TextBox.KeyBindings><KeyBinding Gesture="Enter" Command="{Binding TuneDialCommand}" /></TextBox.KeyBindings>
+                  </TextBox>
+                  <TextBlock Text="MHz" VerticalAlignment="Center" />
+                  <Button Content="Tune" Command="{Binding TuneDialCommand}" />
+                </StackPanel>
+                <TextBlock Text="{Binding DialMessage}" TextWrapping="Wrap" Foreground="{DynamicResource CautionBrush}"
+                           IsVisible="{Binding DialMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Text="Your frequencies" Classes="secondary" Margin="0,4,0,0"
+                           IsVisible="{Binding !!SavedDials.Count}" />
+                <ItemsControl ItemsSource="{Binding SavedDials}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SavedDialViewModel">
+                      <DockPanel Margin="0,2">
+                        <Button DockPanel.Dock="Right" Classes="link" Content="Remove" Margin="8,0,0,0"
+                                Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).RemoveSavedDialCommand}" CommandParameter="{Binding}" />
+                        <Button Content="{Binding Text}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).UseSavedDialCommand}" CommandParameter="{Binding}" />
+                      </DockPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Content="Save the current frequency" Command="{Binding SaveDialCommand}" HorizontalAlignment="Stretch" />
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
         <TextBlock Text="MHz" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,6" />
       </StackPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
@@ -72,6 +106,8 @@
                 Content="Reach" Command="{Binding ShowTabCommand}" CommandParameter="2" ToolTip.Tip="Who is hearing your signal, from PSK Reporter" />
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}"
                 Content="Log" Command="{Binding ShowTabCommand}" CommandParameter="3" ToolTip.Tip="Your contacts: search, edit, import and export" />
+        <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}"
+                Content="Awards" Command="{Binding ShowTabCommand}" CommandParameter="4" ToolTip.Tip="DXCC, WAS, WAZ and VUCC progress, and when you hear the countries you still need" />
         <TextBlock Text="{Binding ClockText}" FontSize="16" FontWeight="SemiBold" Classes="num" Margin="12,0,4,0" VerticalAlignment="Center"
                    Foreground="{Binding ClockKind, Converter={x:Static v:Converters.KindBrush}}" ToolTip.Tip="{Binding ClockTip}"
                    AutomationProperties.Name="UTC clock" />
@@ -153,6 +189,7 @@
       <v:RawDecodesView DataContext="{Binding Raw}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}" />
       <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
       <v:LogView DataContext="{Binding LogView}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}" />
+      <v:AwardsView DataContext="{Binding Awards}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}" />
     </Panel>
 
     <!-- Bottom bar -->

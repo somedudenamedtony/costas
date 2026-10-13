@@ -259,11 +259,16 @@
                           <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                          <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                          <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Text="{Binding Why}" VerticalAlignment="Center" ToolTip.Tip="{Binding WhyTip}"
                                        Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" FontWeight="{Binding WhyBold, Converter={x:Static v:Converters.Bold}}" />
                             <v:RarityMeter Level="{Binding RarityLevel}" IsVisible="{Binding HasRarity}" VerticalAlignment="Center"
                                            ToolTip.Tip="{Binding RarityTip}" AutomationProperties.Name="{Binding RarityTip}" />
+                          </StackPanel>
+                          <!-- POTA park, display only: it never changes the order. -->
+                          <TextBlock Text="{Binding Park}" IsVisible="{Binding HasPark}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                     ToolTip.Tip="{Binding ParkTip}" Foreground="{Binding ParkKind, Converter={x:Static v:Converters.KindBrush}}" />
                           </StackPanel>
                           <TextBlock Grid.Column="4" Text="{Binding DoingNow}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                           <TextBlock Grid.Column="5" Text="{Binding LastHeard}" Classes="secondary" VerticalAlignment="Center" />
@@ -379,9 +384,16 @@
         <!-- Watching -->
         <Border Classes="card" Padding="0,10,0,6">
           <StackPanel>
-            <TextBlock Text="Watching" Classes="title" Margin="14,0" />
-            <TextBlock Text="Needed, but not callable right now. They join the line when that changes." Classes="secondary" Margin="14,2,14,6" />
-            <ItemsControl ItemsSource="{Binding Watching}">
+            <!-- With only new calls and grids in it, Watching folds to one line; a new country or band always shows its rows. -->
+            <DockPanel Margin="14,0">
+              <Button DockPanel.Dock="Right" Classes="link" Command="{Binding ToggleWatchingCommand}" IsVisible="{Binding WatchingCanFold}"
+                      Content="{Binding WatchingOpened, Converter={x:Static v:OperateView.WatchingToggleText}}" AutomationProperties.Name="Show or hide Watching" />
+              <TextBlock Text="Watching" Classes="title" />
+            </DockPanel>
+            <TextBlock Text="{Binding WatchingSummaryText}" Classes="secondary" Margin="14,2,14,6" IsVisible="{Binding WatchingFolded}" />
+            <TextBlock Text="Needed, but not callable right now. They join the line when that changes." Classes="secondary" Margin="14,2,14,6"
+                       IsVisible="{Binding !WatchingFolded}" />
+            <ItemsControl ItemsSource="{Binding Watching}" IsVisible="{Binding !WatchingFolded}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:WatchRowViewModel">
                   <Border BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">

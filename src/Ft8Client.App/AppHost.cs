@@ -18,8 +18,10 @@ using Ft8Client.Core.Geo;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Time;
 using Ft8Client.Data;
+using Ft8Client.Data.Adif;
 using Ft8Client.Data.Database;
 using Ft8Client.Data.Log;
+using Ft8Client.Data.Neighbours;
 using Ft8Client.Data.Reference;
 using Ft8Client.Data.Secrets;
 using Ft8Client.Data.Settings;
@@ -159,6 +161,11 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Club Log's most-wanted list for the rarity meter.</summary>
     public MostWantedService MostWanted { get; private set; } = null!;
 
+    /// <summary>Daily history of the comparison with stations near me.</summary>
+    public NeighbourHistoryService NeighbourHistory { get; private set; } = null!;
+    /// <summary>POTA spots and worked parks, for the park line under Why.</summary>
+    public PotaService Pota { get; private set; } = null!;
+
     /// <summary>Update checks.</summary>
     public UpdateService Updates { get; private set; } = null!;
 
@@ -283,7 +290,7 @@ public sealed class AppHost : IAsyncDisposable
         Transmitter = new Transmitter(_rig, _output, Clock, Frequencies);
         TxLevel = new TxLevelController(Transmitter, Settings);
         var log = new DatabaseSessionLog(Qsos, Uploads, s.Profile.Id, () => Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
-            () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete);
+            () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band));
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
         TxMeters = new TxMeterMonitor(Transmitter, () => _rig);
         TxMeters.Measured += r => Session.SetTxMeters(TxLevel.OnMeasured(r));
@@ -327,6 +334,16 @@ public sealed class AppHost : IAsyncDisposable
         MostWanted = new MostWantedService(Paths, () => Settings.Current.Profile.Callsign, Clock);
         _ = MostWanted.StartAsync();
 
+        NeighbourHistory = new NeighbourHistoryService(new NeighbourHistoryStore(Paths.NeighbourHistory),
+            () => Settings.Current.PskReporter is { FeedEnabled: true, CompareNeighbours: true }, Clock, record: !Simulating);
+        NeighbourHistory.Load();
+        Session.Changed += NeighbourHistory.OnSnapshot;
+        Pota = new PotaService(() => Settings.Current.Pota.SpotsEnabled, () => Settings.Current.Profile.Callsign, Clock,
+            st => Session.SetService(ServiceNames.Pota, st));
+        Pota.SetWorked(WorkedParksFromLog());
+        log.Stored += Pota.OnLogged;
+        Pota.Start();
+
         Updates = new UpdateService(Settings, Path.Combine(Paths.Temp, "updates"), Paths.Logs);
         Updates.Start();
 
@@ -364,13 +381,21 @@ public sealed class AppHost : IAsyncDisposable
                 RebuildLogIndex();
             }
             TxLevel.Apply();
+            Pota.Wake();
             Session.Reconfigure(SettingsMapper.ToConfig(Settings.Current));
         };
     }
 
     /// <summary>Rebuilds the log index from the database (after sync, import or edit).</summary>
-    public void RebuildLogIndex() =>
+    public void RebuildLogIndex()
+    {
         Session.SetLogIndex(LogIndexBuilder.Build(Qsos, Settings.Current.Profile.Callsign, Countries, SettingsMapper.ConfirmationSource(Settings.Current)));
+        Pota?.SetWorked(WorkedParksFromLog());
+    }
+
+    // Parks in the log under this station call, like the log index.
+    private Core.Pota.WorkedParks WorkedParksFromLog() =>
+        PotaAdif.Worked(Qsos.List().Where(q => string.Equals(q.StationCallsign, Settings.Current.Profile.Callsign, StringComparison.OrdinalIgnoreCase)));
 
     /// <summary>Changes band and mode: sets the dial through the radio.</summary>
     public async Task SetBandAsync(string band, Mode mode)
@@ -393,6 +418,35 @@ public sealed class AppHost : IAsyncDisposable
         catch (RigException ex)
         {
             Session.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, ex.Message, Clock.UtcNow));
+        }
+    }
+
+    /// <summary>
+    /// Tunes to a dial frequency the operator typed or saved, on the band it belongs to (changing band if needed).
+    /// The band-edge guard still applies to every transmission. Returns why it could not, or null.
+    /// </summary>
+    public async Task<string?> TuneDialAsync(long hz)
+    {
+        var mode = Session.Config.Mode;
+        if (BandPlan.BandOf(hz) is not { } band) return $"{DialText.Mhz(hz)} MHz is outside the amateur bands.";
+        if (!Frequencies.Entries.Any(e => string.Equals(e.Band, band, StringComparison.OrdinalIgnoreCase)))
+            return $"Costas has no transmit limits for {BandPlan.Display(band)}, so it does not tune there.";
+        if (!string.Equals(band, Session.Config.Band, StringComparison.OrdinalIgnoreCase))
+        {
+            Settings.Update(s => s.Operating.Band = band);
+            Session.SetBand(band, mode);
+        }
+        try
+        {
+            await _rig.SetFrequencyAsync(hz, _cts.Token).ConfigureAwait(false);
+            await _rig.SetModeAsync(RigMode.PktUsb, _cts.Token).ConfigureAwait(false);
+            Session.SetDial(hz);
+            return null;
+        }
+        catch (RigException ex)
+        {
+            Session.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, ex.Message, Clock.UtcNow));
+            return $"The radio did not take the frequency: {ex.Message}";
         }
     }
 
@@ -645,7 +699,9 @@ public sealed class AppHost : IAsyncDisposable
         if (Eqsl is not null) await Eqsl.DisposeAsync().ConfigureAwait(false);
         Udp?.Dispose();
         Updates?.Dispose();
+        Pota?.Dispose();
         Recording?.Dispose();
+        NeighbourHistory?.Flush();
         if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);
         await _rig.DisposeAsync().ConfigureAwait(false);
         foreach (var d in _disposables) d.Dispose();

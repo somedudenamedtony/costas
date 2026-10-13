@@ -73,8 +73,26 @@ public sealed class StationDetailsViewModel
     /// <summary>The rarity line is shown.</summary>
     public bool HasRarity => Rarity.Length > 0;
 
+    /// <summary>"New park US-1234 · Example Lake State Park, US-WI" (POTA), blank when not activating.</summary>
+    public string Park { get; private init; } = string.Empty;
+
+    /// <summary>The park line is shown.</summary>
+    public bool HasPark => Park.Length > 0;
+
     /// <summary>The confirmation and awards group has at least one known fact.</summary>
-    public bool HasConfirmationDetails => HasQsl || HasRarity;
+    public bool HasConfirmationDetails => HasQsl || HasRarity || HasPark;
+
+    /// <summary>
+    /// When the operator hears this station's country, from the decode journal: "Mongolia: heard 6 times, always on 20 m
+    /// between 13:00 and 15:00 UTC, last heard 3 Oct." Takes the call and its entity key (if known). Set by the main view model.
+    /// </summary>
+    public static Func<string, string?, string?>? HeardHistory { get; set; }
+
+    /// <summary>The "when to look" sentence for the station's country, blank when there is no history.</summary>
+    public string Heard { get; private init; } = string.Empty;
+
+    /// <summary>The heard line is shown.</summary>
+    public bool HasHeard => Heard.Length > 0;
 
     /// <summary>"No QRZ details" hint when nothing was looked up.</summary>
     public string LookupNote { get; private init; } = string.Empty;
@@ -139,7 +157,7 @@ public sealed class StationDetailsViewModel
     /// <summary>Builds the details from whatever is known: the heard station, a QRZ lookup, or both.</summary>
     public static StationDetailsViewModel From(string call, Station? s, CallsignCacheEntry? q, LogIndex? log, DistanceUnit units, DateTime nowUtc,
                                                string? name = null, Pileup? pileup = null, int txOffsetHz = 0, Mode mode = Mode.Ft8, int? mostWantedRank = null,
-                                               DateTime? lotwUpload = null)
+                                               DateTime? lotwUpload = null, Core.Pota.ParkInfo? park = null)
     {
         var entity = s?.Entity?.Entity;
         var offset = q is null ? null : StationClock.Offset(q.GmtOffset, q.ObservesDst, s?.EntityKey, s?.Continent, nowUtc);
@@ -156,7 +174,9 @@ public sealed class StationDetailsViewModel
             Qsl = QslText(q, lotwUpload, nowUtc),
             EntityKey = entity?.Key,
             HuntCountryText = entity is null ? string.Empty : $"Hunt {entity.Name}",
+            Heard = HeardHistory?.Invoke(call, s?.EntityKey) ?? string.Empty,
             Rarity = mostWantedRank is { } mw ? Core.Geo.Rarity.Describe(mw) : string.Empty,
+            Park = Core.Pota.PotaText.Details(park),
             Zones = Join(" · ", q?.CqZone is { } cq ? $"CQ {cq}" : null, q?.ItuZone is { } itu ? $"ITU {itu}" : null),
             LookupNote = q is null && name is null ? "No QRZ details yet. They appear here when QRZ lookups are set up." : string.Empty,
             QrzUrl = "https://www.qrz.com/db/" + Uri.EscapeDataString(call),

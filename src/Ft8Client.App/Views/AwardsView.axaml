@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ft8Client.App.ViewModels"
+             x:Class="Ft8Client.App.Views.AwardsView"
+             x:DataType="vm:AwardsViewModel">
+  <!-- Award progress on the left; the countries still needed, with when you hear them, on the right. -->
+  <Grid ColumnDefinitions="440,*" Margin="16,0,16,12">
+    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,12,0">
+      <StackPanel Spacing="12">
+        <Border Classes="card" Padding="14,10" IsVisible="{Binding LogEmpty}">
+          <TextBlock Classes="secondary" TextWrapping="Wrap"
+                     Text="Your log is empty. Sync with QRZ or import an ADIF file on the Log view, and your award progress appears here." />
+        </Border>
+        <ItemsControl ItemsSource="{Binding Cards}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Spacing="12" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:AwardCardViewModel">
+              <Border Classes="card" Padding="14,10">
+                <StackPanel Spacing="4">
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding Headline}" Classes="num" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Title}" Classes="title" />
+                  </DockPanel>
+                  <TextBlock Text="{Binding About}" Classes="secondary" TextWrapping="Wrap" />
+                  <!-- Worked shows faintly behind confirmed. -->
+                  <Panel Margin="0,4,0,0" Height="6">
+                    <ProgressBar Value="{Binding Worked}" Maximum="1" Height="6" MinHeight="6" Opacity="0.35" />
+                    <ProgressBar Value="{Binding Confirmed}" Maximum="1" Height="6" MinHeight="6" Background="Transparent"
+                                 AutomationProperties.Name="{Binding Headline}" />
+                  </Panel>
+                  <TextBlock Text="{Binding Goal}" Classes="secondary" />
+                  <TextBlock Text="{Binding Missing}" IsVisible="{Binding HasMissing}" TextWrapping="Wrap" Margin="0,4,0,0"
+                             ToolTip.Tip="{Binding MissingTip}" />
+                  <TextBlock Text="{Binding Unconfirmed}" Classes="secondary" IsVisible="{Binding HasUnconfirmed}" TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border Classes="card" Padding="14,10">
+          <StackPanel Spacing="6">
+            <TextBlock Text="DXCC by band" Classes="title" />
+            <TextBlock Text="{Binding FiveBandText}" Classes="secondary" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="60,70,80,*,56" Margin="0,4,0,0">
+              <TextBlock Text="Band" Classes="secondary" /><TextBlock Grid.Column="1" Text="Worked" Classes="secondary" />
+              <TextBlock Grid.Column="2" Text="Confirmed" Classes="secondary" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding Bands}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:AwardBandRowViewModel">
+                  <Grid ColumnDefinitions="60,70,80,*,56" MinHeight="26">
+                    <TextBlock Text="{Binding Band}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding Worked}" Classes="num" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding Confirmed}" Classes="num" VerticalAlignment="Center" />
+                    <ProgressBar Grid.Column="3" Value="{Binding Progress}" Maximum="1" Height="4" MinHeight="4" MinWidth="0" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="4" Text="{Binding Note}" Classes="secondary" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Column="1" Classes="card" Padding="14,10">
+      <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+        <TextBlock Text="Countries still needed" Classes="title" />
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+          <TextBlock Text="Not worked on" VerticalAlignment="Center" />
+          <ComboBox ItemsSource="{Binding Scopes}" SelectedItem="{Binding SelectedScope}" MinWidth="110" AutomationProperties.Name="Band" />
+          <CheckBox Content="Include worked but not confirmed" IsChecked="{Binding IncludeUnconfirmed}" Margin="8,0,0,0" />
+        </StackPanel>
+        <TextBlock Grid.Row="2" Text="{Binding NeededText}" Classes="secondary" Margin="0,8,0,4" />
+        <ListBox Grid.Row="3" ItemsSource="{Binding Needed}" Background="Transparent" AutomationProperties.Name="Countries still needed">
+          <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="0,3" /></Style></ListBox.Styles>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:NeededCountryViewModel">
+              <Grid ColumnDefinitions="200,*">
+                <StackPanel>
+                  <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
+                  <TextBlock Text="{Binding Detail}" Classes="secondary" FontSize="12" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding When}" TextWrapping="Wrap" VerticalAlignment="Center"
+                           Classes.secondary="{Binding !Heard}" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Grid.Row="4" Text="{Binding HistoryText}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

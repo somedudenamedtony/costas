@@ -43,6 +43,20 @@ Press **Reach** in the top bar (++ctrl+3++), or **Open reach view** under *Your 
   compares the two reports, then sums it up per continent: *7 dB weaker than stations near you into Europe.* A
   continent shows once 3 receivers have heard both. The same line appears under *Your signal* on the Operate screen.
   Bear in mind a neighbour running more power than you makes you look weaker.
+- **Did a change help?**: Costas keeps a daily summary of that comparison, so you can see whether a new antenna
+  or amplifier made a difference. For the band and mode chosen at the top, each continent gets a line such as
+  *Into Europe: 4 dB behind neighbours this past week, 7 dB behind the week before.* and a small chart of the last
+  30 days: one dot per day, the middle line is level with stations near you, below it you were weaker.
+  Press **Mark a change today** on the day you change something (type what changed first if you like). The lines
+  then compare the days since with the two weeks before: *Into Europe: 2 dB behind neighbours since your change on
+  9 Oct, 7 dB behind in the two weeks before.* The day you mark counts as after the change. Pressed again the same
+  day, the button removes the mark.
+
+  What is stored: every five minutes, while the comparison has something to show, the difference for each continent
+  is added to that day's summary (UTC days), per call, band and mode. Only these counts and your marks are kept, in
+  `neighbour-history.json` in the Costas data folder, for about a year. No reports or calls of other stations are
+  stored. Nothing is recorded while the comparison is turned off in Settings, or in simulation. Deleting the file
+  starts the history again.
 
 ### Band activity near you
 

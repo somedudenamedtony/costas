@@ -7,6 +7,7 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Avalonia.Controls;
+using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Ft8Client.App.ViewModels;
@@ -16,6 +17,9 @@ namespace Ft8Client.App.Views;
 /// <summary>The Operate view.</summary>
 public partial class OperateView : UserControl
 {
+    /// <summary>"Show all" while Watching is folded, "Fold" once opened.</summary>
+    public static readonly IValueConverter WatchingToggleText = new FuncValueConverter<bool, string>(open => open ? "Fold" : "Show all");
+
     /// <summary>Creates the view.</summary>
     public OperateView()
     {

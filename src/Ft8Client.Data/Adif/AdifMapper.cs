@@ -107,6 +107,11 @@ public static class AdifMapper
         r["comment"] = q.Comment;
         if (q.EqslConfirmed) r["eqsl_qsl_rcvd"] = "Y";
         r["app_qrzlog_logid"] = q.QrzLogid?.ToString(CultureInfo.InvariantCulture);
+        // Park fields have no column; they travel in the raw ADIF (see PotaAdif).
+        if (PotaAdif.Raw(q.RawAdif) is { } raw)
+        {
+            foreach (var f in PotaAdif.Fields) r[f] = raw[f];
+        }
         if (q.LotwUploadState == UploadState.Uploaded) r["lotw_qsl_sent"] = "Y";
         if (q.LotwConfirmed) r["lotw_qsl_rcvd"] = "Y";
         return r;

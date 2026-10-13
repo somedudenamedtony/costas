@@ -10,16 +10,19 @@ using Ft8Client.App.Engine;
 using Ft8Client.Core;
 using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Messages;
+using Ft8Client.Data.Adif;
 using Ft8Client.Data.Log;
 
 namespace Ft8Client.App.Services;
 
 /// <summary>
 /// Writes finished contacts to the local log first, then queues them for QRZ and eQSL upload when enabled. The power logged is
-/// what <paramref name="radioPowerWatts"/> reports from the radio, or the power in Settings when it reports nothing.
+/// what <paramref name="radioPowerWatts"/> reports from the radio, or the power in Settings when it reports nothing. When
+/// <paramref name="parkFor"/> (call, band) names a spotted POTA park, the contact gets ADIF SIG=POTA and SIG_INFO.
 /// </summary>
 public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository queue, string profileId, Func<bool> uploadEnabled,
-                                       Func<int?>? radioPowerWatts = null, Func<bool>? eqslUploadEnabled = null) : ISessionLog
+                                       Func<int?>? radioPowerWatts = null, Func<bool>? eqslUploadEnabled = null,
+                                       Func<string, string, string?>? parkFor = null) : ISessionLog
 {
     /// <summary>Raised after a contact is stored, with its row.</summary>
     public event Action<QsoRecord>? Stored;
@@ -54,6 +57,7 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
             NeedTier = c.Need.Tier,
             Source = QsoSource.Local,
         };
+        if (parkFor?.Invoke(e.Call, c.Band) is { } park) PotaAdif.Tag(q, park);
         var (id, _) = qsos.Upsert(q);
         q.Id = id;
         if (uploadEnabled()) queue.Enqueue(id, "qrz", DateTime.UtcNow);

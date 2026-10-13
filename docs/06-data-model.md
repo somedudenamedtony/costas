@@ -8,6 +8,7 @@ Root: `%LOCALAPPDATA%\Costas\` (builds before the rename used `Ft8Client\`; the 
 | --- | --- |
 | `costas.db` | SQLite database (WAL mode) |
 | `settings.json` | App settings and station profiles. No secrets |
+| `neighbour-history.json` | Daily summary of the comparison with stations near me, and marked station changes (see below) |
 | `logs\app-YYYYMMDD.log` | Serilog files, 14 days |
 | `journal\decodes-YYYY-MM.txt` | Decode journal, one line per decode and per transmission |
 | `wav\YYMMDD_HHMMSS.wav` | Saved slot audio, per the Files setting, deleted after the retention period |
@@ -15,6 +16,25 @@ Root: `%LOCALAPPDATA%\Costas\` (builds before the rename used `Ft8Client\`; the 
 | `tmp\` | Per-run `jt9` scratch folders, cleaned at start |
 
 Secrets (QRZ logbook key per profile, QRZ username and password) are stored through an `ISecretStore`: Windows Credential Manager on Windows.
+
+### neighbour-history.json
+
+Written by `NeighbourHistoryStore` (Data) for the Reach tab's "Did a change help?" (`04-domain-logic.md` section 13;
+owner approval 2026-10-12). A JSON file rather than a table, so it needs no migration. camelCase:
+
+```json
+{ "schema": 1,
+  "days":  [ { "day": "2026-10-12", "call": "W7LIT", "band": "20m", "mode": "FT8", "continent": "EU",
+               "diffCounts": { "-7": 3, "-6": 1 }, "receiverSum": 14 } ],
+  "marks": [ { "day": "2026-10-09", "call": "W7LIT", "note": "new vertical", "createdUtc": "2026-10-09T17:02:00Z" } ] }
+```
+
+- One `days` entry per UTC day, call, band, mode and receiver continent. `diffCounts` is how many samples had each
+  difference (my median minus the neighbours' median, dB), so the median over any span of days is exact.
+  `receiverSum` adds up the shared receivers of each sample.
+- `marks`: at most one per call and day; the marked day counts as after the change.
+- Kept 370 days. Written whole to `neighbour-history.json.tmp`, then moved over the old file. A missing file is an
+  empty history; an unreadable one is copied to `.bad` and the history starts again.
 
 ## SQLite schema
 
@@ -172,6 +192,7 @@ Writer and reader support ADIF 3.1 text (`<name:len>value`, `<eor>`, header endi
 | `name`, `qth`, `state`, `country`, `dxcc` | From QRZ lookup when available |
 | `comment` | Mode and reports, e.g. `FT8 Sent: -01 Rcvd: -13` (Rcvd left out when none was received); the operator can edit it |
 | `app_qrzlog_logid` | On records fetched from QRZ |
+| `sig`, `sig_info`, `pota_ref` | Park fields. A local contact with a spotted POTA activator gets `sig` = `POTA` and `sig_info` = the park reference. There is no column for them: they are kept in `raw_adif` and copied from it on upload, export and UDP; imported and fetched records keep theirs the same way |
 
 Import must tolerate unknown fields, junk between records and records with no call (skip them and count).
 

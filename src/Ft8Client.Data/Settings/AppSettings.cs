@@ -41,6 +41,9 @@ public sealed class AppSettings
     /// <summary>PSK Reporter.</summary>
     public PskReporterOptions PskReporter { get; set; } = new();
 
+    /// <summary>Parks on the Air spots.</summary>
+    public PotaOptions Pota { get; set; } = new();
+
     /// <summary>UDP.</summary>
     public UdpOptions Udp { get; set; } = new();
 

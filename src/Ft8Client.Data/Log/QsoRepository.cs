@@ -67,15 +67,16 @@ public sealed class QsoRepository(SqliteDatabase db)
     }
 
     /// <summary>All contacts, newest first, optionally filtered by call, grid, country or name.</summary>
-    public IReadOnlyList<QsoRecord> List(string? search = null, int limit = int.MaxValue)
+    public IReadOnlyList<QsoRecord> List(string? search = null, int limit = int.MaxValue) => List(new LogFilter(search), limit);
+
+    /// <summary>Contacts matching a filter, newest first.</summary>
+    public IReadOnlyList<QsoRecord> List(LogFilter filter, int limit = int.MaxValue)
     {
         using var c = db.Open();
-        if (string.IsNullOrWhiteSpace(search))
-            return c.Query<QsoRecord>("SELECT * FROM qso ORDER BY qso_date_on DESC LIMIT @limit", new { limit }).ToList();
-        var like = "%" + search.Trim() + "%";
-        return c.Query<QsoRecord>(
-            "SELECT * FROM qso WHERE call LIKE @like OR gridsquare LIKE @like OR country LIKE @like OR name LIKE @like ORDER BY qso_date_on DESC LIMIT @limit",
-            new { like, limit }).ToList();
+        var (where, args) = filter.ToSql();
+        var p = new DynamicParameters(args);
+        p.Add("limit", limit);
+        return c.Query<QsoRecord>($"SELECT * FROM qso WHERE {where} ORDER BY qso_date_on DESC LIMIT @limit", p).ToList();
     }
 
     /// <summary>Number of contacts.</summary>
@@ -83,6 +84,23 @@ public sealed class QsoRepository(SqliteDatabase db)
     {
         using var c = db.Open();
         return c.ExecuteScalar<int>("SELECT COUNT(*) FROM qso");
+    }
+
+    /// <summary>Contacts, countries and confirmations among the contacts a filter matches.</summary>
+    public LogTotals Totals(LogFilter filter)
+    {
+        using var c = db.Open();
+        var (where, args) = filter.ToSql();
+        var row = c.QuerySingle<(long Contacts, long Countries, long? Confirmed)>(
+            $"SELECT COUNT(*), COUNT(DISTINCT COALESCE(entity_key, country)), SUM({LogFilter.ConfirmedSql}) FROM qso WHERE {where}", args);
+        return new LogTotals((int)row.Contacts, (int)row.Countries, (int)(row.Confirmed ?? 0));
+    }
+
+    /// <summary>The distinct bands in the log, lower case.</summary>
+    public IReadOnlyList<string> Bands()
+    {
+        using var c = db.Open();
+        return c.Query<string>("SELECT DISTINCT LOWER(band) FROM qso WHERE band <> ''").ToList();
     }
 
     /// <summary>

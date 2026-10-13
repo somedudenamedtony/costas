@@ -5,8 +5,22 @@ Press **Log** in the top bar or ++ctrl+4++.
 ![The Log view](images/log.png)
 
 Every contact, newest first: date, time (UTC), call, band, mode, report sent and received, grid, country, name, the
-need tag it had when you worked it, and its QRZ status. The status line at the bottom counts contacts and says when
-the log was last synced with QRZ.
+need tag it had when you worked it, and its LoTW, QRZ and eQSL status. The status line at the bottom counts
+the contacts shown, their countries and how many are confirmed, and says when the log was last synced with QRZ.
+
+## Filters
+
+The row under the buttons narrows the list. The filters combine with each other and with the search box:
+
+| Filter | Choices |
+| --- | --- |
+| Band | All bands, or any band you have a contact on |
+| Mode | All modes, FT8 or FT4 |
+| Date | All time, Today (UTC), Last 7 days, Last 30 days, This year. Days are UTC days, as the log shows them |
+| Confirmed | Confirmed or not, Confirmed (by QRZ, the ADIF you imported, or LoTW), Not confirmed |
+
+While a filter is set, the status line says *Showing 120 of 3,400 contacts* and **Clear filters** puts them all back.
+The search text is kept. The list shows the newest 5,000 matching contacts; the totals always count all of them.
 
 | Button | What it does |
 | --- | --- |
@@ -23,6 +37,12 @@ Call, date and time on and off, band, frequency, mode (FT8 or FT4), reports sent
 and callsign, your power, the name, state and country from QRZ lookups when available, and a comment in the form
 other FT8 loggers use (`FT8 Sent: -01 Rcvd: -13`). Power comes from the radio when
 it can report its power setting; otherwise from **Settings › Station › Power (watts)**.
+
+When the station was spotted on pota.app at a park on the band you worked it on, the contact also gets the ADIF
+fields `SIG` = `POTA` and `SIG_INFO` = the park reference (such as `US-1234`). These go to QRZ, into ADIF exports and
+to other programs over UDP. A station calling CQ POTA that nobody has spotted is logged without a park, since Costas
+does not know which one it is. Parks already in your log (from `SIG`/`SIG_INFO`, or `POTA_REF` in imported files)
+are what decide *New park* or *Park* on the Operate screen, and imported park fields are kept on export.
 
 ## QRZ logbook
 
@@ -75,6 +95,7 @@ With the address left at `127.0.0.1`, only programs on this computer can do this
 
 ## Decode journal and saved audio
 
-Every decode and transmission is written to a monthly text file in the data folder's `journal` folder. You can also
+Every decode and transmission is written to a monthly text file in the data folder's `journal` folder. Costas reads
+it back to tell you [when you hear each country](awards.md#when-to-look). You can also
 keep the received audio of each slot as WAV files (**Settings › Other programs › Save received audio**: none, only
 slots with decodes, or all, kept for a number of days).

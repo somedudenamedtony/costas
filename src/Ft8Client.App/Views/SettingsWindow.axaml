@@ -48,6 +48,25 @@
             <TextBlock Classes="page" Text="Station" />
             <TextBlock Classes="intro" Text="Who you are and where you are. Used in every message you send and to work out distances." />
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Station profile" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" MinWidth="160" AutomationProperties.Name="Station profile">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ProfileDraft"><TextBlock Text="{Binding Name}" /></DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <Button Content="New profile" Command="{Binding NewProfileCommand}" />
+                  <Button Content="Delete" Command="{Binding DeleteProfileCommand}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" DataContext="{Binding SelectedProfile}" x:DataType="vm:ProfileDraft">
+                  <TextBlock Text="Name" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding Name}" Width="160" AutomationProperties.Name="Profile name" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="Each profile keeps its own callsign, grid, power, radio, audio devices and QRZ logbook key, for example a portable or park setup with a /P call or another grid. A new profile starts as a copy of the one shown. The profile shown when you press Save is the one Costas uses; set its radio and audio in Station setup." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Callsign" />
               <StackPanel Grid.Column="1"><TextBox Text="{Binding Callsign}" Width="160" HorizontalAlignment="Left" /></StackPanel>
             </Grid>
@@ -217,6 +236,13 @@
                 <CheckBox Content="Count a country or state as worked only when confirmed" IsChecked="{Binding ConfirmedOnly}" />
                 <CheckBox Content="Count only LoTW confirmations (what DXCC and WAS credit)" IsChecked="{Binding ConfirmedByLotw}" Margin="24,0,0,0" />
                 <TextBlock Classes="help" Margin="24,0,0,0" Text="QRZ and eQSL confirmations do not count for DXCC. Turn this off to count QRZ, eQSL and card confirmations too. With only confirmed contacts counting, stations that upload to LoTW rank ahead of those that do not." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Parks on the Air" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Show which park a station is activating (POTA spots)" IsChecked="{Binding PotaSpots}" />
+                <TextBlock Classes="help" Text="Reads the public spot list at pota.app every two minutes and shows New park or Park with the reference under Why. It does not change the order of the list. A park you work is written to the log." TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">

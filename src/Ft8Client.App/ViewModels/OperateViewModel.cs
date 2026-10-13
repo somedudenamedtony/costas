@@ -74,11 +74,31 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>QRZ lookup data provider (held in memory; never goes to the network).</summary>
     public Func<string, CallsignCacheEntry?>? QrzLookup { get; set; }
 
+    /// <summary>Opens or folds the Watching list.</summary>
+    [RelayCommand]
+    private void ToggleWatching() => WatchingOpened = !WatchingOpened;
+
     /// <summary>Line rows.</summary>
     public ObservableCollection<StationRowViewModel> Line { get; } = [];
 
     /// <summary>Watching rows.</summary>
     public ObservableCollection<WatchRowViewModel> Watching { get; } = [];
+
+    /// <summary>True when Watching holds only new calls and grids, so it can fold to one line.</summary>
+    [ObservableProperty]
+    public partial bool WatchingCanFold { get; set; }
+
+    /// <summary>True when the operator opened a folded Watching list; kept until they fold it again.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WatchingFolded))]
+    public partial bool WatchingOpened { get; set; }
+
+    /// <summary>True while Watching shows its one-line summary instead of rows.</summary>
+    public bool WatchingFolded => WatchingCanFold && !WatchingOpened;
+
+    /// <summary>"12 needed stations busy: 11 new calls, 1 new grid".</summary>
+    [ObservableProperty]
+    public partial string WatchingSummaryText { get; set; } = string.Empty;
 
     /// <summary>Repeats: stations heard now that are already in the log on this band and mode.</summary>
     public ObservableCollection<RepeatRowViewModel> Repeats { get; } = [];
@@ -243,6 +263,9 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>Club Log's most-wanted list for the rarity meter; <see cref="Core.Geo.MostWanted.None"/> until loaded.</summary>
     public Core.Geo.MostWanted MostWanted { get; set; } = Core.Geo.MostWanted.None;
 
+    /// <summary>POTA spots and worked parks for the park line under Why (display only); empty until loaded or when off.</summary>
+    public Core.Pota.PotaParks Parks { get; set; } = Core.Pota.PotaParks.Empty;
+
     /// <summary>ARRL's list of LoTW users; <see cref="LotwUsers.None"/> until loaded.</summary>
     public LotwUsers Lotw { get; set; } = LotwUsers.None;
 
@@ -291,6 +314,9 @@ public sealed partial class OperateViewModel : ObservableObject
 
         Watching.Clear();
         foreach (var w in s.Rank.Watching.Take(MaxWatching)) Watching.Add(new WatchRowViewModel(w, now, Units));
+        WatchingCanFold = WatchingSummary.CanFold(s.Rank.Watching);
+        WatchingSummaryText = WatchingSummary.Text(s.Rank.Watching);
+        OnPropertyChanged(nameof(WatchingFolded));
         var band = BandPlan.Display(s.Band);
         RepeatsSubtitle = $"Heard now and already in your log on {band} {ModeInfo.Name(s.Mode)}.";
         RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {band} is on the air right now.";
@@ -401,7 +427,7 @@ public sealed partial class OperateViewModel : ObservableObject
         _commands.Lookup(row.Call);
         Details = _snap is null
             ? StationDetailsViewModel.From(row.Call, row.Source.Station, QrzLookup?.Invoke(row.Call), Log?.Invoke(), Units, _now(),
-                mostWantedRank: MostWanted.RankOf(row.Source.Station.EntityKey), lotwUpload: Lotw.LastUpload(row.Call))
+                mostWantedRank: MostWanted.RankOf(row.Source.Station.EntityKey), lotwUpload: Lotw.LastUpload(row.Call), park: ParkOf(row.Source.Station))
             : DetailsFor(row.Call, _snap, _now(), row.Source.Station);
     }
 
@@ -410,7 +436,7 @@ public sealed partial class OperateViewModel : ObservableObject
         var station = s.Stations.FirstOrDefault(x => Callsign.EqualsCall(x.Call, call)) ?? fallback;
         return StationDetailsViewModel.From(call, station, QrzLookup?.Invoke(call), Log?.Invoke(), Units, now, QrzName?.Invoke(call),
             s.Pileups.GetValueOrDefault(Callsign.Normalize(call)), s.TxOffsetHz, s.Mode,
-            MostWanted.RankOf(station?.EntityKey), Lotw.LastUpload(call));
+            MostWanted.RankOf(station?.EntityKey), Lotw.LastUpload(call), station is null ? null : ParkOf(station));
     }
 
     /// <summary>Adds the station's call to the Hunt list.</summary>
@@ -426,6 +452,9 @@ public sealed partial class OperateViewModel : ObservableObject
     {
         if (d?.EntityKey is { } e) _commands.Hunt(new Core.Hunting.HuntTarget(Core.Hunting.HuntTargetKind.Country, e, null));
     }
+
+    // The park a station is activating, from a POTA spot on this band or its CQ POTA. Display only.
+    private Core.Pota.ParkInfo? ParkOf(Station s) => _snap is null ? null : Parks.Match(s.Call, _snap.Band, s.CqModifier);
 
     /// <summary>Opens the station's QRZ page.</summary>
     [RelayCommand]
@@ -534,7 +563,7 @@ public sealed partial class OperateViewModel : ObservableObject
         var i = 1;
         foreach (var r in list.Take(MaxLine))
             Line.Add(new StationRowViewModel(r, i++, Units, now, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0,
-                MostWanted.RankOf(r.Station.EntityKey), WhyTip(r, log)));
+                MostWanted.RankOf(r.Station.EntityKey), WhyTip(r, log), ParkOf(r.Station)));
         MoreText = list.Count > MaxLine ? $"and {list.Count - MaxLine} more" : string.Empty;
         LineEmpty = Line.Count == 0;
         // Only a row the operator picked stays selected; nothing is selected for them, so the highlight never

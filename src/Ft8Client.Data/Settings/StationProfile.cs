@@ -6,6 +6,8 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using System.Text.Json;
+
 namespace Ft8Client.Data.Settings;
 
 /// <summary>A station profile: who and where I am, my radio and audio. Secrets are not stored here.</summary>
@@ -34,4 +36,13 @@ public sealed class StationProfile
 
     /// <summary>Transmit power in watts, for the log.</summary>
     public int PowerWatts { get; set; } = 25;
+
+    /// <summary>A deep copy under a new id and name: same call, grid, power, radio and audio.</summary>
+    public StationProfile CopyAs(string id, string name)
+    {
+        var copy = JsonSerializer.Deserialize<StationProfile>(JsonSerializer.Serialize(this, SettingsStore.Json), SettingsStore.Json)!;
+        copy.Id = id;
+        copy.Name = name;
+        return copy;
+    }
 }
