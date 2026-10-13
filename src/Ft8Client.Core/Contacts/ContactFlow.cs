@@ -19,4 +19,10 @@ public enum ContactFlow
 
     /// <summary>Flow B variant: the caller skipped the grid and sent a report; continues as flow A from step 3.</summary>
     CalledCqSkippedGrid,
+
+    /// <summary>
+    /// Hound: I call a Fox (a Fox/Hound DXpedition), send my R-report on the frequency it answered me on, and the
+    /// contact is logged on its RR73. I send nothing after that.
+    /// </summary>
+    Hound,
 }

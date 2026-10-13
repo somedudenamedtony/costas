@@ -17,7 +17,7 @@ public sealed class UploadQueueItem
     /// <summary>The contact to upload.</summary>
     public long QsoId { get; set; }
 
-    /// <summary>Upload target; <c>qrz</c>.</summary>
+    /// <summary>Upload target; <c>qrz</c> or <c>eqsl</c>.</summary>
     public string Target { get; set; } = "qrz";
 
     /// <summary>Attempts so far.</summary>

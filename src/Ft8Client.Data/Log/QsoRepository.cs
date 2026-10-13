@@ -19,13 +19,13 @@ public sealed class QsoRepository(SqliteDatabase db)
     private const string Columns = """
         profile_id, call, qso_date_on, qso_date_off, band, freq_hz, mode, submode, rst_sent, rst_rcvd, gridsquare, name, qth, state,
         country, dxcc, entity_key, continent, station_callsign, my_gridsquare, tx_pwr, comment, confirmed, need_tier, source, qrz_logid,
-        upload_state, upload_error, raw_adif, created_utc, modified_utc
+        upload_state, upload_error, eqsl_upload_state, eqsl_upload_error, eqsl_confirmed, raw_adif, created_utc, modified_utc, lotw_confirmed, lotw_upload_state
         """;
 
     private const string Values = """
         @ProfileId, @Call, @QsoDateOn, @QsoDateOff, @Band, @FreqHz, @Mode, @Submode, @RstSent, @RstRcvd, @Gridsquare, @Name, @Qth, @State,
         @Country, @Dxcc, @EntityKey, @Continent, @StationCallsign, @MyGridsquare, @TxPwr, @Comment, @Confirmed, @NeedTier, @Source, @QrzLogid,
-        @UploadState, @UploadError, @RawAdif, @CreatedUtc, @ModifiedUtc
+        @UploadState, @UploadError, @EqslUploadState, @EqslUploadError, @EqslConfirmed, @RawAdif, @CreatedUtc, @ModifiedUtc, @LotwConfirmed, @LotwUploadState
         """;
 
     private const string Updates = """
@@ -33,7 +33,8 @@ public sealed class QsoRepository(SqliteDatabase db)
         submode=@Submode, rst_sent=@RstSent, rst_rcvd=@RstRcvd, gridsquare=@Gridsquare, name=@Name, qth=@Qth, state=@State, country=@Country,
         dxcc=@Dxcc, entity_key=@EntityKey, continent=@Continent, station_callsign=@StationCallsign, my_gridsquare=@MyGridsquare, tx_pwr=@TxPwr,
         comment=@Comment, confirmed=@Confirmed, need_tier=@NeedTier, source=@Source, qrz_logid=@QrzLogid, upload_state=@UploadState,
-        upload_error=@UploadError, raw_adif=@RawAdif, modified_utc=@ModifiedUtc
+        upload_error=@UploadError, eqsl_upload_state=@EqslUploadState, eqsl_upload_error=@EqslUploadError, eqsl_confirmed=@EqslConfirmed, raw_adif=@RawAdif, modified_utc=@ModifiedUtc,
+        lotw_confirmed=@LotwConfirmed, lotw_upload_state=@LotwUploadState
         """;
 
     /// <summary>Inserts a contact and returns its id.</summary>
@@ -91,7 +92,7 @@ public sealed class QsoRepository(SqliteDatabase db)
         using var c = db.Open();
         var (where, args) = filter.ToSql();
         var row = c.QuerySingle<(long Contacts, long Countries, long? Confirmed)>(
-            $"SELECT COUNT(*), COUNT(DISTINCT COALESCE(entity_key, country)), SUM(confirmed) FROM qso WHERE {where}", args);
+            $"SELECT COUNT(*), COUNT(DISTINCT COALESCE(entity_key, country)), SUM({LogFilter.ConfirmedSql}) FROM qso WHERE {where}", args);
         return new LogTotals((int)row.Contacts, (int)row.Countries, (int)(row.Confirmed ?? 0));
     }
 
@@ -138,6 +139,62 @@ public sealed class QsoRepository(SqliteDatabase db)
             new { id, state, error, qrzLogid, now = DateTime.UtcNow });
     }
 
+    /// <summary>Contacts of a station callsign not yet uploaded to LoTW, oldest first.</summary>
+    public IReadOnlyList<QsoRecord> PendingLotw(string stationCallsign)
+    {
+        using var c = db.Open();
+        return c.Query<QsoRecord>(
+            "SELECT * FROM qso WHERE station_callsign = @s COLLATE NOCASE AND lotw_upload_state <> @uploaded AND lotw_confirmed = 0 ORDER BY qso_date_on",
+            new { s = stationCallsign, uploaded = Log.UploadState.Uploaded }).ToList();
+    }
+
+    /// <summary>Sets the LoTW upload state of contacts.</summary>
+    public void SetLotwUploadState(IEnumerable<long> ids, string state)
+    {
+        using var c = db.Open();
+        using var tx = c.BeginTransaction();
+        var now = DateTime.UtcNow;
+        foreach (var id in ids) c.Execute("UPDATE qso SET lotw_upload_state=@state, modified_utc=@now WHERE id=@id", new { id, state, now }, tx);
+        tx.Commit();
+    }
+
+    /// <summary>
+    /// Applies LoTW confirmations: each one marks the matching contact (same call, band and mode within
+    /// <see cref="DuplicateRule.Window"/>) as confirmed by LoTW and uploaded, or is added as a new contact when the log
+    /// has no match. Returns (matched, added).
+    /// </summary>
+    public (int Matched, int Added) ApplyLotwConfirmations(IEnumerable<QsoRecord> confirmations)
+    {
+        using var c = db.Open();
+        using var tx = c.BeginTransaction();
+        int matched = 0, added = 0;
+        foreach (var q in confirmations)
+        {
+            q.LotwConfirmed = true;
+            q.Confirmed = true;
+            q.LotwUploadState = Log.UploadState.Uploaded;
+            if (Upsert(c, tx, q).Inserted) added++;
+            else matched++;
+        }
+        tx.Commit();
+        return (matched, added);
+    }
+
+    /// <summary>Marks an incoming eQSL as confirmed without changing other log fields.</summary>
+    public void SetEqslConfirmed(long id)
+    {
+        using var c = db.Open();
+        c.Execute("UPDATE qso SET eqsl_confirmed=1, confirmed=1, modified_utc=@now WHERE id=@id", new { id, now = DateTime.UtcNow });
+    }
+
+    /// <summary>Sets eQSL delivery state without changing QRZ delivery.</summary>
+    public void SetEqslUploadState(long id, string state, string? error)
+    {
+        using var c = db.Open();
+        c.Execute("UPDATE qso SET eqsl_upload_state=@state, eqsl_upload_error=@error, modified_utc=@now WHERE id=@id",
+            new { id, state, error, now = DateTime.UtcNow });
+    }
+
     /// <summary>Contacts for the log index of a station callsign.</summary>
     public IReadOnlyList<LogContact> LogContacts(string stationCallsign)
     {
@@ -155,7 +212,7 @@ public sealed class QsoRepository(SqliteDatabase db)
 
     /// <summary>Maps a row to the index form.</summary>
     public static LogContact ToLogContact(QsoRecord q) =>
-        new(q.Call, q.Band, DuplicateRule.ModeKey(q.Mode, q.Submode), q.Gridsquare, q.EntityKey, q.State, q.Confirmed, q.QsoDateOn);
+        new(q.Call, q.Band, DuplicateRule.ModeKey(q.Mode, q.Submode), q.Gridsquare, q.EntityKey, q.State, q.Confirmed, q.QsoDateOn, q.LotwConfirmed);
 
     private static long Insert(SqliteConnection c, SqliteTransaction? tx, QsoRecord q)
     {
@@ -212,7 +269,10 @@ public sealed class QsoRepository(SqliteDatabase db)
         target.Comment ??= source.Comment;
         target.NeedTier ??= source.NeedTier;
         target.RawAdif ??= source.RawAdif;
-        target.Confirmed |= source.Confirmed;
+        target.EqslConfirmed |= source.EqslConfirmed;
+        target.LotwConfirmed |= source.LotwConfirmed;
+        target.Confirmed |= source.Confirmed || target.EqslConfirmed || target.LotwConfirmed;
+        if (source.LotwUploadState == UploadState.Uploaded) target.LotwUploadState = UploadState.Uploaded;
         if (target.QrzLogid is null && source.QrzLogid is not null)
         {
             target.QrzLogid = source.QrzLogid;
@@ -222,7 +282,8 @@ public sealed class QsoRepository(SqliteDatabase db)
         // A newer QRZ copy carries edits and confirmations.
         if (source.Source == QsoSource.Qrz && source.QrzLogid == target.QrzLogid)
         {
-            target.Confirmed = source.Confirmed;
+            // QRZ's own confirmation can be withdrawn; LoTW and eQSL confirmations stay.
+            target.Confirmed = source.Confirmed || target.EqslConfirmed || target.LotwConfirmed;
             target.Gridsquare = source.Gridsquare ?? target.Gridsquare;
             target.Name = source.Name ?? target.Name;
             target.State = source.State ?? target.State;

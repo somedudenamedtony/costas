@@ -40,6 +40,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             {
                 Id = p.Id, Name = p.Name, Callsign = p.Callsign, Grid = p.Grid, Power = p.PowerWatts.ToString(CultureInfo.InvariantCulture),
                 LogbookKey = host.Secrets.Get(SecretNames.QrzLogbookKey(p.Id)) ?? string.Empty,
+                EqslUser = host.Secrets.Get(SecretNames.EqslUsername(p.Id)) ?? string.Empty,
+                EqslPassword = host.Secrets.Get(SecretNames.EqslPassword(p.Id)) ?? string.Empty,
+                EqslSync = p.Eqsl.SyncEnabled, EqslUpload = p.Eqsl.UploadOnComplete, EqslQth = p.Eqsl.QthNickname,
             });
         }
         _loadedProfile = s.Profile.Id;
@@ -67,12 +70,32 @@ public sealed partial class SettingsViewModel : ObservableObject
         HideWorked = s.Ranking.HideWorked;
         SkipLongShots = s.Ranking.SkipLongShots;
         ConfirmedOnly = s.Ranking.ConfirmedOnly;
+        ConfirmedByLotw = !string.Equals(s.Ranking.ConfirmedBy, "any", StringComparison.OrdinalIgnoreCase);
+        LotwEnabled = s.Lotw.Enabled;
+        LotwUser = s.Lotw.Username ?? string.Empty;
+        LotwPassword = host.Secrets.Get(SecretNames.LotwPassword) ?? string.Empty;
+        LotwUploadOnComplete = s.Lotw.UploadOnComplete;
+        LotwUserList = s.Lotw.UserList;
+        TqslPath = s.Lotw.TqslPath ?? string.Empty;
+        StationLocation = s.Lotw.StationLocation ?? string.Empty;
+        TqslFound = host.Lotw.TqslPath is { } tq ? $"TQSL found: {tq}" : "TQSL not found. Install it from ARRL, or type where tqsl.exe is.";
+        foreach (var t in HuntService.ToTargets(s.Hunt.Targets)) HuntRows.Add(new HuntRowViewModel(t, t.Describe(host.Countries)));
+        HuntEmpty = HuntRows.Count == 0;
+        HuntAllBands = s.Hunt.WatchAllBands;
+        HuntSound = s.Hunt.Sound;
+        var km = s.Hunt.NearbyKm;
+        HuntNearby = (s.Appearance.Units == "km" ? km : (int)Math.Round(GreatCircleMiles(km))).ToString(CultureInfo.InvariantCulture);
+        HuntNearbyUnit = s.Appearance.Units == "km" ? "km" : "miles";
+        HuntBand = HuntBands[0];
+        HuntKind = HuntKinds[0];
         KeepCqCallers = KeepChoiceFor(s.Ranking.KeepCqCallersMinutes);
         LogbookEnabled = s.Qrz.LogbookEnabled;
         UploadOnComplete = s.Qrz.UploadOnComplete;
         SyncMinutes = s.Qrz.SyncMinutes.ToString(CultureInfo.InvariantCulture);
         QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
         QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
+        ShowEqsl(active);
+        RefreshEqslInbox();
         FeedEnabled = s.PskReporter.FeedEnabled;
         PotaSpots = s.Pota.SpotsEnabled;
         CompareNeighbours = s.PskReporter.CompareNeighbours;
@@ -171,6 +194,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         if (value is null || ReferenceEquals(value, _shownProfile)) return;
         StoreFields();
         (Callsign, Grid, Power, LogbookKey) = (value.Callsign, value.Grid, value.Power, value.LogbookKey);
+        ShowEqsl(value);
         KeyStatus = string.Empty;
         _shownProfile = value;
     }
@@ -223,7 +247,15 @@ public sealed partial class SettingsViewModel : ObservableObject
         _shownProfile.Grid = Grid;
         _shownProfile.Power = Power;
         _shownProfile.LogbookKey = LogbookKey;
+        _shownProfile.EqslUser = EqslUser;
+        _shownProfile.EqslPassword = EqslPassword;
+        _shownProfile.EqslSync = EqslSyncEnabled;
+        _shownProfile.EqslUpload = EqslUploadOnComplete;
+        _shownProfile.EqslQth = EqslQthNickname;
     }
+
+    private void ShowEqsl(ProfileDraft d) =>
+        (EqslUser, EqslPassword, EqslSyncEnabled, EqslUploadOnComplete, EqslQthNickname) = (d.EqslUser, d.EqslPassword, d.EqslSync, d.EqslUpload, d.EqslQth);
 
     /// <summary>
     /// Writes the edited profiles into settings: removed ones are dropped, new ones copied from their source, names, calls,
@@ -248,6 +280,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             p.Callsign = d.Callsign.Trim().ToUpperInvariant();
             p.Grid = d.Grid.Trim().ToUpperInvariant();
             p.PowerWatts = Watts(d.Power, p.PowerWatts);
+            p.Eqsl.SyncEnabled = d.EqslSync;
+            p.Eqsl.UploadOnComplete = d.EqslUpload;
+            p.Eqsl.QthNickname = d.EqslQth.Trim();
             result.Add(p);
         }
         s.Profiles = result;
@@ -399,6 +434,135 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool ConfirmedOnly { get; set; }
 
+    /// <summary>Count only LoTW confirmations (what DXCC and WAS credit); otherwise QRZ, eQSL and cards count too.</summary>
+    [ObservableProperty]
+    public partial bool ConfirmedByLotw { get; set; }
+
+    // ------------------------------------------------------------ LoTW
+
+    /// <summary>Download LoTW confirmations.</summary>
+    [ObservableProperty]
+    public partial bool LotwEnabled { get; set; }
+
+    /// <summary>LoTW login name.</summary>
+    [ObservableProperty]
+    public partial string LotwUser { get; set; } = string.Empty;
+
+    /// <summary>LoTW website password (kept in the credential store).</summary>
+    [ObservableProperty]
+    public partial string LotwPassword { get; set; } = string.Empty;
+
+    /// <summary>Upload each contact through TQSL when it is logged.</summary>
+    [ObservableProperty]
+    public partial bool LotwUploadOnComplete { get; set; }
+
+    /// <summary>Download ARRL's list of LoTW users.</summary>
+    [ObservableProperty]
+    public partial bool LotwUserList { get; set; }
+
+    /// <summary>Path to tqsl.exe, blank to look in the usual place.</summary>
+    [ObservableProperty]
+    public partial string TqslPath { get; set; } = string.Empty;
+
+    /// <summary>TQSL Station Location name.</summary>
+    [ObservableProperty]
+    public partial string StationLocation { get; set; } = string.Empty;
+
+    /// <summary>Where TQSL was found, or that it was not.</summary>
+    public string TqslFound { get; }
+
+    // ------------------------------------------------------------ Hunt list
+
+    /// <summary>The Hunt list.</summary>
+    public ObservableCollection<HuntRowViewModel> HuntRows { get; } = [];
+
+    /// <summary>The Hunt list is empty.</summary>
+    [ObservableProperty]
+    public partial bool HuntEmpty { get; set; }
+
+    /// <summary>Kinds of entry, as shown.</summary>
+    public IReadOnlyList<string> HuntKinds { get; } = ["Country", "Call", "US state", "Grid", "Any new country"];
+
+    /// <summary>Kind of the entry being added.</summary>
+    [ObservableProperty]
+    public partial string HuntKind { get; set; } = "Country";
+
+    /// <summary>What is typed for the entry being added.</summary>
+    [ObservableProperty]
+    public partial string HuntValue { get; set; } = string.Empty;
+
+    /// <summary>The text box is shown (not for Any new country).</summary>
+    public bool HuntNeedsValue => HuntKind != "Any new country";
+
+    partial void OnHuntKindChanged(string value) => OnPropertyChanged(nameof(HuntNeedsValue));
+
+    /// <summary>Band choices: Any band, then the bands.</summary>
+    public IReadOnlyList<string> HuntBands { get; } =
+        ["Any band", .. Core.Bands.BandPlan.Bands.Select(b => Core.Bands.BandPlan.Display(b.Band))];
+
+    /// <summary>Band of the entry being added.</summary>
+    [ObservableProperty]
+    public partial string HuntBand { get; set; } = "Any band";
+
+    /// <summary>Why the entry could not be added, or blank.</summary>
+    [ObservableProperty]
+    public partial string HuntError { get; set; } = string.Empty;
+
+    /// <summary>Watch every band through PSK Reporter.</summary>
+    [ObservableProperty]
+    public partial bool HuntAllBands { get; set; }
+
+    /// <summary>Chime and taskbar flash with an alert.</summary>
+    [ObservableProperty]
+    public partial bool HuntSound { get; set; }
+
+    /// <summary>How near (in the display unit) a PSK Reporter receiver must be.</summary>
+    [ObservableProperty]
+    public partial string HuntNearby { get; set; } = string.Empty;
+
+    /// <summary>"miles" or "km".</summary>
+    public string HuntNearbyUnit { get; } = "miles";
+
+    /// <summary>Adds the typed entry to the Hunt list.</summary>
+    [RelayCommand]
+    private void AddHunt()
+    {
+        var kind = HuntKind switch
+        {
+            "Call" => Core.Hunting.HuntTargetKind.Call,
+            "US state" => Core.Hunting.HuntTargetKind.State,
+            "Grid" => Core.Hunting.HuntTargetKind.Grid,
+            "Any new country" => Core.Hunting.HuntTargetKind.NewCountry,
+            _ => Core.Hunting.HuntTargetKind.Country,
+        };
+        var band = HuntBand == "Any band" ? null : HuntBand;
+        var t = Core.Hunting.HuntTarget.Create(kind, HuntValue, band, _host.Countries, out var error);
+        if (t is null)
+        {
+            HuntError = error;
+            return;
+        }
+        if (HuntRows.Any(r => r.Target == t))
+        {
+            HuntError = $"{t.Describe(_host.Countries)} is already on the list.";
+            return;
+        }
+        HuntRows.Add(new HuntRowViewModel(t, t.Describe(_host.Countries)));
+        HuntEmpty = false;
+        HuntError = string.Empty;
+        HuntValue = string.Empty;
+    }
+
+    /// <summary>Removes an entry from the Hunt list.</summary>
+    [RelayCommand]
+    private void RemoveHunt(HuntRowViewModel? row)
+    {
+        if (row is not null) HuntRows.Remove(row);
+        HuntEmpty = HuntRows.Count == 0;
+    }
+
+    private static double GreatCircleMiles(int km) => Core.Geo.GreatCircle.ToMiles(km);
+
     /// <summary>Choices for how long a CQ caller stays in Next in line after it was last heard, with their minutes.</summary>
     public static readonly IReadOnlyList<(string Text, int Minutes)> KeepCqChoices =
     [
@@ -454,6 +618,49 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>Where secrets are kept.</summary>
     public string SecretsNote { get; }
+
+    /// <summary>Read the eQSL inbox automatically.</summary>
+    [ObservableProperty]
+    public partial bool EqslSyncEnabled { get; set; }
+
+    /// <summary>Last manual inbox-sync result.</summary>
+    [ObservableProperty]
+    public partial string EqslSyncStatus { get; set; } = string.Empty;
+
+    /// <summary>Most recent incoming cards, including unmatched cards.</summary>
+    public ObservableCollection<string> EqslInboxCards { get; } = [];
+
+    private void RefreshEqslInbox()
+    {
+        EqslInboxCards.Clear();
+        foreach (var card in _host.EqslInbox.Read(_host.Settings.Current.Profile.Id).Take(100))
+            EqslInboxCards.Add($"{card["qso_date"]} {card["time_on"]} UTC · {card["call"]} · {card["band"]} · {card["submode"] ?? card["mode"]}");
+    }
+
+    /// <summary>Tests the account by syncing the inbox and matching confirmations.</summary>
+    [RelayCommand]
+    private async Task SyncEqsl()
+    {
+        EqslSyncStatus = "Reading eQSL inbox…";
+        EqslSyncStatus = await _host.Eqsl.SyncNowAsync(EqslUser.Trim(), EqslPassword, EqslQthNickname.Trim(), CancellationToken.None);
+        RefreshEqslInbox();
+    }
+
+    /// <summary>Upload newly logged contacts to eQSL.</summary>
+    [ObservableProperty]
+    public partial bool EqslUploadOnComplete { get; set; }
+
+    /// <summary>eQSL account username.</summary>
+    [ObservableProperty]
+    public partial string EqslUser { get; set; } = string.Empty;
+
+    /// <summary>eQSL account password, saved only in the secret store.</summary>
+    [ObservableProperty]
+    public partial string EqslPassword { get; set; } = string.Empty;
+
+    /// <summary>eQSL QTH nickname for this station profile.</summary>
+    [ObservableProperty]
+    public partial string EqslQthNickname { get; set; } = string.Empty;
 
     /// <summary>PSK feed.</summary>
     [ObservableProperty]
@@ -742,6 +949,18 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Ranking.HideWorked = HideWorked;
             s.Ranking.SkipLongShots = SkipLongShots;
             s.Ranking.ConfirmedOnly = ConfirmedOnly;
+            s.Ranking.ConfirmedBy = ConfirmedByLotw ? "lotw" : "any";
+            s.Lotw.Enabled = LotwEnabled;
+            s.Lotw.Username = string.IsNullOrWhiteSpace(LotwUser) ? null : LotwUser.Trim();
+            s.Lotw.UploadOnComplete = LotwUploadOnComplete;
+            s.Lotw.UserList = LotwUserList;
+            s.Lotw.TqslPath = string.IsNullOrWhiteSpace(TqslPath) ? null : TqslPath.Trim();
+            s.Lotw.StationLocation = string.IsNullOrWhiteSpace(StationLocation) ? null : StationLocation.Trim();
+            s.Hunt.Targets = HuntRows.Select(r => HuntService.ToEntry(r.Target)).ToList();
+            s.Hunt.WatchAllBands = HuntAllBands;
+            s.Hunt.Sound = HuntSound;
+            var near = Int(HuntNearby, 50, 5000, 0);
+            if (near > 0) s.Hunt.NearbyKm = HuntNearbyUnit == "km" ? near : (int)Math.Round(near * Core.Geo.GreatCircle.KmPerMile);
             s.Ranking.KeepCqCallersMinutes = KeepMinutesFor(KeepCqCallers);
             // Only a level typed here replaces the band's level, so one automatic level set meanwhile is kept.
             if (TxGain.Trim() != _loadedTxGain)
@@ -790,10 +1009,21 @@ public sealed partial class SettingsViewModel : ObservableObject
                 s.Developer.SimulatedPartner = SimulatedPartner;
             }
         });
-        foreach (var d in Profiles) Set(SecretNames.QrzLogbookKey(d.Id), d.LogbookKey.Trim());
-        foreach (var id in removed) _host.Secrets.Delete(SecretNames.QrzLogbookKey(id));
+        foreach (var d in Profiles)
+        {
+            Set(SecretNames.QrzLogbookKey(d.Id), d.LogbookKey.Trim());
+            Set(SecretNames.EqslUsername(d.Id), d.EqslUser.Trim());
+            Set(SecretNames.EqslPassword(d.Id), d.EqslPassword);
+        }
+        foreach (var id in removed)
+        {
+            _host.Secrets.Delete(SecretNames.QrzLogbookKey(id));
+            _host.Secrets.Delete(SecretNames.EqslUsername(id));
+            _host.Secrets.Delete(SecretNames.EqslPassword(id));
+        }
         Set(SecretNames.QrzUsername, QrzUser.Trim());
         Set(SecretNames.QrzPassword, QrzPassword);
+        Set(SecretNames.LotwPassword, LotwPassword);
         _host.TxLevel.Apply();
         _host.RebuildLogIndex();
         // Another profile may use another radio or audio device.

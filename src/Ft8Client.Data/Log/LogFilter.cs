@@ -14,7 +14,7 @@ namespace Ft8Client.Data.Log;
 /// <param name="Band">ADIF band, e.g. <c>20m</c>.</param>
 /// <param name="ModeKey"><c>FT8</c>, <c>FT4</c>, or another ADIF mode upper case (see <see cref="DuplicateRule.ModeKey"/>).</param>
 /// <param name="FromUtc">Only contacts on or after this time.</param>
-/// <param name="Confirmed">True for confirmed only, false for unconfirmed only.</param>
+/// <param name="Confirmed">True for confirmed only (by QRZ, the ADIF or LoTW), false for unconfirmed only.</param>
 public sealed record LogFilter(string? Search = null, string? Band = null, string? ModeKey = null, DateTime? FromUtc = null, bool? Confirmed = null)
 {
     /// <summary>No filter: every contact.</summary>
@@ -22,6 +22,9 @@ public sealed record LogFilter(string? Search = null, string? Band = null, strin
 
     /// <summary>True when anything other than the search text narrows the list.</summary>
     public bool Narrowed => Band is not null || ModeKey is not null || FromUtc is not null || Confirmed is not null;
+
+    /// <summary>1 when QRZ (or the ADIF) or LoTW confirms the contact, else 0.</summary>
+    internal const string ConfirmedSql = "(CASE WHEN confirmed = 1 OR lotw_confirmed = 1 THEN 1 ELSE 0 END)";
 
     /// <summary>The SQL condition (without <c>WHERE</c>) and its parameters; <c>1=1</c> when nothing is filtered.</summary>
     internal (string Sql, object Args) ToSql()
@@ -34,7 +37,7 @@ public sealed record LogFilter(string? Search = null, string? Band = null, strin
         if (ModeKey == "FT4") parts.Add("(UPPER(mode) = 'FT4' OR (UPPER(mode) = 'MFSK' AND UPPER(submode) = 'FT4'))");
         else if (ModeKey is not null) parts.Add("UPPER(mode) = @mode AND NOT (UPPER(mode) = 'MFSK' AND UPPER(COALESCE(submode, '')) = 'FT4')");
         if (FromUtc is not null) parts.Add("qso_date_on >= @from");
-        if (Confirmed is not null) parts.Add("confirmed = @confirmed");
+        if (Confirmed is not null) parts.Add($"{ConfirmedSql} = @confirmed");
         var sql = parts.Count == 0 ? "1=1" : string.Join(" AND ", parts);
         return (sql, new { like, band = Band, mode = ModeKey, from = FromUtc, confirmed = Confirmed });
     }

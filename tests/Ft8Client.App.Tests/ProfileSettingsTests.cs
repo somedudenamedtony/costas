@@ -30,7 +30,7 @@ public class ProfileSettingsTests
         var drafts = new List<ProfileDraft>
         {
             new() { Id = "home", Name = "Home", Callsign = "n0call", Grid = "dn40", Power = "100" },
-            new() { Id = "p1", CopyOf = "home", Name = " Park ", Callsign = "n0call/p", Grid = "dn41", Power = "10" },
+            new() { Id = "p1", CopyOf = "home", Name = " Park ", Callsign = "n0call/p", Grid = "dn41", Power = "10", EqslUpload = true, EqslQth = " Park " },
         };
 
         SettingsViewModel.ApplyProfiles(s, drafts, "p1");
@@ -43,6 +43,9 @@ public class ProfileSettingsTests
         s.Profile.PowerWatts.Should().Be(10);
         s.Profile.Rig.Port.Should().Be("COM3");
         s.Profiles[0].PowerWatts.Should().Be(100);
+        s.Profile.Eqsl.UploadOnComplete.Should().BeTrue();
+        s.Profile.Eqsl.QthNickname.Should().Be("Park");
+        s.Profiles[0].Eqsl.UploadOnComplete.Should().BeFalse();
     }
 
     [Fact]

@@ -49,6 +49,7 @@ public sealed class PskReporterService : IAsyncDisposable
     private volatile bool _queryWorking;
     private bool _neighboursStopLogged;
     private bool _allBandsStopLogged;
+    private (List<string> Calls, List<int> Dxccs) _hunt = ([], []);
 
     /// <summary>
     /// Creates the service. <paramref name="uploadsAllowed"/> is false in simulation: replayed recordings must never be
@@ -63,6 +64,25 @@ public sealed class PskReporterService : IAsyncDisposable
         _clock = clock;
         _uploadsAllowed = uploadsAllowed;
         _uploader = new PskSpotUploader(SendAsync, clock);
+    }
+
+    /// <summary>Raised for each report of a station on the Hunt list (from any receiver; the caller filters by distance).</summary>
+    public event Action<HuntSpot>? HuntReport;
+
+    /// <summary>True while the live feed is running (Hunt list reports can arrive).</summary>
+    public bool FeedRunning => _feed is not null;
+
+    /// <summary>True when Hunt list reports came too fast and following them was stopped.</summary>
+    public bool HuntStopped => _feed?.HuntStopped == true;
+
+    /// <summary>
+    /// Follows the Hunt list on every band: every report of <paramref name="calls"/>, and reports of senders in the
+    /// <paramref name="dxccs"/> (ADIF codes) heard by receivers in my DXCC entity.
+    /// </summary>
+    public void FollowHunt(IReadOnlyCollection<string> calls, IReadOnlyCollection<int> dxccs)
+    {
+        _hunt = ([.. calls], [.. dxccs]);
+        _feed?.FollowHunt(calls, dxccs, _feed.MyDxcc);
     }
 
     /// <summary>Loads the last hour of stored reports and starts the feed, the fallback query and the uploader.</summary>
@@ -82,6 +102,7 @@ public sealed class PskReporterService : IAsyncDisposable
             if (s.PskReporter is { MyDxcc: { } dxcc, MyDxccCall: { } call } && Callsign.EqualsCall(call, _myCall)) _feed.RememberMyDxcc(dxcc);
             _feed.Report += OnReport;
             _feed.NeighbourReport += _session.AddNeighbourReport;
+            _feed.HuntReport += spot => HuntReport?.Invoke(spot);
             _feed.StatusChanged += st =>
             {
                 _session.SetReportsAvailable(st.Health == ServiceHealth.Ok || _queryWorking);
@@ -90,6 +111,7 @@ public sealed class PskReporterService : IAsyncDisposable
             _session.SetService(ServiceNames.Psk, new ServiceStatus(ServiceHealth.Degraded, "Connecting to the live feed", _clock.UtcNow));
             _feed.Start(_myCall);
             FollowNeighbours();
+            _feed.FollowHunt(_hunt.Calls, _hunt.Dxccs, _feed.MyDxcc);
             _ = Task.Run(() => QueryLoopAsync(_cts.Token));
         }
         _session.SlotDecoded += OnSlotDecoded;
@@ -133,6 +155,7 @@ public sealed class PskReporterService : IAsyncDisposable
             : _feed.NeighboursStopped ? BandActivityFeed.Stopped
             : _feed.AllBandsStopped ? BandActivityFeed.CurrentBandOnly
             : BandActivityFeed.AllBands);
+        _feed.FollowHunt(_hunt.Calls, _hunt.Dxccs, _feed.MyDxcc);
         if (_feed.MyDxcc is { } dxcc && (o.MyDxcc != dxcc || !Callsign.EqualsCall(o.MyDxccCall ?? string.Empty, _myCall)))
         {
             _settings.Update(x =>

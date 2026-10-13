@@ -38,6 +38,14 @@ jobs:
       - name: Build installer
         run: ./scripts/build-installer.ps1 -BuildNumber ${{ github.run_number }}
         shell: pwsh
+      - name: Check jt9 stays running (shared memory)
+        shell: pwsh
+        run: |
+          $out = dotnet run -c Release --project tools/Ft8Client.DecodeCli -- --keep-running --call W7LIT --grid DN40 samples/ft8/260101_000000.wav samples/ft8/260101_000015.wav | Out-String
+          Write-Host $out
+          if ($out -notmatch 'stays running' -or $out -notmatch '<PJ4/K1ABC> W7LIT DN40') { throw 'jt9 did not resolve the hashed call through shared memory' }
+          dotnet test tests/Ft8Client.Decoding.Tests -c Release --filter "FullyQualifiedName~Jt9PersistentDecoderTests"
+          if ($LASTEXITCODE -ne 0) { throw 'persistent decoder tests failed' }
       - name: Install, upgrade, start and uninstall
         run: ./scripts/test-installer.ps1
         shell: pwsh

@@ -21,6 +21,12 @@ public static class TxOffsetPicker
     /// <summary>Highest usable audio frequency.</summary>
     public const int HighHz = 2800;
 
+    /// <summary>
+    /// Lowest offset a Hound calls on. A Fox transmits below 1000 Hz and listens above it (WSJT-X keeps a Hound's
+    /// calls at 1000 Hz or more and decodes only below 1000 Hz).
+    /// </summary>
+    public const int HoundLowHz = 1000;
+
     /// <summary>Minimum gap width.</summary>
     public const int MinGapHz = 100;
 
@@ -32,7 +38,8 @@ public static class TxOffsetPicker
     /// <param name="slotsNewestFirst">Decode offsets of up to the last 4 relevant slots, newest first.</param>
     /// <param name="mode">Mode, for the signal bandwidth.</param>
     /// <param name="currentOffsetHz">The offset in use.</param>
-    public static TxOffsetChoice Choose(IReadOnlyList<IReadOnlyList<int>> slotsNewestFirst, Mode mode, int currentOffsetHz)
+    /// <param name="minHz">Lowest offset allowed (<see cref="HoundLowHz"/> for a Hound).</param>
+    public static TxOffsetChoice Choose(IReadOnlyList<IReadOnlyList<int>> slotsNewestFirst, Mode mode, int currentOffsetHz, int minHz = LowHz)
     {
         var bw = ModeInfo.OccupiedBandwidthHz(mode);
         var bins = (HighHz - LowHz) / Bin;
@@ -65,8 +72,8 @@ public static class TxOffsetPicker
                 start = -1;
             }
         }
-        gaps = gaps.Where(g => g.Hi - g.Lo >= MinGapHz).ToList();
-        if (gaps.Count == 0) return new TxOffsetChoice(currentOffsetHz, false);
+        gaps = gaps.Select(g => (Lo: Math.Max(g.Lo, minHz), g.Hi)).Where(g => g.Hi - g.Lo >= MinGapHz).ToList();
+        if (gaps.Count == 0) return new TxOffsetChoice(Math.Max(currentOffsetHz, minHz), false);
 
         // Prefer the widest part of a gap inside 1000-2000 Hz.
         var preferred = gaps
@@ -81,7 +88,7 @@ public static class TxOffsetPicker
 
         bool IsClear(int lo, int hi)
         {
-            if (lo < LowHz || hi > HighHz) return false;
+            if (lo < Math.Max(LowHz, minHz - 10) || hi > HighHz) return false;
             for (var f = lo; f < hi; f += Bin)
             {
                 if (!Free((f - LowHz) / Bin)) return false;

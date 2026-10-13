@@ -83,6 +83,12 @@ public sealed class QsoRecord
     /// <summary>True if any confirmation field says so.</summary>
     public bool Confirmed { get; set; }
 
+    /// <summary>True when LoTW confirms it.</summary>
+    public bool LotwConfirmed { get; set; }
+
+    /// <summary>LoTW upload through TQSL: <c>none</c>, <c>uploaded</c> or <c>failed</c>.</summary>
+    public string LotwUploadState { get; set; } = Log.UploadState.None;
+
     /// <summary>Need tier at the time of the contact (local contacts).</summary>
     public int? NeedTier { get; set; }
 
@@ -97,6 +103,15 @@ public sealed class QsoRecord
 
     /// <summary>Last upload error, verbatim.</summary>
     public string? UploadError { get; set; }
+
+    /// <summary>An incoming eQSL card matched this contact.</summary>
+    public bool EqslConfirmed { get; set; }
+
+    /// <summary>eQSL delivery state, independent of QRZ.</summary>
+    public string EqslUploadState { get; set; } = Log.UploadState.None;
+
+    /// <summary>Last eQSL delivery error (credentials redacted).</summary>
+    public string? EqslUploadError { get; set; }
 
     /// <summary>The original ADIF record for imported or fetched contacts.</summary>
     public string? RawAdif { get; set; }

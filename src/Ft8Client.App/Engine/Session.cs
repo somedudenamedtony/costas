@@ -61,6 +61,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private SessionConfig _config;
     private LogIndex _logIndex = LogIndex.Empty;
     private HearsMe _hearsMe;
+    private LotwUsers? _lotwUsers;
     private readonly ReceptionHistory _receptionHistory = new();
     private EntityMatch? _myEntity;
     private long _dialHz;
@@ -74,6 +75,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private string? _fault;
     private TxMeterResult? _txMeters;
     private Task _decodeTask = Task.CompletedTask;
+    private Task _earlyTask = Task.CompletedTask;
+    private (DateTime Slot, HashSet<string> Texts) _rawShown = (DateTime.MinValue, new HashSet<string>(StringComparer.Ordinal));
     private DateTime? _recordingSlot;
     private DateTime? _quickSlot;
     private readonly Dictionary<DateTime, HashSet<string>> _fedToEngine = [];
@@ -102,6 +105,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         _txOffset = config.FixedTxOffsetHz ?? 1500;
         _engine = new ContactEngine(config.MyCall, config.MyGrid, config.Contact, clock.UtcNow);
         _engine.Logged += OnLogged;
+        _engine.IsFox = call => _tracker.Find(call)?.RunsFox == true; // read under _gate, as every engine call is
         _tx.Started += OnTxStarted;
         _tx.Ended += (_, _) => Publish();
         _tx.Fault += OnTxFault;
@@ -134,10 +138,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Completes when the decode in flight (if any) has been applied.</summary>
     public Task DecodeIdle
     {
-        get { lock (_gate) return _decodeTask; }
+        get { lock (_gate) return Task.WhenAll(_decodeTask, _earlyTask); }
     }
 
-    /// <summary>Decoder runs started so far (full and quick), so tests can wait for each to reach the decoder.</summary>
+    /// <summary>Decoder runs started so far (full, quick and early), so tests can wait for each to reach the decoder.</summary>
     internal int DecodesStarted { get; private set; }
 
     /// <summary>The configuration.</summary>
@@ -165,6 +169,9 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             case SlotMark.Start:
                 OnSlotStart(e);
                 break;
+            case SlotMark.EarlyDecode:
+                OnEarlyDecode(e);
+                break;
             case SlotMark.CaptureCutoff:
                 OnCutoff(e);
                 break;
@@ -191,6 +198,50 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate) _recordingSlot = transmitting ? null : e.SlotStartUtc;
         if (transmitting) _source.CancelSlot();
         else _source.BeginSlot(e.SlotStartUtc, e.Mode);
+        Publish();
+    }
+
+    /// <summary>
+    /// The early pass, as WSJT-X runs it: with a decoder that keeps jt9 running, the first 11.8 s of an FT8 slot are
+    /// decoded while the slot is still running. Its decodes go to the contact engine and the raw decodes at once; the
+    /// station list and the slot's counts wait for the full decode, which lists every decode of the slot.
+    /// </summary>
+    private void OnEarlyDecode(SlotEvent e)
+    {
+        if (_decoder is not IEarlyDecoder early || !early.HasEarlyPass(e.Mode)) return;
+        lock (_gate)
+        {
+            if (_recordingSlot != e.SlotStartUtc) return;
+        }
+        var audio = _source.Peek(e.SlotStartUtc, e.Mode);
+        if (audio is null) return;
+        var ctx = FullContext();
+        lock (_gate)
+        {
+            DecodesStarted++;
+            _earlyTask = Task.Run(() => EarlyDecodeAsync(early, audio, ctx));
+        }
+    }
+
+    private async Task EarlyDecodeAsync(IEarlyDecoder early, SlotAudio audio, DecodeContext ctx)
+    {
+        DecodeResult result;
+        try
+        {
+            result = await early.DecodeEarlyAsync(audio, ctx, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return; // the full decode still runs
+        }
+        if (!result.Succeeded || result.Decodes.Count == 0) return;
+        lock (_gate)
+        {
+            if (audio.Mode != _config.Mode) return;
+            var heard = result.Decodes.Select(HeardMessage.From).ToList();
+            AddRaw(audio.SlotStartUtc, heard);
+            FeedEngine(audio.SlotStartUtc, audio.Mode, heard, _clock.UtcNow);
+        }
         Publish();
     }
 
@@ -230,6 +281,12 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         var myGrid = Grid.Grid4(_config.MyGrid) ?? string.Empty;
         if (_engine.InContact && _engine.DxOffsetHz is { } dx)
         {
+            // A Fox answers on any of its streams, all below 1000 Hz: search the whole Fox range, not just around it.
+            if (_engine.InHoundContact)
+            {
+                return new DecodeContext(_config.MyCall, myGrid, _engine.DxCall, _engine.DxGrid, LowHz: 100,
+                    HighHz: Math.Max(TxOffsetPicker.HoundLowHz, dx + QuickSpanHz), Depth: 3, QsoProgress: _engine.QsoProgress, RxOffsetHz: dx) { Hound = true };
+            }
             return new DecodeContext(_config.MyCall, myGrid, _engine.DxCall, _engine.DxGrid, LowHz: Math.Max(100, dx - QuickSpanHz),
                 HighHz: dx + QuickSpanHz, Depth: 3, QsoProgress: _engine.QsoProgress, RxOffsetHz: dx);
         }
@@ -242,7 +299,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         DecodeResult result;
         try
         {
-            result = await _decoder.DecodeAsync(audio, ctx, CancellationToken.None).ConfigureAwait(false);
+            result = await _decoder.DecodeAsync(audio, ctx with { Quick = true }, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -273,15 +330,22 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         _engine.OnDecodes(slot, mode, fresh, now);
     }
 
+    private DecodeContext FullContext()
+    {
+        lock (_gate)
+        {
+            return new DecodeContext(_config.MyCall, Grid.Grid4(_config.MyGrid) ?? string.Empty, _engine.DxCall, _engine.DxGrid,
+                QsoProgress: _engine.QsoProgress, RxOffsetHz: _engine.DxOffsetHz ?? _txOffset)
+            {
+                Hound = _engine.InHoundContact, // jt9 decodes as a Hound (WSJT-X special operation 7) while I work a Fox
+            };
+        }
+    }
+
     /// <summary>Decodes one slot and applies it. Public so tests and simulation can drive slots directly.</summary>
     public async Task DecodeAsync(SlotAudio audio, CancellationToken ct)
     {
-        DecodeContext ctx;
-        lock (_gate)
-        {
-            ctx = new DecodeContext(_config.MyCall, Grid.Grid4(_config.MyGrid) ?? string.Empty, _engine.DxCall, _engine.DxGrid,
-                QsoProgress: _engine.QsoProgress, RxOffsetHz: _engine.DxOffsetHz ?? _txOffset);
-        }
+        var ctx = FullContext();
         DecodeResult result;
         try
         {
@@ -306,13 +370,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             if (mode != _config.Mode) return;
             var now = _clock.UtcNow;
             var heard = result.Decodes.Select(HeardMessage.From).ToList();
-            foreach (var h in heard)
-            {
-                var sender = h.Message.SenderCall;
-                _raw.Add(new RawDecodeLine(h.Decode, h.Message, sender is null ? null : _countries.Lookup(sender)?.Entity.Name,
-                    h.Message.IsAddressedTo(_config.MyCall)));
-            }
-            if (_raw.Count > MaxRaw) _raw.RemoveRange(0, _raw.Count - MaxRaw);
+            AddRaw(slot, heard);
 
             _tracker.KeepFor = _config.Ranking.KeepCqCallers;
             _tracker.ApplySlot(slot, heard);
@@ -344,8 +402,23 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
+    // Raw decode lines, each message of a slot once: the early pass shows its decodes before the full decode lists them again.
+    private void AddRaw(DateTime slot, List<HeardMessage> heard)
+    {
+        if (_rawShown.Slot != slot) _rawShown = (slot, new HashSet<string>(StringComparer.Ordinal));
+        foreach (var h in heard)
+        {
+            if (!_rawShown.Texts.Add(h.Decode.Text)) continue;
+            var sender = h.Message.SenderCall;
+            _raw.Add(new RawDecodeLine(h.Decode, h.Message, sender is null ? null : _countries.Lookup(sender)?.Entity.Name,
+                h.Message.IsAddressedTo(_config.MyCall)));
+        }
+        if (_raw.Count > MaxRaw) _raw.RemoveRange(0, _raw.Count - MaxRaw);
+    }
+
     private void UpdateTxOffset(Mode mode)
     {
+        if (_engine.InHoundContact) return; // the offset chosen when calling the Fox holds for the contact
         if (_config.FixedTxOffsetHz is { } fixedHz)
         {
             _txOffset = fixedHz;
@@ -401,7 +474,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             // full decode is not waited for: it takes longer than the limit on a busy band.
             if (!late && _quickSlot == slot - ModeInfo.SlotLength(mode) && (_engine.InContact || _engine.CallingCq))
                 hold = new TxHold(txStart + _config.LateStartLimit - _config.PttLead, _config.PttLead);
-            offset = _txOffset;
+            offset = plan.TxOffsetHz ?? _txOffset;
             guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         }
@@ -511,12 +584,29 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 // A station heard working someone else (reports or grids exchanged, not signing off) will not hear me:
                 // the contact ends at once and says so rather than calling into its contact.
                 var busyWith = s is { State: StationState.InContact, Partner: { } p } && !Callsign.EqualsCall(p, _config.MyCall) ? p : null;
-                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, busyWith);
+                // A Fox (Fox/Hound DXpedition) is worked as a Hound: my calls at 1000 Hz or above, where it listens.
+                if (s.RunsFox) HoundCallOffset(SlotMath.Opposite(s.Parity));
+                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, busyWith, fox: s.RunsFox);
             }
             _fault = null;
         }
         AfterCommand();
         return true;
+    }
+
+    // Moves my offset to 1000 Hz or above for calling a Fox: the fixed offset if it is that high, else a clear spot there.
+    // Under _gate. The offset then holds until the Hound contact ends.
+    private void HoundCallOffset(SlotParity myParity)
+    {
+        if (_config.FixedTxOffsetHz is { } f && f >= TxOffsetPicker.HoundLowHz)
+        {
+            _txOffset = f;
+            return;
+        }
+        var slots = _recentOffsets.Where(x => x.Parity == myParity).Reverse().Take(4).Select(x => (IReadOnlyList<int>)x.Offsets).ToList();
+        var c = TxOffsetPicker.Choose(slots, _config.Mode, _txOffset, TxOffsetPicker.HoundLowHz);
+        _txOffset = c.OffsetHz;
+        _txOffsetClear = c.Clear;
     }
 
     /// <summary>Starts or stops calling CQ.</summary>
@@ -661,7 +751,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             _config = _config with { FixedTxOffsetHz = hz };
-            if (hz is { } v) _txOffset = v;
+            if (hz is { } v && (!_engine.InHoundContact || v >= TxOffsetPicker.HoundLowHz)) _txOffset = v;
             else UpdateTxOffset(_config.Mode);
         }
         Publish();
@@ -718,6 +808,13 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 _myEntity = _countries.Lookup(config.MyCall);
             }
         }
+        Publish();
+    }
+
+    /// <summary>Sets who uploads to LoTW (for ranking when only confirmed contacts count).</summary>
+    public void SetLotwUsers(LotwUsers users)
+    {
+        lock (_gate) _lotwUsers = users;
         Publish();
     }
 
@@ -857,7 +954,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             var now = _clock.UtcNow;
             var stations = _tracker.Stations.ToList();
             var rank = Ranker.Rank(new RankInput(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity,
-                _config.Band, ModeInfo.Name(_config.Mode), now, _countries));
+                _config.Band, ModeInfo.Name(_config.Mode), now, _countries, Lotw: _lotwUsers));
             var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, ModeInfo.Name(_config.Mode), now, _slotCounts, _tonight,
                 _config.Ranking);
             snap = new SessionSnapshot

@@ -47,6 +47,15 @@ public static class StationText
         return $"{entityName} is in your log on {list}, not on {Bands.BandPlan.Display(band)} yet";
     }
 
+    /// <summary>
+    /// The LoTW line of the Why tooltip: "Uses LoTW", or, when only confirmed contacts count and the LoTW user list is
+    /// loaded, that the station has not uploaded to LoTW in the last year. Empty otherwise.
+    /// </summary>
+    public static string LotwNote(bool usesLotw, bool confirmedOnly, bool listLoaded) =>
+        usesLotw ? "Uses LoTW, so a contact can count once confirmed"
+        : confirmedOnly && listLoaded ? "Has not uploaded to LoTW in the last year, so a contact may never be confirmed"
+        : string.Empty;
+
     /// <summary>"Confirmed" or "Not confirmed": the Why column in Repeats.</summary>
     public static string Confirmation(bool confirmed) => confirmed ? "Confirmed" : "Not confirmed";
 
@@ -82,6 +91,7 @@ public static class StationText
     /// <summary>The "Doing now" column.</summary>
     public static string DoingNow(Station s)
     {
+        if (s.RunsFox && s.State != StationState.CallingMe) return "DXpedition (Fox/Hound), working Hounds";
         switch (s.State)
         {
             case StationState.CallingMe:

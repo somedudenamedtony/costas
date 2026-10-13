@@ -25,6 +25,9 @@ public sealed class StationProfile
     /// <summary>My grid, 4 or 6 characters.</summary>
     public string Grid { get; set; } = string.Empty;
 
+    /// <summary>eQSL upload settings for this station.</summary>
+    public EqslOptions Eqsl { get; set; } = new();
+
     /// <summary>Radio control.</summary>
     public RigSettings Rig { get; set; } = new();
 

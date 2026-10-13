@@ -56,6 +56,7 @@ public sealed class LogRowViewModel(QsoRecord q)
     public string Qrz { get; } = q.UploadState switch
     {
         UploadState.Uploaded => q.Source == QsoSource.Qrz ? "From QRZ" : "Uploaded",
+        _ when q.Source == QsoSource.Lotw => "From LoTW",
         UploadState.Queued => "Waiting to upload",
         UploadState.Failed => "Failed: " + q.UploadError,
         _ => q.QrzLogid is null ? "Not uploaded" : "In QRZ",
@@ -68,6 +69,21 @@ public sealed class LogRowViewModel(QsoRecord q)
         UploadState.Failed => TextKind.Critical,
         _ => TextKind.Secondary,
     };
+
+    /// <summary>LoTW: "Confirmed", "Uploaded", or blank.</summary>
+    public string Lotw { get; } = q.LotwConfirmed ? "Confirmed" : q.LotwUploadState == UploadState.Uploaded ? "Uploaded" : string.Empty;
+
+    /// <summary>LoTW colour: confirmed stands out.</summary>
+    public TextKind LotwKind { get; } = q.LotwConfirmed ? TextKind.Normal : TextKind.Secondary;
+
+    /// <summary>eQSL delivery, separate from QRZ.</summary>
+    public string Eqsl { get; } = (q.EqslConfirmed ? (q.EqslUploadState == UploadState.None ? "Confirmed" : "Confirmed · ") : string.Empty) + (q.EqslUploadState switch
+    {
+        UploadState.Uploaded => "Uploaded",
+        UploadState.Queued => q.EqslUploadError is null ? "Waiting to upload" : "Retrying: " + q.EqslUploadError,
+        UploadState.Failed => "Failed: " + q.EqslUploadError,
+        _ => string.Empty,
+    });
 
     /// <summary>Confirmed.</summary>
     public string Confirmed { get; } = q.Confirmed ? "Yes" : string.Empty;

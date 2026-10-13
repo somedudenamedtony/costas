@@ -55,6 +55,15 @@ public sealed class StationDetailsViewModel
     /// <summary>"LoTW · eQSL · paper", with the QSL manager when there is one; blank when not known.</summary>
     public string Qsl { get; private init; } = string.Empty;
 
+    /// <summary>The station's country (country-file key), for "Hunt this country"; null when not known.</summary>
+    public string? EntityKey { get; private init; }
+
+    /// <summary>"Hunt Japan", or blank when the country is not known.</summary>
+    public string HuntCountryText { get; private init; } = string.Empty;
+
+    /// <summary>The "Hunt country" link is shown.</summary>
+    public bool CanHuntCountry => HuntCountryText.Length > 0;
+
     /// <summary>"CQ 5 · ITU 8", blank when not known.</summary>
     public string Zones { get; private init; } = string.Empty;
 
@@ -148,8 +157,9 @@ public sealed class StationDetailsViewModel
     /// <summary>Builds the details from whatever is known: the heard station, a QRZ lookup, or both.</summary>
     public static StationDetailsViewModel From(string call, Station? s, CallsignCacheEntry? q, LogIndex? log, DistanceUnit units, DateTime nowUtc,
                                                string? name = null, Pileup? pileup = null, int txOffsetHz = 0, Mode mode = Mode.Ft8, int? mostWantedRank = null,
-                                               Core.Pota.ParkInfo? park = null)
+                                               DateTime? lotwUpload = null, Core.Pota.ParkInfo? park = null)
     {
+        var entity = s?.Entity?.Entity;
         var offset = q is null ? null : StationClock.Offset(q.GmtOffset, q.ObservesDst, s?.EntityKey, s?.Continent, nowUtc);
         return new StationDetailsViewModel
         {
@@ -161,7 +171,9 @@ public sealed class StationDetailsViewModel
             Bearing = s?.Bearing is { } b ? $"{b}°" : "—",
             LocalTime = StationClock.Describe(offset, nowUtc) ?? string.Empty,
             LicenseClass = LicenseText(q?.LicenseClass),
-            Qsl = QslText(q),
+            Qsl = QslText(q, lotwUpload, nowUtc),
+            EntityKey = entity?.Key,
+            HuntCountryText = entity is null ? string.Empty : $"Hunt {entity.Name}",
             Heard = HeardHistory?.Invoke(call, s?.EntityKey) ?? string.Empty,
             Rarity = mostWantedRank is { } mw ? Core.Geo.Rarity.Describe(mw) : string.Empty,
             Park = Core.Pota.PotaText.Details(park),
@@ -171,7 +183,7 @@ public sealed class StationDetailsViewModel
             PhotoUrl = q?.ImageUrl,
             Past = (log?.ContactsWith(call) ?? []).OrderByDescending(c => c.DateUtc)
                 .Select(c => new PastContactViewModel(c.DateUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), c.Band, c.ModeKey,
-                    c.Confirmed ? "Confirmed" : string.Empty)).ToList(),
+                    c.LotwConfirmed ? "Confirmed on LoTW" : c.Confirmed ? "Confirmed (QRZ, eQSL or card)" : string.Empty)).ToList(),
             PileupHeadline = pileup is null ? string.Empty : PileupText.Headline(pileup),
             PileupCallers = pileup?.Callers.Select(c => new PileupCallerViewModel(c.Call, Report.Format(c.Snr),
                 c.OffsetHz.ToString(CultureInfo.InvariantCulture) + " Hz")).ToList() ?? [],
@@ -204,10 +216,14 @@ public sealed class StationDetailsViewModel
         _ => $"Licence class {c.Trim()}",
     };
 
-    private static string QslText(CallsignCacheEntry? q)
+    // LoTW from ARRL's user list (with the last upload) or else QRZ's flag; eQSL, paper and the manager from QRZ.
+    private static string QslText(CallsignCacheEntry? q, DateTime? lotwUpload, DateTime nowUtc)
     {
-        if (q is null) return string.Empty;
-        var ways = Join(" · ", q.Lotw == true ? "LoTW" : null, q.Eqsl == true ? "eQSL" : null, q.PaperQsl == true ? "paper" : null);
+        var lotw = lotwUpload is { } up && nowUtc - up <= LotwUsers.ActiveWithin
+            ? $"LoTW (last upload {up.ToString("d MMM yyyy", CultureInfo.InvariantCulture)})"
+            : q?.Lotw == true ? "LoTW" : null;
+        if (q is null) return lotw ?? string.Empty;
+        var ways = Join(" · ", lotw, q.Eqsl == true ? "eQSL" : null, q.PaperQsl == true ? "paper" : null);
         var mgr = string.IsNullOrWhiteSpace(q.QslManager) ? null : $"via {q.QslManager.Trim()}";
         return Join(" · ", ways.Length == 0 ? null : ways, mgr);
     }

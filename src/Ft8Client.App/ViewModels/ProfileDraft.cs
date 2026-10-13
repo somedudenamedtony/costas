@@ -36,6 +36,21 @@ public sealed partial class ProfileDraft : ObservableObject
     /// <summary>QRZ logbook API key as typed (kept in the credential store per profile).</summary>
     public string LogbookKey { get; set; } = string.Empty;
 
+    /// <summary>eQSL username as typed (credential store, per profile).</summary>
+    public string EqslUser { get; set; } = string.Empty;
+
+    /// <summary>eQSL password as typed (credential store, per profile).</summary>
+    public string EqslPassword { get; set; } = string.Empty;
+
+    /// <summary>Read the eQSL inbox for confirmations.</summary>
+    public bool EqslSync { get; set; }
+
+    /// <summary>Upload each contact to eQSL when it is logged.</summary>
+    public bool EqslUpload { get; set; }
+
+    /// <summary>eQSL QTH nickname.</summary>
+    public string EqslQth { get; set; } = string.Empty;
+
     /// <inheritdoc />
     public override string ToString() => Name;
 }

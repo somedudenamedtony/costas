@@ -23,6 +23,11 @@
               Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).OpenQrzCommand}" CommandParameter="{Binding}" />
       <Button Classes="link" Padding="0" Content="Photo" IsVisible="{Binding HasPhoto}" ToolTip.Tip="Opens the QRZ photo in your browser"
               Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).OpenPhotoCommand}" CommandParameter="{Binding}" />
+      <Button Classes="link" Padding="0" Content="Hunt this call" ToolTip.Tip="Add this call to your Hunt list: you are told when it is heard on any band"
+              Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).HuntCallCommand}" CommandParameter="{Binding}" />
+      <Button Classes="link" Padding="0" Content="{Binding HuntCountryText}" IsVisible="{Binding CanHuntCountry}"
+              ToolTip.Tip="Add this country to your Hunt list: you are told when it is heard on any band"
+              Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).HuntCountryCommand}" CommandParameter="{Binding}" />
     </WrapPanel>
     <!-- Who else is calling: the pileup on this station, from my own decodes. -->
     <StackPanel Spacing="4" Margin="0,8,0,0" IsVisible="{Binding HasPileup}" AutomationProperties.Name="Who else is calling">

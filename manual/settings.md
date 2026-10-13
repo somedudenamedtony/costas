@@ -63,6 +63,8 @@ line*.
 - **Hide stations I have already worked on this band**: on. They are listed in **Repeats** under Next in line instead.
 - **Leave out long shots (signals too weak to likely complete)**: off.
 - **Count a country or state as worked only when confirmed**: off.
+    - **Count only LoTW confirmations (what DXCC and WAS credit)**: on. Off counts QRZ, eQSL and card confirmations too.
+      With only confirmed contacts counting, stations that upload to LoTW rank ahead of those that do not.
 - **Keep CQ callers listed**: 2 minutes. How long a station calling CQ stays in Next in line after it was last heard.
   Choices run from *Only while heard every slot* (the list drops a station the first slot it is missed) to 15
   minutes. A station heard working someone else leaves the list straight away whatever this says.
@@ -71,6 +73,15 @@ line*.
   ([Operate](operate.md#next-in-line)). It does not change the order of the list. When you log a contact with a
   spotted activator, the park goes into the log (see [Log](log.md#what-costas-logs)). If pota.app cannot be reached,
   the **POTA** indicator says so and Costas tries again less often; nothing else is affected. Off makes no requests.
+
+## Hunt list
+
+What you are looking for, and how you are told. See [Hunt list and alerts](hunt.md).
+
+- **Looking for**: the entries, each with **Remove**.
+- **Add**: the kind (Country, Call, US state, Grid, Any new country), what to look for, and a band or *Any band*.
+- **Also watch the bands I am not on, through PSK Reporter**: on. **Count receivers within** 620 miles (1,000 km).
+- **Play the chime and flash Costas in the taskbar**: on.
 
 ## QRZ
 
@@ -86,6 +97,18 @@ QRZ has two services, each with its own sign-in. Both are optional.
   login** checks them. Leave both blank to turn lookups off.
 
 The key and password are kept in Windows Credential Manager.
+
+## LoTW
+
+Logbook of the World confirmations, uploads through TQSL, and the list of LoTW users. See [LoTW](log.md#lotw).
+
+- **Confirmations**: **Download my LoTW confirmations**, your LoTW login (usually your call) and LoTW website
+  password. This is the website password, not the TQSL certificate password.
+- **Uploads (TQSL)**: where `tqsl.exe` is (leave blank to find it in its usual folder), the TQSL **Station Location**
+  to sign with (blank if TQSL has only one), and **Sign and upload each contact as soon as it is logged** (off).
+- **Who uses LoTW**: **Download ARRL's list of LoTW users once a week** (on, about 6 MB, no login).
+
+The password is kept in Windows Credential Manager.
 
 ## PSK Reporter
 
@@ -143,3 +166,19 @@ Hidden by default. In **☰ › About**, click the product name seven times. Set
 (replay the sample recordings instead of the sound card, optionally with a simulated station that answers your
 calls), and Station setup lists Hamlib's test radio, *Hamlib Dummy*, which never plays transmit audio. This is for
 testing Costas, not for operating.
+
+## eQSL
+
+In **Settings › eQSL**, enter your eQSL.cc username and password, and copy the **QTH nickname** for the
+current callsign and location from your eQSL account. Credentials stay in the system credential store when
+available. Each station profile has its own account settings.
+
+Enable **Upload each new contact** for automatic uploads. Contacts queue locally and retry after failures,
+even after restarting Costas. The Log view shows eQSL delivery independently of QRZ.
+
+Enable **Read my eQSL inbox** to fetch incoming cards hourly. **Sync inbox now / test login** reads the inbox
+with the values entered on this page, even before saving them. A sync stores incoming cards and confirms a
+local contact when its callsign, band, mode and UTC minute uniquely match. Unmatched cards remain visible in
+the recent inbox list; they do not create contacts automatically. FT4 and MFSK/FT4 match as the same mode.
+
+Both automatic features are off by default. Save to apply. Simulation never contacts eQSL.

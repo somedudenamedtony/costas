@@ -62,7 +62,7 @@ Reference user: W7LIT, grid DN40, an Icom IC-7300 over USB, Windows 11, a QRZ su
 
 ### v1.x
 
-Hound and SuperHound modes. Alerts for wanted calls or countries. LoTW upload through TQSL and LoTW-user flag. OmniRig, FLRig, TCI. Band advice ("15 m is open to Europe for you"). Awards progress page. Streaming decode (early results before the slot ends).
+Hound contacts (built 2026-10-12; automatic for a recognised Fox since 2026-10-13) and SuperHound mode (needs SuperFox decoding, see `08-open-questions.md` V19). Alerts for wanted calls or countries (done: the Hunt list). LoTW upload through TQSL and LoTW-user flag (done). OmniRig, FLRig, TCI. Band advice ("15 m is open to Europe for you"). Awards progress page. Streaming decode (early results before the slot ends).
 
 ### Later or not planned
 

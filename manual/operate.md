@@ -31,12 +31,15 @@ time it is one click. **Remove** takes one off the list. The standard frequencie
 
 ### Which bands are open
 
-Open the **Band** menu or see **Band activity near you** in [Reach](maps.md#reach-view) for spots, continents and countries you need on each band. The **Band** menu also selects the operating band.
+Open the **Band** menu or see **Band activity near you** in [Reach](maps.md#reach-view) for spots, continents and countries you need on each band. The **Band** menu also selects the operating band. It also names stations on your [Hunt list](hunt.md) heard on each band in the last 15 minutes (*Hunting: VK9XA*).
 
 Two banners can appear under the top bar:
 
 - **ON AIR** (red) while Costas is transmitting, with the message being sent and a **Halt (Esc)** button.
 - **Radio not connected** (amber) when the radio is not set up or not answering, with a **Station setup** button.
+
+A **Hunt list** bar appears below them when a station on your [Hunt list](hunt.md) is heard, with **Go to** *band*
+and **Dismiss**.
 
 ## The top slot: band summary
 
@@ -136,6 +139,8 @@ air, it says so.
 
 Stations you need that you cannot call yet: they went quiet, or are in a contact with someone else
 (*In a contact with EA5HVK*, *Finishing a contact with K7RGB*). They move into Next in line when that changes.
+A DXpedition running Fox/Hound is never here: it is always working someone, so it stays in Next in line as
+*DXpedition (Fox/Hound), working Hounds*. See [Working a DXpedition](contacts.md#working-a-dxpedition-foxhound).
 
 A station calling CQ in a contest (`CQ RU`, `CQ FD`, `CQ WW`, `CQ TEST` and the like) is listed here as *Contest
 (CQ RU), needs an exchange*. It expects a contest exchange, and Costas only sends the standard one, so it is not
@@ -190,6 +195,8 @@ The top row shows the band, the slot countdown and how many stations are in line
 During a contact the strip shows who you're working, a dot for each step of the contact, and the message on the air or the one you're waiting for. The strip is outlined in red while you transmit.
 
 ![Mini mode, in a contact](images/mini-contact.png){ width="480" }
+
+When a station on your [Hunt list](hunt.md) is heard, the strip adds a line saying where, with ✕ to dismiss it.
 
 **Halt** is always there, and ++esc++ works in the strip too. Nothing is sent without a click.
 

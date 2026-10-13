@@ -5,7 +5,7 @@ Press **Log** in the top bar or ++ctrl+4++.
 ![The Log view](images/log.png)
 
 Every contact, newest first: date, time (UTC), call, band, mode, report sent and received, grid, country, name, the
-need tag it had when you worked it, whether it is confirmed, and its QRZ status. The status line at the bottom counts
+need tag it had when you worked it, and its LoTW, QRZ and eQSL status. The status line at the bottom counts
 the contacts shown, their countries and how many are confirmed, and says when the log was last synced with QRZ.
 
 ## Filters
@@ -17,7 +17,7 @@ The row under the buttons narrows the list. The filters combine with each other 
 | Band | All bands, or any band you have a contact on |
 | Mode | All modes, FT8 or FT4 |
 | Date | All time, Today (UTC), Last 7 days, Last 30 days, This year. Days are UTC days, as the log shows them |
-| Confirmed | Confirmed or not, Confirmed, Not confirmed |
+| Confirmed | Confirmed or not, Confirmed (by QRZ, the ADIF you imported, or LoTW), Not confirmed |
 
 While a filter is set, the status line says *Showing 120 of 3,400 contacts* and **Clear filters** puts them all back.
 The search text is kept. The list shows the newest 5,000 matching contacts; the totals always count all of them.
@@ -56,7 +56,26 @@ With a QRZ logbook API key (set in [setup](setup.md#6-qrz-and-psk-reporter) or
   *Uploaded to QRZ*, *Waiting to upload · retrying*, or *Upload failed · Retry*. If QRZ is unreachable, uploads wait
   in a queue and retry with back-off; nothing is lost.
 - **Confirmed only.** If you chase confirmations rather than contacts, tick
-  **Settings › Who to call › Count a country or state as worked only when confirmed**.
+  **Settings › Who to call › Count a country or state as worked only when confirmed**. By default only LoTW
+  confirmations count, because QRZ and eQSL confirmations do not count for DXCC (see below).
+
+## LoTW
+
+ARRL's Logbook of the World is where DXCC and WAS credit comes from. Set it up in [Settings › LoTW](settings.md#lotw).
+
+- **Confirmations.** With your LoTW website login, Costas downloads new LoTW confirmations every 12 hours, and
+  when you choose **LoTW ▾ › Download new confirmations** in the Log view. Each one marks the matching contact
+  (same call, band and mode within 30 minutes) as confirmed on LoTW. A confirmation for a contact that is not in your
+  log adds it.
+- **Uploads.** Costas signs and uploads contacts through TQSL, ARRL's signing program, which holds your callsign
+  certificate. Choose **LoTW ▾ › Upload new contacts with TQSL**, or turn on uploading each contact as it is logged.
+  TQSL skips contacts LoTW already has. Install TQSL first and set up your Station Location in it.
+- **Who uses LoTW.** Costas downloads ARRL's list of LoTW users once a week. Station details then say *LoTW (last
+  upload 1 Oct 2026)*, the Why tooltip says *Uses LoTW*, and with only confirmed contacts counting, stations that
+  upload to LoTW rank ahead of those that do not.
+
+The Log view's **LoTW** column says *Confirmed* or *Uploaded*. Station details say whether each past contact was
+*Confirmed on LoTW* or *Confirmed (QRZ, eQSL or card)*. Nothing is downloaded into the log or uploaded in simulation.
 
 ## Other loggers
 

@@ -42,6 +42,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly List<IDisposable> _disposables = [];
     private IAudioInput? _input;
     private IAudioOutput? _output;
+    private Jt9PersistentDecoder? _decoder;
     private NullAudioOutput? _mutedOutput;
     private volatile ServiceStatus? _rigOpenStatus;
     private CapturePump? _pump;
@@ -63,6 +64,7 @@ public sealed class AppHost : IAsyncDisposable
         Database = new SqliteDatabase(paths.Database);
         Qsos = new QsoRepository(Database);
         Uploads = new UploadQueueRepository(Database);
+        EqslInbox = new EqslInboxRepository(Database);
         SyncState = new SyncStateRepository(Database);
         Cache = new CallsignCacheRepository(Database);
         Spots = new SpotRepository(Database);
@@ -98,6 +100,9 @@ public sealed class AppHost : IAsyncDisposable
 
     /// <summary>Upload queue.</summary>
     public UploadQueueRepository Uploads { get; }
+
+    /// <summary>Persisted incoming eQSL cards.</summary>
+    public EqslInboxRepository EqslInbox { get; }
 
     /// <summary>Sync state.</summary>
     public SyncStateRepository SyncState { get; }
@@ -141,8 +146,17 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>QRZ background work.</summary>
     public QrzService Qrz { get; private set; } = null!;
 
+    /// <summary>Optional eQSL uploads.</summary>
+    public EqslService Eqsl { get; private set; } = null!;
+
     /// <summary>Decode journal and WAV saving (null in simulation).</summary>
     public RecordingService? Recording { get; private set; }
+
+    /// <summary>LoTW confirmations, uploads and user list.</summary>
+    public LotwService Lotw { get; private set; } = null!;
+
+    /// <summary>The Hunt list and its alerts.</summary>
+    public HuntService Hunt { get; private set; } = null!;
 
     /// <summary>Club Log's most-wanted list for the rarity meter.</summary>
     public MostWantedService MostWanted { get; private set; } = null!;
@@ -178,6 +192,9 @@ public sealed class AppHost : IAsyncDisposable
 
     /// <summary>jt9 path in use, or null.</summary>
     public string? Jt9Path { get; private set; }
+
+    /// <summary>The jt9 host, when jt9 was found: how it runs and how often it was started.</summary>
+    public Jt9PersistentDecoder? Decoder => _decoder;
 
     /// <summary>Measured SNTP result.</summary>
     public SntpResult? Sntp { get; private set; }
@@ -229,9 +246,19 @@ public sealed class AppHost : IAsyncDisposable
         Jt9Decoder.CleanTempRoot(Paths.Temp);
 
         Jt9Path = Jt9Locator.Find(s.Paths.Jt9);
-        IDecoder decoder = Jt9Path is null
-            ? new NullDecoder("jt9 not found. Install WSJT-X or set its path in Settings.")
-            : new Jt9Decoder(new Jt9Options(Jt9Path, Paths.Temp, Threads: Jt9Locator.SupportsMultithread(Jt9Path) ? Math.Min(4, Environment.ProcessorCount) : 0), Guard);
+        IDecoder decoder;
+        if (Jt9Path is null)
+        {
+            decoder = new NullDecoder("jt9 not found. Install WSJT-X or set its path in Settings.");
+        }
+        else
+        {
+            var version = Jt9Locator.Version(Jt9Path);
+            decoder = _decoder = new Jt9PersistentDecoder(
+                new Jt9Options(Jt9Path, Paths.Temp, Threads: Jt9Locator.SupportsMultithread(Jt9Path) ? Math.Min(4, Environment.ProcessorCount) : 0),
+                version, Guard);
+            Log.Information("Decoder: {Jt9} ({Version}). {How}", Jt9Path, version ?? "version unknown", _decoder.Description);
+        }
 
         var config = SettingsMapper.ToConfig(s);
         Plan = StartupPlan.Decide(Args, s, FindSamples());
@@ -263,13 +290,13 @@ public sealed class AppHost : IAsyncDisposable
         Transmitter = new Transmitter(_rig, _output, Clock, Frequencies);
         TxLevel = new TxLevelController(Transmitter, Settings);
         var log = new DatabaseSessionLog(Qsos, Uploads, s.Profile.Id, () => Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
-            () => TxMeters.PowerWatts, (call, band) => Pota?.ParkFor(call, band));
+            () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band));
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
         TxMeters = new TxMeterMonitor(Transmitter, () => _rig);
         TxMeters.Measured += r => Session.SetTxMeters(TxLevel.OnMeasured(r));
         if (partner is not null) Session.Transmitting += partner.OnTransmitted;
         Session.SlotDecoded += (slot, mode, decodes) => BandStats.Add(slot, Settings.Current.Operating.Band, ModeInfo.Name(mode), decodes.Count);
-        Session.SetLogIndex(LogIndexBuilder.Build(Qsos, config.MyCall, Countries));
+        Session.SetLogIndex(LogIndexBuilder.Build(Qsos, config.MyCall, Countries, SettingsMapper.ConfirmationSource(s)));
         Session.SetService(ServiceNames.Decoder, Jt9Path is null
             ? new ServiceStatus(ServiceHealth.Down, "jt9 not found", Clock.UtcNow)
             : new ServiceStatus(ServiceHealth.Ok, "Ready", Clock.UtcNow));
@@ -288,9 +315,21 @@ public sealed class AppHost : IAsyncDisposable
         Qrz = new QrzService(Session, Settings, Secrets, Qsos, Uploads, SyncState, Cache, Countries, Clock);
         Qrz.LogChanged += RebuildLogIndex;
         Qrz.Start();
+        Eqsl = new EqslService(Session, Settings, Secrets, Qsos, Uploads, EqslInbox, SyncState, Clock, uploadsAllowed: !Simulating);
+        Eqsl.LogChanged += RebuildLogIndex;
+        Eqsl.Start();
 
         Psk = new PskReporterService(Session, Settings, Spots, Countries, Clock, uploadsAllowed: !Simulating);
         Psk.Start();
+
+        Lotw = new LotwService(Session, Settings, Secrets, Qsos, SyncState, Countries, Paths, Clock, Guard, allowed: !Simulating);
+        Lotw.LogChanged += RebuildLogIndex;
+        Lotw.UsersChanged += Session.SetLotwUsers;
+        log.Stored += Lotw.OnLogged;
+        Lotw.Start();
+
+        Hunt = new HuntService(Session, Settings, Countries, ReferenceData.LoadAdifTable(), Psk, Clock);
+        Hunt.Start();
 
         MostWanted = new MostWantedService(Paths, () => Settings.Current.Profile.Callsign, Clock);
         _ = MostWanted.StartAsync();
@@ -321,6 +360,7 @@ public sealed class AppHost : IAsyncDisposable
             Countries = Countries,
             MostWantedRank = MostWanted.Current.RankOf,
             Bands = Frequencies.Bands,
+            Hunt = () => this.Hunt.Recent().FirstOrDefault() is { } h ? Core.Hunting.HuntText.Alert(h, Countries, SettingsMapper.Units(Settings.Current)) : null,
         });
         Remote.Start();
 
@@ -332,8 +372,14 @@ public sealed class AppHost : IAsyncDisposable
 
         _ = Task.Run(ClockCheckLoopAsync);
         _ = Task.Run(RigPollLoopAsync);
+        var confirmedBy = SettingsMapper.ConfirmationSource(s);
         Settings.Changed += _ =>
         {
+            if (SettingsMapper.ConfirmationSource(Settings.Current) != confirmedBy)
+            {
+                confirmedBy = SettingsMapper.ConfirmationSource(Settings.Current);
+                RebuildLogIndex();
+            }
             TxLevel.Apply();
             Pota.Wake();
             Session.Reconfigure(SettingsMapper.ToConfig(Settings.Current));
@@ -343,7 +389,7 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Rebuilds the log index from the database (after sync, import or edit).</summary>
     public void RebuildLogIndex()
     {
-        Session.SetLogIndex(LogIndexBuilder.Build(Qsos, Settings.Current.Profile.Callsign, Countries));
+        Session.SetLogIndex(LogIndexBuilder.Build(Qsos, Settings.Current.Profile.Callsign, Countries, SettingsMapper.ConfirmationSource(Settings.Current)));
         Pota?.SetWorked(WorkedParksFromLog());
     }
 
@@ -649,6 +695,8 @@ public sealed class AppHost : IAsyncDisposable
         _output?.Dispose();
         _mutedOutput?.Dispose();
         Qrz?.Dispose();
+        Lotw?.Dispose();
+        if (Eqsl is not null) await Eqsl.DisposeAsync().ConfigureAwait(false);
         Udp?.Dispose();
         Updates?.Dispose();
         Pota?.Dispose();
@@ -657,6 +705,7 @@ public sealed class AppHost : IAsyncDisposable
         if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);
         await _rig.DisposeAsync().ConfigureAwait(false);
         foreach (var d in _disposables) d.Dispose();
+        _decoder?.Dispose();
         Guard.Dispose();
         await Log.CloseAndFlushAsync().ConfigureAwait(false);
     }

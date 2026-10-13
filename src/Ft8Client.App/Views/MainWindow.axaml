@@ -26,7 +26,7 @@
           </ComboBox.SelectionBoxItemTemplate>
           <ComboBox.ItemTemplate>
             <DataTemplate x:DataType="vm:BandChoiceViewModel">
-              <Grid ColumnDefinitions="48,Auto,Auto,Auto" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Name}">
+              <Grid ColumnDefinitions="48,Auto,Auto,Auto,Auto" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Name}">
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Width="150" IsVisible="{Binding HasActivity}" VerticalAlignment="Center">
                   <Border Width="60" Height="6" CornerRadius="3" Background="{DynamicResource ControlBorderBrush}" VerticalAlignment="Center">
@@ -50,6 +50,8 @@
                 </ItemsControl>
                 <TextBlock Grid.Column="3" Text="{Binding NeedText}" Margin="12,0,0,0" FontSize="12" VerticalAlignment="Center"
                            Foreground="{DynamicResource CautionBrush}" IsVisible="{Binding HasActivity}" ToolTip.Tip="{Binding NeedTip}" />
+                <TextBlock Grid.Column="4" Text="{Binding HuntText}" Margin="12,0,0,0" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                           Foreground="{DynamicResource AccentBrush}" IsVisible="{Binding HasHunt}" ToolTip.Tip="{Binding HuntTip}" />
               </Grid>
             </DataTemplate>
           </ComboBox.ItemTemplate>
@@ -147,7 +149,25 @@
       </DockPanel>
     </Border>
 
-    <Border Grid.Row="2" IsVisible="{Binding Update.Visible}" Margin="16,0,16,8" Padding="12,8" CornerRadius="6"
+    <StackPanel Grid.Row="2">
+    <!-- Hunt list alert: a wanted station was heard. It only tells; changing band is the operator's click and nothing is sent. -->
+    <Border IsVisible="{Binding HuntVisible}" Margin="16,0,16,8" Padding="12,8" CornerRadius="6"
+            Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CautionBrush}" BorderThickness="1"
+            AutomationProperties.Name="Hunt list alert" AutomationProperties.LiveSetting="Polite">
+      <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <Button Content="{Binding HuntGoText}" Classes="accent" Command="{Binding HuntGoCommand}" IsVisible="{Binding HuntCanGo}"
+                  ToolTip.Tip="Change to that band. Nothing is sent until you call someone." />
+          <Button Content="Dismiss" Command="{Binding HuntDismissCommand}" />
+        </StackPanel>
+        <DockPanel VerticalAlignment="Center" Margin="0,0,12,0">
+          <TextBlock DockPanel.Dock="Left" Text="Hunt list" FontWeight="SemiBold" Foreground="{DynamicResource CautionBrush}" VerticalAlignment="Center"
+                     Margin="0,0,12,0" />
+          <TextBlock Text="{Binding HuntText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding HuntText}" />
+        </DockPanel>
+      </DockPanel>
+    </Border>
+    <Border IsVisible="{Binding Update.Visible}" Margin="16,0,16,8" Padding="12,8" CornerRadius="6"
             Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
@@ -162,6 +182,7 @@
         </DockPanel>
       </DockPanel>
     </Border>
+    </StackPanel>
 
     <Panel Grid.Row="3">
       <v:OperateView DataContext="{Binding Operate}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}" />

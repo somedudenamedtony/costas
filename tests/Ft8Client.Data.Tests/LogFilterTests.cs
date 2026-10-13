@@ -71,6 +71,19 @@ public class LogFilterTests
     }
 
     [Fact]
+    public void List_ConfirmedByLotwOnly_CountsAsConfirmed()
+    {
+        var repo = Seeded(out var keep);
+        using var _ = keep;
+        var g = repo.List(new LogFilter(Search: "G4ABC")).Single();
+        g.LotwConfirmed = true;
+        repo.Update(g);
+
+        repo.List(new LogFilter(Confirmed: true)).Select(q => q.Call).Should().Contain("G4ABC");
+        repo.Totals(LogFilter.All).Confirmed.Should().Be(3);
+    }
+
+    [Fact]
     public void Bands_MixedCase_ReturnsDistinctLowerCase()
     {
         var repo = Seeded(out var keep);

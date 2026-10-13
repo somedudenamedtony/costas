@@ -85,6 +85,12 @@ public sealed record Station
     /// <summary>How far its contact has got.</summary>
     public PartnerStage? PartnerStage { get; init; }
 
+    /// <summary>
+    /// True once it has been heard sending a multi-answer message (<c>CALL1 RR73; CALL2 &lt;FOX&gt; ±NN</c>): a Fox
+    /// running a Fox/Hound DXpedition, which only a Hound can work.
+    /// </summary>
+    public bool RunsFox { get; init; }
+
     /// <summary>Its latest message.</summary>
     public ParsedMessage? LastMessage { get; init; }
 

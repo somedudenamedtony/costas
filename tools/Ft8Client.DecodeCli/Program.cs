@@ -9,6 +9,7 @@
 using System.Globalization;
 using Ft8Client.Core;
 using Ft8Client.Core.Decoding;
+using Ft8Client.Core.Time;
 using Ft8Client.Decoding;
 
 namespace Ft8Client.DecodeCli;
@@ -26,6 +27,11 @@ internal static class Program
           --jt9 PATH            Path to jt9 (default: search)
           --timeout SECONDS     Kill jt9 after this long (default: one slot)
           --time                Print the decode time per file
+          --keep-running        Decode every file through one jt9 that stays running (shared memory), as the app does
+          --hound [--superfox]  Hound mode (and a SuperFox Fox; needs --keep-running)
+          --live                With --keep-running: decode each FT8 file as if received now, waiting for the real
+                                slot clock: the early pass at 11.85 s, the rest at the 13.6 s cut-off. Prints when
+                                each part finished. Measures what the app does on this PC.
         """;
 
     private static async Task<int> Main(string[] args)
@@ -35,7 +41,7 @@ internal static class Program
         string? dxCall = null, dxGrid = null, jt9 = null;
         int qso = 0, depth = 3;
         double? timeout = null;
-        bool useGolden = false, showTime = false;
+        bool useGolden = false, showTime = false, keepRunning = false, live = false, hound = false, superFox = false;
         var inputs = new List<string>();
 
         for (var i = 0; i < args.Length; i++)
@@ -55,6 +61,10 @@ internal static class Program
                 case "--timeout": timeout = double.Parse(Next(), CultureInfo.InvariantCulture); break;
                 case "--golden": useGolden = true; break;
                 case "--time": showTime = true; break;
+                case "--keep-running": keepRunning = true; break;
+                case "--live": keepRunning = live = true; break;
+                case "--hound": hound = true; break;
+                case "--superfox": hound = superFox = true; break;
                 case "-h" or "--help": Console.WriteLine(Usage); return 0;
                 default: inputs.Add(args[i]); break;
             }
@@ -70,7 +80,10 @@ internal static class Program
             : [p]).ToList();
 
         var temp = Path.Combine(Path.GetTempPath(), "Ft8Client.DecodeCli");
-        var decoder = new Jt9Decoder(new Jt9Options(exe, temp, timeout is null ? null : TimeSpan.FromSeconds(timeout.Value)));
+        var options = new Jt9Options(exe, temp, timeout is null ? null : TimeSpan.FromSeconds(timeout.Value));
+        using var persistent = keepRunning ? new Jt9PersistentDecoder(options, Jt9Locator.Version(exe)) : null;
+        IDecoder decoder = persistent ?? (IDecoder)new Jt9Decoder(options);
+        if (persistent is not null) Console.WriteLine($"# {Jt9Locator.Version(exe) ?? "jt9 version unknown"}: {persistent.Description}");
         var exit = 0;
         foreach (var file in files)
         {
@@ -78,8 +91,11 @@ internal static class Program
             var ctx = useGolden && sample.GoldenContext is not null
                 ? sample.GoldenContext with { Depth = depth }
                 : new DecodeContext(myCall, myGrid, dxCall, dxGrid, Depth: depth, QsoProgress: qso);
-            var result = await decoder.DecodeAsync(sample.Audio, ctx, CancellationToken.None);
+            ctx = ctx with { Hound = hound, SuperFox = superFox };
             if (files.Count > 1) Console.WriteLine($"# {file}");
+            var result = live && persistent is not null && persistent.HasEarlyPass(sample.Audio.Mode)
+                ? await LiveAsync(persistent, sample.Audio, ctx)
+                : await decoder.DecodeAsync(sample.Audio, ctx, CancellationToken.None);
             foreach (var d in result.Decodes) Console.WriteLine(Jt9OutputParser.Format(d, ModeInfo.Separator(sample.Audio.Mode)));
             if (showTime) Console.WriteLine($"# {result.Elapsed.TotalSeconds:0.00} s");
             if (!result.Succeeded)
@@ -89,5 +105,38 @@ internal static class Program
             }
         }
         return exit;
+    }
+
+    // Replays one slot against the real clock: the first 11.8 s at 11.85 s into a slot, the whole slot at the cut-off.
+    private static async Task<DecodeResult> LiveAsync(Jt9PersistentDecoder decoder, SlotAudio audio, DecodeContext ctx)
+    {
+        var slot = await WaitForAsync(TimeSpan.FromSeconds(11.85));
+        var partial = new short[audio.Samples12k.Length];
+        Array.Copy(audio.Samples12k, partial, (int)(11.85 * ModeInfo.DecoderSampleRate));
+        var early = await decoder.DecodeEarlyAsync(audio with { Samples12k = partial }, ctx, CancellationToken.None);
+        Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
+            $"# early pass: {early.Decodes.Count} decodes, done {(DateTime.UtcNow - slot).TotalSeconds:0.00} s into the slot"));
+        var cutoff = slot + TimeSpan.FromSeconds(13.6);
+        if (cutoff > DateTime.UtcNow) await Task.Delay(cutoff - DateTime.UtcNow);
+        var full = await decoder.DecodeAsync(audio, ctx, CancellationToken.None);
+        Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
+            $"# full decode: {full.Decodes.Count} decodes, done {(DateTime.UtcNow - cutoff).TotalSeconds:0.00} s after the cut-off"));
+        return full;
+    }
+
+    private static async Task<DateTime> WaitForAsync(TimeSpan intoSlot)
+    {
+        while (true)
+        {
+            var now = DateTime.UtcNow;
+            var slot = SlotMath.SlotStart(now, Mode.Ft8);
+            var due = slot + intoSlot;
+            if (now <= due)
+            {
+                await Task.Delay(due - now);
+                return slot;
+            }
+            await Task.Delay(slot + ModeInfo.SlotLength(Mode.Ft8) - now);
+        }
     }
 }

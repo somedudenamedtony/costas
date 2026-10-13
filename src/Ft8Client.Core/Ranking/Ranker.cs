@@ -32,7 +32,10 @@ public static class Ranker
             var hears = input.HearsMe?.For(s, input.NowUtc) ?? HearsYou.Unavailable;
             var chance = HearsMe.ChanceOf(hears, s.LastSnr);
             var reason = NotCallableReason(s, input);
-            var ranked = new RankedStation(s, need, hears, chance, reason is null, reason);
+            var ranked = new RankedStation(s, need, hears, chance, reason is null, reason)
+            {
+                UsesLotw = input.Lotw?.IsUser(s.Call, input.NowUtc) == true,
+            };
 
             if (s.State == StationState.CallingMe && s.HeardInLastOwnSlot) callingMe.Add(ranked);
 
@@ -71,6 +74,8 @@ public static class Ranker
     public static WatchReason? NotCallableReason(Station s, RankInput input)
     {
         if (s.Call.StartsWith('<')) return new WatchReason(WatchReasonKind.Unresolved);
+        // A Fox is always working Hounds, so it is never "in a contact" to a Hound: calling it starts a Hound contact.
+        if (s.RunsFox && s.HeardInLastOwnSlot) return null;
         if (!s.HeardInLastOwnSlot)
         {
             // A CQ caller missed in a slot or two is usually still calling (a fade or a busy slot): keep it listed
@@ -125,6 +130,15 @@ public static class Ranker
         {
             c = a.Chance.CompareTo(b.Chance);
             if (c != 0) return c;
+        }
+        // Counting only confirmed contacts, a LoTW user is the one likely to confirm.
+        if (settings.ConfirmedOnly)
+        {
+            c = b.UsesLotw.CompareTo(a.UsesLotw);
+            if (c != 0) return c;
+        }
+        if (settings.PreferHearsMe)
+        {
             c = ReportKey(b).CompareTo(ReportKey(a));
             if (c != 0) return c;
         }

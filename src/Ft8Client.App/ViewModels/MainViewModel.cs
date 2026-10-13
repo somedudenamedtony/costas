@@ -17,6 +17,7 @@ using Ft8Client.Core.Messages;
 using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Bands;
 using Ft8Client.Core.Contacts;
+using Ft8Client.Core.Hunting;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Time;
@@ -50,6 +51,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         };
         host.MostWanted.Changed += list => Dispatch(() => Operate.MostWanted = list);
         host.Pota.Changed += parks => Dispatch(() => Operate.Parks = parks);
+        Operate.Lotw = host.Lotw.Users;
+        host.Lotw.UsersChanged += list => Dispatch(() => Operate.Lotw = list);
+        host.Hunt.Alert += s => Dispatch(() => ShowHunt(s));
         LoadMapChoices(host.Settings.Current.Map);
         Operate.Map.ChoicesChanged += SaveMapChoices;
         Raw = new RawDecodesViewModel(c => Call(c));
@@ -59,7 +63,11 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             History = host.NeighbourHistory,
         };
         LogView = new LogViewModel(host.Qsos, host.Countries, () => (host.Settings.Current.Profile.Id, host.Settings.Current.Profile.Callsign),
-            host.Qrz.SyncNowAsync, () => host.Qrz.LastSyncUtc, host.RebuildLogIndex);
+            host.Qrz.SyncNowAsync, () => host.Qrz.LastSyncUtc, host.RebuildLogIndex)
+        {
+            LotwDownload = host.Lotw.DownloadNowAsync,
+            LotwUpload = host.Lotw.UploadNowAsync,
+        };
         var heard = new HeardHistoryService(host.Paths.Journal, host.Countries, host.Clock);
         Awards = new AwardsViewModel(() => host.Session.LogIndex, host.Countries, heard, () => host.Clock.UtcNow, a => Dispatch(a));
         StationDetailsViewModel.HeardHistory = (call, key) =>
@@ -71,6 +79,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
             () => Shutdown());
         Mini = new MiniViewModel(Operate, this, () => HaltCommand.Execute(null));
+        Mini.HuntDismissed += () => HuntDismissCommand.Execute(null);
         Modes = ["FT8", "FT4"];
         ApplySettings();
         _host.Settings.Changed += _ => Dispatch(ApplySettings);
@@ -250,6 +259,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial string CqText { get; set; } = "Call CQ";
 
+
     /// <summary>True while transmitting.</summary>
     [ObservableProperty]
     public partial bool Transmitting { get; set; }
@@ -286,6 +296,27 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>Mini mode: the small always-on-top strip.</summary>
     public MiniViewModel Mini { get; }
 
+    /// <summary>The Hunt list alert bar is shown.</summary>
+    [ObservableProperty]
+    public partial bool HuntVisible { get; set; }
+
+    /// <summary>"Alaska (KL7): KL7RA is on 40 m, heard 310 mi from you at -12 dB."</summary>
+    [ObservableProperty]
+    public partial string HuntText { get; set; } = string.Empty;
+
+    /// <summary>"Go to 40 m", or empty when the station is on the band I am on.</summary>
+    [ObservableProperty]
+    public partial string HuntGoText { get; set; } = string.Empty;
+
+    /// <summary>The Go to band button is shown.</summary>
+    [ObservableProperty]
+    public partial bool HuntCanGo { get; set; }
+
+    private HuntSighting? _hunt;
+
+    /// <summary>Raised when the window should ask for the operator's attention (flash in the taskbar).</summary>
+    public event Action? AttentionRequested;
+
     /// <summary>Raised when a dialog should open: "settings", "setup", "diagnostics", "about", "shortcuts", "ranking", or "mini" for mini mode.</summary>
     public event Action<string>? OpenDialog;
 
@@ -301,6 +332,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         BarShowsCqAndSlot = ShowCqAndSlotInBar(Tab);
         FillLookups(s);
         ApplyBandOpenings(s);
+        RefreshHuntGo();
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
         Raw.Apply(s.RawDecodes);
         Frequency = FormatFrequency(s.DialHz);
@@ -320,6 +352,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Indicators.Add(Indicator("Radio", s, ServiceNames.Radio));
         Indicators.Add(Indicator("Audio", s, ServiceNames.Audio));
         Indicators.Add(Indicator("QRZ", s, ServiceNames.Qrz));
+        Indicators.Add(Indicator("eQSL", s, ServiceNames.Eqsl));
         Indicators.Add(Indicator("PSK Reporter", s, ServiceNames.Psk));
         Indicators.Add(Indicator("POTA", s, ServiceNames.Pota));
         var offset = s.ClockOffsetSeconds;
@@ -482,6 +515,78 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public void OpenRankingSettings() => OpenDialog?.Invoke("ranking");
 
     /// <inheritdoc />
+    public void Hunt(HuntTarget target)
+    {
+        var countries = _host.Countries;
+        if (_host.Hunt.Targets.Contains(target))
+        {
+            StatusText = $"{target.Describe(countries)} is already on your Hunt list.";
+            return;
+        }
+        _host.Settings.Update(s => s.Hunt.Targets.Add(HuntService.ToEntry(target)));
+        StatusText = $"Added {target.Describe(countries)} to your Hunt list. Change it in Settings, Hunt list.";
+        StatusKind = TextKind.Normal;
+    }
+
+    // A Hunt list entry was heard: the bar, mini mode and the phone say so; the chime and the taskbar flash when wanted.
+    private void ShowHunt(HuntSighting s)
+    {
+        _hunt = s;
+        HuntText = AlertText(s);
+        RefreshHuntGo();
+        HuntVisible = true;
+        Mini.ShowHunt(HuntText);
+        if (_host.Settings.Current.Hunt.Sound)
+        {
+            _host.Chime.Play(_host.Clock.UtcNow);
+            AttentionRequested?.Invoke();
+        }
+    }
+
+    private string AlertText(HuntSighting s) =>
+        Core.Hunting.HuntText.Alert(s, _host.Countries, SettingsMapper.Units(_host.Settings.Current));
+
+    private void RefreshHuntGo()
+    {
+        if (_hunt is not { } h) return;
+        var here = string.Equals(h.Heard.Band, _host.Session.Config.Band, StringComparison.OrdinalIgnoreCase)
+                   && h.Heard.ModeKey == ModeInfo.Name(_host.Session.Config.Mode);
+        HuntCanGo = !here && CanChangeBand;
+        HuntGoText = $"Go to {BandPlan.Display(h.Heard.Band)}" + (h.Heard.ModeKey == SelectedMode ? string.Empty : $" {h.Heard.ModeKey}");
+    }
+
+    /// <summary>Changes to the band (and mode) the hunted station was heard on. Nothing is sent.</summary>
+    [RelayCommand]
+    private void HuntGo()
+    {
+        if (_hunt is not { } h || !CanChangeBand || !ModeInfo.TryParse(h.Heard.ModeKey, out var mode)) return;
+        Activity();
+        if (_host.Frequencies.Find(h.Heard.Band, mode) is null)
+        {
+            StatusText = $"{BandPlan.Display(h.Heard.Band)} {h.Heard.ModeKey} is not in the band list.";
+            return;
+        }
+        if (h.Heard.ModeKey != SelectedMode)
+        {
+            _updatingBand = true;
+            SelectedMode = h.Heard.ModeKey;
+            RefreshBands(mode);
+            _updatingBand = false;
+        }
+        _ = _host.SetBandAsync(h.Heard.Band, mode);
+        HuntCanGo = false;
+    }
+
+    /// <summary>Hides the Hunt alert.</summary>
+    [RelayCommand]
+    private void HuntDismiss()
+    {
+        _hunt = null;
+        HuntVisible = false;
+        Mini.ShowHunt(null);
+    }
+
+    /// <inheritdoc />
     public void RetryUpload(long qsoId)
     {
         _host.Uploads.Enqueue(qsoId, "qrz", _host.Clock.UtcNow);
@@ -631,6 +736,20 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         }
         Reach.BandActivityStatus = !on ? "Turn on live reports and band activity in Settings, PSK Reporter."
             : Bands.Any(b => b.HasActivity) ? string.Empty : "Waiting for reports of nearby stations.";
+        ApplyHuntToBands();
+    }
+
+    // The band menu names hunted stations heard in the last 15 minutes on each band.
+    private void ApplyHuntToBands()
+    {
+        var recent = _host.Hunt.Recent();
+        var units = SettingsMapper.Units(_host.Settings.Current);
+        foreach (var b in Bands)
+        {
+            var here = recent.Where(r => string.Equals(r.Heard.Band, b.Band, StringComparison.OrdinalIgnoreCase)).ToList();
+            b.ApplyHunt(here.Select(r => Core.Hunting.HuntText.Short(r, _host.Countries)).Distinct().ToList(),
+                string.Join(Environment.NewLine, here.Select(r => Core.Hunting.HuntText.Alert(r, _host.Countries, units))));
+        }
     }
 
     private void RefreshBands(Mode mode)
@@ -681,6 +800,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         // Shown while the ended contact stays in the top slot: "ZL2RPA answered K1ABC instead. Stopped calling."
         if (s.Contact is { Outcome: ContactOutcome.AnsweredOther } other) return (other.StatusText, TextKind.Caution);
         if (s.CallingCq) return (s.Transmitting ? "Transmitting CQ." : "Calling CQ.", s.Transmitting ? TextKind.Critical : TextKind.Normal);
+        if (s.Contact is { Outcome: ContactOutcome.NoReply, Flow: ContactFlow.Hound } fox) return (fox.StatusText, TextKind.Caution);
         var top = s.Rank.Line.FirstOrDefault();
         return (top is null ? "Not in a contact." : $"Not in a contact. Enter calls {top.Station.Call}, the top of the line.", TextKind.Normal);
     }

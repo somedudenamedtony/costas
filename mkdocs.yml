@@ -58,9 +58,10 @@ nav:
       - Making contacts: contacts.md
       - Maps and who hears you: maps.md
       - Raw decodes: raw-decodes.md
+      - Hunt list and alerts: hunt.md
       - Operating from a phone: phone.md
   - Your log:
-      - Log, QRZ and ADIF: log.md
+      - Log, QRZ, LoTW and ADIF: log.md
       - Awards and when to look: awards.md
   - Reference:
       - Settings: settings.md

@@ -106,6 +106,35 @@ within 5 minutes, it shows in the bar with *Replied after you stopped: W7LIT K1A
 Nothing is sent until you press **Resume**. Resume picks the contact up where it was, as if their late message had
 arrived in time: a late RR73 logs the contact and sends 73, a late report gets your R-report.
 
+## Working a DXpedition (Fox/Hound)
+
+Many DXpeditions run **Fox/Hound**: the DXpedition (the Fox) transmits below 1000 Hz, in the first slot of each pair,
+and works several callers (Hounds) at once. Hounds call above 1000 Hz and must follow its rules, or the Fox never
+hears them. Costas spots a Fox when it sends a multi-answer message such as `K1ABC RR73; W7LIT <KH1X> -12`, and
+shows it in Next in line as *DXpedition (Fox/Hound), working Hounds*. There is nothing to switch on:
+
+1. Tune the radio to the DXpedition's frequency (they usually announce it; it is rarely the standard FT8 one).
+2. Click **Call** on the Fox. Costas works it the way WSJT-X's Hound mode does, and every other station as usual:
+
+| Step | Who | Message | |
+| --- | --- | --- | --- |
+| 1 | You | `KH1X W7LIT DN40` | Repeated on your own offset, always 1000 Hz or more |
+| 2 | Fox | `W7LIT KH1X -12`, or `K1ABC RR73; W7LIT <KH1X> -12` | |
+| 3 | You | `KH1X W7LIT R-08` | On the **Fox's** frequency; the report is how strong the Fox was when it answered you |
+| 4 | Fox | `W7LIT KH1X RR73`, or `W7LIT RR73; K1ABC <KH1X> -12` | Logged. You send nothing after it |
+
+- If the Fox doesn't answer within 2 minutes, Costas stops calling and says so. Click **Call** again to keep trying,
+  as WSJT-X asks you to re-enable Tx every 2 minutes.
+- Once the Fox has sent your report, Costas keeps sending R-reports until its RR73 arrives, for up to 11 slots
+  after its latest report.
+- A Fox is always working someone, so Costas doesn't stop calling it when it answers other Hounds.
+- Until the Fox has sent a multi-answer message, Costas can't tell it is a Fox and calls it the ordinary way.
+  Fox/Hound DXpeditions send them nearly every slot, so this is rarely more than a moment.
+- Your R-report goes out below 1000 Hz. On some radios very low audio lets harmonics through; keep the transmit
+  audio clean (the automatic level helps), and watch the ALC warning.
+- **SuperFox** DXpeditions (WSJT-X 2.7's SuperHound mode) can't be worked yet: their signal needs a decoder that
+  Costas can't run until it keeps `jt9` running between slots.
+
 ## Halting
 
 **Halt Tx** in the bottom bar, **Halt (Esc)** in the ON AIR banner, and the ++esc++ key all drop PTT immediately and

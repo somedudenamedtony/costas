@@ -54,6 +54,37 @@ public static class Jt9Locator
         }
     }
 
+    /// <summary>
+    /// The WSJT-X version of this jt9, such as <c>WSJT-X 3.0.1</c>, read from <c>wsjtx_app_version -v</c> in the same
+    /// folder (jt9 itself has no version option). Null when that program is missing or says nothing.
+    /// </summary>
+    public static string? Version(string jt9Path)
+    {
+        var dir = Path.GetDirectoryName(jt9Path) ?? ".";
+        var tool = Path.Combine(dir, OperatingSystem.IsWindows() ? "wsjtx_app_version.exe" : "wsjtx_app_version");
+        if (!File.Exists(tool)) return null;
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo(tool, "-v")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            using var p = System.Diagnostics.Process.Start(psi);
+            if (p is null) return null;
+            var text = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
+            if (!p.WaitForExit(5000)) p.Kill();
+            var line = text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+            return string.IsNullOrEmpty(line) ? null : line;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>All places looked at, in order.</summary>
     public static IEnumerable<string> Candidates(string? configuredPath)
     {
