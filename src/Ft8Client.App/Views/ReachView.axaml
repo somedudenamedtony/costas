@@ -9,6 +9,7 @@
     <Border Grid.Row="0" Classes="card" Padding="14,12" Margin="0,0,0,12">
       <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,380">
         <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
+          <CheckBox x:Name="WorldView" Content="World" ToolTip.Tip="Show a rotating globe" />
           <TextBlock Text="Band" VerticalAlignment="Center" />
           <ComboBox ItemsSource="{Binding Bands}" SelectedItem="{Binding Band}" MinWidth="80" />
           <TextBlock Text="Window" VerticalAlignment="Center" Margin="8,0,0,0" />
@@ -16,8 +17,9 @@
         </StackPanel>
         <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Headline}" FontSize="15" TextWrapping="Wrap" Margin="0,8" />
         <Panel Grid.Row="2" Grid.Column="0" Margin="0,0,16,0">
+          <v:StationMap x:Name="Globe" Reports="{Binding Points}" Centre="{Binding Centre}" World="True" IsVisible="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
           <v:ReachPlot x:Name="Plot" Points="{Binding Points}" Centre="{Binding Centre}" Units="{Binding Units}" />
-          <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="4">
+          <StackPanel x:Name="ZoomControls" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="4">
             <Button x:Name="ZoomIn" Content="+" Width="32" Height="32" Padding="0" HorizontalContentAlignment="Center" FontSize="16"
                     ToolTip.Tip="Zoom in" AutomationProperties.Name="Zoom in" />
             <Button x:Name="ZoomOut" Content="−" Width="32" Height="32" Padding="0" HorizontalContentAlignment="Center" FontSize="16"
@@ -71,9 +73,9 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Text="You are at the centre, north is up. Bigger, darker dots are stronger reports. Hover over a dot for its call."
+            <TextBlock x:Name="MapHelp" Text="You are at the centre, north is up. Bigger, darker dots are stronger reports. Hover over a dot for its call."
                        Classes="secondary" TextWrapping="Wrap" Margin="0,12,0,0" />
-            <TextBlock Text="Scroll or use + and − to zoom, drag to move around, double-click to see the whole map."
+            <TextBlock x:Name="ZoomHelp" Text="Scroll or use + and − to zoom, drag to move around, double-click to see the whole map."
                        Classes="secondary" TextWrapping="Wrap" />
           </StackPanel>
         </ScrollViewer>
