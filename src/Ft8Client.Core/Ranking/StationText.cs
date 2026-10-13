@@ -112,6 +112,7 @@ public static class StationText
         WatchReasonKind.NotCallingYou => $"Calling CQ {r.Modifier}",
         WatchReasonKind.Contest => $"Contest (CQ {r.Modifier}), needs an exchange",
         WatchReasonKind.Unresolved => "Call not resolved",
+        WatchReasonKind.Fox => "Fox/Hound DXpedition. Turn on Hound to call it",
         _ => "Long shot",
     };
 

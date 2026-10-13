@@ -96,7 +96,7 @@ public sealed class StationTracker
                 var sender = m.SenderCall;
                 if (sender is null || !Callsign.IsValid(sender) || Callsign.EqualsCall(sender, _myCall)) continue;
                 var first = seen.Add(sender);
-                Apply(sender, m, h.Decode.Snr, h.Decode.OffsetHz, slotStartUtc, parity, first);
+                Apply(sender, m, h.Decode.Snr, h.Decode.OffsetHz, slotStartUtc, parity, first, h.Message.Kind == MessageKind.DxpeditionMulti);
             }
         }
 
@@ -126,7 +126,7 @@ public sealed class StationTracker
         }
     }
 
-    private void Apply(string call, ParsedMessage m, int snr, int offset, DateTime slot, SlotParity parity, bool firstInSlot)
+    private void Apply(string call, ParsedMessage m, int snr, int offset, DateTime slot, SlotParity parity, bool firstInSlot, bool fox)
     {
         var existing = _stations.GetValueOrDefault(call);
         var s = existing ?? new Station { Call = call, FirstHeardUtc = slot, Entity = _countries?.Lookup(call) };
@@ -157,6 +157,7 @@ public sealed class StationTracker
             MissedSlots = 0,
             LastMessage = m,
             JustFinished = false,
+            RunsFox = s.RunsFox || fox,
         };
         s = s with { Trend = TrendOf(s.SnrHistory) };
 
