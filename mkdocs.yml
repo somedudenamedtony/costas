@@ -58,6 +58,7 @@ nav:
       - Making contacts: contacts.md
       - Maps and who hears you: maps.md
       - Raw decodes: raw-decodes.md
+      - PSK31 and PSK63: keyboard-modes.md
       - Hunt list and alerts: hunt.md
       - Operating from a phone: phone.md
   - Your log:

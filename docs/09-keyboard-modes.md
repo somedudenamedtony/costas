@@ -67,16 +67,25 @@ Sources:
 Audio is the same 12 kHz stream from `CapturePump` that feeds `jt9`. It arrives continuously, not cut into slots.
 
 - **Channel finder.** An FFT of the passband finds PSK carriers (a peak about 31 or 62 Hz wide) and RTTY pairs (two peaks one shift apart). Up to 20 channels are decoded at once. A channel is dropped after 60 s without characters.
+  - As built (M10): a 4,096-point FFT averaged over about 1.4 s and smoothed over one signal's width; a peak 6 dB above the band's median is a signal, its carrier the power-weighted centre. It looks twice a second.
+  - A new channel first reads the last 4 s of audio, so the start of the over that made it visible is not lost.
+  - Clicking the waterfall in a keyboard mode reads the signal there and keeps reading it through quiet spells (one clicked channel at a time).
 - **PSK demodulator.**
   - Mix to baseband, apply a matched low-pass filter, then use a Costas loop for carrier phase. Symbol timing comes from the energy at symbol edges.
   - BPSK decides on the phase change, and Varicode is decoded on `00` gaps.
   - AFC tracks drift within ±15 Hz. Squelch uses the symbol-quality metric (the vector-magnitude spread).
+  - As built (M10), with the same results and less to tune:
+    - No Costas loop: each bit is decided from the phase change between symbols (differential detection), so the carrier phase never has to be held. The mix, decimation to 16 samples a symbol, and a 32-tap Hann matched filter come first.
+    - Bit timing balances the matched-filter magnitude of the two halves of the symbol clock; the symbol is taken where the magnitude peaks.
+    - AFC follows the squared phase change (the modulation removed), only on clean symbols once locked, and holds once a signal has gone so noise cannot walk it away.
+    - Quality is the running average of cos 2Δφ (1 clean, 0 noise); squelch opens at 0.4. Characters are shown at once while quality is 0.8 or more; otherwise they wait 48 symbols and are dropped if quality falls to 0.1, which is how noise read as a signal ends is kept off the screen.
+    - Measured on generated signals: PSK31 0 % character errors at −5 dB, 1.4 % at −8 dB and 6 % at −10 dB SNR in 2.5 kHz; PSK63 1.8 % at −5 dB. No characters from 5 minutes of noise.
 - **RTTY demodulator.**
   - Mark and space filters, then an envelope detector. The decision is the difference between the two, with automatic threshold correction (ATC) for selective fading.
   - Start-bit synchronisation and ITA2 with letters/figures shift.
   - Unshift-on-space is on by default. AFC tracks within ±30 Hz, and squelch is set on the mark/space contrast.
 - **Signal strength.** The SNR in dB in a 2,500 Hz bandwidth, measured from the FFT, so that the dB column means the same thing as for FT8.
-- **Testing.** Every demodulator is tested in CI against WAV recordings in `samples/psk31/`, `samples/psk63/` and `samples/rtty/`, each with an expected-text golden file. Each mode needs at least one clean recording, one weak recording (−10 dB SNR in 2.5 kHz for PSK31) and one drifting recording. Synthetic recordings made by our own modulator are allowed only *in addition* to recordings made with fldigi. Rule 3 still holds: there is no FT8 decoder here. These demodulators are new code, checked against fldigi's output on the same audio.
+- **Testing.** As of M10 the recordings in `samples/psk31/` and `samples/psk63/` are synthetic (our modulator with noise), with the text each station sent in a `.expected.txt` file; fldigi recordings are still needed (V25). Every demodulator is tested in CI against WAV recordings in `samples/psk31/`, `samples/psk63/` and `samples/rtty/`, each with an expected-text golden file. Each mode needs at least one clean recording, one weak recording (−10 dB SNR in 2.5 kHz for PSK31) and one drifting recording. Synthetic recordings made by our own modulator are allowed only *in addition* to recordings made with fldigi. Rule 3 still holds: there is no FT8 decoder here. These demodulators are new code, checked against fldigi's output on the same audio.
 
 ## 6. Stations from text
 
