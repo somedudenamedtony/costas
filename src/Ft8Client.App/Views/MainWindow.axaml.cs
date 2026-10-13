@@ -48,6 +48,7 @@ public partial class MainWindow : Window
         vm.Apply(vm.Host.Session.Snapshot);
         vm.OpenDialog += OpenDialog;
         vm.Mini.ExpandRequested += CloseMini;
+        vm.AttentionRequested += () => TaskbarFlash.Flash(_mini is { } m ? m : this);
         _timer.Tick += (_, _) => vm.Tick();
         _timer.Start();
         if (!vm.Host.Settings.Current.SetupComplete) Dispatcher.UIThread.Post(() => OpenDialog("setup"));

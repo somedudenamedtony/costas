@@ -142,6 +142,12 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Decode journal and WAV saving (null in simulation).</summary>
     public RecordingService? Recording { get; private set; }
 
+    /// <summary>LoTW confirmations, uploads and user list.</summary>
+    public LotwService Lotw { get; private set; } = null!;
+
+    /// <summary>The Hunt list and its alerts.</summary>
+    public HuntService Hunt { get; private set; } = null!;
+
     /// <summary>Club Log's most-wanted list for the rarity meter.</summary>
     public MostWantedService MostWanted { get; private set; } = null!;
 
@@ -262,7 +268,7 @@ public sealed class AppHost : IAsyncDisposable
         TxMeters.Measured += r => Session.SetTxMeters(TxLevel.OnMeasured(r));
         if (partner is not null) Session.Transmitting += partner.OnTransmitted;
         Session.SlotDecoded += (slot, mode, decodes) => BandStats.Add(slot, Settings.Current.Operating.Band, ModeInfo.Name(mode), decodes.Count);
-        Session.SetLogIndex(LogIndexBuilder.Build(Qsos, config.MyCall, Countries));
+        Session.SetLogIndex(LogIndexBuilder.Build(Qsos, config.MyCall, Countries, SettingsMapper.ConfirmationSource(s)));
         Session.SetService(ServiceNames.Decoder, Jt9Path is null
             ? new ServiceStatus(ServiceHealth.Down, "jt9 not found", Clock.UtcNow)
             : new ServiceStatus(ServiceHealth.Ok, "Ready", Clock.UtcNow));
@@ -285,6 +291,15 @@ public sealed class AppHost : IAsyncDisposable
         Psk = new PskReporterService(Session, Settings, Spots, Countries, Clock, uploadsAllowed: !Simulating);
         Psk.Start();
 
+        Lotw = new LotwService(Session, Settings, Secrets, Qsos, SyncState, Countries, Paths, Clock, Guard, allowed: !Simulating);
+        Lotw.LogChanged += RebuildLogIndex;
+        Lotw.UsersChanged += Session.SetLotwUsers;
+        log.Stored += Lotw.OnLogged;
+        Lotw.Start();
+
+        Hunt = new HuntService(Session, Settings, Countries, ReferenceData.LoadAdifTable(), Psk, Clock);
+        Hunt.Start();
+
         MostWanted = new MostWantedService(Paths, () => Settings.Current.Profile.Callsign, Clock);
         _ = MostWanted.StartAsync();
 
@@ -304,6 +319,7 @@ public sealed class AppHost : IAsyncDisposable
             Countries = Countries,
             MostWantedRank = MostWanted.Current.RankOf,
             Bands = Frequencies.Bands,
+            Hunt = () => this.Hunt.Recent().FirstOrDefault() is { } h ? Core.Hunting.HuntText.Alert(h, Countries, SettingsMapper.Units(Settings.Current)) : null,
         });
         Remote.Start();
 
@@ -315,15 +331,22 @@ public sealed class AppHost : IAsyncDisposable
 
         _ = Task.Run(ClockCheckLoopAsync);
         _ = Task.Run(RigPollLoopAsync);
+        var confirmedBy = SettingsMapper.ConfirmationSource(s);
         Settings.Changed += _ =>
         {
+            if (SettingsMapper.ConfirmationSource(Settings.Current) != confirmedBy)
+            {
+                confirmedBy = SettingsMapper.ConfirmationSource(Settings.Current);
+                RebuildLogIndex();
+            }
             TxLevel.Apply();
             Session.Reconfigure(SettingsMapper.ToConfig(Settings.Current));
         };
     }
 
     /// <summary>Rebuilds the log index from the database (after sync, import or edit).</summary>
-    public void RebuildLogIndex() => Session.SetLogIndex(LogIndexBuilder.Build(Qsos, Settings.Current.Profile.Callsign, Countries));
+    public void RebuildLogIndex() =>
+        Session.SetLogIndex(LogIndexBuilder.Build(Qsos, Settings.Current.Profile.Callsign, Countries, SettingsMapper.ConfirmationSource(Settings.Current)));
 
     /// <summary>Changes band and mode: sets the dial through the radio.</summary>
     public async Task SetBandAsync(string band, Mode mode)
@@ -594,6 +617,7 @@ public sealed class AppHost : IAsyncDisposable
         _output?.Dispose();
         _mutedOutput?.Dispose();
         Qrz?.Dispose();
+        Lotw?.Dispose();
         Udp?.Dispose();
         Updates?.Dispose();
         Recording?.Dispose();

@@ -41,6 +41,9 @@ public sealed record RemoteState
     /// <summary>A line when something is wrong or stopped, else null.</summary>
     public string? Fault { get; init; }
 
+    /// <summary>The latest Hunt list alert ("VK9XA is on 17 m, heard 300 mi from you at -14 dB."), or null.</summary>
+    public string? Hunt { get; init; }
+
     /// <summary>"you", "desk" or "other": who is the control point.</summary>
     public string Control { get; init; } = "desk";
 

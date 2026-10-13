@@ -61,6 +61,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private SessionConfig _config;
     private LogIndex _logIndex = LogIndex.Empty;
     private HearsMe _hearsMe;
+    private LotwUsers? _lotwUsers;
     private EntityMatch? _myEntity;
     private long _dialHz;
     private int _txOffset = 1500;
@@ -673,6 +674,13 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
+    /// <summary>Sets who uploads to LoTW (for ranking when only confirmed contacts count).</summary>
+    public void SetLotwUsers(LotwUsers users)
+    {
+        lock (_gate) _lotwUsers = users;
+        Publish();
+    }
+
     /// <summary>Swaps in a rebuilt log index (after sync or import).</summary>
     public void SetLogIndex(LogIndex index)
     {
@@ -805,7 +813,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             var now = _clock.UtcNow;
             var stations = _tracker.Stations.ToList();
             var rank = Ranker.Rank(new RankInput(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity,
-                _config.Band, ModeInfo.Name(_config.Mode), now, _countries));
+                _config.Band, ModeInfo.Name(_config.Mode), now, _countries, _lotwUsers));
             var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, ModeInfo.Name(_config.Mode), now, _slotCounts, _tonight,
                 _config.Ranking);
             snap = new SessionSnapshot

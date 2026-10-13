@@ -101,6 +101,32 @@ public sealed partial class MiniViewModel : ObservableObject
     [ObservableProperty]
     public partial string Message { get; set; } = string.Empty;
 
+    /// <summary>The latest Hunt list alert, or empty.</summary>
+    [ObservableProperty]
+    public partial string HuntText { get; set; } = string.Empty;
+
+    /// <summary>True while a Hunt list alert is shown.</summary>
+    [ObservableProperty]
+    public partial bool HasHunt { get; set; }
+
+    /// <summary>Shows a Hunt list alert line, or hides it with null.</summary>
+    public void ShowHunt(string? text)
+    {
+        HuntText = text ?? string.Empty;
+        HasHunt = HuntText.Length > 0;
+    }
+
+    /// <summary>Raised when the operator dismisses the Hunt alert line.</summary>
+    public event Action? HuntDismissed;
+
+    /// <summary>Hides the Hunt alert line (and the main window's bar).</summary>
+    [RelayCommand]
+    private void DismissHunt()
+    {
+        ShowHunt(null);
+        HuntDismissed?.Invoke();
+    }
+
     /// <summary>Copies the Operate view's state. UI thread, after each snapshot and each tick.</summary>
     /// <param name="band">Band as shown in the band menu ("20 m"), or null before one is chosen.</param>
     /// <param name="mode">Mode name ("FT8").</param>

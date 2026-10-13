@@ -216,6 +216,9 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>Club Log's most-wanted list for the rarity meter; <see cref="Core.Geo.MostWanted.None"/> until loaded.</summary>
     public Core.Geo.MostWanted MostWanted { get; set; } = Core.Geo.MostWanted.None;
 
+    /// <summary>ARRL's list of LoTW users; <see cref="LotwUsers.None"/> until loaded.</summary>
+    public LotwUsers Lotw { get; set; } = LotwUsers.None;
+
     /// <summary>Details flyout: the station shown.</summary>
     [ObservableProperty]
     public partial StationDetailsViewModel? Details { get; set; }
@@ -371,7 +374,7 @@ public sealed partial class OperateViewModel : ObservableObject
         _commands.Lookup(row.Call);
         Details = _snap is null
             ? StationDetailsViewModel.From(row.Call, row.Source.Station, QrzLookup?.Invoke(row.Call), Log?.Invoke(), Units, _now(),
-                mostWantedRank: MostWanted.RankOf(row.Source.Station.EntityKey))
+                mostWantedRank: MostWanted.RankOf(row.Source.Station.EntityKey), lotwUpload: Lotw.LastUpload(row.Call))
             : DetailsFor(row.Call, _snap, _now(), row.Source.Station);
     }
 
@@ -380,7 +383,21 @@ public sealed partial class OperateViewModel : ObservableObject
         var station = s.Stations.FirstOrDefault(x => Callsign.EqualsCall(x.Call, call)) ?? fallback;
         return StationDetailsViewModel.From(call, station, QrzLookup?.Invoke(call), Log?.Invoke(), Units, now, QrzName?.Invoke(call),
             s.Pileups.GetValueOrDefault(Callsign.Normalize(call)), s.TxOffsetHz, s.Mode,
-            MostWanted.RankOf(station?.EntityKey));
+            MostWanted.RankOf(station?.EntityKey), Lotw.LastUpload(call));
+    }
+
+    /// <summary>Adds the station's call to the Hunt list.</summary>
+    [RelayCommand]
+    private void HuntCall(StationDetailsViewModel? d)
+    {
+        if (d is not null) _commands.Hunt(new Core.Hunting.HuntTarget(Core.Hunting.HuntTargetKind.Call, Callsign.Normalize(d.Call), null));
+    }
+
+    /// <summary>Adds the station's country to the Hunt list.</summary>
+    [RelayCommand]
+    private void HuntCountry(StationDetailsViewModel? d)
+    {
+        if (d?.EntityKey is { } e) _commands.Hunt(new Core.Hunting.HuntTarget(Core.Hunting.HuntTargetKind.Country, e, null));
     }
 
     /// <summary>Opens the station's QRZ page.</summary>
@@ -530,10 +547,14 @@ public sealed partial class OperateViewModel : ObservableObject
     public static IReadOnlyList<RankedStation> RepeatOrder(IReadOnlyList<RankedStation> worked, Func<RankedStation, bool>? confirmed = null) =>
         worked.OrderBy(r => r.Callable ? 0 : 1).ThenBy(r => confirmed?.Invoke(r) == true ? 1 : 0).ToList();
 
-    // For a new band: the bands the country is already in the log on.
-    private string WhyTip(RankedStation r, LogIndex? log) =>
-        log is null || _snap is null || r.Station.EntityKey is not { } e ? string.Empty
+    // For a new band: the bands the country is already in the log on. Then whether the station uses LoTW.
+    private string WhyTip(RankedStation r, LogIndex? log)
+    {
+        var band = log is null || _snap is null || r.Station.EntityKey is not { } e ? string.Empty
             : StationText.WhyTip(r.Need.Tag, r.Station.Entity?.Entity.Name, log.BandsWorked(e), _snap.Band);
+        var lotw = StationText.LotwNote(r.UsesLotw, Ranking.ConfirmedOnly, Lotw.Count > 0);
+        return string.Join(Environment.NewLine, new[] { band, lotw }.Where(x => x.Length > 0));
+    }
 
     private void ApplySignal(SessionSnapshot s, DateTime now, string band)
     {
