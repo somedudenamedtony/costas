@@ -13,6 +13,7 @@ using Ft8Client.Core.Bands;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
+using Ft8Client.Core.Pota;
 using Ft8Client.Core.Ranking;
 
 namespace Ft8Client.App.ViewModels;
@@ -29,9 +30,13 @@ public sealed partial class StationRowViewModel : ObservableObject
     /// <param name="contacts">How many log contacts there are with this call.</param>
     /// <param name="mostWantedRank">The station's entity on Club Log's most-wanted list, if known; shown for new countries.</param>
     /// <param name="whyTip">Tooltip for Why: for a new band, the bands the country is already in the log on.</param>
+    /// <param name="park">The park the station is activating (POTA), shown under Why; display only.</param>
     public StationRowViewModel(RankedStation r, int rank, DistanceUnit units, DateTime nowUtc, LogContact? last = null, int contacts = 0,
-                               int? mostWantedRank = null, string whyTip = "")
+                               int? mostWantedRank = null, string whyTip = "", ParkInfo? park = null)
     {
+        Park = PotaText.Why(park);
+        ParkTip = PotaText.Tip(park);
+        ParkKind = park is { NewPark: true } ? TextKind.Accent : TextKind.Secondary;
         if (r.Need.Tag == NeedTag.NewCountry && mostWantedRank is { } mw)
         {
             RarityLevel = Rarity.Level(mw);
@@ -116,6 +121,18 @@ public sealed partial class StationRowViewModel : ObservableObject
 
     /// <summary>Need tag colour.</summary>
     public TextKind WhyKind { get; }
+
+    /// <summary>The park line under Why: "New park US-1234", "Park US-1234", "POTA", or blank.</summary>
+    public string Park { get; }
+
+    /// <summary>Tooltip for <see cref="Park"/>: park name and location.</summary>
+    public string ParkTip { get; }
+
+    /// <summary>The park line is shown.</summary>
+    public bool HasPark => Park.Length > 0;
+
+    /// <summary>Park line colour: accent for a new park, secondary otherwise.</summary>
+    public TextKind ParkKind { get; }
 
     /// <summary>Rarity meter, 1 to 5, for a new country on Club Log's most-wanted list; 0 hides it.</summary>
     public int RarityLevel { get; }

@@ -242,6 +242,9 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>Club Log's most-wanted list for the rarity meter; <see cref="Core.Geo.MostWanted.None"/> until loaded.</summary>
     public Core.Geo.MostWanted MostWanted { get; set; } = Core.Geo.MostWanted.None;
 
+    /// <summary>POTA spots and worked parks for the park line under Why (display only); empty until loaded or when off.</summary>
+    public Core.Pota.PotaParks Parks { get; set; } = Core.Pota.PotaParks.Empty;
+
     /// <summary>Details flyout: the station shown.</summary>
     [ObservableProperty]
     public partial StationDetailsViewModel? Details { get; set; }
@@ -397,7 +400,7 @@ public sealed partial class OperateViewModel : ObservableObject
         _commands.Lookup(row.Call);
         Details = _snap is null
             ? StationDetailsViewModel.From(row.Call, row.Source.Station, QrzLookup?.Invoke(row.Call), Log?.Invoke(), Units, _now(),
-                mostWantedRank: MostWanted.RankOf(row.Source.Station.EntityKey))
+                mostWantedRank: MostWanted.RankOf(row.Source.Station.EntityKey), park: ParkOf(row.Source.Station))
             : DetailsFor(row.Call, _snap, _now(), row.Source.Station);
     }
 
@@ -406,8 +409,11 @@ public sealed partial class OperateViewModel : ObservableObject
         var station = s.Stations.FirstOrDefault(x => Callsign.EqualsCall(x.Call, call)) ?? fallback;
         return StationDetailsViewModel.From(call, station, QrzLookup?.Invoke(call), Log?.Invoke(), Units, now, QrzName?.Invoke(call),
             s.Pileups.GetValueOrDefault(Callsign.Normalize(call)), s.TxOffsetHz, s.Mode,
-            MostWanted.RankOf(station?.EntityKey));
+            MostWanted.RankOf(station?.EntityKey), station is null ? null : ParkOf(station));
     }
+
+    // The park a station is activating, from a POTA spot on this band or its CQ POTA. Display only.
+    private Core.Pota.ParkInfo? ParkOf(Station s) => _snap is null ? null : Parks.Match(s.Call, _snap.Band, s.CqModifier);
 
     /// <summary>Opens the station's QRZ page.</summary>
     [RelayCommand]
@@ -516,7 +522,7 @@ public sealed partial class OperateViewModel : ObservableObject
         var i = 1;
         foreach (var r in list.Take(MaxLine))
             Line.Add(new StationRowViewModel(r, i++, Units, now, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0,
-                MostWanted.RankOf(r.Station.EntityKey), WhyTip(r, log)));
+                MostWanted.RankOf(r.Station.EntityKey), WhyTip(r, log), ParkOf(r.Station)));
         MoreText = list.Count > MaxLine ? $"and {list.Count - MaxLine} more" : string.Empty;
         LineEmpty = Line.Count == 0;
         // Only a row the operator picked stays selected; nothing is selected for them, so the highlight never

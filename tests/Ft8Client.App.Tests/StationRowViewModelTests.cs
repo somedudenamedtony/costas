@@ -118,4 +118,27 @@ public class StationRowViewModelTests
         new StationRowViewModel(ranked, 1, DistanceUnit.Miles, Heard, whyTip: "Canada is in your log on 40 m, not on 20 m yet")
             .WhyTip.Should().Be("Canada is in your log on 40 m, not on 20 m yet");
     }
+
+    [Fact]
+    public void Constructor_NewPark_ShowsParkLineWithoutChangingWhy()
+    {
+        var station = new Station { Call = "K1ABC", LastHeardUtc = Heard, State = StationState.CallingCq, CqStreak = 1, CqModifier = "POTA" };
+        var ranked = new RankedStation(station, new NeedResult(NeedTag.NewCall, 4), new HearsYou(HearsYouKind.None), Chance.Good, true, null);
+
+        var row = new StationRowViewModel(ranked, 3, DistanceUnit.Miles, Heard,
+            park: new Core.Pota.ParkInfo("US-1234", "Test Lake State Park", "US-ZZ", true));
+
+        row.Why.Should().Be("New call");
+        row.Rank.Should().Be(3);
+        row.Park.Should().Be("New park US-1234");
+        row.ParkTip.Should().Be("Test Lake State Park, US-ZZ");
+        row.ParkKind.Should().Be(TextKind.Accent);
+        row.HasPark.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Constructor_NoPark_NoParkLine()
+    {
+        Row(Heard).HasPark.Should().BeFalse();
+    }
 }

@@ -259,11 +259,16 @@
                           <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                          <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                          <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Text="{Binding Why}" VerticalAlignment="Center" ToolTip.Tip="{Binding WhyTip}"
                                        Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" FontWeight="{Binding WhyBold, Converter={x:Static v:Converters.Bold}}" />
                             <v:RarityMeter Level="{Binding RarityLevel}" IsVisible="{Binding HasRarity}" VerticalAlignment="Center"
                                            ToolTip.Tip="{Binding RarityTip}" AutomationProperties.Name="{Binding RarityTip}" />
+                          </StackPanel>
+                          <!-- POTA park, display only: it never changes the order. -->
+                          <TextBlock Text="{Binding Park}" IsVisible="{Binding HasPark}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                     ToolTip.Tip="{Binding ParkTip}" Foreground="{Binding ParkKind, Converter={x:Static v:Converters.KindBrush}}" />
                           </StackPanel>
                           <TextBlock Grid.Column="4" Text="{Binding DoingNow}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                           <TextBlock Grid.Column="5" Text="{Binding LastHeard}" Classes="secondary" VerticalAlignment="Center" />
