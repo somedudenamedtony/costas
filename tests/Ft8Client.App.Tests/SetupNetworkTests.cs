@@ -7,6 +7,7 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Ft8Client.App.ViewModels;
+using Ft8Client.Rig;
 
 namespace Ft8Client.App.Tests;
 
@@ -41,5 +42,38 @@ public class SetupNetworkTests
     public void HamlibConfig_NameValuePairs_Validates(string? config, bool expected)
     {
         SetupViewModel.IsHamlibConfig(config).Should().Be(expected);
+    }
+
+    [Fact]
+    public void PickModel_ManufacturerWithOneModel_PicksIt()
+    {
+        var flrig = new HamlibModel(4, "FLRig", "FLRig", "Stable");
+
+        SetupViewModel.PickModel([flrig], null).Should().Be(flrig);
+    }
+
+    [Fact]
+    public void PickModel_SeveralModelsNoneChosen_LeavesChoiceToOperator()
+    {
+        var models = new[] { new HamlibModel(1035, "Yaesu", "FT-991", "Stable"), new HamlibModel(1049, "Yaesu", "FT-710", "Stable") };
+
+        SetupViewModel.PickModel(models, null).Should().BeNull();
+    }
+
+    [Fact]
+    public void PickModel_CurrentStillListed_KeepsIt()
+    {
+        var ft710 = new HamlibModel(1049, "Yaesu", "FT-710", "Stable");
+        var models = new[] { new HamlibModel(1035, "Yaesu", "FT-991", "Stable"), ft710 };
+
+        SetupViewModel.PickModel(models, ft710).Should().Be(ft710);
+    }
+
+    [Fact]
+    public void PickModel_CurrentFromOtherManufacturer_Cleared()
+    {
+        var models = new[] { new HamlibModel(1035, "Yaesu", "FT-991", "Stable"), new HamlibModel(1049, "Yaesu", "FT-710", "Stable") };
+
+        SetupViewModel.PickModel(models, new HamlibModel(3073, "Icom", "IC-7300", "Stable")).Should().BeNull();
     }
 }

@@ -320,9 +320,19 @@ public sealed partial class SetupViewModel : ObservableObject
     {
         Models.Clear();
         foreach (var m in _allModels.Where(m => string.Equals(m.Manufacturer, value, StringComparison.Ordinal))) Models.Add(m);
-        if (Model is not null && !Models.Contains(Model)) Model = null;
+        Model = PickModel(Models, Model);
         Readback = string.Empty;
     }
+
+    /// <summary>
+    /// The model to show after the manufacturer changes: the current one if it is still listed, else the only model
+    /// when there is just one (FLRig, TRXManager and similar), so its own fields (a host:port box, not a COM port)
+    /// appear without a second pick.
+    /// </summary>
+    public static HamlibModel? PickModel(IReadOnlyList<HamlibModel> models, HamlibModel? current) =>
+        current is not null && models.Contains(current) ? current
+        : models.Count == 1 ? models[0]
+        : null;
 
     partial void OnModelChanged(HamlibModel? value)
     {
