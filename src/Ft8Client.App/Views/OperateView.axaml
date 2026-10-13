@@ -464,6 +464,11 @@
             <TextBlock Text="{Binding SignalSource}" Classes="secondary" FontSize="12" Margin="0,-4,0,0" />
             <!-- No map here: Heard here's "Who heard you" rings already show these stations on a map. -->
             <TextBlock Text="{Binding SignalHeadline}" TextWrapping="Wrap" />
+            <TextBlock Text="Stations hearing you · every 5 minutes" Classes="secondary" FontSize="12" />
+            <v:ReceptionChart History="{Binding SignalHistory}" Height="100"
+                              AutomationProperties.Name="Distinct stations hearing you in five-minute intervals over the last hour"
+                              ToolTip.Tip="One count per receiver per interval, on this band and mode. Times are local. The final bar is incomplete. Reports can arrive late; fewer transmissions or a feed outage can also lower counts." />
+            <TextBlock Text="Last hour · local time · * current interval incomplete" Classes="secondary" FontSize="11" TextWrapping="Wrap" />
             <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
               <StackPanel>
                 <TextBlock Text="Farthest" Classes="secondary" FontSize="12" />

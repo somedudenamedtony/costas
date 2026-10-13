@@ -54,6 +54,27 @@ public class SessionNeighbourTests
     }
 
     [Fact]
+    public void AddReport_History_RetainedAcrossBandAndModeChangesAndClearedForNewStation()
+    {
+        var d = new Driver();
+        var t = d.Clock.UtcNow;
+        d.Session.AddReport(new ReceptionReport("DL1ABC", null, null, null, "20m", "FT8", -12, t));
+        d.Session.AddReport(new ReceptionReport("DL1ABC", null, null, null, "20m", "FT8", -10, t));
+        d.Session.AddReport(new ReceptionReport("G4XYZ", null, null, null, "40m", "FT4", -15, t));
+        d.Session.Snapshot.ReceptionHistory[^1].Stations.Should().Be(1);
+        d.Session.SetBand("40m", Mode.Ft4);
+        d.Session.Snapshot.ReceptionHistory[^1].Stations.Should().Be(1);
+        d.Session.SetBand("20m", Mode.Ft8);
+        d.Session.Snapshot.ReceptionHistory[^1].Stations.Should().Be(1);
+        d.Clock.Advance(TimeSpan.FromMinutes(5));
+        d.Session.Publish();
+        d.Session.Snapshot.ReceptionHistory[^2].Stations.Should().Be(1);
+        d.Session.Snapshot.ReceptionHistory[^1].Stations.Should().Be(0);
+        d.Session.Reconfigure(d.Session.Config with { MyCall = "K7ABC" });
+        d.Session.Snapshot.ReceptionHistory.Should().OnlyContain(b => b.Stations == 0);
+    }
+
+    [Fact]
     public void AddNeighbourReport_NearbyStationsSharedReceivers_ComparedInSnapshot()
     {
         var d = new Driver();
