@@ -36,4 +36,7 @@ public sealed record RemoteContext
 
     /// <summary>The bands the station can switch to, by mode.</summary>
     public Func<Mode, IReadOnlyList<string>> Bands { get; init; } = _ => [];
+
+    /// <summary>The latest Hunt list alert of the last 15 minutes, or null.</summary>
+    public Func<string?> Hunt { get; init; } = () => null;
 }

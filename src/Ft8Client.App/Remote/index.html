@@ -159,6 +159,7 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
   </nav>
   <main>
     <div id="fault" class="banner hidden"></div>
+    <div id="hunt" class="banner hidden" aria-live="polite"></div>
     <div id="meter" class="banner warnline hidden"></div>
     <div id="services" class="mini hidden"></div>
     <div id="board" class="board"><div class="col">
@@ -302,6 +303,10 @@ function render() {
   const f = $("fault");
   f.classList.toggle("hidden", !s.fault && s.radioOk);
   f.textContent = s.fault || (!s.radioOk ? "Radio: " + s.radio : "");
+
+  const h = $("hunt");
+  h.classList.toggle("hidden", !s.hunt);
+  h.textContent = s.hunt ? "Hunt list · " + s.hunt : "";
 
   const m = $("meter");
   m.classList.toggle("hidden", !s.meter);

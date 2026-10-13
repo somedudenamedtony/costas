@@ -65,4 +65,9 @@ public interface IOperateCommands
 
     /// <summary>Retry a failed upload.</summary>
     void RetryUpload(long qsoId);
+
+    /// <summary>Adds an entry to the Hunt list (station details). Nothing is called or sent.</summary>
+    void Hunt(Core.Hunting.HuntTarget target)
+    {
+    }
 }

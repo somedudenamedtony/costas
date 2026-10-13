@@ -226,6 +226,16 @@ Test by decoding our own datagrams with a small reader in the test project and, 
 
 `GET https://clublog.org/mostwanted.php?api=1` (confirmed 2026-10-12, no account or key) returns a JSON object of rank to ADIF DXCC code, both as strings: `{"1":"344","2":"123",...}`, about 340 entries. A saved answer is in `samples/clublog/mostwanted.json`. The app downloads it at start when the cached copy (`cache/clublog-mostwanted.json`) is missing or a week old, with the app's User-Agent and the usual timeout, and keeps using the cached copy when Club Log cannot be reached. An answer with fewer than 300 entries is ignored.
 
+## 7b. LoTW (ARRL Logbook of the World)
+
+Optional, off until the operator enters a LoTW login. The password is in the credential store (`lotw-password`).
+
+- **Confirmations.** `GET https://lotw.arrl.org/lotwuser/lotwreport.adi?login=…&password=…&qso_query=1&qso_qsl=yes&qso_qslsince=<last>&qso_qsldetail=yes&qso_withown=yes&qso_owncall=<call>` every 12 hours and on demand, 2-minute timeout. `qso_qslsince` is the `APP_LoTW_LASTQSL` of the previous answer, kept in `sync_state` under target `lotw`. A page without `<eoh>` is a failed login or query. Each record with `QSL_RCVD=Y` marks the matching contact (call, band, mode, within 30 minutes) `lotw_confirmed`, or is added with source `lotw`. The URL carries the password and is never logged. FT4: VERIFY V20.
+- **Uploads.** Through TQSL, which holds the operator's certificate: `tqsl -x -d -u -a compliant [-l <station location>] <file.adi>` on an ADIF file of contacts not yet uploaded, 5-minute timeout, process tree killed on timeout. Exit codes 0, 8 (all duplicates) and 9 (some duplicates) mark the contacts `uploaded`; any other code is shown and the contacts stay pending. Manual from the Log view, or after each logged contact when the operator turns that on.
+- **User list.** `GET https://lotw.arrl.org/lotw-user-activity.csv` once a week, cached in `cache/lotw-user-activity.csv`. A call that uploaded within 365 days is a LoTW user (`LotwUsers`, Core). It feeds "Uses LoTW" in station details and the Why tooltip, and the ranking when only confirmed contacts count.
+
+None of this runs in simulation. With LoTW unreachable the status says so and nothing else changes.
+
 ## 8. Country file
 
 `cty.dat` from https://www.country-files.com/ . Ship a copy in the app; "Update country file" in Settings downloads the current one (**VERIFY** the stable download URL), validates that it parses and has more than 300 entities, then swaps it in.

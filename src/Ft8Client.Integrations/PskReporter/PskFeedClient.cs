@@ -44,6 +44,12 @@ public sealed class PskFeedClient : IAsyncDisposable
     private string? _neighbourTopic;
     private string? _subscribedNeighbourTopic;
     private (string? Band, string? Mode, int? Dxcc) _followed;
+    private HashSet<string> _huntTopics = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _subscribedHuntTopics = new(StringComparer.Ordinal);
+    private HashSet<string> _huntCalls = new(StringComparer.Ordinal);
+    private HashSet<int> _huntDxccs = [];
+    private int _huntCount;
+    private DateTime _huntMinute;
     private int _neighbourCount;
     private DateTime _neighbourMinute;
 
@@ -81,6 +87,15 @@ public sealed class PskFeedClient : IAsyncDisposable
     /// </summary>
     public bool AllBandsStopped { get; private set; }
 
+    /// <summary>Raised for each report of a station on the Hunt list (see <see cref="FollowHunt"/>), heard by anyone.</summary>
+    public event Action<HuntSpot>? HuntReport;
+
+    /// <summary>More Hunt list reports than this in one minute stops following them (the feed is a shared community service).</summary>
+    public const int MaxHuntReportsPerMinute = 1200;
+
+    /// <summary>True when Hunt list reports came too fast and following them was stopped.</summary>
+    public bool HuntStopped { get; private set; }
+
     /// <summary>Raised when the connection state changes.</summary>
     public event Action<ServiceStatus>? StatusChanged;
 
@@ -96,6 +111,60 @@ public sealed class PskFeedClient : IAsyncDisposable
     /// <summary>The topic filter for every sender in one DXCC entity on one band (<c>+</c> for every band) and mode.</summary>
     public static string NeighbourTopicFor(string band, string mode, int dxcc) =>
         $"pskr/filter/v2/{band.ToLowerInvariant()}/{mode.ToUpperInvariant()}/+/+/+/+/{dxcc}/#";
+
+    /// <summary>The topic filter for every report of one sender, on any band and mode.</summary>
+    public static string HuntCallTopicFor(string call) => $"pskr/filter/v2/+/+/{Callsign.Normalize(call)}/#";
+
+    /// <summary>
+    /// The topic filter for senders in DXCC entity <paramref name="dxcc"/> heard by receivers in <paramref name="receiverDxcc"/>
+    /// (any receiver when null), on any band and mode.
+    /// </summary>
+    public static string HuntEntityTopicFor(int dxcc, int? receiverDxcc) =>
+        $"pskr/filter/v2/+/+/+/+/+/+/{dxcc}/{(receiverDxcc is { } r ? r.ToString(System.Globalization.CultureInfo.InvariantCulture) : "+")}/#";
+
+    /// <summary>
+    /// Follows the Hunt list on every band: every report of <paramref name="calls"/>, and reports of senders in the DXCC
+    /// entities <paramref name="dxccs"/> heard in <paramref name="receiverDxcc"/>. Replaces any earlier list; empty lists stop.
+    /// </summary>
+    public void FollowHunt(IEnumerable<string> calls, IEnumerable<int> dxccs, int? receiverDxcc)
+    {
+        var callSet = new HashSet<string>(calls.Select(Callsign.Normalize), StringComparer.Ordinal);
+        var dxccSet = new HashSet<int>(dxccs);
+        var topics = HuntStopped ? new HashSet<string>(StringComparer.Ordinal)
+            : new HashSet<string>(callSet.Select(HuntCallTopicFor).Concat(dxccSet.Select(d => HuntEntityTopicFor(d, receiverDxcc))), StringComparer.Ordinal);
+        lock (_topicGate)
+        {
+            _huntCalls = callSet;
+            _huntDxccs = dxccSet;
+            if (topics.SetEquals(_huntTopics)) return;
+            _huntTopics = topics;
+        }
+        _ = UpdateHuntSubscriptionsAsync();
+    }
+
+    private async Task UpdateHuntSubscriptionsAsync()
+    {
+        var client = _client;
+        if (client is null || !_subscribed) return;
+        List<string> add, remove;
+        lock (_topicGate)
+        {
+            add = _huntTopics.Where(t => !_subscribedHuntTopics.Contains(t)).ToList();
+            remove = _subscribedHuntTopics.Where(t => !_huntTopics.Contains(t)).ToList();
+            _subscribedHuntTopics.ExceptWith(remove);
+            _subscribedHuntTopics.UnionWith(add);
+        }
+        try
+        {
+            foreach (var t in remove) await client.UnsubscribeAsync(t).ConfigureAwait(false);
+            foreach (var t in add) await client.SubscribeAsync(new MqttClientSubscribeOptionsBuilder().WithTopicFilter(t).Build()).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // The next reconnect subscribes again.
+            lock (_topicGate) _subscribedHuntTopics.Clear();
+        }
+    }
 
     /// <summary>
     /// Follows the reports of stations in DXCC entity <paramref name="dxcc"/> on <paramref name="band"/> and
@@ -176,9 +245,14 @@ public sealed class PskFeedClient : IAsyncDisposable
                 await _client.ConnectAsync(options, ct).ConfigureAwait(false);
                 await _client.SubscribeAsync(new MqttClientSubscribeOptionsBuilder().WithTopicFilter(TopicFor(myCall)).Build(), ct).ConfigureAwait(false);
                 Connections++;
-                lock (_topicGate) _subscribedNeighbourTopic = null;
+                lock (_topicGate)
+                {
+                    _subscribedNeighbourTopic = null;
+                    _subscribedHuntTopics.Clear();
+                }
                 _subscribed = true;
                 await UpdateNeighbourSubscriptionAsync().ConfigureAwait(false);
+                await UpdateHuntSubscriptionsAsync().ConfigureAwait(false);
                 _backoff.Reset();
                 StatusChanged?.Invoke(new ServiceStatus(ServiceHealth.Ok, "Live feed connected", DateTime.UtcNow));
                 await disconnected.Task.WaitAsync(ct).ConfigureAwait(false);
@@ -214,7 +288,9 @@ public sealed class PskFeedClient : IAsyncDisposable
         var parsed = PskReportParser.ParseMqtt(payload.ToArray(), _countries);
         if (parsed is not { } p) return;
         var mine = Callsign.EqualsCall(p.SenderCall, myCall);
-        if (!mine && (_neighbourTopic is null || p.SenderGrid is null)) return;
+        var hunted = !mine && IsHunted(p.SenderCall, p.SenderDxcc);
+        var neighbour = !mine && _neighbourTopic is not null && p.SenderGrid is not null;
+        if (!mine && !hunted && !neighbour) return;
         lock (_seen)
         {
             if (p.Sequence != 0)
@@ -230,9 +306,37 @@ public sealed class PskFeedClient : IAsyncDisposable
             Report?.Invoke(p.Report);
             return;
         }
-        if (TooManyNeighbourReports()) return;
+        if (hunted && !TooManyHuntReports()) HuntReport?.Invoke(new HuntSpot(p.SenderCall, p.SenderGrid, p.SenderDxcc, p.Report));
+        if (!neighbour || TooManyNeighbourReports()) return;
         NeighbourReport?.Invoke(new NeighbourReport(p.SenderCall, p.SenderGrid!, p.Report.ReceiverCall, p.Report.Band, p.Report.Mode, p.Report.Snr,
             p.Report.TimeUtc));
+    }
+
+    private bool IsHunted(string call, int? dxcc)
+    {
+        lock (_topicGate)
+        {
+            if (_huntTopics.Count == 0) return false;
+            return _huntCalls.Contains(Callsign.Normalize(call)) || _huntCalls.Contains(Callsign.BaseCall(call)) || (dxcc is { } d && _huntDxccs.Contains(d));
+        }
+    }
+
+    private bool TooManyHuntReports()
+    {
+        var now = DateTime.UtcNow;
+        var minute = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc);
+        if (minute != _huntMinute)
+        {
+            _huntMinute = minute;
+            _huntCount = 0;
+        }
+        if (++_huntCount <= MaxHuntReportsPerMinute) return false;
+        if (!HuntStopped)
+        {
+            HuntStopped = true;
+            FollowHunt([], [], null);
+        }
+        return true;
     }
 
     private bool TooManyNeighbourReports()

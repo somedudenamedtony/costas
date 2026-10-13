@@ -67,6 +67,33 @@ public sealed partial class BandChoiceViewModel : ObservableObject
     [ObservableProperty]
     public partial string Tip { get; set; } = string.Empty;
 
+    /// <summary>Hunt list stations heard on this band in the last 15 minutes: "VK9XA (Christmas Island)", or empty.</summary>
+    [ObservableProperty]
+    public partial string HuntText { get; set; } = string.Empty;
+
+    /// <summary>Each sighting in full (tooltip of <see cref="HuntText"/>).</summary>
+    [ObservableProperty]
+    public partial string HuntTip { get; set; } = string.Empty;
+
+    /// <summary>True when a Hunt list station was heard on this band recently.</summary>
+    [ObservableProperty]
+    public partial bool HasHunt { get; set; }
+
+    /// <summary>Sets the Hunt list stations heard on this band.</summary>
+    /// <param name="names">Short names, newest first.</param>
+    /// <param name="tip">The full sentences.</param>
+    public void ApplyHunt(IReadOnlyList<string> names, string tip)
+    {
+        HasHunt = names.Count > 0;
+        HuntText = names.Count switch
+        {
+            0 => string.Empty,
+            1 => "Hunting: " + names[0],
+            _ => $"Hunting: {names[0]} +{names.Count - 1}",
+        };
+        HuntTip = tip;
+    }
+
     /// <summary>Updates the row.</summary>
     /// <param name="opening">This band's opening, or null when nothing near me is heard on it.</param>
     /// <param name="maxSpots">Spots on the busiest band, for the bar.</param>

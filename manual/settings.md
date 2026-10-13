@@ -56,9 +56,20 @@ line*.
 - **Hide stations I have already worked on this band**: on. They are listed in **Repeats** under Next in line instead.
 - **Leave out long shots (signals too weak to likely complete)**: off.
 - **Count a country or state as worked only when confirmed**: off.
+    - **Count only LoTW confirmations (what DXCC and WAS credit)**: on. Off counts QRZ, eQSL and card confirmations too.
+      With only confirmed contacts counting, stations that upload to LoTW rank ahead of those that do not.
 - **Keep CQ callers listed**: 2 minutes. How long a station calling CQ stays in Next in line after it was last heard.
   Choices run from *Only while heard every slot* (the list drops a station the first slot it is missed) to 15
   minutes. A station heard working someone else leaves the list straight away whatever this says.
+
+## Hunt list
+
+What you are looking for, and how you are told. See [Hunt list and alerts](hunt.md).
+
+- **Looking for**: the entries, each with **Remove**.
+- **Add**: the kind (Country, Call, US state, Grid, Any new country), what to look for, and a band or *Any band*.
+- **Also watch the bands I am not on, through PSK Reporter**: on. **Count receivers within** 620 miles (1,000 km).
+- **Play the chime and flash Costas in the taskbar**: on.
 
 ## QRZ
 
@@ -74,6 +85,18 @@ QRZ has two services, each with its own sign-in. Both are optional.
   login** checks them. Leave both blank to turn lookups off.
 
 The key and password are kept in Windows Credential Manager.
+
+## LoTW
+
+Logbook of the World confirmations, uploads through TQSL, and the list of LoTW users. See [LoTW](log.md#lotw).
+
+- **Confirmations**: **Download my LoTW confirmations**, your LoTW login (usually your call) and LoTW website
+  password. This is the website password, not the TQSL certificate password.
+- **Uploads (TQSL)**: where `tqsl.exe` is (leave blank to find it in its usual folder), the TQSL **Station Location**
+  to sign with (blank if TQSL has only one), and **Sign and upload each contact as soon as it is logged** (off).
+- **Who uses LoTW**: **Download ARRL's list of LoTW users once a week** (on, about 6 MB, no login).
+
+The password is kept in Windows Credential Manager.
 
 ## PSK Reporter
 

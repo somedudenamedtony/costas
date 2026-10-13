@@ -39,7 +39,8 @@ shows. **HALT TX** is always at the bottom of the screen.
 | **Log** | The contacts you made tonight |
 
 Under the top bar the page also shows the radio's SWR or ALC warning after a transmission that read outside limits,
-and a line when QRZ, PSK Reporter or the audio device is not working.
+a line when QRZ, PSK Reporter or the audio device is not working, and the latest [Hunt list](hunt.md) alert of the
+last 15 minutes.
 
 ### On a tablet
 

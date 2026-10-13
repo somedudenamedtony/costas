@@ -15,10 +15,10 @@ namespace Ft8Client.Data.Log;
 public static class LogIndexBuilder
 {
     /// <summary>Builds the index.</summary>
-    public static LogIndex Build(QsoRepository repo, string stationCallsign, CountryFile countries)
+    public static LogIndex Build(QsoRepository repo, string stationCallsign, CountryFile countries, ConfirmationSource source = ConfirmationSource.Any)
     {
         var contacts = repo.LogContacts(stationCallsign)
             .Select(c => c.EntityKey is null ? c with { EntityKey = countries.Lookup(c.Call)?.Entity.Key } : c);
-        return LogIndex.Build(contacts);
+        return LogIndex.Build(contacts, source);
     }
 }

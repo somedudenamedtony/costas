@@ -29,6 +29,13 @@ public sealed class LogIndex
     private readonly HashSet<(string Band, string Mode, string Call)> _calls = [];
     private readonly Dictionary<string, HashSet<string>> _statesByBand = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<LogContact>> _byCall = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _states = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _statesConfirmed = new(StringComparer.Ordinal);
+
+    private LogIndex(ConfirmationSource source = ConfirmationSource.Any) => Source = source;
+
+    /// <summary>Which confirmations count as confirmed in this index.</summary>
+    public ConfirmationSource Source { get; }
 
     /// <summary>Number of contacts indexed.</summary>
     public int Count { get; private set; }
@@ -40,9 +47,11 @@ public sealed class LogIndex
     public static LogIndex Empty => new();
 
     /// <summary>Builds an index from contacts.</summary>
-    public static LogIndex Build(IEnumerable<LogContact> contacts)
+    /// <param name="contacts">The contacts.</param>
+    /// <param name="source">Which confirmations count: any (QRZ, LoTW or a card) or LoTW only.</param>
+    public static LogIndex Build(IEnumerable<LogContact> contacts, ConfirmationSource source = ConfirmationSource.Any)
     {
-        var index = new LogIndex();
+        var index = new LogIndex(source);
         foreach (var c in contacts) index.Add(c);
         return index;
     }
@@ -52,23 +61,29 @@ public sealed class LogIndex
     {
         var call = Callsign.Normalize(c.Call);
         var band = c.Band.ToLowerInvariant();
+        var confirmed = Counts(c);
         Count++;
         if (c.EntityKey is { Length: > 0 } e)
         {
             _entities.Add(e);
             Set(_entitiesByBand, band).Add(e);
-            if (c.Confirmed)
+            if (confirmed)
             {
                 _entitiesConfirmed.Add(e);
                 Set(_entitiesConfirmedByBand, band).Add(e);
             }
-            if (e == Geo.Entity.UsaKey && UsStates.Normalize(c.Region) is { } st) Set(_statesByBand, band).Add(st);
+            if (e == Geo.Entity.UsaKey && UsStates.Normalize(c.Region) is { } st)
+            {
+                Set(_statesByBand, band).Add(st);
+                _states.Add(st);
+                if (confirmed) _statesConfirmed.Add(st);
+            }
         }
         if (Grid.Grid4(c.Grid) is { } g)
         {
             _grids.Add(g);
             Set(_gridsByBand, band).Add(g);
-            if (c.Confirmed) _gridsConfirmed.Add(g);
+            if (confirmed) _gridsConfirmed.Add(g);
         }
         _calls.Add((band, c.ModeKey.ToUpperInvariant(), call));
         if (!_byCall.TryGetValue(call, out var list)) _byCall[call] = list = [];
@@ -109,6 +124,20 @@ public sealed class LogIndex
     public bool GridWorked(string grid, bool confirmedOnly = false) =>
         Grid.Grid4(grid) is { } g && (confirmedOnly ? _gridsConfirmed : _grids).Contains(g);
 
+    /// <summary>True when the 4-character grid has a contact on this band.</summary>
+    public bool GridWorkedOnBand(string grid, string band) =>
+        Grid.Grid4(grid) is { } g && _gridsByBand.TryGetValue(band.ToLowerInvariant(), out var s) && s.Contains(g);
+
+    /// <summary>True when the US state (two-letter code) has a contact on any band.</summary>
+    public bool StateWorked(string state, bool confirmedOnly = false) =>
+        UsStates.Normalize(state) is { } st && (confirmedOnly ? _statesConfirmed : _states).Contains(st);
+
+    /// <summary>True when this call has a contact on any band or mode.</summary>
+    public bool CallWorkedAnywhere(string call) => _byCall.ContainsKey(Callsign.Normalize(call));
+
+    /// <summary>True when the contact counts as confirmed under <see cref="Source"/>.</summary>
+    public bool Counts(LogContact c) => Source == ConfirmationSource.Lotw ? c.LotwConfirmed : c.Confirmed || c.LotwConfirmed;
+
     /// <summary>True when this call has a contact on this band and mode.</summary>
     public bool CallWorked(string call, string band, string modeKey) =>
         _calls.Contains((band.ToLowerInvariant(), modeKey.ToUpperInvariant(), Callsign.Normalize(call)));
@@ -133,7 +162,7 @@ public sealed class LogIndex
     /// <summary>True when a contact with this call on this band and mode is confirmed.</summary>
     public bool CallConfirmed(string call, string band, string modeKey) =>
         _byCall.TryGetValue(Callsign.Normalize(call), out var list)
-        && list.Any(c => c.Confirmed && string.Equals(c.Band, band, StringComparison.OrdinalIgnoreCase)
+        && list.Any(c => Counts(c) && string.Equals(c.Band, band, StringComparison.OrdinalIgnoreCase)
                          && string.Equals(c.ModeKey, modeKey, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>The bands (lower case, as logged) the entity has a contact on, in band plan order.</summary>

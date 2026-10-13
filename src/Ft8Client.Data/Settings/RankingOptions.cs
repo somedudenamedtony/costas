@@ -29,6 +29,9 @@ public sealed class RankingOptions
     /// <summary>Count only confirmed contacts.</summary>
     public bool ConfirmedOnly { get; set; }
 
+    /// <summary>Which confirmations count: <c>lotw</c> (what DXCC and WAS credit) or <c>any</c> (QRZ, LoTW or a card).</summary>
+    public string ConfirmedBy { get; set; } = "lotw";
+
     /// <summary>
     /// Minutes a CQ caller stays in Next in line after it was last heard, unless it has been heard working someone
     /// since. 0 keeps only stations heard in their latest slot.

@@ -62,6 +62,13 @@
           </StackPanel>
         </Panel>
       </DockPanel>
+      <!-- Hunt list alert: a wanted station was heard (on any band). -->
+      <DockPanel IsVisible="{Binding HasHunt}">
+        <Button DockPanel.Dock="Right" Content="✕" Command="{Binding DismissHuntCommand}" Padding="6,0" Margin="8,0,0,0"
+                ToolTip.Tip="Dismiss" AutomationProperties.Name="Dismiss the Hunt alert" />
+        <TextBlock Text="{Binding HuntText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource CautionBrush}" TextWrapping="Wrap"
+                   VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+      </DockPanel>
     </StackPanel>
   </Border>
 </Window>
