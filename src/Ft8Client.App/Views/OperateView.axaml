@@ -146,14 +146,9 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <!-- Who you're calling: QRZ details of the station in the current contact. -->
-            <Border Padding="0,10,0,0" Margin="0,8,0,0" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlBorderBrush}" IsVisible="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).Calling, Converter={x:Static ObjectConverters.IsNotNull}}"
-                    AutomationProperties.Name="Who you're calling">
-              <StackPanel DataContext="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).Calling}" x:DataType="vm:StationDetailsViewModel" Spacing="4">
-                <TextBlock Classes="title"><Run Text="About " /><Run Text="{Binding Call}" /></TextBlock>
-                <v:StationFacts />
-              </StackPanel>
-            </Border>
+            <v:StationInfoStrip Margin="0,8,0,0"
+                               DataContext="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Calling}"
+                               IsVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Calling, Converter={x:Static ObjectConverters.IsNotNull}}" />
           </StackPanel>
         </Border>
         <!-- Top slot: band summary (idle) -->
