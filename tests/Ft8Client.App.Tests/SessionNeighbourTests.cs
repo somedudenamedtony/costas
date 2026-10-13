@@ -10,6 +10,12 @@ using Ft8Client.App.Engine;
 using Ft8Client.Audio.Backends;
 using Ft8Client.Core;
 using Ft8Client.Core.Decoding;
+using Ft8Client.Core.Contacts;
+using Ft8Client.Core.Logbook;
+using Ft8Client.App.Services;
+using Ft8Client.Data.Database;
+using Ft8Client.Data.Log;
+using System.Reflection;
 using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Time;
@@ -40,17 +46,45 @@ public class SessionNeighbourTests
 
     private sealed class Driver
     {
-        public Driver()
+        public Driver(ISessionLog? log = null)
         {
             var freqs = ReferenceData.LoadFrequencies();
             var tx = new Transmitter(new SimulatedRig(Clock), new NullAudioOutput { Now = () => Clock.UtcNow }, Clock, freqs);
             Session = new Session(new SessionConfig { MyCall = "W7LIT", MyGrid = "DN40", Band = "20m", Mode = Mode.Ft8 }, new NoDecoder(),
-                new NoAudio(), tx, Clock, ReferenceData.LoadCountries(), freqs);
+                new NoAudio(), tx, Clock, ReferenceData.LoadCountries(), freqs, log);
         }
 
         public ManualClock Clock { get; } = new(new DateTime(2026, 1, 4, 2, 53, 59, DateTimeKind.Utc));
 
         public Session Session { get; }
+    }
+
+    [Theory]
+    [InlineData(null, "FN42ab", "FN42ab")]
+    [InlineData("FN31", "FN42ab", "FN31")]
+    [InlineData(null, null, null)]
+    public void LogNow_GridSkipped_PersistsKnownGridAndSurvivesIndexReload(string? contactGrid, string? lookupGrid, string? expectedGrid)
+    {
+        var db = new SqliteDatabase(Path.Combine(Directory.CreateTempSubdirectory("ft8sessionlog").FullName, "log.db"));
+        var qsos = new QsoRepository(db);
+        var queue = new UploadQueueRepository(db);
+        var d = new Driver(new DatabaseSessionLog(qsos, queue, "home", () => true));
+        d.Session.SetLookups([new CallsignCacheEntry { Call = "K1ABC", Grid = lookupGrid, Found = true }]);
+        // Exercise the engine's log event without transmitting or requiring a decoder binary.
+        var engine = (ContactEngine)typeof(Session).GetField("_engine", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(d.Session)!;
+        engine.CallStation("K1ABC", contactGrid, -10, SlotParity.Even, 1500, d.Clock.UtcNow);
+        engine.LogNow(d.Clock.UtcNow);
+
+        var stored = qsos.List().Single();
+        stored.Gridsquare.Should().Be(expectedGrid);
+        queue.Count().Should().Be(1);
+        var reloaded = LogIndex.Build(qsos.LogContacts("W7LIT"));
+        reloaded.Need("K1ABC", stored.EntityKey, expectedGrid, "20m", "FT8").Tag.Should().Be(NeedTag.Worked);
+        if (expectedGrid is not null)
+        {
+            d.Session.LogIndex.GridWorked(expectedGrid).Should().BeTrue();
+            reloaded.GridWorked(expectedGrid).Should().BeTrue();
+        }
     }
 
     [Fact]

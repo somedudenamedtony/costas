@@ -468,16 +468,18 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             var s = _tracker.Find(entry.Call);
-            var entity = s?.Entity ?? _countries.Lookup(entry.Call);
-            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid ?? s?.Grid, _config.Band, ModeInfo.Name(_config.Mode),
-                _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
             var lk = _lookups.GetValueOrDefault(Callsign.Normalize(entry.Call));
+            // A caller can skip the grid exchange. Persist the same known grid that we index.
+            entry = entry with { Grid = entry.Grid ?? s?.Grid ?? lk?.Grid };
+            var entity = s?.Entity ?? _countries.Lookup(entry.Call);
+            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid, _config.Band, ModeInfo.Name(_config.Mode),
+                _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
             ctx = new LogContext(_config.Band, _config.Mode, _dialHz + _txOffset, _config.MyCall, _config.MyGrid, _config.PowerWatts, need,
                 entity?.Entity.Key, entity?.Entity.Name, lk?.Name, lk?.State, entity?.Continent, lk?.City);
             if (entry.TimeOffUtc - _lastContactUtc > TimeSpan.FromHours(2)) _tonight.Clear();
             _lastContactUtc = entry.TimeOffUtc;
             _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag));
-            _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid ?? s?.Grid, entity?.Entity.Key, lk?.State,
+            _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
             _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
         }
