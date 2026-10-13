@@ -73,6 +73,7 @@ public static class RemoteStateBuilder
             OnAir = s.TransmittingMessage,
             CallingCq = s.CallingCq,
             Fault = s.Fault,
+            Hunt = ctx.Hunt(),
             Control = control,
             Contact = s.Contact is null ? null : Contact(ContactPanelViewModel.From(s.Contact, s, nowUtc, units, ctx.QrzName(s.Contact.DxCall))),
             Callers = [.. s.Waiting.Select(w => Caller(w, s, inContact))],

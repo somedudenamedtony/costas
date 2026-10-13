@@ -32,6 +32,12 @@ public sealed class AppSettings
     /// <summary>QRZ.</summary>
     public QrzOptions Qrz { get; set; } = new();
 
+    /// <summary>LoTW.</summary>
+    public LotwOptions Lotw { get; set; } = new();
+
+    /// <summary>The Hunt list.</summary>
+    public HuntOptions Hunt { get; set; } = new();
+
     /// <summary>PSK Reporter.</summary>
     public PskReporterOptions PskReporter { get; set; } = new();
 

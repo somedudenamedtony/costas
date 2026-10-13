@@ -106,3 +106,5 @@ Accept:
 ## After v1
 
 In order of value: band advice, alerts, Hound mode, inbound UDP, LoTW, streaming decode, awards page, then macOS and Linux builds.
+
+Done so far: alerts (Hunt list, docs/04 §16) and LoTW (docs/05 §7b).

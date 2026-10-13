@@ -19,4 +19,7 @@ public static class QsoSource
 
     /// <summary>Imported from an ADIF file.</summary>
     public const string Adif = "adif";
+
+    /// <summary>A LoTW confirmation with no matching contact in the log.</summary>
+    public const string Lotw = "lotw";
 }

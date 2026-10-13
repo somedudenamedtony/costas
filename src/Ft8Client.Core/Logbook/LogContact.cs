@@ -17,4 +17,6 @@ namespace Ft8Client.Core.Logbook;
 /// <param name="Region">US state or Canadian province, if logged.</param>
 /// <param name="Confirmed">True when any confirmation field says so.</param>
 /// <param name="DateUtc">Time on, UTC.</param>
-public sealed record LogContact(string Call, string Band, string ModeKey, string? Grid, string? EntityKey, string? Region, bool Confirmed, DateTime DateUtc);
+/// <param name="LotwConfirmed">True when LoTW confirms it (the confirmation DXCC and WAS credit).</param>
+public sealed record LogContact(string Call, string Band, string ModeKey, string? Grid, string? EntityKey, string? Region, bool Confirmed, DateTime DateUtc,
+                                bool LotwConfirmed = false);
