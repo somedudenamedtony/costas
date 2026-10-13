@@ -12,7 +12,6 @@ should not need Settings while operating.
 | **Band** | The band you are on, filled in at start-up. Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
 | **Mode** | FT8 or FT4. Changes the slot length and dial frequency. Locked while transmitting |
 | Frequency | The dial frequency read from the radio, in MHz |
-| **Hound** | Hound mode, for working a DXpedition that runs Fox/Hound. FT8 only. See [Working a DXpedition](contacts.md#working-a-dxpedition-hound-mode) |
 | **Operate**, **Raw decodes**, **Reach**, **Log** | The four views. ++ctrl+1++ to ++ctrl+4++ |
 | Clock | UTC. Turns amber with a tooltip when your clock is off by more than 0.5 s, red above 2 s |
 | **☰** | Mini mode, Settings, Station setup, Diagnostics, Keyboard shortcuts, About |
@@ -125,7 +124,8 @@ air, it says so.
 
 Stations you need that you cannot call yet: they went quiet, or are in a contact with someone else
 (*In a contact with EA5HVK*, *Finishing a contact with K7RGB*). They move into Next in line when that changes.
-A DXpedition running Fox/Hound shows *Fox/Hound DXpedition. Turn on Hound to call it* until you turn on **Hound**.
+A DXpedition running Fox/Hound is never here: it is always working someone, so it stays in Next in line as
+*DXpedition (Fox/Hound), working Hounds*. See [Working a DXpedition](contacts.md#working-a-dxpedition-foxhound).
 
 A station calling CQ in a contest (`CQ RU`, `CQ FD`, `CQ WW`, `CQ TEST` and the like) is listed here as *Contest
 (CQ RU), needs an exchange*. It expects a contest exchange, and Costas only sends the standard one, so it is not

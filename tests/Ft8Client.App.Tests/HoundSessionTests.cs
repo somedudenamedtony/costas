@@ -19,7 +19,7 @@ using Ft8Client.Rig;
 
 namespace Ft8Client.App.Tests;
 
-/// <summary>Hound mode through the session: calling a busy Fox, the offsets used, and CQ refused.</summary>
+/// <summary>Calling a Fox through the session: it is worked as a Hound by itself, on the right offsets.</summary>
 public class HoundSessionTests
 {
     // Even slots are the Fox's; a Hound sends in the odd ones.
@@ -61,19 +61,17 @@ public class HoundSessionTests
     }
 
     [Fact]
-    public async Task SetHound_FoxBusyWithOthers_CallsAbove1000AndSendsReportOnFoxFrequency()
+    public async Task CallStation_FoxBusyWithOthers_CallsAbove1000AndSendsReportOnFoxFrequency()
     {
         var r = new Rig();
         r.Decoder.Script(Slot(0), ("CQ KH1X AJ10", 420), ("K1ABC RR73; W9XYZ <KH1X> -11", 480));
         await r.RunUntilAsync(Slot(0).AddSeconds(14.8));
-        r.Session.SetHound(true).Should().BeTrue();
-        r.Session.Snapshot.TxOffsetHz.Should().BeGreaterThanOrEqualTo(TxOffsetPicker.HoundLowHz, "the fixed 600 Hz is below where a Hound calls");
         r.Session.Snapshot.Rank.Line.Should().Contain(x => x.Station.Call == "KH1X");
 
         r.Session.CallStation("KH1X").Should().BeTrue();
         await r.RunUntilAsync(Slot(1).AddSeconds(14));
         r.Sent.Should().ContainSingle().Which.Message.Should().Be("KH1X W7LIT DN40");
-        r.Sent[0].OffsetHz.Should().BeGreaterThanOrEqualTo(TxOffsetPicker.HoundLowHz);
+        r.Sent[0].OffsetHz.Should().BeGreaterThanOrEqualTo(TxOffsetPicker.HoundLowHz, "the fixed 600 Hz is below where a Fox listens");
 
         r.Decoder.Script(Slot(2), ("K1ABC RR73; W7LIT <KH1X> -09", 540));
         await r.RunUntilAsync(Slot(3).AddSeconds(14));
@@ -82,42 +80,28 @@ public class HoundSessionTests
     }
 
     [Fact]
-    public async Task ToggleCq_HoundMode_RefusedWithReason()
+    public async Task CallStation_OrdinaryStation_KeepsFixedOffsetAndSends73()
     {
         var r = new Rig();
-        await r.RunUntilAsync(Slot(0).AddSeconds(1));
-        r.Session.SetHound(true);
-        r.Session.ToggleCq();
-        r.Session.Snapshot.CallingCq.Should().BeFalse();
-        r.Session.Snapshot.Fault.Should().Be("Hound mode is on, and a Hound doesn't call CQ. Call the Fox instead.");
-        await r.RunUntilAsync(Slot(2));
-        r.Sent.Should().BeEmpty();
+        r.Decoder.Script(Slot(0), ("CQ N8WCR EN81", 1500));
+        await r.RunUntilAsync(Slot(0).AddSeconds(14.8));
+        r.Session.CallStation("N8WCR").Should().BeTrue();
+        await r.RunUntilAsync(Slot(1).AddSeconds(14));
+        r.Sent.Should().ContainSingle().Which.Should().Be(("N8WCR W7LIT DN40", 600));
     }
 
     [Fact]
-    public async Task SetBand_HoundOn_TurnsItOff()
+    public async Task CallStation_FoxContactEnds_OffsetReturnsToFixed()
     {
         var r = new Rig();
-        await r.RunUntilAsync(Slot(0).AddSeconds(1));
-        r.Session.SetHound(true);
-        r.Session.SetBand("17m", Mode.Ft8);
-        r.Session.Snapshot.Hound.Should().BeFalse();
-    }
-
-    [Fact]
-    public void SetHound_Ft4_Refused()
-    {
-        var r = new Rig();
-        r.Session.SetBand("20m", Mode.Ft4);
-        r.Session.SetHound(true).Should().BeFalse();
-        r.Session.Snapshot.Hound.Should().BeFalse();
-    }
-
-    [Fact]
-    public void Status_HoundIdle_SaysHowItWorks()
-    {
-        var (text, _) = MainViewModel.Status(new SessionSnapshot { Hound = true });
-        text.Should().Be("Hound mode. Call the Fox: your calls go above 1000 Hz, and your report goes on its frequency.");
+        r.Decoder.Script(Slot(0), ("K1ABC RR73; W9XYZ <KH1X> -11", 480));
+        await r.RunUntilAsync(Slot(0).AddSeconds(14.8));
+        r.Session.CallStation("KH1X");
+        await r.RunUntilAsync(Slot(1).AddSeconds(14));
+        r.Session.Snapshot.TxOffsetHz.Should().BeGreaterThanOrEqualTo(TxOffsetPicker.HoundLowHz);
+        await r.Session.AbandonAsync();
+        await r.RunUntilAsync(Slot(2).AddSeconds(14.8));
+        r.Session.Snapshot.TxOffsetHz.Should().Be(600);
     }
 
     /// <summary>Returns scripted decodes (text and offset) for a slot at once.</summary>

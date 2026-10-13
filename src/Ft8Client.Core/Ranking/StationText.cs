@@ -82,6 +82,7 @@ public static class StationText
     /// <summary>The "Doing now" column.</summary>
     public static string DoingNow(Station s)
     {
+        if (s.RunsFox && s.State != StationState.CallingMe) return "DXpedition (Fox/Hound), working Hounds";
         switch (s.State)
         {
             case StationState.CallingMe:
@@ -112,7 +113,6 @@ public static class StationText
         WatchReasonKind.NotCallingYou => $"Calling CQ {r.Modifier}",
         WatchReasonKind.Contest => $"Contest (CQ {r.Modifier}), needs an exchange",
         WatchReasonKind.Unresolved => "Call not resolved",
-        WatchReasonKind.Fox => "Fox/Hound DXpedition. Turn on Hound to call it",
         _ => "Long shot",
     };
 

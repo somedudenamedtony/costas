@@ -16,7 +16,7 @@ using Ft8Client.Core.Transmit;
 
 namespace Ft8Client.Core.Tests;
 
-/// <summary>Hound mode: the contact flow (after WSJT-X's hound_reply), the calling offset, and how a Fox is ranked.</summary>
+/// <summary>Hound contacts with a Fox: the flow (after WSJT-X's hound_reply), the calling offset, and how a Fox is ranked.</summary>
 public class HoundTests
 {
     /// <summary>Drives the engine slot by slot. Slot 0 is even (the Fox's), so a Hound sends in odd slots.</summary>
@@ -32,7 +32,6 @@ public class HoundTests
         {
             E = new ContactEngine("W7LIT", "DN40", settings ?? new ContactSettings(), T0);
             E.Logged += Logs.Add;
-            E.SetHound(true, T0);
         }
 
         public static DateTime Start(int slot) => T0.AddSeconds(15 * slot);
@@ -57,7 +56,7 @@ public class HoundTests
             return plan;
         }
 
-        public void CallFox(string? busyWith = "K1ABC") => E.CallStation("KH1X", "AJ10", -15, SlotParity.Even, 420, T0, busyWith);
+        public void CallFox(string? busyWith = "K1ABC") => E.CallStation("KH1X", "AJ10", -15, SlotParity.Even, 420, T0, busyWith, fox: true);
     }
 
     [Fact]
@@ -174,27 +173,23 @@ public class HoundTests
     }
 
     [Fact]
-    public void CallCq_HoundMode_DoesNothing()
+    public void AnswerCaller_KnownFoxReportWithNoContact_StartsHoundContactOnItsFrequency()
     {
         var s = new Sim();
-        s.E.CallCq(SlotParity.Even, Sim.T0);
-        s.E.CallingCq.Should().BeFalse();
+        s.E.IsFox = call => call == "KH1X";
+        s.Step(("W7LIT KH1X -11", 300, -6));
+        s.E.AnswerCaller("KH1X", s.Now).Should().BeTrue();
+        s.E.View!.Flow.Should().Be(ContactFlow.Hound);
+        var plan = s.Step()!;
+        plan.Message.Should().Be("KH1X W7LIT R-06");
+        plan.TxOffsetHz.Should().Be(300);
+        s.Step(("W7LIT KH1X RR73", 300, -6));
+        s.Step().Should().BeNull("a Hound sends no 73");
+        s.Logs.Should().ContainSingle();
     }
 
     [Fact]
-    public void SetHound_ContactInProgress_EndsItAndStopsCq()
-    {
-        var e = new ContactEngine("W7LIT", "DN40", new ContactSettings(), Sim.T0);
-        e.CallCq(SlotParity.Even, Sim.T0);
-        e.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
-        e.SetHound(true, Sim.T0);
-        e.InContact.Should().BeFalse();
-        e.CallingCq.Should().BeFalse();
-        e.View!.Outcome.Should().Be(ContactOutcome.Abandoned);
-    }
-
-    [Fact]
-    public void CallStation_HoundOff_FoxInContactIsNotCalled()
+    public void CallStation_NotAFoxInContact_IsNotCalled()
     {
         var e = new ContactEngine("W7LIT", "DN40", new ContactSettings(), Sim.T0);
         e.CallStation("KH1X", "AJ10", -15, SlotParity.Even, 420, Sim.T0, busyWith: "K1ABC");
@@ -229,8 +224,8 @@ public class HoundTests
 
     private static HeardMessage H(DateTime slot, string text, int offset = 420) => HeardMessage.From(new Decode(slot, -10, 0.1, offset, text, false));
 
-    private static RankResult Rank(StationTracker t, DateTime now, bool hound) => Ranker.Rank(new RankInput(
-        t.Stations, LogIndex.Build([]), null, new RankingSettings(), TestData.Countries.Lookup("W7LIT"), "20m", "FT8", now, TestData.Countries, hound));
+    private static RankResult Rank(StationTracker t, DateTime now) => Ranker.Rank(new RankInput(
+        t.Stations, LogIndex.Build([]), null, new RankingSettings(), TestData.Countries.Lookup("W7LIT"), "20m", "FT8", now, TestData.Countries));
 
     [Fact]
     public void ApplySlot_MultiAnswerMessage_MarksFox()
@@ -244,21 +239,12 @@ public class HoundTests
     }
 
     [Fact]
-    public void Rank_FoxHoundOff_WatchingWithHint()
+    public void Rank_FoxWorkingHounds_InLineAndCallable()
     {
         var t = new StationTracker("W7LIT", "DN40", TestData.Countries, Mode.Ft8);
         t.ApplySlot(S(0), [H(S(0), "K1ABC RR73; W9XYZ <KH1X> -11")]);
-        var r = Rank(t, S(1), hound: false);
-        var w = r.Watching.Should().ContainSingle(x => x.Station.Call == "KH1X").Which;
-        w.Reason!.Kind.Should().Be(WatchReasonKind.Fox);
-        StationText.Watch(w.Reason, S(1)).Should().Be("Fox/Hound DXpedition. Turn on Hound to call it");
-    }
-
-    [Fact]
-    public void Rank_FoxHoundOn_InLineAndCallable()
-    {
-        var t = new StationTracker("W7LIT", "DN40", TestData.Countries, Mode.Ft8);
-        t.ApplySlot(S(0), [H(S(0), "K1ABC RR73; W9XYZ <KH1X> -11")]);
-        Rank(t, S(1), hound: true).Line.Should().ContainSingle(x => x.Station.Call == "KH1X").Which.Callable.Should().BeTrue();
+        var r = Rank(t, S(1)).Line.Should().ContainSingle(x => x.Station.Call == "KH1X").Which;
+        r.Callable.Should().BeTrue("a Fox is always working someone, and is worked as a Hound");
+        StationText.DoingNow(r.Station).Should().Be("DXpedition (Fox/Hound), working Hounds");
     }
 }
