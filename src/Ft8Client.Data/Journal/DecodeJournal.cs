@@ -39,4 +39,24 @@ public sealed class DecodeJournal(string folder)
             File.AppendAllText(PathFor(utc), text.ToString(), new UTF8Encoding(false));
         }
     }
+
+    /// <summary>
+    /// Streams every line of every month file, oldest month first, without loading whole files. Files are opened so
+    /// the journal can keep appending while they are read. Empty when the folder does not exist. I/O errors propagate.
+    /// </summary>
+    public IEnumerable<string> ReadLines(CancellationToken ct = default)
+    {
+        if (!Directory.Exists(folder)) yield break;
+        var files = Directory.GetFiles(folder, "decodes-*.txt").Order(StringComparer.Ordinal).ToList();
+        foreach (var path in files)
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 64 * 1024);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            while (reader.ReadLine() is { } line)
+            {
+                ct.ThrowIfCancellationRequested();
+                yield return line;
+            }
+        }
+    }
 }
