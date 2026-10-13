@@ -57,12 +57,19 @@ public sealed partial class UpdateBarViewModel : ObservableObject
 
     /// <summary>
     /// Downloads and verifies the installer, starts the unattended upgrade (a progress window, nothing to click) and
-    /// closes the app so it can be upgraded; Costas reopens when the installer has finished.
+    /// closes the app so it can be upgraded; Costas reopens when the installer has finished. On Linux there is no
+    /// installer: it opens the release page to download the new build from.
     /// </summary>
     [RelayCommand]
     private async Task Install()
     {
         if (Busy) return;
+        if (!OperatingSystem.IsWindows())
+        {
+            if (_updates.Available is { PageUrl: { Length: > 0 } page }) Browser.Open(page);
+            Detail = "Download the Linux build from the release page and unpack it over this one.";
+            return;
+        }
         if (_busyOnAir())
         {
             Detail = "Finish the contact (or halt) first; Costas closes to update.";
