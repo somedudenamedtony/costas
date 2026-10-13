@@ -40,6 +40,7 @@ public sealed class AppHost : IAsyncDisposable
     private readonly List<IDisposable> _disposables = [];
     private IAudioInput? _input;
     private IAudioOutput? _output;
+    private Jt9PersistentDecoder? _decoder;
     private NullAudioOutput? _mutedOutput;
     private volatile ServiceStatus? _rigOpenStatus;
     private CapturePump? _pump;
@@ -179,6 +180,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>jt9 path in use, or null.</summary>
     public string? Jt9Path { get; private set; }
 
+    /// <summary>The jt9 host, when jt9 was found: how it runs and how often it was started.</summary>
+    public Jt9PersistentDecoder? Decoder => _decoder;
+
     /// <summary>Measured SNTP result.</summary>
     public SntpResult? Sntp { get; private set; }
 
@@ -229,9 +233,19 @@ public sealed class AppHost : IAsyncDisposable
         Jt9Decoder.CleanTempRoot(Paths.Temp);
 
         Jt9Path = Jt9Locator.Find(s.Paths.Jt9);
-        IDecoder decoder = Jt9Path is null
-            ? new NullDecoder("jt9 not found. Install WSJT-X or set its path in Settings.")
-            : new Jt9Decoder(new Jt9Options(Jt9Path, Paths.Temp, Threads: Jt9Locator.SupportsMultithread(Jt9Path) ? Math.Min(4, Environment.ProcessorCount) : 0), Guard);
+        IDecoder decoder;
+        if (Jt9Path is null)
+        {
+            decoder = new NullDecoder("jt9 not found. Install WSJT-X or set its path in Settings.");
+        }
+        else
+        {
+            var version = Jt9Locator.Version(Jt9Path);
+            decoder = _decoder = new Jt9PersistentDecoder(
+                new Jt9Options(Jt9Path, Paths.Temp, Threads: Jt9Locator.SupportsMultithread(Jt9Path) ? Math.Min(4, Environment.ProcessorCount) : 0),
+                version, Guard);
+            Log.Information("Decoder: {Jt9} ({Version}). {How}", Jt9Path, version ?? "version unknown", _decoder.Description);
+        }
 
         var config = SettingsMapper.ToConfig(s);
         Plan = StartupPlan.Decide(Args, s, FindSamples());
@@ -611,6 +625,7 @@ public sealed class AppHost : IAsyncDisposable
         if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);
         await _rig.DisposeAsync().ConfigureAwait(false);
         foreach (var d in _disposables) d.Dispose();
+        _decoder?.Dispose();
         Guard.Dispose();
         await Log.CloseAndFlushAsync().ConfigureAwait(false);
     }

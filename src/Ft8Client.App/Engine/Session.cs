@@ -74,6 +74,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private string? _fault;
     private TxMeterResult? _txMeters;
     private Task _decodeTask = Task.CompletedTask;
+    private Task _earlyTask = Task.CompletedTask;
+    private (DateTime Slot, HashSet<string> Texts) _rawShown = (DateTime.MinValue, new HashSet<string>(StringComparer.Ordinal));
     private DateTime? _recordingSlot;
     private DateTime? _quickSlot;
     private readonly Dictionary<DateTime, HashSet<string>> _fedToEngine = [];
@@ -134,10 +136,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Completes when the decode in flight (if any) has been applied.</summary>
     public Task DecodeIdle
     {
-        get { lock (_gate) return _decodeTask; }
+        get { lock (_gate) return Task.WhenAll(_decodeTask, _earlyTask); }
     }
 
-    /// <summary>Decoder runs started so far (full and quick), so tests can wait for each to reach the decoder.</summary>
+    /// <summary>Decoder runs started so far (full, quick and early), so tests can wait for each to reach the decoder.</summary>
     internal int DecodesStarted { get; private set; }
 
     /// <summary>The configuration.</summary>
@@ -165,6 +167,9 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             case SlotMark.Start:
                 OnSlotStart(e);
                 break;
+            case SlotMark.EarlyDecode:
+                OnEarlyDecode(e);
+                break;
             case SlotMark.CaptureCutoff:
                 OnCutoff(e);
                 break;
@@ -191,6 +196,50 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate) _recordingSlot = transmitting ? null : e.SlotStartUtc;
         if (transmitting) _source.CancelSlot();
         else _source.BeginSlot(e.SlotStartUtc, e.Mode);
+        Publish();
+    }
+
+    /// <summary>
+    /// The early pass, as WSJT-X runs it: with a decoder that keeps jt9 running, the first 11.8 s of an FT8 slot are
+    /// decoded while the slot is still running. Its decodes go to the contact engine and the raw decodes at once; the
+    /// station list and the slot's counts wait for the full decode, which lists every decode of the slot.
+    /// </summary>
+    private void OnEarlyDecode(SlotEvent e)
+    {
+        if (_decoder is not IEarlyDecoder early || !early.HasEarlyPass(e.Mode)) return;
+        lock (_gate)
+        {
+            if (_recordingSlot != e.SlotStartUtc) return;
+        }
+        var audio = _source.Peek(e.SlotStartUtc, e.Mode);
+        if (audio is null) return;
+        var ctx = FullContext();
+        lock (_gate)
+        {
+            DecodesStarted++;
+            _earlyTask = Task.Run(() => EarlyDecodeAsync(early, audio, ctx));
+        }
+    }
+
+    private async Task EarlyDecodeAsync(IEarlyDecoder early, SlotAudio audio, DecodeContext ctx)
+    {
+        DecodeResult result;
+        try
+        {
+            result = await early.DecodeEarlyAsync(audio, ctx, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return; // the full decode still runs
+        }
+        if (!result.Succeeded || result.Decodes.Count == 0) return;
+        lock (_gate)
+        {
+            if (audio.Mode != _config.Mode) return;
+            var heard = result.Decodes.Select(HeardMessage.From).ToList();
+            AddRaw(audio.SlotStartUtc, heard);
+            FeedEngine(audio.SlotStartUtc, audio.Mode, heard, _clock.UtcNow);
+        }
         Publish();
     }
 
@@ -248,7 +297,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         DecodeResult result;
         try
         {
-            result = await _decoder.DecodeAsync(audio, ctx, CancellationToken.None).ConfigureAwait(false);
+            result = await _decoder.DecodeAsync(audio, ctx with { Quick = true }, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -279,15 +328,19 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         _engine.OnDecodes(slot, mode, fresh, now);
     }
 
+    private DecodeContext FullContext()
+    {
+        lock (_gate)
+        {
+            return new DecodeContext(_config.MyCall, Grid.Grid4(_config.MyGrid) ?? string.Empty, _engine.DxCall, _engine.DxGrid,
+                QsoProgress: _engine.QsoProgress, RxOffsetHz: _engine.DxOffsetHz ?? _txOffset);
+        }
+    }
+
     /// <summary>Decodes one slot and applies it. Public so tests and simulation can drive slots directly.</summary>
     public async Task DecodeAsync(SlotAudio audio, CancellationToken ct)
     {
-        DecodeContext ctx;
-        lock (_gate)
-        {
-            ctx = new DecodeContext(_config.MyCall, Grid.Grid4(_config.MyGrid) ?? string.Empty, _engine.DxCall, _engine.DxGrid,
-                QsoProgress: _engine.QsoProgress, RxOffsetHz: _engine.DxOffsetHz ?? _txOffset);
-        }
+        var ctx = FullContext();
         DecodeResult result;
         try
         {
@@ -312,13 +365,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             if (mode != _config.Mode) return;
             var now = _clock.UtcNow;
             var heard = result.Decodes.Select(HeardMessage.From).ToList();
-            foreach (var h in heard)
-            {
-                var sender = h.Message.SenderCall;
-                _raw.Add(new RawDecodeLine(h.Decode, h.Message, sender is null ? null : _countries.Lookup(sender)?.Entity.Name,
-                    h.Message.IsAddressedTo(_config.MyCall)));
-            }
-            if (_raw.Count > MaxRaw) _raw.RemoveRange(0, _raw.Count - MaxRaw);
+            AddRaw(slot, heard);
 
             _tracker.KeepFor = _config.Ranking.KeepCqCallers;
             _tracker.ApplySlot(slot, heard);
@@ -348,6 +395,20 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         // while its audio has not started, up to the late-start limit.
         PlanFor(SlotMath.SlotStart(_clock.UtcNow, mode), mode, late: true);
         Publish();
+    }
+
+    // Raw decode lines, each message of a slot once: the early pass shows its decodes before the full decode lists them again.
+    private void AddRaw(DateTime slot, List<HeardMessage> heard)
+    {
+        if (_rawShown.Slot != slot) _rawShown = (slot, new HashSet<string>(StringComparer.Ordinal));
+        foreach (var h in heard)
+        {
+            if (!_rawShown.Texts.Add(h.Decode.Text)) continue;
+            var sender = h.Message.SenderCall;
+            _raw.Add(new RawDecodeLine(h.Decode, h.Message, sender is null ? null : _countries.Lookup(sender)?.Entity.Name,
+                h.Message.IsAddressedTo(_config.MyCall)));
+        }
+        if (_raw.Count > MaxRaw) _raw.RemoveRange(0, _raw.Count - MaxRaw);
     }
 
     private void UpdateTxOffset(Mode mode)

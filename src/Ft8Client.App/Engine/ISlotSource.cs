@@ -22,4 +22,10 @@ public interface ISlotSource
 
     /// <summary>The slot's audio at cut-off, or null when nothing was collected.</summary>
     SlotAudio? Cutoff(DateTime slotStartUtc, Mode mode);
+
+    /// <summary>
+    /// The slot's audio so far, without ending it, for the early decode pass; the rest is silence. Null when the
+    /// source cannot look ahead (simulation replays whole files) or nothing is being collected.
+    /// </summary>
+    SlotAudio? Peek(DateTime slotStartUtc, Mode mode) => null;
 }

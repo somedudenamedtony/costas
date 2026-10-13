@@ -55,6 +55,22 @@ public sealed class SlotRecorder
         }
     }
 
+    /// <summary>
+    /// The audio of the current slot so far, zero-padded to the decoder length, without ending the slot (for the early
+    /// decode pass). Null if no slot is being recorded.
+    /// </summary>
+    public SlotAudio? Snapshot()
+    {
+        lock (_gate)
+        {
+            if (!_active) return null;
+            var samples = new short[ModeInfo.DecoderSamples(_mode)];
+            var n = Math.Min(_count, samples.Length);
+            AudioLevel.ToInt16(_buffer.AsSpan(0, n), samples);
+            return new SlotAudio(_slot, _mode, samples);
+        }
+    }
+
     /// <summary>Ends the slot and returns its audio, or null if the slot was cancelled or never begun.</summary>
     public SlotAudio? Cutoff()
     {
