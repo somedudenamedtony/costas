@@ -25,7 +25,7 @@ log, whether the station is free to call, and whether it can hear you.
   five-box strip, and logs the contact when it completes.
 - **Calling you bar**: anyone who calls you is pinned above the list with an **Answer** button, and a station that
   replies after you gave up can be picked up again with **Resume**.
-- **Logging and QRZ**: a local log with ADIF import and export, uploaded to your QRZ logbook as you go.
+- **Logging and QRZ**: a local log with ADIF import and export, uploaded to your QRZ logbook and optionally eQSL as you go, with eQSL inbox and confirmation sync.
 - **Maps**: who you hear (Heard here) and who hears you (Reach), centred on your grid.
 - **Works with your other tools**: WSJT-X UDP for GridTracker, JTAlert and loggers.
 - **Safe by design**: it never transmits on its own, never changes a message silently, and has a watchdog,

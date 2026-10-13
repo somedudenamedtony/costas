@@ -490,6 +490,36 @@
           </StackPanel>
         </ScrollViewer>
       </TabItem>
+      <TabItem Header="eQSL">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="eQSL" />
+            <TextBlock Classes="intro" Text="Send newly logged contacts to eQSL.cc. Uploads are optional, run in the background and retry when eQSL is unavailable. These settings belong to the current station profile." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Account" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <TextBox Text="{Binding EqslUser}" Width="260" HorizontalAlignment="Left" PlaceholderText="eQSL username" />
+                <TextBox Text="{Binding EqslPassword}" Width="260" HorizontalAlignment="Left" PasswordChar="•" PlaceholderText="eQSL password" />
+                <TextBlock Classes="help" Text="{Binding SecretsNote}" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="QTH nickname" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding EqslQthNickname}" Width="260" HorizontalAlignment="Left" />
+                <TextBlock Classes="help" Text="Copy the nickname from your eQSL account for this callsign and location. Leave blank only if your account has a single matching QTH." />
+              </StackPanel>
+            </Grid>
+            <CheckBox Content="Upload each new contact to eQSL as soon as it is logged" IsChecked="{Binding EqslUploadOnComplete}" />
+            <CheckBox Content="Read my eQSL inbox and sync confirmations hourly" IsChecked="{Binding EqslSyncEnabled}" />
+            <Button Content="Sync inbox now / test login" Command="{Binding SyncEqslCommand}" HorizontalAlignment="Left" />
+            <TextBlock Classes="help" Text="{Binding EqslSyncStatus}" />
+            <TextBlock Classes="help" Text="Save to apply automatic sync and uploads. Incoming cards confirm matching contacts in your local log. Unmatched cards stay in your inbox below. Simulation never contacts eQSL." />
+            <TextBlock Text="Recent inbox cards (up to 100)" FontWeight="SemiBold" Margin="0,12,0,4" />
+            <ItemsControl ItemsSource="{Binding EqslInboxCards}" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
     </TabControl>
 
     <Border Grid.Row="1" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">

@@ -19,13 +19,13 @@ public sealed class QsoRepository(SqliteDatabase db)
     private const string Columns = """
         profile_id, call, qso_date_on, qso_date_off, band, freq_hz, mode, submode, rst_sent, rst_rcvd, gridsquare, name, qth, state,
         country, dxcc, entity_key, continent, station_callsign, my_gridsquare, tx_pwr, comment, confirmed, need_tier, source, qrz_logid,
-        upload_state, upload_error, raw_adif, created_utc, modified_utc
+        upload_state, upload_error, eqsl_upload_state, eqsl_upload_error, eqsl_confirmed, raw_adif, created_utc, modified_utc
         """;
 
     private const string Values = """
         @ProfileId, @Call, @QsoDateOn, @QsoDateOff, @Band, @FreqHz, @Mode, @Submode, @RstSent, @RstRcvd, @Gridsquare, @Name, @Qth, @State,
         @Country, @Dxcc, @EntityKey, @Continent, @StationCallsign, @MyGridsquare, @TxPwr, @Comment, @Confirmed, @NeedTier, @Source, @QrzLogid,
-        @UploadState, @UploadError, @RawAdif, @CreatedUtc, @ModifiedUtc
+        @UploadState, @UploadError, @EqslUploadState, @EqslUploadError, @EqslConfirmed, @RawAdif, @CreatedUtc, @ModifiedUtc
         """;
 
     private const string Updates = """
@@ -33,7 +33,7 @@ public sealed class QsoRepository(SqliteDatabase db)
         submode=@Submode, rst_sent=@RstSent, rst_rcvd=@RstRcvd, gridsquare=@Gridsquare, name=@Name, qth=@Qth, state=@State, country=@Country,
         dxcc=@Dxcc, entity_key=@EntityKey, continent=@Continent, station_callsign=@StationCallsign, my_gridsquare=@MyGridsquare, tx_pwr=@TxPwr,
         comment=@Comment, confirmed=@Confirmed, need_tier=@NeedTier, source=@Source, qrz_logid=@QrzLogid, upload_state=@UploadState,
-        upload_error=@UploadError, raw_adif=@RawAdif, modified_utc=@ModifiedUtc
+        upload_error=@UploadError, eqsl_upload_state=@EqslUploadState, eqsl_upload_error=@EqslUploadError, eqsl_confirmed=@EqslConfirmed, raw_adif=@RawAdif, modified_utc=@ModifiedUtc
         """;
 
     /// <summary>Inserts a contact and returns its id.</summary>
@@ -120,6 +120,21 @@ public sealed class QsoRepository(SqliteDatabase db)
             new { id, state, error, qrzLogid, now = DateTime.UtcNow });
     }
 
+    /// <summary>Marks an incoming eQSL as confirmed without changing other log fields.</summary>
+    public void SetEqslConfirmed(long id)
+    {
+        using var c = db.Open();
+        c.Execute("UPDATE qso SET eqsl_confirmed=1, confirmed=1, modified_utc=@now WHERE id=@id", new { id, now = DateTime.UtcNow });
+    }
+
+    /// <summary>Sets eQSL delivery state without changing QRZ delivery.</summary>
+    public void SetEqslUploadState(long id, string state, string? error)
+    {
+        using var c = db.Open();
+        c.Execute("UPDATE qso SET eqsl_upload_state=@state, eqsl_upload_error=@error, modified_utc=@now WHERE id=@id",
+            new { id, state, error, now = DateTime.UtcNow });
+    }
+
     /// <summary>Contacts for the log index of a station callsign.</summary>
     public IReadOnlyList<LogContact> LogContacts(string stationCallsign)
     {
@@ -194,7 +209,8 @@ public sealed class QsoRepository(SqliteDatabase db)
         target.Comment ??= source.Comment;
         target.NeedTier ??= source.NeedTier;
         target.RawAdif ??= source.RawAdif;
-        target.Confirmed |= source.Confirmed;
+        target.EqslConfirmed |= source.EqslConfirmed;
+        target.Confirmed |= source.Confirmed || target.EqslConfirmed;
         if (target.QrzLogid is null && source.QrzLogid is not null)
         {
             target.QrzLogid = source.QrzLogid;
@@ -204,7 +220,7 @@ public sealed class QsoRepository(SqliteDatabase db)
         // A newer QRZ copy carries edits and confirmations.
         if (source.Source == QsoSource.Qrz && source.QrzLogid == target.QrzLogid)
         {
-            target.Confirmed = source.Confirmed;
+            target.Confirmed = source.Confirmed || target.EqslConfirmed;
             target.Gridsquare = source.Gridsquare ?? target.Gridsquare;
             target.Name = source.Name ?? target.Name;
             target.State = source.State ?? target.State;

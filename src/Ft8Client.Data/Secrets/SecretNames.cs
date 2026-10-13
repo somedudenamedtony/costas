@@ -19,10 +19,16 @@ public static class SecretNames
 
     /// <summary>Every name the app uses for these station profiles.</summary>
     public static IEnumerable<string> All(IEnumerable<string> profileIds) =>
-        profileIds.Select(QrzLogbookKey).Append(QrzUsername).Append(QrzPassword);
+        profileIds.SelectMany(id => new[] { QrzLogbookKey(id), EqslUsername(id), EqslPassword(id) }).Append(QrzUsername).Append(QrzPassword);
 
     /// <summary>QRZ logbook API key for a station profile (a logbook serves one callsign).</summary>
     public static string QrzLogbookKey(string profileId) => $"{Prefix}qrz-logbook-key:{profileId}";
+
+    /// <summary>eQSL username for a station profile.</summary>
+    public static string EqslUsername(string profileId) => $"{Prefix}eqsl-username:{profileId}";
+
+    /// <summary>eQSL password for a station profile.</summary>
+    public static string EqslPassword(string profileId) => $"{Prefix}eqsl-password:{profileId}";
 
     /// <summary>QRZ XML username.</summary>
     public const string QrzUsername = Prefix + "qrz-username";

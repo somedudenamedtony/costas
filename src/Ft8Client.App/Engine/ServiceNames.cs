@@ -23,6 +23,9 @@ public static class ServiceNames
     /// <summary>QRZ.</summary>
     public const string Qrz = "qrz";
 
+    /// <summary>eQSL uploads.</summary>
+    public const string Eqsl = "eqsl";
+
     /// <summary>PSK Reporter.</summary>
     public const string Psk = "psk";
 }

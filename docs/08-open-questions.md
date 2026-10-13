@@ -122,3 +122,11 @@ Other notes from M2:
 4. Any preference for the product name?
 5. Is the app for your own station first, or for public release from the start? That decides how early the installer, signing and user guide matter.
 6. Setup's input meter counts -40 to -10 dBFS (RMS) as a good receive level and calls a sample peak at -1 dBFS clipping. These are a first guess for FT8 band noise on a USB codec; change them if your station sits elsewhere.
+
+### eQSL API verification outstanding
+
+Uploads, inbox downloads and confirmation matching are implemented with synthetic test responses.
+Before release, verify the primary documentation at `https://www.eqsl.cc/qslcard/ImportADIF.cfm` and
+`https://www.eqsl.cc/qslcard/DownloadInBox.cfm`, including QTH selection, upload/duplicate acknowledgment
+wording, empty inbox behavior and the ADIF download-link path. Capture redacted fixtures without credentials.
+This session could not reach the network proxy or run .NET tests (SDK absent).
