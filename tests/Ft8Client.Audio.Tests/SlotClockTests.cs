@@ -41,11 +41,13 @@ public class SlotClockTests
         var (c, t, ev) = Make(T(2, 53, 7.3));
         Run(c, t, TimeSpan.FromSeconds(30));
         ev.Where(e => e.Mark == SlotMark.Start).Select(e => e.SlotStartUtc).Should().Equal(T(2, 53, 15), T(2, 53, 30));
-        ev.Take(4).Select(e => e.Mark).Should().Equal(SlotMark.Start, SlotMark.PttOn, SlotMark.TxStart, SlotMark.CaptureCutoff);
+        ev.Take(5).Select(e => e.Mark).Should().Equal(SlotMark.Start, SlotMark.PttOn, SlotMark.TxStart, SlotMark.EarlyDecode, SlotMark.CaptureCutoff);
         ev.Should().OnlyContain(e => e.LateBy < TimeSpan.FromMilliseconds(10));
         var ptt = ev.First(e => e.Mark == SlotMark.PttOn);
         c.OffsetOf(SlotMark.PttOn, Mode.Ft8).Should().Be(TimeSpan.FromMilliseconds(300));
+        c.OffsetOf(SlotMark.EarlyDecode, Mode.Ft8).Should().Be(TimeSpan.FromSeconds(11.85), "41 steps of 3456 samples, as WSJT-X");
         c.OffsetOf(SlotMark.CaptureCutoff, Mode.Ft8).Should().Be(TimeSpan.FromSeconds(13.6));
+        c.OffsetOf(SlotMark.EarlyDecode, Mode.Ft4).Should().Be(c.OffsetOf(SlotMark.CaptureCutoff, Mode.Ft4), "FT4 has no early pass");
         ptt.SlotStartUtc.Should().Be(T(2, 53, 15));
     }
 
@@ -103,5 +105,24 @@ public class SlotClockTests
         r.BeginSlot(T(2, 53, 30), Mode.Ft4);
         r.Cancel();
         r.Cutoff().Should().BeNull("a transmit slot is not decoded");
+    }
+
+    [Fact]
+    public void Snapshot_MidSlot_CopiesSoFarAndKeepsRecording()
+    {
+        var r = new SlotRecorder();
+        r.Snapshot().Should().BeNull();
+        r.BeginSlot(T(2, 53, 15), Mode.Ft8);
+        r.Append(Enumerable.Repeat(0.5f, 1000).ToArray());
+
+        var early = r.Snapshot()!;
+        r.Append(Enumerable.Repeat(0.25f, 1000).ToArray());
+        var full = r.Cutoff()!;
+
+        early.SlotStartUtc.Should().Be(T(2, 53, 15));
+        early.Samples12k.Length.Should().Be(180_000);
+        early.Samples12k[999].Should().Be(16384);
+        early.Samples12k[1000].Should().Be(0, "audio after the snapshot is not in it");
+        full.Samples12k[1999].Should().Be(8192, "the slot went on recording");
     }
 }

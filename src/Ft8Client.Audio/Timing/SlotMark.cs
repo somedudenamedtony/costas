@@ -20,6 +20,12 @@ public enum SlotMark
     /// <summary>Start transmit audio (0.5 s into the slot).</summary>
     TxStart,
 
+    /// <summary>
+    /// The early decode pass: 41 half-symbol steps (11.8 s) of an FT8 slot have arrived, as in WSJT-X. In FT4, which has
+    /// no early pass, it comes together with the cut-off.
+    /// </summary>
+    EarlyDecode,
+
     /// <summary>Stop capturing and hand the slot to the decoder.</summary>
     CaptureCutoff,
 }
