@@ -584,15 +584,16 @@ public sealed class AppHost : IAsyncDisposable
                 // Without a port rigctld would fall back to a default serial port and talk to whatever is there.
                 rig = new VoxRig(dialHz);
                 status = new ServiceStatus(ServiceHealth.Down,
-                    exe is null ? "rigctld not found"
+                    exe is null ? "rigctld (Hamlib) not found. Reinstall Costas, or set the Hamlib folder in Settings."
                     : r.Model is null ? "No radio model chosen. Open Station setup to choose your radio."
-                    : "No port chosen for the radio. Open Station setup and use Find the radio.", Clock.UtcNow);
+                    : "No port chosen for the radio. Open Station setup and press Test connection to find it.", Clock.UtcNow);
             }
             else
             {
                 try
                 {
-                    rig = await RigctldRig.StartAsync(new RigctldOptions(exe, r.Model.Value, r.Port, r.Baud, r.Ptt, r.PttPort), Guard, Clock, _cts.Token)
+                    var port = RigctldRig.CleanSerialPort(r.Port, OperatingSystem.IsWindows());
+                    rig = await RigctldRig.StartAsync(new RigctldOptions(exe, r.Model.Value, port, r.Baud, r.Ptt, r.PttPort), Guard, Clock, _cts.Token)
                         .ConfigureAwait(false);
                     status = new ServiceStatus(ServiceHealth.Ok, rig.Name, Clock.UtcNow);
                 }
