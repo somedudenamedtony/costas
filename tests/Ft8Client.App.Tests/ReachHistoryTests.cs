@@ -44,6 +44,7 @@ public sealed class ReachHistoryTests : IDisposable
     public void Dispose()
     {
         _keep.Dispose();
+        _history.Flush(); // a background save still writing would refill the folder while it is deleted
         if (Directory.Exists(_dir)) Directory.Delete(_dir, recursive: true);
     }
 
