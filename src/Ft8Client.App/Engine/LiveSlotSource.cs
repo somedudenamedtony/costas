@@ -23,4 +23,7 @@ public sealed class LiveSlotSource(SlotRecorder recorder) : ISlotSource
 
     /// <inheritdoc />
     public SlotAudio? Cutoff(DateTime slotStartUtc, Mode mode) => recorder.Cutoff();
+
+    /// <inheritdoc />
+    public SlotAudio? Peek(DateTime slotStartUtc, Mode mode) => recorder.Snapshot() is { } a && a.SlotStartUtc == slotStartUtc ? a : null;
 }
