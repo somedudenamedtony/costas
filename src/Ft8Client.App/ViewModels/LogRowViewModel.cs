@@ -69,6 +69,15 @@ public sealed class LogRowViewModel(QsoRecord q)
         _ => TextKind.Secondary,
     };
 
+    /// <summary>eQSL delivery, separate from QRZ.</summary>
+    public string Eqsl { get; } = (q.EqslConfirmed ? (q.EqslUploadState == UploadState.None ? "Confirmed" : "Confirmed · ") : string.Empty) + (q.EqslUploadState switch
+    {
+        UploadState.Uploaded => "Uploaded",
+        UploadState.Queued => q.EqslUploadError is null ? "Waiting to upload" : "Retrying: " + q.EqslUploadError,
+        UploadState.Failed => "Failed: " + q.EqslUploadError,
+        _ => string.Empty,
+    });
+
     /// <summary>Confirmed.</summary>
     public string Confirmed { get; } = q.Confirmed ? "Yes" : string.Empty;
 }

@@ -15,11 +15,11 @@ using Ft8Client.Data.Log;
 namespace Ft8Client.App.Services;
 
 /// <summary>
-/// Writes finished contacts to the local log first, then queues them for QRZ upload when enabled. The power logged is
+/// Writes finished contacts to the local log first, then queues them for QRZ and eQSL upload when enabled. The power logged is
 /// what <paramref name="radioPowerWatts"/> reports from the radio, or the power in Settings when it reports nothing.
 /// </summary>
 public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository queue, string profileId, Func<bool> uploadEnabled,
-                                       Func<int?>? radioPowerWatts = null) : ISessionLog
+                                       Func<int?>? radioPowerWatts = null, Func<bool>? eqslUploadEnabled = null) : ISessionLog
 {
     /// <summary>Raised after a contact is stored, with its row.</summary>
     public event Action<QsoRecord>? Stored;
@@ -57,6 +57,7 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
         var (id, _) = qsos.Upsert(q);
         q.Id = id;
         if (uploadEnabled()) queue.Enqueue(id, "qrz", DateTime.UtcNow);
+        if (eqslUploadEnabled?.Invoke() == true) queue.Enqueue(id, "eqsl", DateTime.UtcNow);
         Stored?.Invoke(q);
         return true;
     }

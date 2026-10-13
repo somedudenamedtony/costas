@@ -23,7 +23,10 @@ public sealed class UploadQueueRepository(SqliteDatabase db)
         var id = existing ?? c.ExecuteScalar<long>(
             "INSERT INTO upload_queue (qso_id, target, attempts, next_try_utc) VALUES (@qsoId, @target, 0, @nowUtc); SELECT last_insert_rowid();",
             new { qsoId, target, nowUtc }, tx);
-        c.Execute("UPDATE qso SET upload_state='queued', upload_error=NULL WHERE id=@qsoId", new { qsoId }, tx);
+        if (target == "eqsl")
+            c.Execute("UPDATE qso SET eqsl_upload_state='queued', eqsl_upload_error=NULL WHERE id=@qsoId", new { qsoId }, tx);
+        else
+            c.Execute("UPDATE qso SET upload_state='queued', upload_error=NULL WHERE id=@qsoId", new { qsoId }, tx);
         tx.Commit();
         return id;
     }

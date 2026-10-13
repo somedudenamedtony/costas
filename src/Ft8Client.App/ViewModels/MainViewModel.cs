@@ -295,6 +295,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Indicators.Add(Indicator("Radio", s, ServiceNames.Radio));
         Indicators.Add(Indicator("Audio", s, ServiceNames.Audio));
         Indicators.Add(Indicator("QRZ", s, ServiceNames.Qrz));
+        Indicators.Add(Indicator("eQSL", s, ServiceNames.Eqsl));
         Indicators.Add(Indicator("PSK Reporter", s, ServiceNames.Psk));
         var offset = s.ClockOffsetSeconds;
         ClockKind = offset is { } o && Math.Abs(o) > _host.Settings.Current.Operating.ClockBlockSeconds ? TextKind.Critical

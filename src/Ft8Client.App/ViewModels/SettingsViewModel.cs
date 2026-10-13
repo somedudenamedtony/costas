@@ -61,6 +61,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         LogbookKey = host.Secrets.Get(SecretNames.QrzLogbookKey(s.Profile.Id)) ?? string.Empty;
         QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
         QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
+        EqslSyncEnabled = s.Profile.Eqsl.SyncEnabled;
+        RefreshEqslInbox();
+        EqslUploadOnComplete = s.Profile.Eqsl.UploadOnComplete;
+        EqslQthNickname = s.Profile.Eqsl.QthNickname;
+        EqslUser = host.Secrets.Get(SecretNames.EqslUsername(s.Profile.Id)) ?? string.Empty;
+        EqslPassword = host.Secrets.Get(SecretNames.EqslPassword(s.Profile.Id)) ?? string.Empty;
         FeedEnabled = s.PskReporter.FeedEnabled;
         CompareNeighbours = s.PskReporter.CompareNeighbours;
         BandActivity = s.PskReporter.BandActivity;
@@ -344,6 +350,49 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>Where secrets are kept.</summary>
     public string SecretsNote { get; }
+
+    /// <summary>Read the eQSL inbox automatically.</summary>
+    [ObservableProperty]
+    public partial bool EqslSyncEnabled { get; set; }
+
+    /// <summary>Last manual inbox-sync result.</summary>
+    [ObservableProperty]
+    public partial string EqslSyncStatus { get; set; } = string.Empty;
+
+    /// <summary>Most recent incoming cards, including unmatched cards.</summary>
+    public ObservableCollection<string> EqslInboxCards { get; } = [];
+
+    private void RefreshEqslInbox()
+    {
+        EqslInboxCards.Clear();
+        foreach (var card in _host.EqslInbox.Read(_host.Settings.Current.Profile.Id).Take(100))
+            EqslInboxCards.Add($"{card["qso_date"]} {card["time_on"]} UTC · {card["call"]} · {card["band"]} · {card["submode"] ?? card["mode"]}");
+    }
+
+    /// <summary>Tests the account by syncing the inbox and matching confirmations.</summary>
+    [RelayCommand]
+    private async Task SyncEqsl()
+    {
+        EqslSyncStatus = "Reading eQSL inbox…";
+        EqslSyncStatus = await _host.Eqsl.SyncNowAsync(EqslUser.Trim(), EqslPassword, EqslQthNickname.Trim(), CancellationToken.None);
+        RefreshEqslInbox();
+    }
+
+    /// <summary>Upload newly logged contacts to eQSL.</summary>
+    [ObservableProperty]
+    public partial bool EqslUploadOnComplete { get; set; }
+
+    /// <summary>eQSL account username.</summary>
+    [ObservableProperty]
+    public partial string EqslUser { get; set; } = string.Empty;
+
+    /// <summary>eQSL account password, saved only in the secret store.</summary>
+    [ObservableProperty]
+    public partial string EqslPassword { get; set; } = string.Empty;
+
+    /// <summary>eQSL QTH nickname for this station profile.</summary>
+    [ObservableProperty]
+    public partial string EqslQthNickname { get; set; } = string.Empty;
 
     /// <summary>PSK feed.</summary>
     [ObservableProperty]
@@ -646,6 +695,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.ChimeOnCaller = ChimeOnCaller;
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
+            s.Profile.Eqsl.SyncEnabled = EqslSyncEnabled;
+            s.Profile.Eqsl.UploadOnComplete = EqslUploadOnComplete;
+            s.Profile.Eqsl.QthNickname = EqslQthNickname.Trim();
             s.Qrz.LogbookEnabled = LogbookEnabled;
             s.Qrz.LookupEnabled = !string.IsNullOrWhiteSpace(QrzUser) && !string.IsNullOrEmpty(QrzPassword);
             s.Qrz.UploadOnComplete = UploadOnComplete;
@@ -677,6 +729,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         Set(SecretNames.QrzLogbookKey(id), LogbookKey.Trim());
         Set(SecretNames.QrzUsername, QrzUser.Trim());
         Set(SecretNames.QrzPassword, QrzPassword);
+        Set(SecretNames.EqslUsername(id), EqslUser.Trim());
+        Set(SecretNames.EqslPassword(id), EqslPassword);
         _host.TxLevel.Apply();
         _host.RebuildLogIndex();
         Close?.Invoke();

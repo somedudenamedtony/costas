@@ -232,3 +232,26 @@ GitHub Releases for `somedudenamedtony/costas` (public). CI publishes every gree
 - Draft and pre-release releases are ignored. A release is offered only when its version is greater than the running build's, and not after the operator chose "Skip this version".
 - Install: download to the data folder's `tmp/updates`, verify, start the installer through a hidden `cmd` that runs it with `/SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /LOG=<logs>/update-<time>.log` (Inno Setup's progress window only), waits for it and then starts the app again, whether or not the upgrade succeeded, close the app normally (PTT released, child processes stopped). Refused while transmitting or in a contact. The installer upgrades in place.
 
+
+## 11. eQSL
+
+Optional uploads and incoming-card sync, configured per station profile. The account username and password
+are kept in the secret store; QTH nickname and enable switches are non-secret profile settings.
+
+- HTTPS POST `https://www.eqsl.cc/qslcard/ImportADIF.cfm`, form field `ADIFData`: ADIF header fields
+  `EQSL_USER`, `EQSL_PSWD`, optional `EQSL_QTH_NICKNAME`, then EOH and one QSO. Positive single-record
+  acknowledgments and explicit duplicate counts complete delivery; errors and unknown replies retry with
+  persistent exponential backoff. At most one upload per second. QRZ and eQSL delivery fields are separate.
+- HTTPS POST `https://www.eqsl.cc/qslcard/DownloadInBox.cfm`, fields `UserName`, `Password`, `QTHNickname`.
+  Accept direct ADIF or follow a same-origin HTTPS ADIF download link under `/qslcard/`. Credentials never
+  go in URLs; redirects are disabled. Replies are not logged or persisted as diagnostics.
+- Full inbox sync hourly (five-minute retry after failure), so recently received cards for old QSOs are included.
+  Store valid cards idempotently by profile/call/band/mode/UTC minute. Mark only unique local matches confirmed;
+  keep unmatched cards in the inbox. Preserve eQSL confirmations across later QRZ refreshes.
+- Incoming cards are available on the eQSL Settings page, including a manual sync/account test. Simulation
+  disables both uploads and sync. Offline services never interrupt radio operation.
+
+**VERIFY** against the primary eQSL API documentation and a redacted live account response before release:
+ADIF upload acknowledgment/duplicate wording, QTH nickname form parameter, and inbox download-link format.
+The implementation tests use synthetic replies. This workspace had no .NET SDK and an unreachable network
+proxy, so neither a build nor live eQSL verification was possible in this session.
