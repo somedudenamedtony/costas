@@ -98,6 +98,15 @@ public sealed class RigctldRig : IRig
         CleanSerialPorts(System.IO.Ports.SerialPort.GetPortNames(), OperatingSystem.IsWindows());
 
     /// <summary>
+    /// A saved serial port with any trailing garbage removed (settings written before <see cref="CleanSerialPorts"/>
+    /// can hold "COM3" followed by registry junk). Network addresses and Unix device paths are returned unchanged.
+    /// </summary>
+    public static string? CleanSerialPort(string? port, bool windows) =>
+        windows && port is not null && port.StartsWith("COM", StringComparison.OrdinalIgnoreCase)
+            ? CleanSerialPorts([port], windows).FirstOrDefault() ?? port
+            : port;
+
+    /// <summary>
     /// Windows drivers can return COM names with trailing registry garbage. Keep only the COM number,
     /// discard invalid names and duplicates, and leave Unix device paths intact.
     /// </summary>
@@ -364,6 +373,13 @@ public sealed class RigctldRig : IRig
             {
                 await StopProcessAsync().ConfigureAwait(false);
                 throw new RigException($"rigctld is not answering on port {_port}: {ex.Message}", ex);
+            }
+            catch (OperationCanceledException)
+            {
+                // Stopped by the operator (Setup's Stop button): a rigctld left running would hold the serial port,
+                // and every later test would find the port in use.
+                await StopProcessAsync().ConfigureAwait(false);
+                throw;
             }
         }
     }

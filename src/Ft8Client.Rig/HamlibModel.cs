@@ -16,8 +16,42 @@ namespace Ft8Client.Rig;
 /// <param name="Status">Stable, Beta, Alpha, Untested.</param>
 public sealed record HamlibModel(int Number, string Manufacturer, string Model, string Status)
 {
-    /// <summary>NET rigctl connects to an existing rigctld server over TCP.</summary>
-    public bool IsNetwork => Number == 2;
+    /// <summary>
+    /// The model talks to another program over TCP (NET rigctl, FLRig and similar) instead of a serial port.
+    /// </summary>
+    public bool IsNetwork => IsNetworkModel(Number);
+
+    /// <summary>The program at the other end of the TCP connection, for messages: "rigctld", "flrig".</summary>
+    public string ServerName => ServerNameFor(Number);
+
+    /// <summary>The address Hamlib uses for the model when none is given, in host:port form.</summary>
+    public string? DefaultAddress => DefaultAddressFor(Number);
+
+    /// <summary>Whether a Hamlib model number connects over TCP rather than a serial port.</summary>
+    public static bool IsNetworkModel(int number) => DefaultAddressFor(number) is not null;
+
+    /// <summary>
+    /// Hamlib's default host:port for its network models (DEFAULTPATH in rigs/dummy/*.c), or null for a serial model.
+    /// </summary>
+    public static string? DefaultAddressFor(int number) => number switch
+    {
+        2 => "127.0.0.1:4532",  // NET rigctl
+        4 => "127.0.0.1:12345", // FLRig
+        5 => "127.0.0.1:1003",  // TRXManager
+        8 => "127.0.0.1:1100",  // ACLog
+        9 => "127.0.0.1:4532",  // SDR#
+        _ => null,
+    };
+
+    /// <summary>The program a network model connects to, for messages.</summary>
+    public static string ServerNameFor(int number) => number switch
+    {
+        4 => "flrig",
+        5 => "TRXManager",
+        8 => "ACLog",
+        9 => "SDR#",
+        _ => "rigctld",
+    };
 
     /// <summary>"Icom IC-7300".</summary>
     public string Display => $"{Manufacturer} {Model}";

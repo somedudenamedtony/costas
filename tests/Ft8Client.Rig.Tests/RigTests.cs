@@ -134,6 +134,35 @@ public class RigTests
     }
 
     [Fact]
+    public void Options_Flrig_UsesServerAddressWithoutBaud()
+    {
+        string.Join(' ', new RigctldOptions("rigctld", 4, "192.168.1.20:12345", 38400).Arguments(4532))
+            .Should().Be("-m 4 -r 192.168.1.20:12345 -P RIG -T 127.0.0.1 -t 4532");
+    }
+
+    [Theory]
+    [InlineData(2, "127.0.0.1:4532", "rigctld")]
+    [InlineData(4, "127.0.0.1:12345", "flrig")]
+    [InlineData(5, "127.0.0.1:1003", "TRXManager")]
+    public void HamlibModel_NetworkModel_HasHamlibDefaultAddress(int number, string address, string server)
+    {
+        var model = new HamlibModel(number, "Hamlib", "Network", "Stable");
+        model.IsNetwork.Should().BeTrue();
+        model.DefaultAddress.Should().Be(address);
+        model.ServerName.Should().Be(server);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3073)]
+    public void HamlibModel_SerialModel_IsNotNetwork(int number)
+    {
+        var model = new HamlibModel(number, "Icom", "IC-7300", "Stable");
+        model.IsNetwork.Should().BeFalse();
+        model.DefaultAddress.Should().BeNull();
+    }
+
+    [Fact]
     public async Task NetRigctl_ExistingDummyServer_ReadsRadioAndLeavesServerRunning()
     {
         var exe = HamlibModels.Find("rigctld", null);
@@ -178,6 +207,17 @@ public class RigTests
             .Should().Equal("/dev/ttyACM0", "/dev/ttyUSB0");
     }
 
+    [Theory]
+    [InlineData("COM3\0垃圾", true, "COM3")]
+    [InlineData("COM7", true, "COM7")]
+    [InlineData("127.0.0.1:12345", true, "127.0.0.1:12345")]
+    [InlineData("/dev/ttyUSB0", false, "/dev/ttyUSB0")]
+    [InlineData(null, true, null)]
+    public void CleanSerialPort_SavedPort_KeepsOnlyThePortName(string? saved, bool windows, string? expected)
+    {
+        RigctldRig.CleanSerialPort(saved, windows).Should().Be(expected);
+    }
+
     [Fact]
     public void Models_ParseRigctlList()
     {
@@ -186,9 +226,11 @@ public class RigTests
                  1  Hamlib                 Dummy                   20221128.0      Stable      RIG_MODEL_DUMMY
                  5  TRXManager             TRXManager 5.7.630+     20210613.0      Stable      RIG_MODEL_TRXMANAGER_RIG
               3073  Icom                   IC-7300                 20230109.17     Stable      RIG_MODEL_IC7300
+             25003  Coding Technologies    Digital World Traveller 20200112.0      Alpha       RIG_MODEL_DWT
             """;
         var m = HamlibModels.Parse(text);
-        m.Should().HaveCount(3);
+        m.Should().HaveCount(4);
+        m[3].Should().Be(new HamlibModel(25003, "Coding Technologies", "Digital World Traveller", "Alpha"));
         m[2].Should().Be(new HamlibModel(3073, "Icom", "IC-7300", "Stable"));
         m[1].Model.Should().Be("TRXManager 5.7.630+");
     }

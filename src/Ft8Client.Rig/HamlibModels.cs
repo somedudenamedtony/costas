@@ -14,7 +14,8 @@ namespace Ft8Client.Rig;
 /// <summary>The Hamlib model list from <c>rigctl -l</c>, for the searchable radio list.</summary>
 public static partial class HamlibModels
 {
-    [GeneratedRegex(@"^\s*(\d+)\s+(.+?)\s{2,}(.+?)\s{2,}(\S+)\s+(\S+)\s+(\S+)\s*$")]
+    // The version column is a date (20230328.3); a long model name can run into it with a single space between.
+    [GeneratedRegex(@"^\s*(\d+)\s+(.+?)\s{2,}(.+?)\s+(\d{8}\.\S+)\s+(\S+)\s+(\S+)\s*$")]
     private static partial Regex Line();
 
     /// <summary>Parses <c>rigctl -l</c> output.</summary>
@@ -53,12 +54,17 @@ public static partial class HamlibModels
         return Parse(output);
     }
 
-    /// <summary>Finds rigctld or rigctl: configured folder, bundled third_party/hamlib/bin, then PATH.</summary>
+    /// <summary>Finds rigctld or rigctl: configured folder (or its bin folder), bundled third_party/hamlib/bin, then PATH.</summary>
     public static string? Find(string exe, string? configuredDir)
     {
         var name = OperatingSystem.IsWindows() ? exe + ".exe" : exe;
         var candidates = new List<string>();
-        if (!string.IsNullOrWhiteSpace(configuredDir)) candidates.Add(Path.Combine(configuredDir, name));
+        if (!string.IsNullOrWhiteSpace(configuredDir))
+        {
+            // The Hamlib download unpacks to a folder with the programs in bin; accept either folder.
+            candidates.Add(Path.Combine(configuredDir, name));
+            candidates.Add(Path.Combine(configuredDir, "bin", name));
+        }
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         for (var i = 0; i < 8 && dir is not null; i++, dir = dir.Parent) candidates.Add(Path.Combine(dir.FullName, "third_party", "hamlib", "bin", name));
         foreach (var p in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))

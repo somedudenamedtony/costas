@@ -30,6 +30,8 @@
           <TextBlock Classes="secondary" TextWrapping="Wrap"
                      Text="Choose your radio so the app can set its frequency and key it for transmit. Not connected yet? Press Next and come back from ☰ › Station setup." />
           <CheckBox Content="My radio has no CAT control: use audio and VOX only" IsChecked="{Binding AudioOnly}" />
+          <TextBlock Text="{Binding ModelListProblem}" IsVisible="{Binding ModelListProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     TextWrapping="Wrap" Foreground="{DynamicResource AccentTextBrush}" />
           <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10" IsEnabled="{Binding !AudioOnly}">
             <TextBlock Grid.Row="0" Text="Manufacturer" VerticalAlignment="Center" />
             <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Manufacturers}" SelectedItem="{Binding Manufacturer}" Width="300"
@@ -41,8 +43,8 @@
             </ComboBox>
             <TextBlock Grid.Row="2" IsVisible="{Binding !IsNetwork}" Text="Port" VerticalAlignment="Center" />
             <ComboBox Grid.Row="2" Grid.Column="1" IsVisible="{Binding !IsNetwork}" ItemsSource="{Binding Ports}" SelectedItem="{Binding Port}" Width="300" PlaceholderText="Find automatically" />
-            <TextBlock Grid.Row="2" Text="Server (host:port)" IsVisible="{Binding IsNetwork}" VerticalAlignment="Center" />
-            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding NetworkAddress}" IsVisible="{Binding IsNetwork}" Width="300" HorizontalAlignment="Left" PlaceholderText="127.0.0.1:4532" />
+            <TextBlock Grid.Row="2" Text="{Binding ServerLabel}" IsVisible="{Binding IsNetwork}" VerticalAlignment="Center" />
+            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding NetworkAddress}" IsVisible="{Binding IsNetwork}" Width="300" HorizontalAlignment="Left" PlaceholderText="{Binding Model.DefaultAddress, FallbackValue=127.0.0.1:4532}" />
             <TextBlock Grid.Row="3" IsVisible="{Binding !IsNetwork}" Text="Speed (baud)" VerticalAlignment="Center" />
             <ComboBox Grid.Row="3" Grid.Column="1" IsVisible="{Binding !IsNetwork}" ItemsSource="{Binding BaudChoices}" SelectedItem="{Binding BaudChoice}" Width="300" />
             <TextBlock Grid.Row="4" Text="Transmit (PTT)" VerticalAlignment="Center" />
