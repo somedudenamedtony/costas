@@ -94,7 +94,20 @@ public sealed class RigctldRig : IRig
     }
 
     /// <summary>Serial ports on this computer.</summary>
-    public static IReadOnlyList<string> SerialPorts() => System.IO.Ports.SerialPort.GetPortNames().Order(StringComparer.Ordinal).ToList();
+    public static IReadOnlyList<string> SerialPorts() =>
+        CleanSerialPorts(System.IO.Ports.SerialPort.GetPortNames(), OperatingSystem.IsWindows());
+
+    /// <summary>
+    /// Windows drivers can return COM names with trailing registry garbage. Keep only the COM number,
+    /// discard invalid names and duplicates, and leave Unix device paths intact.
+    /// </summary>
+    public static IReadOnlyList<string> CleanSerialPorts(IEnumerable<string> ports, bool windows) =>
+        ports.Select(p => windows
+                ? System.Text.RegularExpressions.Regex.Match(p, @"^COM[0-9]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Value.ToUpperInvariant()
+                : p)
+            .Where(p => !string.IsNullOrEmpty(p))
+            .Distinct(windows ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal).ToList();
 
     /// <inheritdoc />
     public async Task<RigState> GetStateAsync(CancellationToken ct)

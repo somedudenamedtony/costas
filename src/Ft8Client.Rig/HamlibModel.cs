@@ -16,6 +16,9 @@ namespace Ft8Client.Rig;
 /// <param name="Status">Stable, Beta, Alpha, Untested.</param>
 public sealed record HamlibModel(int Number, string Manufacturer, string Model, string Status)
 {
+    /// <summary>NET rigctl connects to an existing rigctld server over TCP.</summary>
+    public bool IsNetwork => Number == 2;
+
     /// <summary>"Icom IC-7300".</summary>
     public string Display => $"{Manufacturer} {Model}";
 }

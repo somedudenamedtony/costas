@@ -40,7 +40,9 @@ public sealed partial class SetupViewModel : ObservableObject
         Grid = s.Profile.Grid;
         UnitsKm = s.Appearance.Units == "km";
         AudioOnly = s.Profile.Rig.Mode == RigModes.Vox;
-        Port = s.Profile.Rig.Port ?? string.Empty;
+        Port = s.Profile.Rig.Model == 2 ? string.Empty : s.Profile.Rig.Port ?? string.Empty;
+        NetworkAddress = s.Profile.Rig.Model == 2 && IsNetworkAddress(s.Profile.Rig.Port)
+            ? s.Profile.Rig.Port! : "127.0.0.1:4532";
         Baud = s.Profile.Rig.Baud?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         Ptt = s.Profile.Rig.Ptt;
         foreach (var p in RigctldRig.SerialPorts()) Ports.Add(p);
@@ -133,6 +135,21 @@ public sealed partial class SetupViewModel : ObservableObject
     /// <summary>Chosen model.</summary>
     [ObservableProperty]
     public partial HamlibModel? Model { get; set; }
+
+    /// <summary>The selected model uses a TCP server instead of a serial port.</summary>
+    public bool IsNetwork => Model?.IsNetwork == true;
+
+    /// <summary>Existing rigctld server, in host:port form.</summary>
+    [ObservableProperty]
+    public partial string NetworkAddress { get; set; } = "127.0.0.1:4532";
+
+    /// <summary>Whether an address contains a host and a valid TCP port.</summary>
+    public static bool IsNetworkAddress(string? address) =>
+        !string.IsNullOrWhiteSpace(address)
+        && Uri.TryCreate("tcp://" + address, UriKind.Absolute, out var uri)
+        && !string.IsNullOrEmpty(uri.Host) && uri.Port is > 0 and <= 65535
+        && string.IsNullOrEmpty(uri.UserInfo) && uri.AbsolutePath == "/"
+        && string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment);
 
     /// <summary>Serial ports.</summary>
     public ObservableCollection<string> Ports { get; } = [];
@@ -245,6 +262,7 @@ public sealed partial class SetupViewModel : ObservableObject
 
     partial void OnModelChanged(HamlibModel? value)
     {
+        OnPropertyChanged(nameof(IsNetwork));
         Readback = string.Empty;
         RadioChecks.Clear();
     }
@@ -326,6 +344,11 @@ public sealed partial class SetupViewModel : ObservableObject
         }
         RadioChecks.Clear();
         Message = string.Empty;
+        if (IsNetwork && !IsNetworkAddress(NetworkAddress))
+        {
+            Check(false, "Enter the rigctld server as host:port, for example 127.0.0.1:4532.");
+            return;
+        }
         var exe = HamlibModels.Find("rigctld", _host.Settings.Current.Paths.HamlibDir);
         if (exe is null)
         {
@@ -339,6 +362,22 @@ public sealed partial class SetupViewModel : ObservableObject
         var ct = _scan.Token;
         try
         {
+            if (IsNetwork)
+            {
+                Message = $"Connecting to rigctld at {NetworkAddress.Trim()}…";
+                await ApplyDevicesAsync();
+                var (networkState, networkProblem) = await _host.CheckRigAsync(ct);
+                Message = string.Empty;
+                if (networkState is null)
+                {
+                    Check(false, $"The rigctld server at {NetworkAddress.Trim()} did not answer. {networkProblem} Check that rigctld is running and its listening address and TCP port match.");
+                    return;
+                }
+                Readback = $"{MainViewModel.FormatFrequency(networkState.FrequencyHz)} MHz {networkState.Mode}";
+                Check(true, $"The radio answered through rigctld at {NetworkAddress.Trim()}: {Readback}.");
+                Check(null, "Keying (PTT) is checked on the Transmit test step.");
+                return;
+            }
             if (!string.IsNullOrEmpty(Port) && !await CheckPortAsync())
             {
                 await ApplyDevicesAsync();
@@ -486,8 +525,8 @@ public sealed partial class SetupViewModel : ObservableObject
     {
         s.Profile.Rig.Mode = AudioOnly ? RigModes.Vox : Model is null ? RigModes.None : RigModes.Hamlib;
         s.Profile.Rig.Model = Model?.Number;
-        s.Profile.Rig.Port = string.IsNullOrEmpty(Port) ? null : Port;
-        s.Profile.Rig.Baud = int.TryParse(Baud, out var b) ? b : null;
+        s.Profile.Rig.Port = IsNetwork ? NetworkAddress.Trim() : string.IsNullOrEmpty(Port) ? null : Port;
+        s.Profile.Rig.Baud = !IsNetwork && int.TryParse(Baud, out var b) ? b : null;
         s.Profile.Rig.Ptt = Ptt;
         s.Profile.Audio.InputId = Input?.Id;
         s.Profile.Audio.OutputId = Output?.Id;
@@ -550,6 +589,9 @@ public sealed partial class SetupViewModel : ObservableObject
                     return false;
                 }
                 return true;
+            case 1 when !AudioOnly && IsNetwork && !IsNetworkAddress(NetworkAddress):
+                why = "Enter the rigctld server as host:port, for example 127.0.0.1:4532.";
+                return false;
             // The radio and audio steps can be left for later (Station setup in the menu): an unchecked or missing radio
             // only means the radio indicator says so and transmit is refused until it is set up.
             default:
