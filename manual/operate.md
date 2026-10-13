@@ -57,7 +57,7 @@ it is heard working someone else, and moves to Watching once the time is up.
 | **#** | Rank |
 | **Call** | Callsign |
 | **Where** | Country (or state for the USA, province for Canada) and distance |
-| **Why** | Why you need them: **New country**, **New band** (hover to see which bands you already have that country on), **New grid** with the grid, such as **New grid DO62**, or **New call**. A new country also gets a small rarity meter, five cells from common to very rare, from Club Log's most-wanted list. Hover for its rank |
+| **Why** | Why you need them: **New country**, **New band** (hover to see which bands you already have that country on), **New grid** with the grid, such as **New grid DO62**, or **New call**. A new country also gets a small rarity meter, five cells from common to very rare, from Club Log's most-wanted list. Hover for its rank. A station activating a park for Parks on the Air gets a second line: **New park US-1234** when that park is not in your log yet, *Park US-1234* when it is, or *POTA* when it is calling CQ POTA but nobody has spotted it on this band yet. Hover for the park's name. The park line never changes the order |
 | **Doing now** | *Calling CQ, 3 slots*, *Calling CQ DX*, *Calling you*, and *fading* when their signal is dropping |
 | **Last heard** | How long ago their last decoded transmission ended, counting up every second |
 | **dB** | Their signal at your station |
@@ -77,7 +77,8 @@ The station you are in a contact with is tinted, with a bar down its left edge, 
 only ever marks the station you are working.
 
 Selecting a row (click, or ++up++ / ++down++) outlines it and shows a details card with the station's name (from QRZ lookups),
-location, grid, bearing and your past contacts with that call:
+location, grid, bearing and your past contacts with that call. For a station at a park it adds the park, such as
+*New park US-1234 · Example Lake State Park, US-WI*:
 
 ![Station details](images/station-details.png)
 
@@ -157,7 +158,7 @@ From top to bottom:
 | **Halt Tx** | Always available. Drops PTT at once and stops sequencing. ++esc++ does the same |
 | Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar |
 | Meter warning | Appears only when the last transmission's SWR or ALC was high, for example *SWR 3.4 · ALC 70%* |
-| Indicators | **Radio**, **Audio**, **QRZ**, **PSK Reporter**: a dot and a word each. Click to open Diagnostics |
+| Indicators | **Radio**, **Audio**, **QRZ**, **PSK Reporter**, **POTA**: a dot and a word each. Click to open Diagnostics |
 
 ![Transmit offset flyout](images/tx-offset.png)
 

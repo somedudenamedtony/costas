@@ -170,6 +170,7 @@ Writer and reader support ADIF 3.1 text (`<name:len>value`, `<eor>`, header endi
 | `name`, `qth`, `state`, `country`, `dxcc` | From QRZ lookup when available |
 | `comment` | Mode and reports, e.g. `FT8 Sent: -01 Rcvd: -13` (Rcvd left out when none was received); the operator can edit it |
 | `app_qrzlog_logid` | On records fetched from QRZ |
+| `sig`, `sig_info`, `pota_ref` | Park fields. A local contact with a spotted POTA activator gets `sig` = `POTA` and `sig_info` = the park reference. There is no column for them: they are kept in `raw_adif` and copied from it on upload, export and UDP; imported and fetched records keep theirs the same way |
 
 Import must tolerate unknown fields, junk between records and records with no call (skip them and count).
 

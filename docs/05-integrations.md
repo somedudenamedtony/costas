@@ -211,6 +211,16 @@ Test by decoding our own datagrams with a small reader in the test project and, 
 
 `GET https://clublog.org/mostwanted.php?api=1` (confirmed 2026-10-12, no account or key) returns a JSON object of rank to ADIF DXCC code, both as strings: `{"1":"344","2":"123",...}`, about 340 entries. A saved answer is in `samples/clublog/mostwanted.json`. The app downloads it at start when the cached copy (`cache/clublog-mostwanted.json`) is missing or a week old, with the app's User-Agent and the usual timeout, and keeps using the cached copy when Club Log cannot be reached. An answer with fewer than 300 entries is ignored.
 
+## 7b. POTA activator spots
+
+`GET https://api.pota.app/spot/activator` (confirmed 2026-10-12, no account or key, served through CloudFront) returns a JSON array of the current activator spots, about 60 to 70 at a quiet hour. Fields seen: `spotId` (number), `activator` (call as spotted, may carry `/P` and the like), `frequency` (**kHz as a string**, `"14074"` or `"7191.0"`), `mode` (`FT8`, `CW`, `SSB`, `FM`, or empty), `reference` (`US-1234`), `parkName` (null in every entry seen), `name` (the park's name), `locationDesc` (`US-WI`), `spotTime` (ISO 8601 **without a zone**; UTC, checked against the response `Date` header), `spotter`, `comments`, `source` (`Web`, `RBN`, `GT`, ...), `invalid` (null), `grid4`, `grid6`, `latitude`, `longitude`, `count`, `expire` (seconds). The app uses `activator`, `frequency`, `mode`, `reference`, `name` (falling back to `parkName`), `locationDesc`, `spotTime`, and skips entries with `invalid` true or no call, reference or frequency.
+
+- Optional, on by default (Settings › Who to call › Parks on the Air): the feed is public and read-only and the app sends nothing about the operator except the usual User-Agent.
+- Polled every 2 minutes, only while the app runs and the setting is on; never more often (the response is a CDN-cached copy that changes about once a minute). On failure the wait doubles, up to 30 minutes. The last spots are shown for 15 minutes after the last good answer, then dropped. Status is the `pota` service: Ok, Degraded (showing the last spots), Down, or Off.
+- Matching: a spot matches a heard station when the base calls are equal (`Callsign.BaseCall`, so K1ABC matches K1ABC/P) and the spot's frequency is on the band being worked; the newest spot wins. A station calling `CQ POTA` with no spot is shown as POTA without a park.
+- Display only: the park never changes rank, tier, score or order.
+- Logged contacts with a matched park get ADIF `SIG=POTA`, `SIG_INFO=<reference>`, kept in the record's raw ADIF (no `qso` column) and copied by `AdifMapper.ToAdif` into QRZ uploads, exports and the UDP logged-ADIF message. Worked parks come from `SIG`/`SIG_INFO` and from ADIF 3.1.4 `POTA_REF` (comma list, `@location` suffix stripped).
+
 ## 8. Country file
 
 `cty.dat` from https://www.country-files.com/ . Ship a copy in the app; "Update country file" in Settings downloads the current one (**VERIFY** the stable download URL), validates that it parses and has more than 300 entities, then swaps it in.
