@@ -36,6 +36,9 @@ public sealed class CapturePump : IDisposable
         _out = new float[_resampler.MaxOutput(_in.Length)];
     }
 
+    /// <summary>Live receive spectrum, fed outside the audio callback.</summary>
+    public ReceiveSpectrum Spectrum { get; } = new();
+
     /// <summary>Recent RMS input level in dBFS.</summary>
     public double LevelDbfs { get; private set; } = -120;
 
@@ -60,6 +63,7 @@ public sealed class CapturePump : IDisposable
             LevelDbfs = AudioLevel.RmsDbfs(_in.AsSpan(0, n));
             var m = _resampler.Process(_in.AsSpan(0, n), _out);
             _recorder.Append(_out.AsSpan(0, m));
+            Spectrum.Append(_out.AsSpan(0, m));
             total += m;
         }
         var over = _input.Buffer.Overruns;

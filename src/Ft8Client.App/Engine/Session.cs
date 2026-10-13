@@ -660,6 +660,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         {
             _config = _config with { FixedTxOffsetHz = hz };
             if (hz is { } v) _txOffset = v;
+            else UpdateTxOffset(_config.Mode);
         }
         Publish();
     }
