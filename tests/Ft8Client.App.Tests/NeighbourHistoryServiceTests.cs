@@ -44,6 +44,7 @@ public sealed class NeighbourHistoryServiceTests : IDisposable
         svc.OnSnapshot(Snap(-7));
         _clock.Advance(NeighbourHistory.SampleInterval);
         svc.OnSnapshot(Snap(-5));
+        svc.Flush();
 
         svc.Current.Days.Should().ContainSingle().Which.Samples.Should().Be(2);
     }
@@ -68,7 +69,7 @@ public sealed class NeighbourHistoryServiceTests : IDisposable
         var svc = new NeighbourHistoryService(Store, () => true, _clock, record: true);
         svc.OnSnapshot(Snap(-7));
         svc.MarkChange("W7LIT", "new vertical");
-        svc.SaveNow();
+        svc.Flush();
 
         var again = new NeighbourHistoryService(Store, () => true, _clock, record: true);
         again.Load();
@@ -76,5 +77,6 @@ public sealed class NeighbourHistoryServiceTests : IDisposable
         again.Current.Days.Should().ContainSingle();
         again.RemoveTodaysMark("W7LIT");
         again.Current.Marks.Should().BeEmpty();
+        again.Flush();
     }
 }

@@ -635,6 +635,7 @@ public sealed class AppHost : IAsyncDisposable
         Udp?.Dispose();
         Updates?.Dispose();
         Recording?.Dispose();
+        NeighbourHistory?.Flush();
         if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);
         await _rig.DisposeAsync().ConfigureAwait(false);
         foreach (var d in _disposables) d.Dispose();

@@ -25,6 +25,7 @@ public sealed class NeighbourHistoryService
     private readonly NeighbourHistoryStore _store;
     private readonly Func<bool> _enabled;
     private readonly IClock _clock;
+    private Task _saving = Task.CompletedTask;
     private readonly bool _record;
     private readonly Lock _gate = new();
     private readonly Lock _saveGate = new();
@@ -113,7 +114,18 @@ public sealed class NeighbourHistoryService
         }
     }
 
-    // Off the caller's thread (snapshots are published from the slot loop and the UI). Each save writes the latest
-    // history, so saves that run late or out of order still leave the newest on disk.
-    private void SaveSoon() => _ = Task.Run(SaveNow);
+    /// <summary>Waits for saves already started in the background (tests, and before the data folder goes away).</summary>
+    public void Flush()
+    {
+        Task saving;
+        lock (_gate) saving = _saving;
+        saving.Wait();
+    }
+
+    // Off the caller's thread (snapshots are published from the slot loop and the UI). Saves run one after another,
+    // each writing the latest history, so the newest always ends up on disk.
+    private void SaveSoon()
+    {
+        lock (_gate) _saving = _saving.ContinueWith(_ => SaveNow(), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+    }
 }
