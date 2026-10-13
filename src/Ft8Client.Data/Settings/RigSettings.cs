@@ -28,4 +28,10 @@ public sealed class RigSettings
 
     /// <summary>Separate PTT serial port for RTS or DTR.</summary>
     public string? PttPort { get; set; }
+
+    /// <summary>
+    /// Extra Hamlib settings passed to rigctld as <c>-C</c>, comma-separated <c>name=value</c> pairs, for example
+    /// <c>civaddr=0x94</c> for an Icom radio set to a different CI-V address. Empty for none.
+    /// </summary>
+    public string? Config { get; set; }
 }

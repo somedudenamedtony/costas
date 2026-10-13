@@ -47,7 +47,10 @@ public sealed partial class SetupViewModel : ObservableObject
             : HamlibModel.DefaultAddressFor(s.Profile.Rig.Model ?? 0) ?? "127.0.0.1:4532";
         Baud = s.Profile.Rig.Baud?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         Ptt = s.Profile.Rig.Ptt;
+        PttPort = RigctldRig.CleanSerialPort(s.Profile.Rig.PttPort, OperatingSystem.IsWindows()) ?? string.Empty;
+        HamlibConfig = s.Profile.Rig.Config ?? string.Empty;
         foreach (var p in RigctldRig.SerialPorts()) Ports.Add(p);
+        RefreshPttPortChoices();
         foreach (var d in host.AudioBackend.ListInputs()) Inputs.Add(d);
         foreach (var d in host.AudioBackend.ListOutputs()) Outputs.Add(d);
         Input = Inputs.FirstOrDefault(d => d.Id == s.Profile.Audio.InputId);
@@ -134,6 +137,49 @@ public sealed partial class SetupViewModel : ObservableObject
     /// <summary>Why the radio list is empty (Hamlib missing or failing), or empty when it loaded.</summary>
     [ObservableProperty]
     public partial string ModelListProblem { get; set; } = string.Empty;
+
+    /// <summary>"Same as the CAT port", then the serial ports, for RTS or DTR keying.</summary>
+    public ObservableCollection<string> PttPortChoices { get; } = [];
+
+    /// <summary>Separate serial port that RTS or DTR keys, or empty to key the CAT port's line.</summary>
+    [ObservableProperty]
+    public partial string PttPort { get; set; }
+
+    /// <summary>The PTT port as shown.</summary>
+    public string PttPortChoice
+    {
+        get => string.IsNullOrEmpty(PttPort) ? SameAsCatPort : PttPort;
+        set => PttPort = value is null || value == SameAsCatPort ? string.Empty : value;
+    }
+
+    /// <summary>The PTT port choice applies: keying by RTS or DTR.</summary>
+    public bool UsesPttLine => Ptt is "rts" or "dtr";
+
+    /// <summary>Extra Hamlib settings for rigctld's -C, for example civaddr=0x94.</summary>
+    [ObservableProperty]
+    public partial string HamlibConfig { get; set; }
+
+    /// <summary>Whether Hamlib settings are empty or comma-separated name=value pairs.</summary>
+    public static bool IsHamlibConfig(string? config) =>
+        string.IsNullOrWhiteSpace(config) || HamlibConfigPattern().IsMatch(config);
+
+    // name=value pairs separated by commas; no spaces or commas inside a value, which rigctld's -C cannot carry.
+    [System.Text.RegularExpressions.GeneratedRegex(@"^\s*[A-Za-z_][A-Za-z0-9_]*=[^,=\s]+(\s*,\s*[A-Za-z_][A-Za-z0-9_]*=[^,=\s]+)*\s*$")]
+    private static partial System.Text.RegularExpressions.Regex HamlibConfigPattern();
+
+    private const string SameAsCatPort = "Same as the CAT port";
+
+    private const string ConfigProblem = "Enter the Hamlib settings as name=value pairs separated by commas, for example civaddr=0x94.";
+
+    private void RefreshPttPortChoices()
+    {
+        var chosen = PttPortChoice;
+        PttPortChoices.Clear();
+        PttPortChoices.Add(SameAsCatPort);
+        foreach (var p in Ports) PttPortChoices.Add(p);
+        if (!PttPortChoices.Contains(chosen)) PttPortChoices.Add(chosen);
+        OnPropertyChanged(nameof(PttPortChoice));
+    }
 
     /// <summary>Matching models.</summary>
     public ObservableCollection<HamlibModel> Models { get; } = [];
@@ -300,7 +346,13 @@ public sealed partial class SetupViewModel : ObservableObject
 
     partial void OnBaudChanged(string value) => OnPropertyChanged(nameof(BaudChoice));
 
-    partial void OnPttChanged(string value) => OnPropertyChanged(nameof(PttChoice));
+    partial void OnPttChanged(string value)
+    {
+        OnPropertyChanged(nameof(PttChoice));
+        OnPropertyChanged(nameof(UsesPttLine));
+    }
+
+    partial void OnPttPortChanged(string value) => OnPropertyChanged(nameof(PttPortChoice));
 
     partial void OnAudioOnlyChanged(bool value)
     {
@@ -391,6 +443,11 @@ public sealed partial class SetupViewModel : ObservableObject
             Check(false, AddressProblem);
             return;
         }
+        if (!IsHamlibConfig(HamlibConfig))
+        {
+            Check(false, ConfigProblem);
+            return;
+        }
         var exe = HamlibModels.Find("rigctld", _host.Settings.Current.Paths.HamlibDir);
         if (exe is null)
         {
@@ -446,7 +503,7 @@ public sealed partial class SetupViewModel : ObservableObject
                     }
                 }
                 var progress = new Progress<(string Port, int Baud)>(t => Message = $"Trying {t.Port} at {t.Baud} baud…");
-                var hit = await RigctldRig.ScanAsync(exe, Model.Number, ports, bauds, _host.Guard, _host.Clock, ct, progress);
+                var hit = await RigctldRig.ScanAsync(exe, Model.Number, ports, bauds, _host.Guard, _host.Clock, ct, progress, NormalizedConfig);
                 Message = string.Empty;
                 if (hit is not { } h)
                 {
@@ -498,6 +555,7 @@ public sealed partial class SetupViewModel : ObservableObject
     {
         var present = RigctldRig.SerialPorts();
         foreach (var p in present.Where(p => !Ports.Contains(p))) Ports.Add(p);
+        RefreshPttPortChoices();
         if (!present.Contains(Port, StringComparer.OrdinalIgnoreCase))
         {
             Check(false, $"{Port} is not on this computer now. Check the radio's USB cable and that it is switched on, then choose the port again.");
@@ -510,7 +568,7 @@ public sealed partial class SetupViewModel : ObservableObject
         {
             case PortOpenResult.Opened:
                 Check(true, $"{Port} opens.");
-                return true;
+                return await CheckPttPortAsync();
             case PortOpenResult.InUse:
                 Check(false, $"{Port} is in use by another program. Close WSJT-X, JTDX, Flrig, OmniRig or the radio's own software, then test again.");
                 return false;
@@ -519,6 +577,29 @@ public sealed partial class SetupViewModel : ObservableObject
                 return false;
             default:
                 Check(false, $"{Port} could not be opened: {detail}");
+                return false;
+        }
+    }
+
+    // A separate RTS or DTR keying port must be there and free too, or rigctld cannot start.
+    private async Task<bool> CheckPttPortAsync()
+    {
+        if (!UsesPttLine || string.IsNullOrEmpty(PttPort) || string.Equals(PttPort, Port, StringComparison.OrdinalIgnoreCase)) return true;
+        var port = PttPort;
+        var (result, detail) = await Task.Run(() => SerialPortProbe.TryOpen(port));
+        switch (result)
+        {
+            case PortOpenResult.Opened:
+                Check(true, $"The PTT port {port} opens.");
+                return true;
+            case PortOpenResult.InUse:
+                Check(false, $"The PTT port {port} is in use by another program. Close it, then test again.");
+                return false;
+            case PortOpenResult.Missing:
+                Check(false, $"The PTT port {port} is not on this computer now. Check the interface's USB cable, then choose the port again.");
+                return false;
+            default:
+                Check(false, $"The PTT port {port} could not be opened: {detail}");
                 return false;
         }
     }
@@ -591,9 +672,17 @@ public sealed partial class SetupViewModel : ObservableObject
         s.Profile.Rig.Port = IsNetwork ? NetworkAddress.Trim() : string.IsNullOrEmpty(Port) ? null : Port;
         s.Profile.Rig.Baud = !IsNetwork && int.TryParse(Baud, out var b) ? b : null;
         s.Profile.Rig.Ptt = Ptt;
+        s.Profile.Rig.PttPort = UsesPttLine && !string.IsNullOrEmpty(PttPort) ? PttPort : null;
+        s.Profile.Rig.Config = NormalizedConfig;
         s.Profile.Audio.InputId = Input?.Id;
         s.Profile.Audio.OutputId = Output?.Id;
     }
+
+    // Hamlib settings with the spaces around commas removed, or null for none or an invalid entry.
+    private string? NormalizedConfig =>
+        string.IsNullOrWhiteSpace(HamlibConfig) || !IsHamlibConfig(HamlibConfig)
+            ? null
+            : string.Join(',', HamlibConfig.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
 
     private void DescribeTestRadio()
     {
@@ -602,6 +691,7 @@ public sealed partial class SetupViewModel : ObservableObject
             ? $"No radio is open, so the test cannot key it: {radio.Message}"
             : AudioOnly ? "Audio only: the radio keys on the tone by VOX."
             : IsNetwork ? $"The tone keys the radio through {ServerName} at {NetworkAddress.Trim()} ({PttChoice?.Label ?? Ptt})."
+            : UsesPttLine && !string.IsNullOrEmpty(PttPort) ? $"The tone keys the radio with the {Ptt.ToUpperInvariant()} line on {PttPort}; CAT is on {Port}."
             : $"The tone keys the radio on {Port} ({PttChoice?.Label ?? Ptt}).";
     }
 
@@ -655,6 +745,9 @@ public sealed partial class SetupViewModel : ObservableObject
                 return true;
             case 1 when !AudioOnly && IsNetwork && !IsNetworkAddress(NetworkAddress):
                 why = AddressProblem;
+                return false;
+            case 1 when !AudioOnly && !IsHamlibConfig(HamlibConfig):
+                why = ConfigProblem;
                 return false;
             // The radio and audio steps can be left for later (Station setup in the menu): an unchecked or missing radio
             // only means the radio indicator says so and transmit is refused until it is set up.

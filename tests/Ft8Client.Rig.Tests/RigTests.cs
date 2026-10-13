@@ -281,6 +281,27 @@ public class RigTests
         hit!.Value.Port.Should().Be("COM-TEST");
     }
 
+    [Fact]
+    public async Task Scan_SeveralPorts_SearchesThemTogetherAndFindsTheRadio()
+    {
+        var exe = HamlibModels.Find("rigctld", null);
+        Assert.SkipWhen(exe is null, "rigctld is not installed.");
+        var hit = await RigctldRig.ScanAsync(exe!, 1, ["COM-A", "COM-B", "COM-C"], [115200, 38400], NullProcessGuard.Instance, SystemClock.Instance,
+            TestContext.Current.CancellationToken);
+        hit.Should().NotBeNull();
+        hit!.Value.Port.Should().BeOneOf("COM-A", "COM-B", "COM-C");
+        hit.Value.Baud.Should().Be(115200, "the dummy radio answers at the first rate tried");
+    }
+
+    [Fact]
+    public void Options_ExtraConfig_PassedAsDashC()
+    {
+        string.Join(' ', new RigctldOptions("rigctld", 3073, "COM4", 115200, Config: " civaddr=0x94 ").Arguments(4532))
+            .Should().Be("-m 3073 -r COM4 -s 115200 -P RIG -C civaddr=0x94 -T 127.0.0.1 -t 4532");
+        string.Join(' ', new RigctldOptions("rigctld", 3073, "COM4", 115200, "rts", "COM5").Arguments(4532))
+            .Should().Be("-m 3073 -r COM4 -s 115200 -P RTS -p COM5 -T 127.0.0.1 -t 4532");
+    }
+
     private sealed class SyncProgress<T>(Action<T> report) : IProgress<T>
     {
         public void Report(T value) => report(value);

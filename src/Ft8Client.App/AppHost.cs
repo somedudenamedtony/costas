@@ -526,7 +526,7 @@ public sealed class AppHost : IAsyncDisposable
         }
     }
 
-    private static string RigKey(RigSettings r) => string.Join('|', r.Mode, r.Model, r.Port, r.Baud, r.Ptt, r.PttPort);
+    private static string RigKey(RigSettings r) => string.Join('|', r.Mode, r.Model, r.Port, r.Baud, r.Ptt, r.PttPort, r.Config);
 
     private void OpenAudio(SlotRecorder recorder)
     {
@@ -593,7 +593,8 @@ public sealed class AppHost : IAsyncDisposable
                 try
                 {
                     var port = RigctldRig.CleanSerialPort(r.Port, OperatingSystem.IsWindows());
-                    rig = await RigctldRig.StartAsync(new RigctldOptions(exe, r.Model.Value, port, r.Baud, r.Ptt, r.PttPort), Guard, Clock, _cts.Token)
+                    var pttPort = RigctldRig.CleanSerialPort(r.PttPort, OperatingSystem.IsWindows());
+                    rig = await RigctldRig.StartAsync(new RigctldOptions(exe, r.Model.Value, port, r.Baud, r.Ptt, pttPort, r.Config), Guard, Clock, _cts.Token)
                         .ConfigureAwait(false);
                     status = new ServiceStatus(ServiceHealth.Ok, rig.Name, Clock.UtcNow);
                 }

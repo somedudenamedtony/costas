@@ -27,9 +27,11 @@ Costas controls the radio through Hamlib, the same library WSJT-X uses.
 | Field | What to choose |
 | --- | --- |
 | **Manufacturer** and **Model** | Your radio, from Hamlib's list (for example Icom › IC-7300) |
-| **Port** | The radio's COM port. Leave it on **Find automatically** and Costas tries each port |
+| **Port** | The radio's COM port. Leave it on **Find automatically** and Costas tries every port at once |
 | **Speed (baud)** | **Automatic** tries the common rates. Or pick the rate set in the radio's menu |
 | **Transmit (PTT)** | How the radio is keyed, below |
+| **PTT port** | Only for RTS or DTR keying: the serial port whose line keys the radio, if it is not the CAT port |
+| **Hamlib settings** | Optional. Extra Hamlib settings as `name=value` pairs separated by commas, below |
 
 If Hamlib Launcher or another program already runs rigctld, choose **Hamlib › NET rigctl**.
 Enter its listening address in **Server (host:port)**, for example `127.0.0.1:4532` for a server
@@ -46,7 +48,14 @@ PTT choices:
 - **CAT command (most radios with USB)**: Costas tells the radio to transmit over the same cable. Use this for an
   IC-7300, IC-705, FT-991A, TS-590 and most modern radios.
 - **RTS line on a serial port** or **DTR line on a serial port**: for interfaces that key with a serial control line.
+  If the interface has its own COM port for keying (a separate PTT cable, or the second port some radios and
+  interfaces add), choose it in **PTT port**. Otherwise leave **Same as the CAT port**.
 - **VOX (the radio keys on audio)**: the radio keys itself when audio arrives. Turn VOX on in the radio.
+
+**Hamlib settings** is for radios that need more than the model and port. The common one is an Icom radio whose CI-V
+address has been changed in its menu: enter `civaddr=` and the address, for example `civaddr=0x94` (the IC-7300's
+default is 0x94, so you only need this if yours is different). Separate several settings with commas, for example
+`civaddr=0x94,retry=3`. Leave it empty if you don't need it.
 
 Press **Test connection**. Costas checks each part in turn and shows a ✓ or ✗ line for each, with what to fix:
 

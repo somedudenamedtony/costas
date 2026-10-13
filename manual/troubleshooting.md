@@ -41,7 +41,8 @@ The port opens but the radio does not reply.
 
 - Check the **Model** is right.
 - Set **Speed (baud)** to match the radio's CAT/CI-V baud rate menu, or leave it on **Automatic**.
-- Icom: check the CI-V address matches the model's default, and **CI-V USB Echo Back** is **OFF**.
+- Icom: **CI-V USB Echo Back** must be **OFF**. If the radio's CI-V address is not the model's default, enter it in
+  **Hamlib settings**, for example `civaddr=0x94`.
 - Close any other program that uses the port: WSJT-X, JTDX, Flrig, N1MM+, the radio maker's utility. Only one
   program can open a COM port.
 
@@ -116,6 +117,11 @@ Costas works fine without QRZ: the list then ranks by signal only.
 The live feed uses MQTT over TLS on TCP port 1884 (`mqtt.pskreporter.info`). Some networks and firewalls block it.
 Costas then falls back to querying PSK Reporter every 5 minutes, shown as *PSK Reporter · updated 6 min ago*. If both fail, Chance comes from the signal alone and
 Reach stays empty; everything else still works.
+
+## The status line says "Something went wrong"
+
+Costas hit an error it did not expect, for example from a driver. It stops transmitting as a precaution and keeps
+running. Carry on, and if it happens again, save a diagnostics bundle (**☰ › Diagnostics**) and report it as below.
 
 ## Windows says "Windows protected your PC"
 

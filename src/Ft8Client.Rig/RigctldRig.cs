@@ -65,30 +65,55 @@ public sealed class RigctldRig : IRig
     }
 
     /// <summary>
-    /// Port auto-scan: tries each port and baud rate, starting rigctld and asking for the frequency, 2 s per attempt.
-    /// Returns the first combination that reads back a plausible frequency. <paramref name="progress"/> hears each port
-    /// and baud rate before it is tried.
+    /// Port auto-scan: tries each baud rate on every port, starting rigctld and asking for the frequency, up to 3 s per
+    /// attempt. Ports are tried at the same time (each has its own rigctld), so the search takes about as long as one
+    /// port's baud rates. Returns the first combination to read back a plausible frequency. <paramref name="progress"/> hears each port
+    /// and baud rate before it is tried. <paramref name="config"/> is passed as rigctld's <c>-C</c> (an Icom CI-V
+    /// address must be set before the radio can answer).
     /// </summary>
     public static async Task<(string Port, int Baud, long Hz)?> ScanAsync(string rigctldPath, int model, IEnumerable<string> ports, IEnumerable<int> bauds,
                                                                      IProcessGuard guard, IClock clock, CancellationToken ct,
-                                                                     IProgress<(string Port, int Baud)>? progress = null)
+                                                                     IProgress<(string Port, int Baud)>? progress = null, string? config = null)
     {
-        foreach (var port in ports)
+        var portList = ports.ToList();
+        var baudList = bauds.ToList();
+        using var found = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var hits = new (int Baud, long Hz)?[portList.Count];
+
+        async Task TryPortAsync(int index)
         {
-            foreach (var baud in bauds)
+            var port = portList[index];
+            foreach (var baud in baudList)
             {
-                ct.ThrowIfCancellationRequested();
+                if (found.IsCancellationRequested) return;
                 progress?.Report((port, baud));
                 try
                 {
-                    await using var rig = await StartAsync(new RigctldOptions(rigctldPath, model, port, baud), guard, clock, ct).ConfigureAwait(false);
-                    var hz = await rig._client!.GetFrequencyAsync(ct).ConfigureAwait(false);
-                    if (hz is > 100_000 and < 1_000_000_000) return (port, baud, hz);
+                    await using var rig = await StartAsync(new RigctldOptions(rigctldPath, model, port, baud, Config: config), guard, clock, found.Token)
+                        .ConfigureAwait(false);
+                    var hz = await rig._client!.GetFrequencyAsync(found.Token).ConfigureAwait(false);
+                    if (hz is > 100_000 and < 1_000_000_000)
+                    {
+                        hits[index] = (baud, hz);
+                        await found.CancelAsync().ConfigureAwait(false);
+                        return;
+                    }
                 }
                 catch (RigException)
                 {
                 }
+                catch (OperationCanceledException) when (found.IsCancellationRequested && !ct.IsCancellationRequested)
+                {
+                    return; // another port answered
+                }
             }
+        }
+
+        await Task.WhenAll(Enumerable.Range(0, portList.Count).Select(i => Task.Run(() => TryPortAsync(i), CancellationToken.None))).ConfigureAwait(false);
+        ct.ThrowIfCancellationRequested();
+        for (var i = 0; i < portList.Count; i++)
+        {
+            if (hits[i] is { } h) return (portList[i], h.Baud, h.Hz);
         }
         return null;
     }
@@ -422,12 +447,25 @@ public sealed class RigctldRig : IRig
         }
     }
 
+    private static readonly Queue<int> RecentPorts = new();
+
+    // A free TCP port for a new rigctld. The port search starts several at once, so a port handed out recently is never
+    // handed out again: two rigctlds on one port would let a client read another port's radio.
     private static int FreePort()
     {
-        var l = new TcpListener(IPAddress.Loopback, 0);
-        l.Start();
-        var port = ((IPEndPoint)l.LocalEndpoint).Port;
-        l.Stop();
-        return port;
+        lock (RecentPorts)
+        {
+            for (var attempt = 0; ; attempt++)
+            {
+                var l = new TcpListener(IPAddress.Loopback, 0);
+                l.Start();
+                var port = ((IPEndPoint)l.LocalEndpoint).Port;
+                l.Stop();
+                if (RecentPorts.Contains(port) && attempt < 20) continue;
+                RecentPorts.Enqueue(port);
+                if (RecentPorts.Count > 64) RecentPorts.Dequeue();
+                return port;
+            }
+        }
     }
 }
