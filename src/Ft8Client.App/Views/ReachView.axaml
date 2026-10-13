@@ -9,6 +9,7 @@
     <Border Grid.Row="0" Classes="card" Padding="14,12" Margin="0,0,0,12">
       <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,380">
         <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
+          <CheckBox x:Name="WorldView" Content="World" ToolTip.Tip="Show a rotating globe" />
           <TextBlock Text="Band" VerticalAlignment="Center" />
           <ComboBox ItemsSource="{Binding Bands}" SelectedItem="{Binding Band}" MinWidth="80" />
           <TextBlock Text="Window" VerticalAlignment="Center" Margin="8,0,0,0" />
@@ -16,8 +17,9 @@
         </StackPanel>
         <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Headline}" FontSize="15" TextWrapping="Wrap" Margin="0,8" />
         <Panel Grid.Row="2" Grid.Column="0" Margin="0,0,16,0">
+          <v:StationMap x:Name="Globe" Reports="{Binding Points}" Centre="{Binding Centre}" World="True" IsVisible="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
           <v:ReachPlot x:Name="Plot" Points="{Binding Points}" Centre="{Binding Centre}" Units="{Binding Units}" />
-          <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="4">
+          <StackPanel x:Name="ZoomControls" HorizontalAlignment="Left" VerticalAlignment="Top" Spacing="4">
             <Button x:Name="ZoomIn" Content="+" Width="32" Height="32" Padding="0" HorizontalContentAlignment="Center" FontSize="16"
                     ToolTip.Tip="Zoom in" AutomationProperties.Name="Zoom in" />
             <Button x:Name="ZoomOut" Content="−" Width="32" Height="32" Padding="0" HorizontalContentAlignment="Center" FontSize="16"
@@ -29,6 +31,42 @@
         </Panel>
         <ScrollViewer Grid.Row="2" Grid.Column="1" VerticalScrollBarVisibility="Auto">
           <StackPanel Spacing="6">
+            <TextBlock Text="Band activity near you" Classes="title" />
+            <TextBlock Text="Nearby stations, last 15 minutes. Darker continents have more reports. Hover over needed countries for the full list."
+                       Classes="secondary" FontSize="12" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding BandActivityStatus}" Classes="secondary" TextWrapping="Wrap"
+                       IsVisible="{Binding BandActivityStatus, Converter={x:Static v:Converters.NotEmpty}}" />
+            <ItemsControl ItemsSource="{Binding BandActivity}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:BandChoiceViewModel">
+                  <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="48,*" Margin="0,4" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Name}">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasActivity}" VerticalAlignment="Center">
+                      <Border Width="60" Height="6" CornerRadius="3" Background="{DynamicResource ControlBorderBrush}" VerticalAlignment="Center">
+                        <Border Width="{Binding BarWidth}" HorizontalAlignment="Left" CornerRadius="3" Background="{DynamicResource AccentBrush}" />
+                      </Border>
+                      <TextBlock Text="{Binding SpotsText}" Classes="secondary num" FontSize="12" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ItemsControl Grid.Row="1" Grid.ColumnSpan="2" Margin="0,4,0,0" ItemsSource="{Binding Continents}" IsVisible="{Binding HasActivity}" VerticalAlignment="Center"
+                                  AutomationProperties.Name="Heard in">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ContinentChip">
+                          <Border Width="28" Padding="0,1" CornerRadius="3" BorderThickness="1" ToolTip.Tip="{Binding Tip}"
+                                  Background="{Binding Level, Converter={x:Static v:Converters.ShadeBackground}}"
+                                  BorderBrush="{Binding Level, Converter={x:Static v:Converters.ShadeBorder}}">
+                            <TextBlock Text="{Binding Label}" FontSize="11" HorizontalAlignment="Center"
+                                       Foreground="{Binding Level, Converter={x:Static v:Converters.ShadeForeground}}" />
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding NeedText}" TextWrapping="Wrap" Margin="0,4,0,0" FontSize="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource CautionBrush}" IsVisible="{Binding HasActivity}" ToolTip.Tip="{Binding NeedTip}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <TextBlock Text="By band, last 24 hours" Classes="title" />
             <Grid ColumnDefinitions="70,90,110,*">
               <TextBlock Text="Band" Classes="secondary" /><TextBlock Grid.Column="1" Text="Stations" Classes="secondary" />
@@ -71,9 +109,9 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Text="You are at the centre, north is up. Bigger, darker dots are stronger reports. Hover over a dot for its call."
+            <TextBlock x:Name="MapHelp" Text="You are at the centre, north is up. Bigger, darker dots are stronger reports. Hover over a dot for its call."
                        Classes="secondary" TextWrapping="Wrap" Margin="0,12,0,0" />
-            <TextBlock Text="Scroll or use + and − to zoom, drag to move around, double-click to see the whole map."
+            <TextBlock x:Name="ZoomHelp" Text="Scroll or use + and − to zoom, drag to move around, double-click to see the whole map."
                        Classes="secondary" TextWrapping="Wrap" />
           </StackPanel>
         </ScrollViewer>

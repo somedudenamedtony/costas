@@ -177,7 +177,7 @@ Source: https://pskreporter.info/pskdev.html (confirmed rules below).
 
 Spot only decodes with a resolved callsign that are not low confidence. Never spot my own call. Off by default until the operator turns it on in setup step 6 or Settings.
 
-## 7. WSJT-X UDP protocol (outbound)
+## 7. WSJT-X UDP protocol
 
 Source: `Network/NetworkMessage.hpp` in the WSJT-X source (confirmed). Lets GridTracker, JTAlert, N1MM+ and loggers work unchanged.
 
@@ -195,7 +195,15 @@ Source: `Network/NetworkMessage.hpp` in the WSJT-X source (confirmed). Lets Grid
 | 6 | Close | (none). On exit |
 | 12 | Logged ADIF | ADIF text (utf8): a header and one record |
 
-Inbound messages (Reply 4, Halt Tx 8, Free Text 9, Highlight Callsign 13, and others) are v1.x. In v1, listen only to keep the socket healthy and ignore content.
+Inbound (owner request 2026-10-12), on the same socket the datagrams are sent from, since WSJT-X servers reply to the client's source address. Only datagrams whose Id is ours are acted on; with a loopback target, only datagrams from this computer. Field layouts confirmed from WSJT-X `Network/NetworkMessage.hpp` (read 2026-10-12):
+
+| Type | Name | Fields after the Id | Action |
+| --- | --- | --- | --- |
+| 4 | Reply | Time `QTime`, snr `qint32`, DT `double`, DF `quint32`, mode `utf8`, message `utf8`, low confidence `bool`, modifiers `quint8` | Like WSJT-X, only when it matches one of our recent decodes exactly (text and slot time): a CQ calls the sender, as a double-click in Raw decodes does; a message to me answers it. Anything else is ignored with a status line. Modifiers are ignored |
+| 8 | Halt Tx | Auto Tx only `bool` | Halt Tx at once, either way |
+| 13 | Highlight Callsign | Callsign `utf8`, background `QColor`, foreground `QColor`, highlight last `bool` | Colours the call's lines in Raw decodes (latest slot only when "last" is set). An invalid colour (spec 0) cancels it. At most 200 calls are kept |
+
+`QColor` on the wire: `qint8` spec (0 invalid, 1 RGB), then alpha, red, green, blue and a pad as `quint16`. Other inbound types (Clear, Replay, Free Text, Location, Switch Configuration, Configure) are read and ignored.
 
 Test by decoding our own datagrams with a small reader in the test project and, manually, against GridTracker.
 

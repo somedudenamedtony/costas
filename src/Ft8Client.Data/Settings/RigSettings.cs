@@ -17,7 +17,7 @@ public sealed class RigSettings
     /// <summary>Hamlib model number from <c>rigctl -l</c>.</summary>
     public int? Model { get; set; }
 
-    /// <summary>Serial port, e.g. <c>COM4</c>.</summary>
+    /// <summary>Serial port, e.g. <c>COM4</c>, or server <c>host:port</c> for NET rigctl.</summary>
     public string? Port { get; set; }
 
     /// <summary>Baud rate.</summary>

@@ -106,10 +106,14 @@ public static class Ranker
         !s.HeardInLastOwnSlot && s.LastCalledCq && input.Settings.KeepCqCallers > TimeSpan.Zero
         && input.NowUtc - s.LastHeardUtc <= input.Settings.KeepCqCallers;
 
-    private static WatchReason? CqReason(Station s, RankInput input) =>
-        CqModifierRule.Allows(s.CqModifier, input.MyEntity, s.EntityKey, input.Countries)
+    private static WatchReason? CqReason(Station s, RankInput input)
+    {
+        // Owner decision 2026-10-12: a contest CQ wants an exchange Costas cannot send, so it is not callable.
+        if (CqModifierRule.IsContest(s.CqModifier)) return new WatchReason(WatchReasonKind.Contest, Modifier: s.CqModifier);
+        return CqModifierRule.Allows(s.CqModifier, input.MyEntity, s.EntityKey, input.Countries)
             ? null
             : new WatchReason(WatchReasonKind.NotCallingYou, Modifier: s.CqModifier);
+    }
 
     private static int CompareLine(RankedStation a, RankedStation b, RankingSettings settings)
     {

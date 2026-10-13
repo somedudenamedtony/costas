@@ -157,7 +157,8 @@
 
     <!-- Bottom bar -->
     <Border Grid.Row="4" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource CardBackgroundBrush}">
-      <DockPanel Margin="16,8">
+      <Grid RowDefinitions="Auto,52" Margin="16,6">
+      <DockPanel Margin="0,0,0,4">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <TextBlock Text="{Binding MeterText}" FontWeight="SemiBold" VerticalAlignment="Center" ToolTip.Tip="{Binding MeterTip}"
                      Foreground="{Binding MeterKind, Converter={x:Static v:Converters.KindBrush}}"
@@ -179,7 +180,11 @@
               </Flyout>
             </Button.Flyout>
           </Button>
+          <Button Content="Auto-select" Command="{Binding OffsetAutoCommand}"
+                  ToolTip.Tip="Automatically pick a clear transmit channel" AutomationProperties.Name="Auto-select transmit channel" />
           <Button Content="{Binding CqText}" Command="{Binding ToggleCqCommand}" MinWidth="80" IsVisible="{Binding BarShowsCqAndSlot}" />
+          <Button Content="{Binding TuneText}" Command="{Binding TuneCommand}" IsEnabled="{Binding CanTune}" MinWidth="70"
+                  ToolTip.Tip="Starts the radio's own antenna tuner. A radio without one gets a steady tone at your transmit offset for up to 10 seconds instead. Click again to stop." />
           <Button Content="Halt Tx" Command="{Binding HaltCommand}" MinWidth="70" AutomationProperties.Name="Halt transmit"
                   Background="{Binding Transmitting, Converter={x:Static v:Converters.CriticalWhen}}" />
           <StackPanel Width="200" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding BarShowsCqAndSlot}">
@@ -215,6 +220,10 @@
         <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                    Foreground="{Binding StatusKind, Converter={x:Static v:Converters.KindBrush}}" AutomationProperties.LiveSetting="Polite" />
       </DockPanel>
+      <v:WaterfallView x:Name="ReceiveWaterfall" Grid.Row="1" Cursor="Cross"
+                       ToolTip.Tip="Click between 200 and 2900 Hz to select your transmit channel. Red line: selected offset."
+                       AutomationProperties.Name="Receive waterfall; click to select transmit channel" />
+      </Grid>
     </Border>
   </Grid>
   </Border>

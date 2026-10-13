@@ -95,14 +95,6 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>The heard-here map and band activity chart.</summary>
     public HeardMapViewModel Map { get; } = new();
 
-    /// <summary>My position, the centre of the mini map.</summary>
-    [ObservableProperty]
-    public partial LatLon? ReachCentre { get; set; }
-
-    /// <summary>Reach points for the mini plot.</summary>
-    [ObservableProperty]
-    public partial IReadOnlyList<ReachPoint> ReachPoints { get; set; } = [];
-
     /// <summary>The band summary (idle top slot).</summary>
     [ObservableProperty]
     public partial SummaryViewModel? Summary { get; set; }
@@ -165,6 +157,10 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial string SignalHeadline { get; set; } = string.Empty;
 
+    /// <summary>Five-minute distinct receiver counts.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<ReceptionBucket> SignalHistory { get; set; } = [];
+
     /// <summary>Farthest.</summary>
     [ObservableProperty]
     public partial string SignalFarthest { get; set; } = "—";
@@ -192,6 +188,36 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>"Call CQ" or "Stop CQ", for the contact card.</summary>
     [ObservableProperty]
     public partial string CqText { get; set; } = "Call CQ";
+
+    /// <summary>The CQ modifiers in the picker beside Call CQ.</summary>
+    public ObservableCollection<CqModifierChoice> CqModifiers { get; } = new(CqModifierChoice.Common.Select(m => new CqModifierChoice(m)));
+
+    /// <summary>The CQ modifier in use; picking another saves it.</summary>
+    [ObservableProperty]
+    public partial CqModifierChoice? SelectedCqModifier { get; set; }
+
+    private bool _showingCqModifier;
+
+    /// <summary>Shows the modifier from settings in the picker, adding it to the choices if it is not a common one.</summary>
+    public void ShowCqModifier(string modifier)
+    {
+        var m = modifier.Trim().ToUpperInvariant();
+        if (SelectedCqModifier?.Modifier == m) return;
+        var choice = CqModifiers.FirstOrDefault(c => c.Modifier == m);
+        if (choice is null)
+        {
+            choice = new CqModifierChoice(m);
+            CqModifiers.Add(choice);
+        }
+        _showingCqModifier = true;
+        SelectedCqModifier = choice;
+        _showingCqModifier = false;
+    }
+
+    partial void OnSelectedCqModifierChanged(CqModifierChoice? value)
+    {
+        if (!_showingCqModifier && value is not null) _commands.SetCqModifier(value.Modifier);
+    }
 
     /// <summary>True while transmitting.</summary>
     [ObservableProperty]
@@ -559,6 +585,7 @@ public sealed partial class OperateViewModel : ObservableObject
     private void ApplySignal(SessionSnapshot s, DateTime now, string band)
     {
         SignalTitle = $"Your signal on {band}";
+        SignalHistory = s.ReceptionHistory;
         var available = s.Services.TryGetValue(ServiceNames.Psk, out var psk) ? psk : null;
         SignalNeighbours = NeighbourText.Headline(s.Neighbours);
         SignalSource = available?.Health switch
@@ -569,8 +596,6 @@ public sealed partial class OperateViewModel : ObservableObject
         };
         if (Countries is null || Log is null) return;
         var points = ReachPoint.From(s.Reports, now, TimeSpan.FromMinutes(15), s.MyGrid, Countries, Log(), s.Band, ModeInfo.Name(s.Mode));
-        ReachPoints = points;
-        ReachCentre = Grid.ToLatLon(s.MyGrid);
         var countries = points.Select(p => p.EntityKey).Where(k => k is not null).Distinct().Count();
         SignalHeadline = points.Count == 0
             ? "No reports yet. Reports appear a few minutes after you transmit."

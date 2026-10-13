@@ -42,6 +42,9 @@ public interface IOperateCommands
     /// <summary>Call CQ, or stop calling CQ.</summary>
     void ToggleCq();
 
+    /// <summary>Sets the CQ modifier for my CQs (empty for a plain CQ) and saves it as the setting.</summary>
+    void SetCqModifier(string modifier);
+
     /// <summary>Abandon the contact.</summary>
     void Abandon();
 

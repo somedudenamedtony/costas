@@ -11,6 +11,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Ft8Client.App.ViewModels;
 using Ft8Client.Core;
 using Ft8Client.Core.Geo;
@@ -20,7 +21,7 @@ namespace Ft8Client.App.Views;
 
 /// <summary>
 /// The heard-here map: stations as dots over the world outline, either centred on my grid (azimuthal, rings like the
-/// reach plot) or as a flat world map with the night side shaded. Labels that would overlap are dropped and shown on
+/// reach plot) or as a rotating globe with the night side shaded. Labels that would overlap are dropped and shown on
 /// hover instead.
 /// </summary>
 public sealed class StationMap : Control
@@ -31,7 +32,7 @@ public sealed class StationMap : Control
     /// <summary>My position.</summary>
     public static readonly StyledProperty<LatLon?> CentreProperty = AvaloniaProperty.Register<StationMap, LatLon?>(nameof(Centre));
 
-    /// <summary>Flat world map instead of centred on me.</summary>
+    /// <summary>Rotating globe instead of centred on me.</summary>
     public static readonly StyledProperty<bool> WorldProperty = AvaloniaProperty.Register<StationMap, bool>(nameof(World));
 
     /// <summary>Shade night (world map only).</summary>
@@ -43,14 +44,51 @@ public sealed class StationMap : Control
     /// <summary>Units for the ring labels.</summary>
     public static readonly StyledProperty<DistanceUnit> UnitsProperty = AvaloniaProperty.Register<StationMap, DistanceUnit>(nameof(Units));
 
+    /// <summary>Reception reports when used in the Reach view.</summary>
+    public static readonly StyledProperty<IReadOnlyList<ReachPoint>?> ReportsProperty = AvaloniaProperty.Register<StationMap, IReadOnlyList<ReachPoint>?>(nameof(Reports));
+
+    /// <summary>Reception reports to place on the globe.</summary>
+    public IReadOnlyList<ReachPoint>? Reports
+    {
+        get => GetValue(ReportsProperty);
+        set => SetValue(ReportsProperty, value);
+    }
+
+    private readonly DispatcherTimer _spin;
+    private double _longitude;
     private readonly List<(Point P, MapPoint M)> _placed = [];
+
+    /// <summary>Creates a map that spins while its globe is visible; hover pauses it.</summary>
+    public StationMap()
+    {
+        _spin = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        _spin.Tick += (_, _) =>
+        {
+            if (!IsEffectivelyVisible || !World || IsPointerOver) return;
+            _longitude = (_longitude + 0.3) % 360;
+            InvalidateVisual();
+        };
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _spin.Start();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        _spin.Stop();
+        base.OnDetachedFromVisualTree(e);
+    }
+
     private object? _mapKey;
     private Geometry? _land;
     private Geometry? _lines;
 
     static StationMap()
     {
-        AffectsRender<StationMap>(PointsProperty, CentreProperty, WorldProperty, DayNightProperty, NowUtcProperty, UnitsProperty);
+        AffectsRender<StationMap>(PointsProperty, CentreProperty, WorldProperty, DayNightProperty, NowUtcProperty, UnitsProperty, ReportsProperty);
     }
 
     /// <summary>Points.</summary>
@@ -67,7 +105,7 @@ public sealed class StationMap : Control
         set => SetValue(CentreProperty, value);
     }
 
-    /// <summary>Flat world map.</summary>
+    /// <summary>Rotating globe.</summary>
     public bool World
     {
         get => GetValue(WorldProperty);
@@ -99,14 +137,17 @@ public sealed class StationMap : Control
     protected override Size MeasureOverride(Size availableSize)
     {
         var w = double.IsInfinity(availableSize.Width) ? 300 : availableSize.Width;
-        return new Size(w, World ? w / 2 : w);
+        return new Size(w, w);
     }
 
     /// <inheritdoc />
     public override void Render(DrawingContext ctx)
     {
         _placed.Clear();
-        var pts = Points ?? [];
+        var pts = Reports is { } reports
+            ? reports.Where(p => p.Position.HasValue).Select(p => new MapPoint(p.Position!.Value, p.Call,
+                $"{p.Call} · {p.Where} · {p.Snr} dB", TextKind.Accent, 3 + p.Strength, 1, true)).ToList()
+            : Points ?? [];
         if (World || Centre is null) RenderWorld(ctx, pts);
         else RenderAround(ctx, Centre.Value, pts);
         DrawLabels(ctx);
@@ -114,26 +155,33 @@ public sealed class StationMap : Control
 
     private void RenderWorld(DrawingContext ctx, IReadOnlyList<MapPoint> pts)
     {
-        var w = Math.Min(Bounds.Width, Bounds.Height * 2);
-        var area = new Rect((Bounds.Width - w) / 2, (Bounds.Height - w / 2) / 2, w, w / 2);
-        var border = new Pen(MapGeometry.Brush("ControlBorderBrush") ?? Brushes.Gray, 1);
-        ctx.DrawRectangle(MapGeometry.Brush("CardBackgroundBrush"), null, area);
-        if (!Equals(_mapKey, area))
+        var radius = Math.Max(0, Math.Min(Bounds.Width, Bounds.Height) / 2 - 2);
+        if (radius <= 0) return;
+        var centre = new Point(Bounds.Width / 2, Bounds.Height / 2);
+        ctx.DrawEllipse(MapGeometry.Brush("CardBackgroundBrush"), new Pen(MapGeometry.Brush("ControlBorderBrush") ?? Brushes.Gray, 1), centre, radius, radius);
+        var clip = new EllipseGeometry(new Rect(centre.X - radius, centre.Y - radius, radius * 2, radius * 2));
+        using (ctx.PushGeometryClip(clip))
         {
-            _mapKey = area;
-            (_land, _lines) = MapGeometry.World(area);
+            using (ctx.PushOpacity(0.45))
+                ctx.DrawGeometry(null, new Pen(MapGeometry.Brush("TextSecondaryBrush") ?? Brushes.Gray, 0.75), MapGeometry.GlobeLines(centre, radius, _longitude));
+            if (DayNight)
+            {
+                using (ctx.PushOpacity(0.18))
+                    ctx.DrawGeometry(MapGeometry.Brush("TextPrimaryBrush") ?? Brushes.Black, null,
+                        MapGeometry.GlobeNight(centre, radius, _longitude, NowUtc));
+            }
+
+            foreach (var point in pts)
+            {
+                var p = MapGeometry.GlobePoint(point.Position, _longitude);
+                if (p.Depth > 0) DrawDot(ctx, new Point(centre.X + p.X * radius, centre.Y - p.Y * radius), point);
+            }
+            if (Centre is { } me)
+            {
+                var p = MapGeometry.GlobePoint(me, _longitude);
+                if (p.Depth > 0) DrawMe(ctx, new Point(centre.X + p.X * radius, centre.Y - p.Y * radius));
+            }
         }
-        var clip = new RectangleGeometry(area);
-        MapGeometry.Draw(ctx, _land!, _lines!, clip, false);
-        if (DayNight)
-        {
-            using (ctx.PushGeometryClip(clip))
-            using (ctx.PushOpacity(0.18))
-                ctx.DrawGeometry(MapGeometry.Brush("TextPrimaryBrush") ?? Brushes.Black, null, MapGeometry.Night(area, NowUtc));
-        }
-        ctx.DrawRectangle(null, border, area);
-        foreach (var p in pts) DrawDot(ctx, MapGeometry.WorldPoint(area, p.Position), p);
-        if (Centre is { } me) DrawMe(ctx, MapGeometry.WorldPoint(area, me));
     }
 
     private void RenderAround(DrawingContext ctx, LatLon me, IReadOnlyList<MapPoint> pts)

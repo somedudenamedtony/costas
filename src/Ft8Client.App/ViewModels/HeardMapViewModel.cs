@@ -219,8 +219,8 @@ public sealed partial class HeardMapViewModel : ObservableObject
     };
 
     /// <summary>
-    /// One line about the trend: the last 10 minutes against 30 to 40 minutes ago, by average decodes per slot.
-    /// Needs at least two slots in each window to say anything.
+    /// One line about the trend: the last 10 minutes against 30 to 40 minutes ago, by average decodes per slot, with the
+    /// needed stations per slot. Decodes per slot are left out: the band summary already shows them.
     /// </summary>
     public static string ActivitySentence(IReadOnlyList<SlotActivity> activity, DateTime nowUtc)
     {
@@ -229,7 +229,7 @@ public sealed partial class HeardMapViewModel : ObservableObject
         if (recent.Count < 2) return "Band activity appears here as slots are decoded.";
         var now = recent.Average(a => a.Decodes);
         var needed = recent.Average(a => a.Needed);
-        var head = $"About {Math.Round(now):0} decodes and {Math.Round(needed):0} needed stations per slot.";
+        var head = Math.Round(needed) == 1 ? "About 1 needed station per slot." : $"About {Math.Round(needed):0} needed stations per slot.";
         if (earlier.Count < 2) return head;
         var then = earlier.Average(a => a.Decodes);
         var change = then <= 0 ? (now > 0 ? 1 : 0) : (now - then) / then;

@@ -19,15 +19,27 @@ public static class CqModifierRule
     /// <summary>Activity and event modifiers that never exclude anyone.</summary>
     public static readonly IReadOnlySet<string> Activities = new HashSet<string>(StringComparer.Ordinal)
     {
-        "POTA", "SOTA", "WWFF", "IOTA", "BOTA", "LOTA", "TEST", "CONT", "RU", "FD", "WFD", "QRP", "SKCC", "YOTA", "JOTA", "ARRL", "WW", "WPX", "VHF", "UP",
+        "POTA", "SOTA", "WWFF", "IOTA", "BOTA", "LOTA", "QRP", "SKCC", "YOTA", "JOTA", "UP",
     };
+
+    /// <summary>
+    /// Contest modifiers. They never exclude anyone by place, but the station expects a contest exchange (RTTY
+    /// Roundup, Field Day, WW Digi, the VHF contests), which the standard exchange cannot give.
+    /// </summary>
+    public static readonly IReadOnlySet<string> Contests = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "TEST", "CONT", "RU", "FD", "WFD", "ARRL", "WW", "WPX", "VHF",
+    };
+
+    /// <summary>True when <c>CQ modifier</c> is a contest call that expects a contest exchange.</summary>
+    public static bool IsContest(string? modifier) => modifier is not null && Contests.Contains(modifier);
 
     /// <summary>True when a station calling <c>CQ modifier</c> may be answered by me.</summary>
     public static bool Allows(string? modifier, EntityMatch? me, string? callerEntityKey, CountryFile? countries)
     {
         if (string.IsNullOrEmpty(modifier)) return true;
         if (modifier.All(char.IsAsciiDigit)) return true;
-        if (Activities.Contains(modifier)) return true;
+        if (Activities.Contains(modifier) || Contests.Contains(modifier)) return true;
         if (modifier == "DX") return me is null || callerEntityKey is null || me.Entity.Key != callerEntityKey;
         if (Continents.Contains(modifier)) return me is null || me.Continent == modifier;
         var country = countries?.FindByExactPrefix(modifier);

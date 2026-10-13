@@ -540,6 +540,25 @@ function renderSignal(s) {
   if (!g) return;
   const head = el("div", "head"); head.append(el("b", null, g.title), el("span", "s", g.source));
   box.append(head, el("div", null, g.headline));
+  if (g.history && g.history.length) {
+    box.append(el("div", "s", "Stations hearing you · every 5 minutes"));
+    const chart = el("div");
+    chart.style.cssText = "display:flex;align-items:stretch;gap:3px;margin:8px 0";
+    chart.setAttribute("role", "img");
+    const maximum = Math.max(1, ...g.history.map(b => b.stations));
+    const time = b => new Date(b.startUtc).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+    chart.setAttribute("aria-label", g.history.map(b => time(b) + ": " + b.stations + " stations" + (b.isCurrent ? " (incomplete)" : "")).join(", "));
+    g.history.forEach((b, i) => {
+      const column = el("div"); column.style.cssText = "flex:1;min-width:0;text-align:center;font-size:10px";
+      column.title = time(b) + " · " + b.stations + " stations" + (b.isCurrent ? " · incomplete" : "");
+      const barBox = el("div"); barBox.style.cssText = "height:82px;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;border-bottom:1px solid currentColor";
+      barBox.append(el("span", null, b.stations));
+      const bar = el("div"); bar.style.cssText = "background:currentColor;opacity:" + (b.isCurrent ? ".35" : ".75") + ";height:" + (b.stations / maximum * 64) + "px";
+      barBox.append(bar); column.append(barBox, el("div", null, b.isCurrent ? "now*" : i % 3 === 0 ? time(b) : ""));
+      chart.append(column);
+    });
+    box.append(chart, el("div", "s", "Last hour · local time · * current interval incomplete. Fewer transmissions or delayed reports can also lower counts."));
+  }
   const kv = el("div", "kv"); kv.style.margin = "8px 0";
   kv.append(el("span", null, "Farthest"), el("span", null, g.farthest), el("span", null, "Best report"), el("span", null, g.best));
   box.append(kv);

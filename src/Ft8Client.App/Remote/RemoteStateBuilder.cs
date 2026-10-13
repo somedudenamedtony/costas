@@ -158,7 +158,7 @@ public static class RemoteStateBuilder
             far is null ? "—" : $"{far.Call} · {StationText.Distance(far.Km, ctx.Units)}",
             best is null ? "—" : $"{Report.Format(best.Snr)} from {best.Call}",
             NeighbourText.Headline(s.Neighbours),
-            [.. points.OrderByDescending(x => x.TimeUtc).Take(MaxRecent).Select(x => new RemoteReport(x.Call, x.Where, Report.Format(x.Snr), StationText.ShortAgo(now - x.TimeUtc)))]);
+            [.. points.OrderByDescending(x => x.TimeUtc).Take(MaxRecent).Select(x => new RemoteReport(x.Call, x.Where, Report.Format(x.Snr), StationText.ShortAgo(now - x.TimeUtc)))]) { History = s.ReceptionHistory };
     }
 
     // The Operate view's details flyout, plus a button that does what Call or Answer would do for this station there.

@@ -62,9 +62,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private LogIndex _logIndex = LogIndex.Empty;
     private HearsMe _hearsMe;
     private LotwUsers? _lotwUsers;
+    private readonly ReceptionHistory _receptionHistory = new();
     private EntityMatch? _myEntity;
     private long _dialHz;
     private int _txOffset = 1500;
+    private DateTime? _rigTuningUntil;
     private bool _txOffsetClear = true;
     private DateTime? _lastDecodedSlot;
     private TimeSpan _lastDecodeTime;
@@ -369,6 +371,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         PreparedTx? pending;
         bool held;
         TxHold? hold = null;
+        var stopTune = false;
         var txStart = slot + TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode));
         var pttDue = txStart - _config.PttLead;
         lock (_gate)
@@ -387,6 +390,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 if (pending is not null) _tx.CancelPending();
                 return;
             }
+            stopTune = _tx.CurrentMessage == TuneMessage;
             if (pending is not null && pending.Plan.Message == plan.Message)
             {
                 // The decodes did not change the message: send it now instead of waiting out the hold.
@@ -402,6 +406,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         }
+        // A Tune tone still on the air gives way to the message the operator just asked for.
+        if (stopTune) _ = _tx.HaltAsync();
 
         var prepared = _tx.Prepare(plan, mode, offset, guard, out var refusal, hold);
         if (prepared is null)
@@ -463,16 +469,18 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             var s = _tracker.Find(entry.Call);
-            var entity = s?.Entity ?? _countries.Lookup(entry.Call);
-            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid ?? s?.Grid, _config.Band, ModeInfo.Name(_config.Mode),
-                _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
             var lk = _lookups.GetValueOrDefault(Callsign.Normalize(entry.Call));
+            // A caller can skip the grid exchange. Persist the same known grid that we index.
+            entry = entry with { Grid = entry.Grid ?? s?.Grid ?? lk?.Grid };
+            var entity = s?.Entity ?? _countries.Lookup(entry.Call);
+            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid, _config.Band, ModeInfo.Name(_config.Mode),
+                _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
             ctx = new LogContext(_config.Band, _config.Mode, _dialHz + _txOffset, _config.MyCall, _config.MyGrid, _config.PowerWatts, need,
                 entity?.Entity.Key, entity?.Entity.Name, lk?.Name, lk?.State, entity?.Continent, lk?.City);
             if (entry.TimeOffUtc - _lastContactUtc > TimeSpan.FromHours(2)) _tonight.Clear();
             _lastContactUtc = entry.TimeOffUtc;
             _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag));
-            _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid ?? s?.Grid, entity?.Entity.Key, lk?.State,
+            _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
             _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
         }
@@ -577,6 +585,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             _engine.Halt(_clock.UtcNow);
+            _rigTuningUntil = null;
             if (reason is not null) _fault = reason;
         }
         await _tx.HaltAsync().ConfigureAwait(false);
@@ -595,6 +604,43 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _watchdogCap = minutes;
             _engine.Configure(_config.MyCall, _config.MyGrid, CappedContact());
         }
+    }
+
+    /// <summary>Message text of a Tune tone while it is on the air.</summary>
+    public const string TuneMessage = "Tune";
+
+    /// <summary>
+    /// Tune, from an operator's click (owner request 2026-10-12): starts the radio's own antenna tuner when it has one
+    /// and accepts the command, otherwise a steady tone at the Tx offset for up to <paramref name="seconds"/>, with PTT
+    /// on now. Refused while CQ, a contact or another transmission is under way, and by the same radio, audio and band
+    /// guards as any transmission. Returns null once the tuner or tone is going, otherwise why not.
+    /// </summary>
+    public async Task<string?> TuneAsync(double seconds)
+    {
+        TxGuardInput guard;
+        int offset;
+        lock (_gate)
+        {
+            if (_engine.CallingCq || _engine.InContact || _tx.Transmitting || _rigTuningUntil > _clock.UtcNow)
+                return "Tune is only available while nothing else is being sent.";
+            offset = _txOffset;
+            guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
+                _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
+        }
+        if (await _tx.StartRigTunerAsync(offset, guard).ConfigureAwait(false))
+        {
+            lock (_gate)
+            {
+                _rigTuningUntil = _clock.UtcNow + TimeSpan.FromSeconds(seconds);
+                _fault = null;
+            }
+            Publish();
+            return null;
+        }
+        var why = await _tx.TuneAsync(offset, seconds, guard).ConfigureAwait(false);
+        lock (_gate) _fault = why is null ? null : "No tune tone was sent. " + why;
+        Publish();
+        return why;
     }
 
     /// <summary>True when something is (or is about to be) transmitted: CQ running, a contact in progress, or on the air.</summary>
@@ -617,6 +663,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         {
             _config = _config with { FixedTxOffsetHz = hz };
             if (hz is { } v) _txOffset = v;
+            else UpdateTxOffset(_config.Mode);
         }
         Publish();
     }
@@ -667,6 +714,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _engine.Configure(config.MyCall, config.MyGrid, CappedContact());
             if (stationChanged)
             {
+                _receptionHistory.Clear();
                 _tracker.SetMyStation(config.MyCall, config.MyGrid);
                 _myEntity = _countries.Lookup(config.MyCall);
             }
@@ -719,7 +767,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Adds a reception report of my signal.</summary>
     public void AddReport(ReceptionReport r)
     {
-        lock (_gate) _hearsMe.Add(r);
+        lock (_gate)
+        {
+            _hearsMe.Add(r);
+            _receptionHistory.Add(r, _clock.UtcNow);
+        }
         Publish();
     }
 
@@ -833,6 +885,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 LogIsEmpty = _logIndex.IsEmpty,
                 Tonight = _tonight.ToList(),
                 Reports = _hearsMe.Reports.OrderByDescending(r => r.TimeUtc).ToList(),
+                ReceptionHistory = _receptionHistory.Buckets(_config.Band, ModeInfo.Name(_config.Mode), now),
                 Neighbours = NeighbourComparison.Compare(_hearsMe.Reports, _neighbours, _config.MyCall, _config.MyGrid, _config.Band,
                     ModeInfo.Name(_config.Mode), _countries, now),
                 BandOpenings = Openings(now),
@@ -842,6 +895,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 Transmitting = _tx.Transmitting,
                 TransmittingMessage = _tx.CurrentMessage,
                 CallingCq = _engine.CallingCq,
+                RigTuningUntilUtc = _rigTuningUntil is { } until && until > now ? until : null,
                 TxOffsetHz = _txOffset,
                 TxOffsetClear = _txOffsetClear,
                 TxOffsetAuto = _config.FixedTxOffsetHz is null,

@@ -44,6 +44,16 @@ Costas sends the WSJT-X UDP messages (decodes, status, logged contact as ADIF) t
 so GridTracker, JTAlert, N1MM+ and loggers that understand WSJT-X see your activity. Change the address in
 [Settings › Other programs](settings.md#other-programs).
 
+They can also drive Costas back, the same way they drive WSJT-X:
+
+- **Calling from another program.** Double-clicking a CQ in GridTracker (or a station calling you) calls it in Costas,
+  exactly as double-clicking it in [Raw decodes](raw-decodes.md) would. Costas acts only if it decoded that same
+  message itself, and never calls anyone on its own.
+- **Halt.** A Halt Tx from the other program stops transmitting at once.
+- **Highlights.** Colours JTAlert or GridTracker give a callsign show in Raw decodes.
+
+With the address left at `127.0.0.1`, only programs on this computer can do this.
+
 ## Decode journal and saved audio
 
 Every decode and transmission is written to a monthly text file in the data folder's `journal` folder. You can also

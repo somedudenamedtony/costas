@@ -61,6 +61,75 @@ internal static class MapGeometry
         return (land, lines);
     }
 
+    /// <summary>Orthographic globe coordinates; depth hides the far hemisphere.</summary>
+    internal static (double X, double Y, double Depth) GlobePoint(LatLon p, double longitude)
+    {
+        var lat = p.Lat * Math.PI / 180;
+        var lon = (p.Lon - longitude) * Math.PI / 180;
+        return (Math.Cos(lat) * Math.Sin(lon), Math.Sin(lat), Math.Cos(lat) * Math.Cos(lon));
+    }
+
+    /// <summary>Visible coastlines and borders, clipped at the globe's horizon.</summary>
+    internal static Geometry GlobeLines(Point centre, double radius, double longitude)
+    {
+        var geometry = new StreamGeometry();
+        using var g = geometry.Open();
+        foreach (var shape in Outline.Value.Land.Concat(Outline.Value.Borders))
+        {
+            for (var i = 1; i < shape.Count; i++)
+            {
+                var a = GlobePoint(shape[i - 1], longitude);
+                var b = GlobePoint(shape[i], longitude);
+                if (a.Depth < 0 && b.Depth < 0) continue;
+                if (a.Depth < 0 || b.Depth < 0)
+                {
+                    var t = a.Depth / (a.Depth - b.Depth);
+                    var x = a.X + t * (b.X - a.X);
+                    var y = a.Y + t * (b.Y - a.Y);
+                    var length = Math.Sqrt(x * x + y * y);
+                    var edge = (X: x / length, Y: y / length, Depth: 0.0);
+                    if (a.Depth < 0) a = edge; else b = edge;
+                }
+                g.BeginFigure(new Point(centre.X + a.X * radius, centre.Y - a.Y * radius), false);
+                g.LineTo(new Point(centre.X + b.X * radius, centre.Y - b.Y * radius));
+                g.EndFigure(false);
+            }
+        }
+        return geometry;
+    }
+
+    /// <summary>Night shading in screen space, clipped by the caller to the globe.</summary>
+    internal static Geometry GlobeNight(Point centre, double radius, double longitude, DateTime utc)
+    {
+        var sun = GlobePoint(SolarPosition.Subsolar(utc), longitude);
+        var geometry = new StreamGeometry();
+        using var g = geometry.Open();
+        const int cells = 100;
+        var step = 2.0 / cells;
+        for (var row = 0; row < cells; row++)
+        {
+            var y = 1 - (row + 0.5) * step;
+            int? start = null;
+            for (var col = 0; col <= cells; col++)
+            {
+                var x = -1 + (col + 0.5) * step;
+                var depth = Math.Sqrt(Math.Max(0, 1 - x * x - y * y));
+                var night = col < cells && x * x + y * y <= 1 && x * sun.X + y * sun.Y + depth * sun.Depth < 0;
+                if (night) start ??= col;
+                else if (start is { } first)
+                {
+                    var left = centre.X + (-1 + first * step) * radius;
+                    var right = centre.X + (-1 + col * step) * radius;
+                    var top = centre.Y + (-1 + row * step) * radius;
+                    Figure(g, [new Point(left, top), new Point(right, top),
+                        new Point(right, top + step * radius), new Point(left, top + step * radius)], true);
+                    start = null;
+                }
+            }
+        }
+        return geometry;
+    }
+
     /// <summary>A position on the flat world map.</summary>
     public static Point WorldPoint(Rect area, LatLon p) =>
         new(area.X + (p.Lon + 180) / 360 * area.Width, area.Y + (90 - p.Lat) / 180 * area.Height);

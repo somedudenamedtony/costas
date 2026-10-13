@@ -25,6 +25,9 @@ namespace Ft8Client.App.ViewModels;
 /// <param name="InLog">"Needed" or "Worked".</param>
 public sealed record ReachPoint(string Call, string Where, double Km, int Bearing, int Snr, DateTime TimeUtc, string? EntityKey, string InLog)
 {
+    /// <summary>Receiver coordinates for the globe view.</summary>
+    public LatLon? Position { get; init; }
+
     /// <summary>Strength class: 2 strong (-10 or better), 1 fair (-11 to -17), 0 weak.</summary>
     public int Strength => Snr >= -10 ? 2 : Snr >= -17 ? 1 : 0;
 
@@ -43,7 +46,7 @@ public sealed record ReachPoint(string Call, string Where, double Km, int Bearin
             var need = log.Need(g.Key, entity?.Entity.Key, best.ReceiverGrid, band, mode);
             list.Add(new ReachPoint(g.Key, StationText.Place(entity, best.ReceiverRegion), GreatCircle.DistanceKm(me.Value, pos.Value),
                 GreatCircle.BearingDegrees(me.Value, pos.Value), best.Snr, g.Max(r => r.TimeUtc), entity?.Entity.Key,
-                need.Tag == NeedTag.Worked ? "Worked" : "Needed"));
+                need.Tag == NeedTag.Worked ? "Worked" : "Needed") { Position = pos });
         }
         return list;
     }

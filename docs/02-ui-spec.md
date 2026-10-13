@@ -46,6 +46,7 @@ One window, minimum 1100 × 720, default 1440 × 900, remembers size and positio
 | Status text | One plain line: "Not in a contact. Enter calls ZL2RPA, the top of the line." / "Transmitting to ZL2RPA." / "Waiting for ZL2RPA." / fault text in critical colour |
 | Tx offset | "Tx offset 1650 Hz · clear". Click opens a small flyout: automatic (default) or a manual value |
 | Call CQ | Starts calling CQ in the next slot of the chosen parity. Becomes "Stop CQ" while running. Shown only on views other than Operate; on Operate the contact card's on-air panel has it |
+| Tune | Owner request 2026-10-12: a toggle with a 10 s limit that starts the radio's own tuner when it has one. First it sends Hamlib's TUNE operation (`G TUNE`) after the radio and band-edge guards; if the radio accepts, the button reads "Stop tune" and the status line "The radio's antenna tuner is tuning." for 10 s (the radio runs its own cycle; Stop tune or Halt sends PTT off). If the radio has no TUNE operation or refuses it, a steady tone at the Tx offset (centred on where an FT8 signal sits) for up to 10 s (the Tune watchdog), PTT on at once, after the same radio, audio and band-edge guards as any transmission. Reads "Stop tune" while the tone is on. Disabled while CQ, a contact or another transmission is under way; a transmission the operator starts meanwhile replaces the tone |
 | Halt Tx | Always enabled. Drops PTT immediately and stops sequencing. Critical colour while transmitting. Esc does the same |
 | Slot progress | Label "Receiving" or "Transmitting", seconds to next slot, a 4 px bar. Critical colour while transmitting. Shown only on views other than Operate; on Operate the contact card's on-air panel has it |
 | Meter warning | Only when the last transmission's ALC or SWR crossed a threshold (`04-domain-logic.md` section 11): "SWR 3.4 · ALC 70%", caution colour, critical when SWR is 3 or more. The tooltip and screen reader text give the full advice. Hidden when the meters read within limits |
@@ -98,6 +99,7 @@ Idle (no contact): caption "Not in a contact" (or "Calling CQ" with the subline 
 | You sent / You received | The reports with "dB" after them. Shows "--" until exchanged |
 | Slot | "Transmitting" or "Receiving", the seconds left, and a progress bar (critical while transmitting). While transmitting it counts down to the end of the transmission, otherwise to the next slot |
 | Call CQ / Stop CQ | The same command as Ctrl+Q and the bottom bar's Call CQ button (shown on other views) |
+| CQ modifier | Owner request 2026-10-12. A dropdown beside Call CQ: CQ, CQ DX, CQ NA, CQ SA, CQ EU, CQ AS, CQ AF, CQ OC, CQ POTA, plus the Settings value if it is another one. Picking saves it as Settings › Transmitting › CQ modifier, so both always agree; it applies from the next CQ sent |
 | Resend | Sends the current step again in my next slot |
 | Log now | Logs the contact as it stands. Enabled once both reports are exchanged |
 | Abandon (Esc) | Stops transmitting, ends the contact, logs nothing |
@@ -118,6 +120,8 @@ Each box has three lines: who ("You" or the DX call, semibold) with the UTC time
 The engine counts a message as sent when its transmission starts. While that message is still on the air its box shows as transmitting and the reply box after it stays upcoming; the reply box is highlighted as waiting only once the transmission has ended.
 
 Clicking one of my upcoming boxes jumps the sequence to that step (manual override). The boxes are generated from the contact state machine's step list, so the CQ-run flow shows its own six steps.
+
+**Contact station details** (beneath the horizontal conversation in the contact card): a shaded strip groups the station name, licence and QRZ/photo links; location, distance, county and local time; grid, bearing and CQ/ITU zones; and QSL methods and most-wanted rank. Values are emphasized above secondary details, and groups wrap on narrower windows. Missing optional facts are omitted, including the QSL/awards group when empty. Lookup status and Who else is calling appear below the groups when available. The contact's station is looked up on QRZ when the contact starts. These facts no longer occupy the top of the right column.
 
 ### Next in line
 
@@ -155,9 +159,7 @@ Directly under Next in line. Stations heard now that are already worked (tier 5:
 
 ### Right column
 
-**About <call>** (top, only during a contact): the same facts as the station details flyout for the station in the contact, including Who else is calling, so the operator can see who they are working without selecting a row. The contact's station is looked up on QRZ when the contact starts.
-
-**Heard here** (first card below it): a map of the stations I decoded in the last 15 minutes, with choices that are remembered in settings (`Map`):
+**Heard here** (first card): a map of the stations I decoded in the last 15 minutes, with choices that are remembered in settings (`Map`):
 
 | Choice | Options |
 | --- | --- |
@@ -169,11 +171,11 @@ Directly under Next in line. Stations heard now that are already worked (tier 5:
 
 A legend under the map says in words what each colour means. Labels are placed as in Reach (overlaps dropped, shown on hover); hover shows call, place, need, report and when heard. Without a grid the map falls back to the world view with "Set your grid in Settings to centre the map on you."
 
-Below the map, **Band activity, last hour**: one bar per minute with the average decodes per slot (grey) and the average needed stations per slot (accent) drawn over it, then one sentence: "About 34 decodes and 5 needed stations per slot. Busier than half an hour ago." (busier or quieter when the last 10 minutes differ from 30 to 40 minutes ago by 25% or more).
+Below the map, **Band activity, last hour**: one bar per minute with the average decodes per slot (grey) and the average needed stations per slot (accent) drawn over it, then one sentence: "About 5 needed stations per slot. Busier than half an hour ago." (decodes per slot are not repeated: the band summary shows them, owner request 2026-10-12) (busier or quieter when the last 10 minutes differ from 30 to 40 minutes ago by 25% or more).
 
 **Calling you** (formerly "Waiting for you"; owner decision 2026-10-11): a bar pinned above the top slot, outside the scrolling area, shown only when someone has called me and I have not answered. Each caller shows callsign, where, need tag, "Called you at HH:MM:SS · SNR", and a button "Answer after this contact" (or "Answer" when idle). Up to 5 callers, oldest first. A station whose contact I abandoned (or that ended with no reply or by the watchdog) and that replies within 5 minutes is also shown, whatever it sent, with "Replied after you stopped: <message>" and a "Resume" button. In the station list, the button of a station calling me reads "Answer" and answers it the same way. An optional chime (Settings, Operating, off by default) plays on the computer's default speakers when a new caller appears; it stays silent if the default device is the radio's audio device or no radio audio device is set.
 
-**Your signal on 20 m**: see Reach, below. Compact form: mini plot 124 px, headline counts, farthest, best report, the neighbour summary line when there is one ("7 dB weaker than stations near you into Europe."), the three newest reports (call, where, dB, age), link "Open reach view". Caption "PSK Reporter · live", or "· updated 6 min ago" on the query fallback, or "· unavailable".
+**Your signal on 20 m**: see Reach, below. Compact form, with no map (owner request 2026-10-12: Heard here's "Who heard you" rings already map these stations): headline counts, farthest, best report, the neighbour summary line when there is one ("7 dB weaker than stations near you into Europe."), the three newest reports (call, where, dB, age), link "Open reach view". Caption "PSK Reporter · live", or "· updated 6 min ago" on the query fallback, or "· unavailable".
 
 **Worked tonight**: title with count, subline "N new country · N new bands". The three newest contacts: call · where, upload status ("Uploaded to QRZ", "Waiting to upload · retrying", "Upload failed · Retry"), need tag at the time of the contact, time. Link "Show all N in the log".
 

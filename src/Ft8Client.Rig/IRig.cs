@@ -49,6 +49,14 @@ public interface IRig : IAsyncDisposable
     /// </summary>
     Task<int?> ReadPowerWattsAsync(CancellationToken ct);
 
+    /// <summary>
+    /// Starts the radio's own antenna tuner (Hamlib's TUNE operation; on the FT-710 it sends <c>AC003</c>). True when the
+    /// radio accepted it; false when it has no tuner command, refused it (for example with its tuner switched off) or
+    /// did not answer. Like <see cref="ReadTxMetersAsync"/>, never raises <see cref="Faulted"/> and never throws
+    /// <see cref="RigException"/>: the caller falls back to a tune tone.
+    /// </summary>
+    Task<bool> StartTunerAsync(CancellationToken ct);
+
     /// <summary>Turns split on or off with a transmit frequency.</summary>
     Task SetSplitAsync(bool on, long txHz, CancellationToken ct);
 

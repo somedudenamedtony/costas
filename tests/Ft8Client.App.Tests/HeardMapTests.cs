@@ -90,7 +90,7 @@ public class HeardMapTests
         var a = new List<SlotActivity>();
         for (var m = 0; m < 10; m++) a.Add(new SlotActivity(Now.AddMinutes(-m), 30, 4));
         for (var m = 31; m < 40; m++) a.Add(new SlotActivity(Now.AddMinutes(-m), 10, 1));
-        HeardMapViewModel.ActivitySentence(a, Now).Should().Be("About 30 decodes and 4 needed stations per slot. Busier than half an hour ago.");
+        HeardMapViewModel.ActivitySentence(a, Now).Should().Be("About 4 needed stations per slot. Busier than half an hour ago.");
     }
 
     [Fact]

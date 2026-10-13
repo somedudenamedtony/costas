@@ -21,11 +21,20 @@ public partial class MainWindow : Window
     private MiniWindow? _mini;
     private bool _closing;
     private bool _wired;
+    private string? _waterfallBand;
+    private Audio.Timing.CapturePump? _waterfallPump;
 
     /// <summary>Creates the window.</summary>
     public MainWindow()
     {
         InitializeComponent();
+        ReceiveWaterfall.ChannelSelected += hz =>
+        {
+            if (Vm is not { } vm) return;
+            vm.ManualOffset = hz.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            vm.OffsetManualCommand.Execute(null);
+            ReceiveWaterfall.Update(null, hz);
+        };
         AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
         AddHandler(PointerPressedEvent, (_, _) => Vm?.Activity(), RoutingStrategies.Tunnel);
     }
@@ -49,7 +58,20 @@ public partial class MainWindow : Window
         vm.OpenDialog += OpenDialog;
         vm.Mini.ExpandRequested += CloseMini;
         vm.AttentionRequested += () => TaskbarFlash.Flash(_mini is { } m ? m : this);
-        _timer.Tick += (_, _) => vm.Tick();
+        _timer.Tick += (_, _) =>
+        {
+            vm.Tick();
+            var snapshot = vm.Host.Session.Snapshot;
+            var pump = vm.Host.Pump;
+            if (_waterfallBand != $"{snapshot.Band}/{snapshot.Mode}" || _waterfallPump != pump)
+            {
+                ReceiveWaterfall.Clear();
+                _waterfallBand = $"{snapshot.Band}/{snapshot.Mode}";
+                _waterfallPump = pump;
+            }
+            var row = pump?.Spectrum.TakeLatest();
+            ReceiveWaterfall.Update(snapshot.Transmitting ? null : row, snapshot.TxOffsetHz);
+        };
         _timer.Start();
         if (!vm.Host.Settings.Current.SetupComplete) Dispatcher.UIThread.Post(() => OpenDialog("setup"));
     }
@@ -58,6 +80,7 @@ public partial class MainWindow : Window
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         _closing = true;
+        _timer.Stop();
         _mini?.Close();
         if (Vm is { } vm)
         {
