@@ -58,7 +58,7 @@ public sealed class Jt9Decoder : IDecoder
     /// <summary>Builds the argument list for a run.</summary>
     public static IReadOnlyList<string> BuildArguments(Mode mode, DecodeContext ctx, string exeDir, string workDir, string wavName, int threads = 0)
     {
-        var args = new List<string> { mode == Mode.Ft8 ? "-8" : "-5" };
+        var args = new List<string> { ModeInfo.Slotted(mode) == Mode.Ft8 ? "-8" : "-5" };
         if (mode == Mode.Ft4) { args.Add("-p"); args.Add("7"); }
         args.AddRange(["-d", ctx.Depth.ToString(CultureInfo.InvariantCulture)]);
         args.AddRange(["-L", ctx.LowHz.ToString(CultureInfo.InvariantCulture), "-H", ctx.HighHz.ToString(CultureInfo.InvariantCulture)]);

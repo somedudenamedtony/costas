@@ -71,7 +71,7 @@ internal static class Jt9SharedLayout
         var p = Params;
         var t = slot.SlotStartUtc;
         var nutc = t.Hour * 10000 + t.Minute * 100 + t.Second;
-        var ft8 = slot.Mode == Mode.Ft8;
+        var ft8 = ModeInfo.Slotted(slot.Mode) == Mode.Ft8;
         var superFox = ft8 && ctx.Hound && ctx.SuperFox;
 
         m.Clear(p, Size - p);

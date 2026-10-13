@@ -16,10 +16,10 @@ namespace Ft8Client.Core.Encoding;
 public static class GfskSynth
 {
     /// <summary>Symbol period in seconds.</summary>
-    public static double SymbolPeriod(Mode mode) => mode == Mode.Ft8 ? 0.160 : 0.048;
+    public static double SymbolPeriod(Mode mode) => ModeInfo.Slotted(mode) == Mode.Ft8 ? 0.160 : 0.048;
 
     /// <summary>Gaussian bandwidth-time product.</summary>
-    public static double Bt(Mode mode) => mode == Mode.Ft8 ? 2.0 : 1.0;
+    public static double Bt(Mode mode) => ModeInfo.Slotted(mode) == Mode.Ft8 ? 2.0 : 1.0;
 
     /// <summary>Tone spacing in hertz.</summary>
     public static double ToneSpacing(Mode mode) => 1.0 / SymbolPeriod(mode);

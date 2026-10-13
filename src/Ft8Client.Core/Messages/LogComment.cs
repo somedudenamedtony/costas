@@ -19,7 +19,7 @@ public static class LogComment
     /// </summary>
     public static string Format(Mode mode, int reportSent, int? reportReceived)
     {
-        var name = mode == Mode.Ft4 ? "FT4" : "FT8";
+        var name = ModeInfo.Name(ModeInfo.Slotted(mode));
         var s = $"{name} Sent: {Report.Format(reportSent)}";
         return reportReceived is { } r ? $"{s} Rcvd: {Report.Format(r)}" : s;
     }
