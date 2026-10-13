@@ -11,6 +11,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Serilog;
+using Ft8Client.App.Services;
 using Ft8Client.App.ViewModels;
 using Ft8Client.App.Views;
 
@@ -40,8 +42,43 @@ public sealed class App : Application
             MainViewModel.Shutdown = () => Dispatcher.UIThread.Post(() => desktop.Shutdown());
             var vm = new MainViewModel(host);
             desktop.MainWindow = new MainWindow { DataContext = vm };
+            WatchForUnexpectedErrors(host, vm);
             desktop.ShutdownRequested += (_, _) => host.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    // An error nothing caught (a command failing on a driver or system error) used to close the app without a word.
+    // Now transmit is stopped, the error is logged and shown on the status line, and the app carries on, unless errors
+    // keep coming, which ends it as before (Program.Main still releases PTT on the way out).
+    private static void WatchForUnexpectedErrors(AppHost host, MainViewModel vm)
+    {
+        var policy = new UnexpectedErrorPolicy();
+        Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            Log.Error(e.Exception, "Unexpected error on the UI thread");
+            _ = HaltAsync(host);
+            if (!policy.Survive(DateTime.UtcNow)) return;
+            e.Handled = true;
+            vm.StatusText = UnexpectedErrorPolicy.Describe(e.Exception);
+            vm.StatusKind = TextKind.Critical;
+        };
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            Log.Error(e.Exception, "Unobserved task error");
+            e.SetObserved();
+        };
+    }
+
+    private static async Task HaltAsync(AppHost host)
+    {
+        try
+        {
+            await host.Session.HaltAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "PTT release after an unexpected error failed");
+        }
     }
 }
