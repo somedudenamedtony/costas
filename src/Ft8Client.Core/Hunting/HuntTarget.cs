@@ -70,7 +70,11 @@ public sealed record HuntTarget(HuntTargetKind Kind, string Value, string? Band)
         var byName = countries.Entities.FirstOrDefault(x => string.Equals(x.Name, t, StringComparison.OrdinalIgnoreCase));
         if (byName is not null) return byName;
         var up = t.ToUpperInvariant();
-        return countries.FindByKey(up) ?? countries.FindByExactPrefix(up) ?? countries.Lookup(up)?.Entity;
+        var exact = countries.FindByKey(up) ?? countries.FindByExactPrefix(up);
+        if (exact is not null) return exact;
+        // A call or a longer prefix ("KL7", "VK9XA"); a word like "Atlantis" is a name that did not match.
+        var callLike = up.Length <= 12 && up.Any(char.IsDigit) && up.All(c => char.IsAsciiLetterOrDigit(c) || c == '/');
+        return callLike ? countries.Lookup(up)?.Entity : null;
     }
 
     /// <summary>What it looks for, in words: "Alaska (KL7)", "VK9XA", "Texas", "grid FN31", "Any new country".</summary>

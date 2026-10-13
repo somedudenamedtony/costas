@@ -186,6 +186,53 @@ public class PskReporterTests
     }
 
     [Fact]
+    public async Task Feed_FollowHunt_RaisesReportsOfHuntedCallsAndCountries()
+    {
+        var port = FreePort();
+        var server = new MqttServerFactory().CreateMqttServer(BrokerOptions(port));
+        await server.StartAsync();
+        var spots = new List<HuntSpot>();
+        await using var feed = new PskFeedClient(Countries, "127.0.0.1", port, tls: false);
+        feed.HuntReport += r =>
+        {
+            lock (spots) spots.Add(r);
+        };
+        feed.Start("W7LIT");
+        await WaitFor(() => feed.Connected);
+        feed.FollowHunt(["VK9XA"], [339], 291);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+
+        async Task Send(string topic, string json)
+        {
+            var msg = new MqttApplicationMessageBuilder().WithTopic(topic).WithPayload(json).Build();
+            await server.InjectApplicationMessage(new InjectedMqttApplicationMessage(msg) { SenderClientId = "test" }, TestContext.Current.CancellationToken);
+        }
+        await Send("pskr/filter/v2/17m/FT8/VK9XA/K7ABC/OH29/DN31/35/291",
+            """{"sq":11,"f":18101000,"md":"FT8","rp":-14,"t":1767495300,"sc":"VK9XA","sl":"OH29","rc":"K7ABC","rl":"DN31","sa":35,"ra":291,"b":"17m"}""");
+        await Send("pskr/filter/v2/20m/FT8/JA1ABC/W7XYZ/PM95/DN40/339/291",
+            """{"sq":12,"f":14075000,"md":"FT8","rp":-10,"t":1767495300,"sc":"JA1ABC","sl":"PM95","rc":"W7XYZ","rl":"DN40","sa":339,"ra":291,"b":"20m"}""");
+        await WaitFor(() =>
+        {
+            lock (spots) return spots.Count >= 2;
+        });
+        lock (spots)
+        {
+            spots.Select(x => x.SenderCall).Should().Equal("VK9XA", "JA1ABC");
+            spots[0].Report.ReceiverGrid.Should().Be("DN31");
+            spots[1].SenderDxcc.Should().Be(339);
+        }
+        await server.StopAsync(new MqttServerStopOptions());
+    }
+
+    [Fact]
+    public void HuntTopics_CallAndEntity_FollowTheTopicLayout()
+    {
+        PskFeedClient.HuntCallTopicFor("vk9xa").Should().Be("pskr/filter/v2/+/+/VK9XA/#");
+        PskFeedClient.HuntEntityTopicFor(35, 291).Should().Be("pskr/filter/v2/+/+/+/+/+/+/35/291/#");
+        PskFeedClient.HuntEntityTopicFor(35, null).Should().Be("pskr/filter/v2/+/+/+/+/+/+/35/+/#");
+    }
+
+    [Fact]
     public async Task Feed_FollowNeighboursOnAllBands_RaisesReportsFromOtherBands()
     {
         var port = FreePort();
