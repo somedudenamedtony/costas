@@ -330,6 +330,18 @@ public sealed class Transmitter
     }
 
     /// <summary>
+    /// Starts the radio's own antenna tuner, after the same radio and band-edge guards as a tone. True when the radio
+    /// accepted it; false when the radio has no tuner command, refused it, or a guard refuses (the caller then sends a
+    /// tune tone, whose guards say why).
+    /// </summary>
+    public async Task<bool> StartRigTunerAsync(int offsetHz, TxGuardInput guard)
+    {
+        if (guard.RigFault is not null) return false;
+        if (!_frequencies.TransmitAllowed(guard.Band, Mode.Ft8, guard.DialHz, offsetHz, out _)) return false;
+        return await _rig.StartTunerAsync(CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Tune: a steady tone at the offset for up to <paramref name="seconds"/> (the Tune watchdog), PTT on now. Returns
     /// null once the tone is on the air, or why it was refused or stopped: no audio output, a radio fault or no radio,
     /// outside the band, or PTT could not be asserted (then no audio is played).
@@ -343,7 +355,7 @@ public sealed class Transmitter
         var tone = new float[n];
         var amp = Math.Pow(10, GainDb / 20);
         for (var i = 0; i < n; i++) tone[i] = (float)(amp * Math.Sin(2 * Math.PI * (offsetHz + 25) * i / _output.SampleRate));
-        var tx = new PreparedTx(new TxPlan(_clock.UtcNow, "Tune", null, null), Mode.Ft8, offsetHz, tone, _output.SampleRate);
+        var tx = new PreparedTx(new TxPlan(_clock.UtcNow, Session.TuneMessage, null, null), Mode.Ft8, offsetHz, tone, _output.SampleRate);
         lock (_gate)
         {
             _ptt = true;

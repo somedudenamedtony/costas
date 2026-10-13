@@ -56,13 +56,13 @@ Reference user: W7LIT, grid DN40, an Icom IC-7300 over USB, Windows 11, a QRZ su
 | PSK Reporter out | Upload my reception spots |
 | Worked tonight | Session list with need tag and upload status |
 | Raw decodes | Tab with the classic message list, for when it is wanted |
-| Interop | WSJT-X UDP protocol, outbound (heartbeat, status, decode, clear, logged, logged ADIF, close) |
+| Interop | WSJT-X UDP protocol, outbound (heartbeat, status, decode, clear, logged, logged ADIF, close) and inbound Reply, Halt Tx and Highlight Callsign |
 | Setup | Six-step first-run setup: station, radio, audio, transmit test, clock check, QRZ |
 | App | Station profiles, light and dark theme following the system, diagnostics page, simulation mode |
 
 ### v1.x
 
-Hound mode (built 2026-10-12, switched by hand) and SuperHound mode (needs SuperFox decoding, see `08-open-questions.md` V19). Alerts for wanted calls or countries. Inbound UDP (reply, halt, highlight). LoTW upload through TQSL and LoTW-user flag. OmniRig, FLRig, TCI. Band advice ("15 m is open to Europe for you"). Awards progress page. Streaming decode (early results before the slot ends).
+Hound mode (built 2026-10-12, switched by hand) and SuperHound mode (needs SuperFox decoding, see `08-open-questions.md` V19). Alerts for wanted calls or countries. LoTW upload through TQSL and LoTW-user flag. OmniRig, FLRig, TCI. Band advice ("15 m is open to Europe for you"). Awards progress page. Streaming decode (early results before the slot ends).
 
 ### Later or not planned
 

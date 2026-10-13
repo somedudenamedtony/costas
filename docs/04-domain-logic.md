@@ -90,6 +90,13 @@ Notes:
 
 `HearsMe` holds reception reports of my callsign from PSK Reporter for the current band, keeping the last 60 minutes.
 
+`ReceptionHistory` also counts distinct receiving callsigns in fixed UTC five-minute intervals, per band and mode,
+for twelve completed intervals plus the current partial interval. It uses reception time, accepts late reports,
+and deduplicates receivers across feed and fallback reports. The graph labels local times and marks the partial
+interval; missing reports count as zero reports, not proof of a closed band. Counts remain available across band
+and mode changes in the session and clear when the operator's call or grid changes. Existing stored reports refill
+the last hour at start-up. No extra queries are made.
+
 For a station S:
 
 - **Direct report**: the newest report from S's callsign within 15 minutes. Display "Yes, -22".
@@ -111,7 +118,7 @@ If PSK Reporter is unavailable, chance is computed from S's SNR alone: Good at -
 
 ## 6. Ranking
 
-A station is **callable** when all hold: state is `CallingCq` (or, with "Only stations calling CQ" off, also `Finishing`); it was decoded in its most recent own-parity slot, or (owner request 2026-10-11) its latest message was a CQ and it was decoded within the operator's "Keep CQ callers listed" time (Ranking setting, default 2 minutes; 0 keeps the old rule); its call is resolved; its CQ modifier does not exclude me. A continent or country modifier that is not mine excludes me. I may answer `CQ DX` only if the caller is in a different entity from mine. Activity modifiers such as `POTA`, `SOTA` and `TEST` do not exclude.
+A station is **callable** when all hold: state is `CallingCq` (or, with "Only stations calling CQ" off, also `Finishing`); it was decoded in its most recent own-parity slot, or (owner request 2026-10-11) its latest message was a CQ and it was decoded within the operator's "Keep CQ callers listed" time (Ranking setting, default 2 minutes; 0 keeps the old rule); its call is resolved; its CQ modifier does not exclude me. A continent or country modifier that is not mine excludes me. I may answer `CQ DX` only if the caller is in a different entity from mine. Activity modifiers such as `POTA` and `SOTA` do not exclude. Contest modifiers (`TEST`, `CONT`, `RU`, `FD`, `WFD`, `ARRL`, `WW`, `WPX`, `VHF`) make the station not callable (owner decision 2026-10-12): it expects a contest exchange the standard contact cannot send, so it waits in Watching as "Contest (CQ RU), needs an exchange".
 
 A **Fox** (a station heard sending a multi-answer message `CALL1 RR73; CALL2 <FOX> ±NN`) is callable in Hound mode whenever it was decoded in its latest own slot, whatever it is doing. With Hound mode off it is in Watching as "Fox/Hound DXpedition. Turn on Hound to call it".
 

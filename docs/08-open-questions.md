@@ -76,6 +76,11 @@ installs. Checked against a CAT emulator: frequency is `FA`, the data mode `PKTU
 filter, so the app now sets the mode with passband -1 (no change). The FT-710 must have its CAT rate in the radio's
 menu match the baud in setup, and use the "Enhanced" USB COM port for CAT. Not yet tried on the real radio.
 
+Radio tuner from Tune: Hamlib's TUNE operation (`G TUNE`) on the FT-710 sends `AC003;` (start tuning), in Hamlib 4.6.5 and
+master (`rigs/yaesu/newcat.c`, `newcat_vfo_op`; `ft710.c` lists `RIG_OP_TUNE`); other Yaesu newcat radios send `AC002;`.
+A rejected command (`?`, for example with the tuner switched off in the menu) comes back as an error, and Costas then sends
+a tune tone instead. Not yet tried on the real radio.
+
 ALC and SWR meters: confirmed with Hamlib 4.5.5. `rigctld -m 1` answers `+l ALC` with `get_level: ALC`, the value on a
 line of its own, then `RPRT 0`; an unknown level gives `RPRT -1`. The IC-7300 (model 3073) and FT-710 (model 1049)
 backends both list `SWR` and `ALC` as readable. Against the FT-710 CAT emulator, Hamlib reads ALC with `RM4;` and SWR

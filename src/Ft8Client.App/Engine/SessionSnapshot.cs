@@ -77,6 +77,9 @@ public sealed record SessionSnapshot
     /// <summary>Reports of my signal on this band, newest first.</summary>
     public IReadOnlyList<ReceptionReport> Reports { get; init; } = [];
 
+    /// <summary>Five-minute distinct receiver counts for this band and mode over the last hour.</summary>
+    public IReadOnlyList<ReceptionBucket> ReceptionHistory { get; init; } = [];
+
     /// <summary>Statuses by service name: radio, audio, decoder, qrz, psk.</summary>
     public IReadOnlyDictionary<string, ServiceStatus> Services { get; init; } = new Dictionary<string, ServiceStatus>();
 
@@ -88,6 +91,11 @@ public sealed record SessionSnapshot
 
     /// <summary>The message being transmitted now, or null.</summary>
     public string? TransmittingMessage { get; init; }
+
+    /// <summary>
+    /// Until when the radio's own antenna tuner is counted as tuning after Tune started it (the Tune limit), or null.
+    /// </summary>
+    public DateTime? RigTuningUntilUtc { get; init; }
 
     /// <summary>True while calling CQ.</summary>
     public bool CallingCq { get; init; }

@@ -22,7 +22,7 @@ How contacts are run once you start one. Nothing is sent unless you click Call o
 | --- | --- | --- |
 | **Audio level on 20m (dB)** | -6 | Level of the transmit audio sent to the radio on the current band, -40 to 0. Each band remembers its own level |
 | **Adjust automatically from the radio's ALC** | on | After each transmission Costas reads the radio's ALC and nudges the level so ALC barely moves: up 0.5 dB when ALC did not move, down when it moved too much. Only the next transmission changes. It never goes more than 6 dB above a level you type here. Turn it off to keep the level fixed. Needs a radio that reports ALC over CAT, such as the FT-710 or IC-7300 |
-| **CQ** modifier | empty | Empty for a plain `CQ W7LIT DN40`, or `DX`, `POTA`, `NA`, a number and so on: `CQ DX W7LIT DN40` |
+| **CQ** modifier | empty | Empty for a plain `CQ W7LIT DN40`, or `DX`, `POTA`, `NA`, a number and so on: `CQ DX W7LIT DN40`. The dropdown beside **Call CQ** on the Operate screen changes it too |
 | **Answering a CQ › Send my grid** | on | Your first message is `THEIRCALL W7LIT DN40`. Off: just `THEIRCALL W7LIT` |
 | **Sign-off on my CQ** | RR73 | When you called CQ: **RR73** ends the contact in one message; **RRR** waits for the other station's 73 |
 | **Last message when answering** | 73 | When you answered: sent once after their RR73. The contact is already logged by then |
@@ -83,8 +83,8 @@ The key and password are kept in Windows Credential Manager.
   Chance.
 - **Who hears me › Compare my signal with stations near me**: on. Also receives reports of other stations within
   300 miles on your band, for *Compared with stations near you* in the Reach view. Nothing about them is saved.
-- **Who hears me › Show band activity near me in the band menu**: on. Receives reports of stations within 300 miles on
-  every band, so the band menu shows which bands are open from your area. Nothing about them is saved.
+- **Who hears me › Show band activity near me in Reach and the band menu**: on. Receives reports of stations within 300 miles on
+  every band, so Reach and the band menu show which bands are open from your area. Nothing about them is saved.
 - **Share what I hear › Send the stations I decode to PSK Reporter**: off. Helps other operators see where their
   signals reach. Sent every few minutes, never in simulation.
 

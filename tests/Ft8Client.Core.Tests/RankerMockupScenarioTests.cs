@@ -174,6 +174,28 @@ public class RankerMockupScenarioTests
     }
 
     [Theory]
+    [InlineData("RU")]
+    [InlineData("TEST")]
+    [InlineData("WW")]
+    public void Rank_ContestCq_GoesToWatchingWithReason(string modifier)
+    {
+        var contest = Cq("F4ABC", "JN18", -5, 2, modifier);
+        var r = Ranker.Rank(new RankInput([.. Stations(), contest], Log(), Reports(), new RankingSettings(), TestData.Countries.Lookup("W7LIT"), "20m", "FT8", Now));
+        r.Line.Select(x => x.Station.Call).Should().NotContain("F4ABC");
+        var watched = r.Watching.Single(x => x.Station.Call == "F4ABC");
+        watched.Reason!.Kind.Should().Be(WatchReasonKind.Contest);
+        StationText.Watch(watched.Reason, Now).Should().Be($"Contest (CQ {modifier}), needs an exchange");
+    }
+
+    [Fact]
+    public void Rank_PotaCq_StaysInLine()
+    {
+        var pota = Cq("F4ABC", "JN18", -5, 2, "POTA");
+        var r = Ranker.Rank(new RankInput([.. Stations(), pota], Log(), Reports(), new RankingSettings(), TestData.Countries.Lookup("W7LIT"), "20m", "FT8", Now));
+        r.Line.Select(x => x.Station.Call).Should().Contain("F4ABC");
+    }
+
+    [Theory]
     [InlineData("EU", "K", false)]
     [InlineData("NA", "PY", true)]
     [InlineData("DX", "K", false)]

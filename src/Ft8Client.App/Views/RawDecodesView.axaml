@@ -25,13 +25,13 @@
         </ListBox.Styles>
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:RawLineViewModel">
-            <Grid ColumnDefinitions="70,70,50,50,60,320,*" MinHeight="20">
-              <TextBlock Text="{Binding Utc}" Classes="message" Foreground="{Binding Kind, Converter={x:Static v:Converters.KindBrush}}" />
-              <TextBlock Grid.Column="1" Text="{Binding Local}" Classes="message" Foreground="{Binding Kind, Converter={x:Static v:Converters.KindBrush}}" />
-              <TextBlock Grid.Column="2" Text="{Binding Db}" Classes="message" Foreground="{Binding Kind, Converter={x:Static v:Converters.KindBrush}}" />
-              <TextBlock Grid.Column="3" Text="{Binding Dt}" Classes="message" Foreground="{Binding Kind, Converter={x:Static v:Converters.KindBrush}}" />
-              <TextBlock Grid.Column="4" Text="{Binding Hz}" Classes="message" Foreground="{Binding Kind, Converter={x:Static v:Converters.KindBrush}}" />
-              <TextBlock Grid.Column="5" Text="{Binding Message}" Classes="message" Foreground="{Binding Kind, Converter={x:Static v:Converters.KindBrush}}" />
+            <Grid ColumnDefinitions="70,70,50,50,60,320,*" MinHeight="20" Background="{Binding ., Converter={x:Static v:Converters.RawBackground}}">
+              <TextBlock Text="{Binding Utc}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
+              <TextBlock Grid.Column="1" Text="{Binding Local}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
+              <TextBlock Grid.Column="2" Text="{Binding Db}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
+              <TextBlock Grid.Column="3" Text="{Binding Dt}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
+              <TextBlock Grid.Column="4" Text="{Binding Hz}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
+              <TextBlock Grid.Column="5" Text="{Binding Message}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
               <TextBlock Grid.Column="6" Text="{Binding Country}" Classes="secondary" />
             </Grid>
           </DataTemplate>

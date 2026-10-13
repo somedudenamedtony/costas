@@ -21,11 +21,7 @@ should not need Settings while operating.
 
 ### Which bands are open
 
-Open the **Band** menu to see, before you switch, which bands are open from your area right now. For each band it shows how many PSK Reporter spots stations within 300 miles of you got in the last 15 minutes, which continents heard them (darker means more), and countries hearing them that you still need on that band, for example *You need Brazil +2*. Hover over it for the full list.
-
-![The band menu with band activity](images/band-menu.png){ width="600" }
-
-It needs **Receive live reports of stations hearing my signal** and **Show band activity near me in the band menu** in [Settings](settings.md). The rows fill in once PSK Reporter has reported your own signal, which tells Costas your country; Costas remembers it, so after that they fill in at start-up. Until then each row says *Needs a spot of you*. If PSK Reporter sends more reports than Costas can keep up with, it follows only the band you are on and the other rows say *Too busy to follow* until you restart Costas.
+Open the **Band** menu or see **Band activity near you** in [Reach](maps.md#reach-view) for spots, continents and countries you need on each band. The **Band** menu also selects the operating band.
 
 Two banners can appear under the top bar:
 
@@ -131,6 +127,10 @@ Stations you need that you cannot call yet: they went quiet, or are in a contact
 (*In a contact with EA5HVK*, *Finishing a contact with K7RGB*). They move into Next in line when that changes.
 A DXpedition running Fox/Hound shows *Fox/Hound DXpedition. Turn on Hound to call it* until you turn on **Hound**.
 
+A station calling CQ in a contest (`CQ RU`, `CQ FD`, `CQ WW`, `CQ TEST` and the like) is listed here as *Contest
+(CQ RU), needs an exchange*. It expects a contest exchange, and Costas only sends the standard one, so it is not
+offered as a station to call.
+
 Stations you have already worked on this band are not in Watching; they are in [Repeats](#repeats).
 
 ## Right column
@@ -141,7 +141,7 @@ From top to bottom:
   [Maps and who hears you](maps.md#heard-here).
 - **Band activity, last hour**: a bar per minute of decodes per slot (grey) and needed stations per slot (blue),
   with a sentence saying whether the band is busier or quieter than half an hour ago.
-- **Your signal on 20 m**: a small Reach map, how many stations hear you, the farthest and the best report.
+- **Your signal on 20 m**: how many stations hear you, the farthest and the best report, plus a graph of distinct receivers in five-minute intervals over the last hour. Each receiver counts once per interval. Times are local and the faded final bar is still incomplete. History stays available when you switch back to a band or mode during this session; recent stored reports refill it at start-up, and changing your station clears the in-memory counts. Reports may arrive late, and transmitting less or losing the feed can lower counts even when the band has not changed.
   **Open reach view** goes to the full view.
 - **Worked tonight**: your latest contacts this session with their QRZ upload state. **Show all in the log** opens
   the Log view.
@@ -155,6 +155,7 @@ From top to bottom:
 | Status text | One line: *Not in a contact. Enter calls NT2A, the top of the line.*, *Transmitting to F5RXL.*, *Waiting for F5RXL.*, or a fault in red |
 | **Tx offset 1650 Hz · clear** | Your transmit audio offset. Click to choose **Automatic (picks a clear spot)**, the default, or type a fixed value (200 to 2900 Hz) and press **Use** |
 | **Call CQ** | Starts calling CQ in the next slot. Becomes **Stop CQ** while running. ++ctrl+q++ |
+| **Tune** | Starts your radio's own antenna tuner, as its TUNE button would. If the radio has no tuner Costas can start (or its tuner is switched off), Costas sends a steady tone at your transmit offset for up to 10 seconds instead, for an external tuner. Becomes **Stop tune** for up to 10 seconds; click it to stop. Available only when nothing else is being sent; calling a station or CQ stops the tone |
 | **Halt Tx** | Always available. Drops PTT at once and stops sequencing. ++esc++ does the same |
 | Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar |
 | Meter warning | Appears only when the last transmission's SWR or ALC was high, for example *SWR 3.4 · ALC 70%* |

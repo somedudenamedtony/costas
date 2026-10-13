@@ -23,6 +23,15 @@ public partial class ReachView : UserControl
         ZoomReset.Click += (_, _) => Plot.ResetZoom();
         Plot.ZoomChanged += ShowZoom;
         ShowZoom(Plot.Zoom);
+        WorldView.IsCheckedChanged += (_, _) =>
+        {
+            var world = WorldView.IsChecked == true;
+            Globe.IsVisible = world;
+            Plot.IsVisible = ZoomControls.IsVisible = ZoomHelp.IsVisible = !world;
+            MapHelp.Text = world
+                ? "The globe rotates automatically. Hover to pause and read a station's report. Larger rings are stronger reports; the square marks your station."
+                : "You are at the centre, north is up. Bigger, darker dots are stronger reports. Hover over a dot for its call.";
+        };
     }
 
     private void ShowZoom(double zoom)
