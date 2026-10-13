@@ -18,10 +18,40 @@
     <DockPanel Grid.Row="0" Margin="16,8,16,8" LastChildFill="False">
       <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
         <TextBlock Text="Band" VerticalAlignment="Center" />
+        <!-- The open list shows, per band, where stations near me are heard right now (PSK Reporter); the closed box shows only the band. -->
         <ComboBox ItemsSource="{Binding Bands}" SelectedItem="{Binding SelectedBandChoice}"
-                  IsEnabled="{Binding CanChangeBand}" MinWidth="80" AutomationProperties.Name="Band">
-          <ComboBox.ItemTemplate>
+                  IsEnabled="{Binding CanChangeBand}" MinWidth="80" MaxDropDownHeight="520" AutomationProperties.Name="Band">
+          <ComboBox.SelectionBoxItemTemplate>
             <DataTemplate x:DataType="vm:BandChoiceViewModel"><TextBlock Text="{Binding Name}" /></DataTemplate>
+          </ComboBox.SelectionBoxItemTemplate>
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:BandChoiceViewModel">
+              <Grid ColumnDefinitions="48,Auto,Auto,Auto" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Name}">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Width="150" IsVisible="{Binding HasActivity}" VerticalAlignment="Center">
+                  <Border Width="60" Height="6" CornerRadius="3" Background="{DynamicResource ControlBorderBrush}" VerticalAlignment="Center">
+                    <Border Width="{Binding BarWidth}" HorizontalAlignment="Left" CornerRadius="3" Background="{DynamicResource AccentBrush}" />
+                  </Border>
+                  <TextBlock Text="{Binding SpotsText}" Classes="secondary num" FontSize="12" VerticalAlignment="Center" />
+                </StackPanel>
+                <ItemsControl Grid.Column="2" ItemsSource="{Binding Continents}" IsVisible="{Binding HasActivity}" VerticalAlignment="Center"
+                              AutomationProperties.Name="Heard in">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ContinentChip">
+                      <Border Width="28" Padding="0,1" CornerRadius="3" BorderThickness="1" ToolTip.Tip="{Binding Tip}"
+                              Background="{Binding Level, Converter={x:Static v:Converters.ShadeBackground}}"
+                              BorderBrush="{Binding Level, Converter={x:Static v:Converters.ShadeBorder}}">
+                        <TextBlock Text="{Binding Label}" FontSize="11" HorizontalAlignment="Center"
+                                   Foreground="{Binding Level, Converter={x:Static v:Converters.ShadeForeground}}" />
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Grid.Column="3" Text="{Binding NeedText}" Margin="12,0,0,0" FontSize="12" VerticalAlignment="Center"
+                           Foreground="{DynamicResource CautionBrush}" IsVisible="{Binding HasActivity}" ToolTip.Tip="{Binding NeedTip}" />
+              </Grid>
+            </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
         <TextBlock Text="Mode" VerticalAlignment="Center" Margin="8,0,0,0" />

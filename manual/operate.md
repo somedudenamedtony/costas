@@ -20,7 +20,7 @@ should not need Settings while operating.
 
 ### Which bands are open
 
-See **Band activity near you** in [Reach](maps.md#reach-view) for spots, continents and countries you need on each band. The **Band** menu selects the operating band.
+Open the **Band** menu or see **Band activity near you** in [Reach](maps.md#reach-view) for spots, continents and countries you need on each band. The **Band** menu also selects the operating band.
 
 Two banners can appear under the top bar:
 
