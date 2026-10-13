@@ -76,6 +76,7 @@ With the address left at `127.0.0.1`, only programs on this computer can do this
 
 ## Decode journal and saved audio
 
-Every decode and transmission is written to a monthly text file in the data folder's `journal` folder. You can also
+Every decode and transmission is written to a monthly text file in the data folder's `journal` folder. Costas reads
+it back to tell you [when you hear each country](awards.md#when-to-look). You can also
 keep the received audio of each slot as WAV files (**Settings › Other programs › Save received audio**: none, only
 slots with decodes, or all, kept for a number of days).

@@ -35,7 +35,7 @@ One window, minimum 1100 × 720, default 1440 × 900, remembers size and positio
 | Band dropdown | Lists bands from the frequency table. Changing it sets the dial frequency through the rig service, clears the station list for the old band and loads log totals for the new one. Disabled while transmitting. The closed box shows the band only. The open list adds, per band, where stations near me are heard right now (`04-domain-logic.md` section 14): an activity bar and "1,240 spots" (or "No spots"), six continent chips NA SA EU AF AS OC shaded by spots, and "You need Brazil +2" in caution colour. Tooltips give the source and the full list of needed countries. With no reports (feed or setting off, nothing received yet) the list shows band names only. A band whose reports are not being received says why instead of "No spots": "Needs a spot of you" before my country is known, "Too busy to follow" after the feed fell back to the current band |
 | Mode dropdown | FT8, FT4. Changes slot length and dial frequency. Disabled while transmitting |
 | Frequency | Dial frequency read from the radio, `14.074.000` format, MHz label. A click opens a menu (product review 2026-10-12): a box to type a frequency ("14.090", "14090" kHz or "14.090.000") with Tune, "Your frequencies" (saved dial frequencies as buttons, each with Remove) and "Save the current frequency". Tuning changes band when the frequency is on another band; frequencies outside the band plan or on a band without transmit limits are refused with a sentence. Disabled while transmitting |
-| View tabs | Operate, Raw decodes, Reach, Log. Ctrl+1 to Ctrl+4 |
+| View tabs | Operate, Raw decodes, Reach, Log, Awards. Ctrl+1 to Ctrl+5 |
 | Clock | UTC `HH:MM:SS`. Turns caution colour with a tooltip when the clock offset exceeds 0.5 s; critical above 2 s |
 | Menu button | Mini mode (Ctrl+M), Settings, Station profile, Diagnostics, Keyboard shortcuts, About |
 
@@ -218,6 +218,10 @@ Layout (owner request): the map card with the plot and the by-band stats fills t
 
 Grid of all contacts, newest first: date, time, call, band, mode, sent, received, grid, country, name, need tag at the time, QRZ status. Search box. Edit and delete (delete asks once; QRZ deletion is a separate explicit action). Buttons: Import ADIF, Export ADIF, Sync with QRZ now. Status line: "2,418 contacts · last synced 02:50 UTC".
 
+## Awards view
+
+Owner request 2026-10-13. Left column: a card each for DXCC (any band), WAS (50 US states; Alaska and Hawaii count though they are separate DXCC entities), WAZ (40 CQ zones, from the country file's zone for each call's prefix) and VUCC on 6 m (4-character grids). Each card shows worked and confirmed counts, a bar towards the award (confirmed in accent, worked faintly behind), the goal ("100 confirmed for the award · 340 in all") and, for WAS and WAZ, "Still needed" and "Worked, not confirmed yet" lists. Below, DXCC by band: every band with contacts and always 80, 40, 20, 15 and 10 m, with the 5-band DXCC line ("2 of 5 bands have 100 countries confirmed"). Right column: Countries still needed, for any band or one band, optionally with those worked but not confirmed; each row has the country, continent and status, and "when to look" from the operator's own decode journal ("Heard 14 times, mostly on 20 m, usually 13:00–15:00 UTC, last heard 3 Oct.", or "Not heard in your decodes yet."). Countries heard most often come first. Confirmed means the log's confirmed flag. Counting is `Core/Awards/AwardBuilder`; the sentence is `Core/History/WhenToLook`. A "time" is a distinct band and UTC hour. The journal is read in the background at start-up and again when the view or a station's details open and the copy is over 10 minutes old. The station details flyout shows the same sentence for the station's country ("Mongolia: heard 6 times, …") when there is history. Empty log: "Your log is empty. Sync with QRZ or import an ADIF file on the Log view, and your award progress appears here."
+
 ## First-run setup
 
 Mockup: `setup` (step 2). A left rail lists the six steps; the right pane holds the current one; Back and Next at the bottom right. Every step can be revisited from Settings.
@@ -256,7 +260,7 @@ Audio dropouts, decode time per slot, median DT of decodes, clock offset, CAT ro
 | Ctrl+Q | Call CQ / stop CQ |
 | Ctrl+R | Resend |
 | Ctrl+L | Log now |
-| Ctrl+1 to Ctrl+4 | Switch view |
+| Ctrl+1 to Ctrl+5 | Switch view |
 | Ctrl+M | Mini mode |
 | F1 | Keyboard shortcuts |
 

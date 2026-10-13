@@ -23,6 +23,39 @@ public class DecodeJournalTests
     }
 
     [Fact]
+    public void ReadLines_TwoMonths_StreamsOldestMonthFirstAndParses()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "ft8j-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var j = new DecodeJournal(dir);
+            var feb = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+            var jan = new DateTime(2026, 1, 31, 23, 59, 45, DateTimeKind.Utc);
+            j.Append(feb, [DecodeJournal.Format(feb, 7_074_000, false, "FT8", -3, -0.4, 900, "CQ JA1QRS PM95")]);
+            j.Append(jan, ["a", "b"]);
+            File.WriteAllText(Path.Combine(dir, "other.txt"), "ignored\n");
+
+            var lines = j.ReadLines(TestContext.Current.CancellationToken).ToList();
+
+            lines.Should().HaveCount(3);
+            lines[0].Should().Be("a");
+            Core.History.JournalLine.TryParse(lines[2], out var parsed).Should().BeTrue();
+            parsed!.DialHz.Should().Be(7_074_000);
+            parsed.Message.Should().Be("CQ JA1QRS PM95");
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void ReadLines_NoFolder_ReturnsNothing()
+    {
+        new DecodeJournal(Path.Combine(Path.GetTempPath(), "ft8j-missing-" + Guid.NewGuid().ToString("N"))).ReadLines(TestContext.Current.CancellationToken).Should().BeEmpty();
+    }
+
+    [Fact]
     public void Append_TwoMonths_GoInMonthlyFiles()
     {
         var dir = Path.Combine(Path.GetTempPath(), "ft8j-" + Guid.NewGuid().ToString("N"));

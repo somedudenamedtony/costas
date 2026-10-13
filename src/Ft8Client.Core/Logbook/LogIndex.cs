@@ -126,6 +126,9 @@ public sealed class LogIndex
     public IReadOnlySet<string> StatesWorkedOnBand(string band) =>
         _statesByBand.TryGetValue(band.ToLowerInvariant(), out var s) ? s : new HashSet<string>();
 
+    /// <summary>Every indexed contact, for award counting. Copy it before handing it to another thread.</summary>
+    public IEnumerable<LogContact> Contacts => _byCall.Values.SelectMany(l => l);
+
     /// <summary>All contacts with a call, for station details.</summary>
     public IReadOnlyList<LogContact> ContactsWith(string call) =>
         _byCall.TryGetValue(Callsign.Normalize(call), out var list) ? list : [];
