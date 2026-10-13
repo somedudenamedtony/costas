@@ -76,7 +76,7 @@ internal static class Program
         if (exe is null) { Console.Error.WriteLine("jt9 not found. Install WSJT-X, run third_party/fetch, or pass --jt9."); return 3; }
 
         var files = inputs.SelectMany<string, string>(p => Directory.Exists(p)
-            ? Directory.EnumerateFiles(p, "*.wav", SearchOption.AllDirectories).Order(StringComparer.Ordinal)
+            ? Directory.EnumerateFiles(p, "*.wav", SearchOption.AllDirectories).Where(f => !SampleFile.IsKeyboardMode(f)).Order(StringComparer.Ordinal)
             : [p]).ToList();
 
         var temp = Path.Combine(Path.GetTempPath(), "Ft8Client.DecodeCli");

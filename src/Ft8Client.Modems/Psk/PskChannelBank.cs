@@ -21,6 +21,11 @@ public sealed class PskChannelBank
     private readonly int _sampleRate;
     private readonly PskChannelFinder _finder;
     private readonly List<PskChannel> _channels = [];
+    // The last few seconds of audio: a channel the finder opens reads them first, so the start of the over it found
+    // (usually the caller's call) is not lost while the signal was still being noticed.
+    private readonly float[] _history;
+    private int _historyPos;
+    private bool _historyFull;
     private long _samples;
     private long _nextScan;
     private int _nextId = 1;
@@ -32,7 +37,11 @@ public sealed class PskChannelBank
         _mode = mode;
         _sampleRate = sampleRate;
         _finder = new PskChannelFinder(mode, sampleRate);
+        _history = new float[HistorySeconds * sampleRate];
     }
+
+    /// <summary>Seconds of audio a new channel reads back.</summary>
+    public const int HistorySeconds = 4;
 
     /// <summary>Most signals read at once.</summary>
     public int MaxChannels { get; init; } = 20;
@@ -65,6 +74,11 @@ public sealed class PskChannelBank
     {
         _finder.Process(samples);
         List<PskText>? texts = null;
+        if (_backfill.Count > 0)
+        {
+            texts = [.. _backfill];
+            _backfill.Clear();
+        }
         foreach (var c in _channels)
         {
             var t = c.Receiver.Process(samples);
@@ -72,6 +86,7 @@ public sealed class PskChannelBank
             c.LastTextSample = _samples + samples.Length;
             (texts ??= []).Add(new PskText(c.Id, c.Receiver.FrequencyHz, t));
         }
+        Remember(samples);
         _samples += samples.Length;
         if (_samples >= _nextScan)
         {
@@ -97,9 +112,29 @@ public sealed class PskChannelBank
         foreach (var hz in _finder.Signals())
         {
             if (_channels.Count >= MaxChannels) break;
-            if (Near(hz) is null) Add(hz);
+            if (Near(hz) is not null) continue;
+            var c = Add(hz);
+            var text = c.Receiver.Process(History());
+            if (text.Length == 0) continue;
+            c.LastTextSample = _samples;
+            _backfill.Add(new PskText(c.Id, c.Receiver.FrequencyHz, text));
         }
     }
+
+    private readonly List<PskText> _backfill = [];
+
+    private void Remember(ReadOnlySpan<float> samples)
+    {
+        foreach (var x in samples.Length > _history.Length ? samples[^_history.Length..] : samples)
+        {
+            _history[_historyPos++] = x;
+            if (_historyPos < _history.Length) continue;
+            _historyPos = 0;
+            _historyFull = true;
+        }
+    }
+
+    private float[] History() => _historyFull ? [.. _history[_historyPos..], .. _history[.._historyPos]] : _history[.._historyPos];
 
     private PskChannel? Near(double hz) => _channels.Find(c => Math.Abs(c.Receiver.FrequencyHz - hz) < 2 * PskMode.Baud(_mode));
 

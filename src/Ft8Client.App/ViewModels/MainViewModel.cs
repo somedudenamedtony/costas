@@ -810,6 +810,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (s.CallingCq) return (s.Transmitting ? "Transmitting CQ." : "Calling CQ.", s.Transmitting ? TextKind.Critical : TextKind.Normal);
         if (s.Contact is { Outcome: ContactOutcome.NoReply, Flow: ContactFlow.Hound } fox) return (fox.StatusText, TextKind.Caution);
         var top = s.Rank.Line.FirstOrDefault();
+        if (!ModeInfo.IsSlotted(s.Mode))
+            return ($"Reading {ModeInfo.Name(s.Mode)}. This build receives only; calling and CQ come later.", TextKind.Normal);
         return (top is null ? "Not in a contact." : $"Not in a contact. Enter calls {top.Station.Call}, the top of the line.", TextKind.Normal);
     }
 

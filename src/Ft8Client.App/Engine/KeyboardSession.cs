@@ -36,6 +36,7 @@ public sealed class KeyboardSession : IDisposable
     private readonly Dictionary<int, Reading> _channels = [];
     private Mode _mode = Mode.Ft8;
     private PskChannelBank? _bank;
+    private int? _listening;
     private DateTime _agedUtc;
     private Thread? _thread;
     private volatile bool _run;
@@ -62,7 +63,20 @@ public sealed class KeyboardSession : IDisposable
             _mode = mode;
             _bank = mode is Mode.Psk31 or Mode.Psk63 ? new PskChannelBank(mode, ModeInfo.DecoderSampleRate) : null;
             _channels.Clear();
+            _listening = null;
             Input.Clear();
+        }
+    }
+
+    /// <summary>Reads the signal at an audio frequency the operator clicked, and keeps reading it while it is quiet.</summary>
+    public void Listen(int hz)
+    {
+        lock (_gate)
+        {
+            if (_bank is null) return;
+            // Only the latest click is kept read through a quiet spell.
+            if (_listening is { } old) _bank.Release(old);
+            _listening = _bank.Listen(hz).Id;
         }
     }
 

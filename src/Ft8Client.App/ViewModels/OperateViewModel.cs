@@ -40,6 +40,8 @@ public sealed partial class OperateViewModel : ObservableObject
     private readonly IOperateCommands _commands;
     private readonly Func<DateTime> _now;
     private readonly LineStabilizer<IReadOnlyList<RankedStation>> _line;
+    private static readonly TimeSpan KeyboardRankEvery = TimeSpan.FromSeconds(3);
+    private DateTime _lastKeyboardRank;
     private readonly LineStabilizer<IReadOnlyList<RankedStation>> _repeats;
     private DateTime? _lastRankedSlot;
     private SessionSnapshot? _snap;
@@ -290,10 +292,12 @@ public sealed partial class OperateViewModel : ObservableObject
         Transmitting = s.Transmitting;
         UpdateSlot(now);
 
-        // Re-rank only when a new slot has been decoded.
-        if (_lastRankedSlot != s.LastDecodedSlot || _line.Applied is null)
+        // Re-rank only when a new slot has been decoded; a keyboard mode has no slots, so it re-ranks every few seconds.
+        var keyboardDue = !ModeInfo.IsSlotted(s.Mode) && now - _lastKeyboardRank >= KeyboardRankEvery;
+        if (_lastRankedSlot != s.LastDecodedSlot || _line.Applied is null || keyboardDue)
         {
             _lastRankedSlot = s.LastDecodedSlot;
+            _lastKeyboardRank = now;
             _line.Offer(s.Rank.Line);
             var log = Log?.Invoke();
             var mode = ModeInfo.Name(s.Mode);

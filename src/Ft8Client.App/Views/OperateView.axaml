@@ -61,7 +61,8 @@
                       <StackPanel Orientation="Horizontal" Spacing="4">
                         <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLeft}" FontSize="24" FontWeight="SemiBold" Classes="num"
                                    Foreground="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).Transmitting, Converter={x:Static v:Converters.TransmittingText}}" />
-                        <TextBlock Text="left" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5" />
+                        <TextBlock Text="left" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5"
+                                   IsVisible="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLeft, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                       </StackPanel>
                       <ProgressBar Value="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotProgress}" Maximum="1" Height="4" MinHeight="4" Margin="0,2,0,0"
                                    Foreground="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).Transmitting, Converter={x:Static v:Converters.ProgressBrush}}" />

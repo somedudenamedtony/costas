@@ -72,10 +72,12 @@ public sealed class PskDemodulator
 
     private bool _heard;
 
-    // Characters wait this many symbols before they are passed on, and are dropped if quality falls to half the squelch
-    // level meanwhile: quality takes about twenty symbols to fall that far after a signal ends, and the noise decoded in
-    // that time is not shown. A weak signal's brief dips below the squelch do not lose what was already read.
-    private const int HoldSymbols = 24;
+    // Characters wait this many symbols before they are passed on, and are dropped if quality falls to DropLevel
+    // meanwhile: quality takes about 36 symbols to fall that far after a signal ends, and the noise decoded in that time
+    // is not shown. A weak signal's dips below the squelch do not lose what was already read, and a clean one (quality
+    // 0.8 or more) is shown without waiting.
+    private const int HoldSymbols = 48;
+    private const double DropLevel = 0.1;
     private readonly Queue<(char Char, long Symbol)> _held = new();
     private long _symbols;
 
@@ -178,8 +180,9 @@ public sealed class PskDemodulator
             FrequencyHz = Math.Clamp(FrequencyHz + hz * gain, StartFrequencyHz - AfcRangeHz, StartFrequencyHz + AfcRangeHz);
         }
         _symbols++;
-        if (Quality < SquelchLevel / 2) _held.Clear();
-        while (_held.Count > 0 && _symbols - _held.Peek().Symbol >= HoldSymbols) Emit(_held.Dequeue().Char);
+        if (Quality < DropLevel) _held.Clear();
+        // A clean signal (quality near 1) releases its characters at once; noise never gets there.
+        while (_held.Count > 0 && (_symbols - _held.Peek().Symbol >= HoldSymbols || Quality >= 0.8)) Emit(_held.Dequeue().Char);
         Bit(bit);
     }
 
@@ -187,14 +190,18 @@ public sealed class PskDemodulator
     {
         if (bit == 1)
         {
-            if (_zeros == 1) _code <<= 1;
-            _code = (_code << 1) | 1;
+            var gap = _zeros == 1;
             _zeros = 0;
-            if (_code > 0x7FFF) _code = 0; // no Varicode is this long: noise
+            if (_code < 0) return;
+            if (gap) _code <<= 1;
+            _code = (_code << 1) | 1;
+            // No Varicode is this long: idle carrier or noise. Nothing is read until the next 00 gap, so the end of a
+            // long run of ones (the postamble) is not taken for a short character such as "e".
+            if (_code > 0x7FFF) _code = -1;
             return;
         }
         if (++_zeros != 2) return;
-        if (_code != 0 && SquelchOpen && Varicode.TryDecode(_code, out var c)) _held.Enqueue((c, _symbols));
+        if (_code > 0 && SquelchOpen && Varicode.TryDecode(_code, out var c)) _held.Enqueue((c, _symbols));
         _code = 0;
     }
 

@@ -27,7 +27,8 @@ public sealed class SimulatedSlotSource : ISlotSource
     {
         _files = File.Exists(folder)
             ? [folder]
-            : Directory.EnumerateFiles(folder, "*.wav", SearchOption.AllDirectories).Order(StringComparer.Ordinal).ToList();
+            : Directory.EnumerateFiles(folder, "*.wav", SearchOption.AllDirectories).Where(f => !SampleFile.IsKeyboardMode(f))
+                .Order(StringComparer.Ordinal).ToList();
         if (_files.Count == 0) throw new FileNotFoundException("No WAV files to simulate with.", folder);
     }
 

@@ -43,6 +43,15 @@ public sealed record SampleFile(string Path, SlotAudio Audio, DecodeContext? Gol
         return new SampleFile(path, new SlotAudio(slot, resolved, samples), ctx, lines);
     }
 
+    /// <summary>
+    /// True for a recording of a keyboard mode (in a <c>psk31</c>, <c>psk63</c> or <c>rtty</c> folder): continuous audio
+    /// for the keyboard modes, not a slot for <c>jt9</c>.
+    /// </summary>
+    public static bool IsKeyboardMode(string path) =>
+        path.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries)
+            .Any(p => p.Equals("psk31", StringComparison.OrdinalIgnoreCase) || p.Equals("psk63", StringComparison.OrdinalIgnoreCase)
+                      || p.Equals("rtty", StringComparison.OrdinalIgnoreCase));
+
     /// <summary>The slot start encoded in a <c>YYMMDD_HHMMSS</c> name; 2000-01-01 when the date part is zero.</summary>
     public static DateTime SlotTimeFromName(string name)
     {

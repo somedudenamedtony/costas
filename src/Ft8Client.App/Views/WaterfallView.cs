@@ -27,6 +27,17 @@ public sealed class WaterfallView : Control
             (byte)(25 + 180 * Math.Sin(t * Math.PI))));
     }).ToArray();
     private int _offset = 1500;
+    private IReadOnlyList<(int Hz, string Label)> _tags = [];
+
+    /// <summary>
+    /// Callsign tags drawn above the signals they belong to (keyboard modes, docs/09-keyboard-modes.md section 10).
+    /// </summary>
+    public void SetTags(IReadOnlyList<(int Hz, string Label)> tags)
+    {
+        if (tags.SequenceEqual(_tags)) return;
+        _tags = tags;
+        InvalidateVisual();
+    }
 
     /// <summary>Raised for an explicit click in the selectable 200–2900 Hz range.</summary>
     public event Action<int>? ChannelSelected;
@@ -71,9 +82,21 @@ public sealed class WaterfallView : Control
                 CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Inter"), 10, Brushes.LightGray);
             context.DrawText(text, new Point(Math.Clamp(hz / 3000.0 * width - text.Width / 2, 2, Math.Max(2, width - text.Width - 2)), 1));
         }
+        var lastRight = double.MinValue;
+        foreach (var (hz, label) in _tags.OrderBy(t => t.Hz))
+        {
+            var text = new FormattedText(label, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Inter", FontStyle.Normal, FontWeight.SemiBold),
+                11, Brushes.White);
+            var tx = Math.Clamp(hz / 3000.0 * width - text.Width / 2, 2, Math.Max(2, width - text.Width - 2));
+            // Neighbours too close to label side by side take turns in two rows.
+            var ty = tx < lastRight + 4 ? 34 : 20;
+            if (ty == 20) lastRight = tx + text.Width;
+            context.FillRectangle(new SolidColorBrush(Color.FromArgb(170, 7, 18, 30)), new Rect(tx - 2, ty - 1, text.Width + 4, text.Height + 2));
+            context.DrawText(text, new Point(tx, ty));
+        }
         var x = _offset / 3000.0 * width;
         context.DrawLine(new Pen(Brushes.OrangeRed, 1.5), new Point(x, 18), new Point(x, height));
-        if (_rows.Count == 0)
+        if (_rows.Count == 0 && _tags.Count == 0)
         {
             var text = new FormattedText("Waiting for receive audio", CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight, new Typeface("Inter"), 11, Brushes.LightGray);

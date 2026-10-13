@@ -46,6 +46,7 @@ public sealed class AppHost : IAsyncDisposable
     private NullAudioOutput? _mutedOutput;
     private volatile ServiceStatus? _rigOpenStatus;
     private CapturePump? _pump;
+    private SimulatedKeyboardAudio? _keyboardSim;
     private ChimePlayer? _chime;
     private SlotLoop? _loop;
     private IRig _rig;
@@ -325,6 +326,11 @@ public sealed class AppHost : IAsyncDisposable
         Keyboard = new KeyboardSession(Session, Clock);
         if (_pump is not null) _pump.Continuous = Keyboard.Input;
         Keyboard.Start();
+        if (Plan.ReplayFolder is not null)
+        {
+            _keyboardSim = new SimulatedKeyboardAudio(FindSamples(), Keyboard, () => Session.Config.Mode, Clock);
+            _keyboardSim.Start();
+        }
 
         SlotClock = new SlotClock(Clock, config.Mode, s.Operating.PttLeadMs);
         SlotClock.Event += Session.OnSlotEvent;
@@ -712,6 +718,7 @@ public sealed class AppHost : IAsyncDisposable
         if (Remote is not null) await Remote.DisposeAsync().ConfigureAwait(false);
         _loop?.Dispose();
         _pump?.Dispose();
+        _keyboardSim?.Dispose();
         Keyboard?.Dispose();
         _input?.Dispose();
         _output?.Dispose();
