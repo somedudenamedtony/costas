@@ -103,6 +103,52 @@ Accept:
 - Manual: every quality bar in `01-product-spec.md` is met on Windows 10 and 11.
 - Manual: five FT4 contacts on the air.
 
+## M9 · Keyboard modes groundwork (no visible change)
+
+Spec: `09-keyboard-modes.md`, owner decision D18. Steps 1 to 3 of its section 12: the mode definitions, `IContactEngine`, and heard events from text.
+
+Accept:
+- Automated: every existing test passes unchanged. FT8 and FT4 behaviour, timing and messages are identical.
+- Automated: `ModeInfo` tests cover all five modes, and the slot helpers refuse the unslotted ones.
+
+## M10 · PSK31 and PSK63 receive
+
+Build:
+- `Ft8Client.Modems`: channel finder, PSK demodulator with AFC and squelch, Varicode.
+- `KeyboardSession` (receive only), stations from text, the mode in the Mode menu with its dial frequencies and radio mode.
+- Operate: Next in line, waterfall tags and Raw decodes in PSK.
+
+Resolve VERIFY: V22 (dial frequencies) for 20 m and 40 m.
+
+Accept:
+- Automated: golden text from the PSK31 and PSK63 recordings in `samples/`, each with a character error rate under 2 % on the clean files.
+- Automated: three simultaneous signals in one recording all decode.
+- Manual: on the owner's radio, PSK31 on 20 m shows the same callsigns as fldigi on the same audio over 10 minutes.
+
+## M11 · RTTY receive
+
+Build: RTTY demodulator (ATC, unshift-on-space, Reverse), and the speed and shift settings.
+
+Accept:
+- Automated: golden text from RTTY recordings, including a fading one and a reversed one.
+- Manual: as M10, against fldigi or MMTTY.
+
+## M12 · Keyboard transmit and contacts
+
+Build:
+- PSK and RTTY modulators, type-ahead, macros with fields, and the keyboard contact engine with exchange capture.
+- The conversation box, logging, the keyboard watchdog, the RTTY power cap and the PSK ALC target.
+
+Accept:
+- Automated: our modulator's audio decodes through our demodulator and through fldigi's test harness, if one is available. Otherwise the modulated audio is checked against fldigi recordings for symbol timing and spectrum.
+- Automated: the watchdog stops at 3 min and after 20 s idle. A rig or audio error releases PTT. Unsendable characters are refused with the reason shown.
+- Automated: contact-engine tests for both flows, using recorded partner text.
+- Manual: five PSK31 contacts and three RTTY contacts on the air, logged correctly and confirmed on LoTW.
+
+## M13 · Keyboard modes everywhere else
+
+Build: PSK Reporter spots (V23), WSJT-X UDP status (V24), Mini mode, the phone remote's strip and macros, Log and Awards mode filters, and manual pages.
+
 ## After v1
 
 In order of value: band advice, alerts, Hound mode, inbound UDP, LoTW, streaming decode, awards page, then macOS and Linux builds.

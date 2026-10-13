@@ -105,8 +105,9 @@ child processes. Rules for working on the code are in [`CLAUDE.md`](CLAUDE.md); 
 | [`docs/04-domain-logic.md`](docs/04-domain-logic.md) | Message parsing, station tracking, need tiers, ranking, contact state machine, transmit encoding |
 | [`docs/05-integrations.md`](docs/05-integrations.md) | jt9, Hamlib, QRZ, PSK Reporter, WSJT-X UDP, time check, update check |
 | [`docs/06-data-model.md`](docs/06-data-model.md) | SQLite schema, settings, files on disk, ADIF mapping |
-| [`docs/07-milestones.md`](docs/07-milestones.md) | Build order, M0 to M8, with acceptance tests |
+| [`docs/07-milestones.md`](docs/07-milestones.md) | Build order, M0 to M13, with acceptance tests |
 | [`docs/08-open-questions.md`](docs/08-open-questions.md) | Decisions assumed, facts not yet verified, known risks |
+| [`docs/09-keyboard-modes.md`](docs/09-keyboard-modes.md) | PSK31, PSK63 and RTTY on the same Operate screen (planned) |
 | [`mockups/`](mockups/) | The original approved screen designs |
 
 ### Build and run from source

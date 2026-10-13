@@ -4,7 +4,7 @@ Project instructions for Claude Code. Read `README.md` and `docs/` before writin
 
 ## Project
 
-Costas: a Windows-first desktop FT8/FT4 client in C# (code namespace `Ft8Client`). Station-centric UI, WSJT-X decoder (`jt9`) as a child process, Hamlib `rigctld` for rig control, QRZ logbook for worked-before data, PSK Reporter for "who hears me". Licence GPLv3.
+Costas: a Windows-first desktop digital-modes client in C#, FT8/FT4 first, with PSK31, PSK63 and RTTY being added (`docs/09-keyboard-modes.md`) (code namespace `Ft8Client`). Station-centric UI, WSJT-X decoder (`jt9`) as a child process, Hamlib `rigctld` for rig control, QRZ logbook for worked-before data, PSK Reporter for "who hears me". Licence GPLv3.
 
 ## Stack
 
@@ -48,7 +48,7 @@ third_party/                  jt9 and Hamlib binaries with their licences (not c
 
 1. **Never key a real radio from tests or on start-up.** Transmit and PTT only happen after an explicit operator action in the UI. Automated tests use the simulated rig and a null audio output.
 2. **Simulation is for development and tests, never shown by default.** Replayed recordings and the simulated radio are used only with `--simulate` or the hidden developer mode (owner decision D9). With no radio configured the app shows no made-up data: it receives nothing, the radio indicator says so, and transmit is refused. Do not write code that assumes hardware is present.
-3. **Do not write an FT8 decoder.** Decoding goes through `jt9`. The transmit encoder is a port of `ft8_lib`'s encode path and must be checked against `ft8code` test vectors (see `docs/04-domain-logic.md`).
+3. **Do not write an FT8 decoder.** FT8 and FT4 decoding goes through `jt9`. The PSK and RTTY demodulators are our own code, checked against recordings and fldigi (`docs/09-keyboard-modes.md` section 5). The transmit encoder is a port of `ft8_lib`'s encode path and must be checked against `ft8code` test vectors (see `docs/04-domain-logic.md`).
 4. **Never alter a message silently.** If a message cannot be encoded exactly as shown to the operator, refuse to send it and say why.
 5. **Transmit safety guards are part of the feature**, not a later task: watchdog, band-edge check, PTT release on any rig or audio error, no transmit when the clock is off by more than 2 s.
 6. **Audio callbacks do not allocate, lock or log.** Pass samples through a lock-free ring buffer.
