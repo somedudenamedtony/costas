@@ -1,4 +1,4 @@
-# Operating from a phone
+# Remote Operation (phone/tablet support on local network)
 
 Costas can serve a page to a phone on your home network, so you can work stations from the couch while the radio
 stays on the station computer. The phone opens the page in its browser; there is nothing to install. It is off until
