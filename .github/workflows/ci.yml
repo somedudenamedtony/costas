@@ -2,6 +2,8 @@ name: CI
 on:
   push:
   pull_request:
+  # "Run workflow" on main in the Actions tab builds, tests and, if green, publishes a release.
+  workflow_dispatch:
 jobs:
   linux:
     runs-on: ubuntu-24.04
@@ -73,8 +75,10 @@ jobs:
           path: artifacts/Costas-Setup-*.exe
           if-no-files-found: error
   release:
-    # Every green build of main becomes a GitHub Release; the app's update check offers the newest one.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Releases are cut on demand: a manual run of this workflow on main publishes its green build as a GitHub Release,
+    # and the app's update check offers the newest one. Ordinary pushes and merges only build and test. The release
+    # stays in this workflow so its version (<Version>.<run number>) keeps counting up from earlier releases.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     needs: [linux, windows, installer]
     runs-on: ubuntu-24.04
     permissions:

@@ -48,7 +48,8 @@ dotnet run --project tools/Ft8Client.DecodeCli -- --live samples/ft8/210703_1334
 ## Installer
 
 `scripts/build-installer.ps1` builds `artifacts/Costas-Setup-<version>.exe` with `jt9` and Hamlib bundled. CI builds
-it on every push, and every green build of `main` is published as a GitHub Release.
+it on every push. Releases are cut on demand: running the CI workflow on `main` from the Actions tab (CI > Run
+workflow) publishes that build as a GitHub Release if it passes, and installed copies offer it as an update.
 
 ## This manual
 

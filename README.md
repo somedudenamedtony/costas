@@ -130,7 +130,7 @@ Setup lists Hamlib's test radio ("Hamlib Dummy"), which runs the real `rigctld` 
 
 Built through milestone M7, with FT4 receive and transmit from M8. Every automated acceptance test in
 `docs/07-milestones.md` up to M7 passes. CI builds and tests on Linux and Windows, builds the installer, and
-publishes every green build of `main` as a GitHub Release.
+publishes a GitHub Release when the owner runs the CI workflow on `main` by hand (Actions > CI > Run workflow).
 
 | Milestone | Automated | Still to do by hand or not built |
 | --- | --- | --- |
