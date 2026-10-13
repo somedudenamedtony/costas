@@ -129,7 +129,7 @@ public static class RemoteStateBuilder
     private static string Services(SessionSnapshot s)
     {
         var parts = new List<string>();
-        foreach (var (key, name) in new[] { (ServiceNames.Audio, "Audio"), (ServiceNames.Qrz, "QRZ"), (ServiceNames.Psk, "PSK Reporter") })
+        foreach (var (key, name) in new[] { (ServiceNames.Audio, "Audio"), (ServiceNames.Qrz, "QRZ"), (ServiceNames.Eqsl, "eQSL"), (ServiceNames.Psk, "PSK Reporter") })
         {
             if (s.Services.TryGetValue(key, out var st) && st.Health is ServiceHealth.Down or ServiceHealth.Degraded) parts.Add($"{name}: {st.Message}");
         }

@@ -37,7 +37,7 @@ With a QRZ logbook API key (set in [setup](setup.md#6-qrz-and-psk-reporter) or
   in a queue and retry with back-off; nothing is lost.
 - **Confirmed only.** If you chase confirmations rather than contacts, tick
   **Settings › Who to call › Count a country or state as worked only when confirmed**. By default only LoTW
-  confirmations count, because QRZ's own confirmations do not count for DXCC or WAS (see below).
+  confirmations count, because QRZ and eQSL confirmations do not count for DXCC (see below).
 
 ## LoTW
 
@@ -55,7 +55,7 @@ ARRL's Logbook of the World is where DXCC and WAS credit comes from. Set it up i
   upload to LoTW rank ahead of those that do not.
 
 The Log view's **LoTW** column says *Confirmed* or *Uploaded*. Station details say whether each past contact was
-*Confirmed on LoTW* or *Confirmed (QRZ or card)*. Nothing is downloaded into the log or uploaded in simulation.
+*Confirmed on LoTW* or *Confirmed (QRZ, eQSL or card)*. Nothing is downloaded into the log or uploaded in simulation.
 
 ## Other loggers
 

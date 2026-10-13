@@ -163,7 +163,7 @@ public sealed class StationDetailsViewModel
             PhotoUrl = q?.ImageUrl,
             Past = (log?.ContactsWith(call) ?? []).OrderByDescending(c => c.DateUtc)
                 .Select(c => new PastContactViewModel(c.DateUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), c.Band, c.ModeKey,
-                    c.LotwConfirmed ? "Confirmed on LoTW" : c.Confirmed ? "Confirmed (QRZ or card)" : string.Empty)).ToList(),
+                    c.LotwConfirmed ? "Confirmed on LoTW" : c.Confirmed ? "Confirmed (QRZ, eQSL or card)" : string.Empty)).ToList(),
             PileupHeadline = pileup is null ? string.Empty : PileupText.Headline(pileup),
             PileupCallers = pileup?.Callers.Select(c => new PileupCallerViewModel(c.Call, Report.Format(c.Snr),
                 c.OffsetHz.ToString(CultureInfo.InvariantCulture) + " Hz")).ToList() ?? [],

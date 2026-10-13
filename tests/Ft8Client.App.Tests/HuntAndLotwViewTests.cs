@@ -61,6 +61,6 @@ public class HuntAndLotwViewTests
             new LogContact("JA1ABC", "40m", "FT8", null, "JA", null, true, Now.AddDays(-2)),
         ]);
         var d = StationDetailsViewModel.From("JA1ABC", null, null, log, Core.DistanceUnit.Miles, Now);
-        d.Past.Select(p => p.Confirmed).Should().Equal("Confirmed (QRZ or card)", "Confirmed on LoTW");
+        d.Past.Select(p => p.Confirmed).Should().Equal("Confirmed (QRZ, eQSL or card)", "Confirmed on LoTW");
     }
 }

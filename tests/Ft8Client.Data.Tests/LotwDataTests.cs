@@ -93,7 +93,7 @@ public class LotwDataTests
         repo.Insert(q);
         using var c = db.Open();
         c.Execute("UPDATE qso SET lotw_confirmed = 0, lotw_upload_state = 'none'");
-        c.Execute(File.ReadAllText(Path.Combine(FindRepo(), "src/Ft8Client.Data/Database/Migrations/003_lotw.sql")).Split("\n").Where(l => l.StartsWith("UPDATE", StringComparison.Ordinal)).Aggregate((x, y) => x + "\n" + y));
+        c.Execute(File.ReadAllText(Path.Combine(FindRepo(), "src/Ft8Client.Data/Database/Migrations/004_lotw.sql")).Split("\n").Where(l => l.StartsWith("UPDATE", StringComparison.Ordinal)).Aggregate((x, y) => x + "\n" + y));
         var back = repo.List().Single();
         back.LotwConfirmed.Should().BeTrue();
         back.LotwUploadState.Should().Be(UploadState.Uploaded);

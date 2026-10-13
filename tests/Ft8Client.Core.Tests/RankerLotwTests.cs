@@ -24,7 +24,7 @@ public class RankerLotwTests
         t.ApplySlot(T0, [HeardMessage.From(new Decode(T0, -10, 0.1, 1200, "CQ JA1ABC PM95", false)),
                          HeardMessage.From(new Decode(T0, -10, 0.1, 1500, "CQ ZL2RPA RF70", false))]);
         return Ranker.Rank(new RankInput(t.Stations, LogIndex.Build([]), null, new RankingSettings { ConfirmedOnly = confirmedOnly },
-            TestData.Countries.Lookup("W7LIT"), "20m", "FT8", T0 + TimeSpan.FromSeconds(16), TestData.Countries, lotw));
+            TestData.Countries.Lookup("W7LIT"), "20m", "FT8", T0 + TimeSpan.FromSeconds(16), TestData.Countries, Lotw: lotw));
     }
 
     private static LotwUsers ZlUploads() => LotwUsers.Parse(new StringReader("ZL2RPA,2026-01-01,00:00:00\n"), T0, T0.AddYears(-2));

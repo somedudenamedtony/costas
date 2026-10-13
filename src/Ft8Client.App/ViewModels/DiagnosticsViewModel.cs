@@ -46,6 +46,11 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
         Add("Mode", _host.Simulating ? "Simulation" : "Live");
         Add("Data folder", _host.Paths.Root);
         Add("jt9", _host.Jt9Path ?? "not found");
+        if (_host.Decoder is { } dec)
+        {
+            Add("jt9 runs", dec.Description);
+            Add("jt9 starts", dec.ProcessStarts.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
         Add("Decode time, last slot", $"{s.LastDecodeTime.TotalSeconds:0.00} s");
         Add("Median DT, last slot", s.MedianDt is { } dt ? $"{dt:+0.00;-0.00} s" : "—");
         Add("Clock offset (SNTP)", _host.Sntp is { } n ? $"{n.Offset.TotalSeconds:+0.000;-0.000} s (round trip {n.RoundTrip.TotalMilliseconds:0} ms)" : "not measured");

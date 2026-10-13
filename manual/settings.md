@@ -56,7 +56,7 @@ line*.
 - **Hide stations I have already worked on this band**: on. They are listed in **Repeats** under Next in line instead.
 - **Leave out long shots (signals too weak to likely complete)**: off.
 - **Count a country or state as worked only when confirmed**: off.
-    - **Count only LoTW confirmations (what DXCC and WAS credit)**: on. Off counts QRZ and card confirmations too.
+    - **Count only LoTW confirmations (what DXCC and WAS credit)**: on. Off counts QRZ, eQSL and card confirmations too.
       With only confirmed contacts counting, stations that upload to LoTW rank ahead of those that do not.
 - **Keep CQ callers listed**: 2 minutes. How long a station calling CQ stays in Next in line after it was last heard.
   Choices run from *Only while heard every slot* (the list drops a station the first slot it is missed) to 15
@@ -154,3 +154,19 @@ Hidden by default. In **☰ › About**, click the product name seven times. Set
 (replay the sample recordings instead of the sound card, optionally with a simulated station that answers your
 calls), and Station setup lists Hamlib's test radio, *Hamlib Dummy*, which never plays transmit audio. This is for
 testing Costas, not for operating.
+
+## eQSL
+
+In **Settings › eQSL**, enter your eQSL.cc username and password, and copy the **QTH nickname** for the
+current callsign and location from your eQSL account. Credentials stay in the system credential store when
+available. Each station profile has its own account settings.
+
+Enable **Upload each new contact** for automatic uploads. Contacts queue locally and retry after failures,
+even after restarting Costas. The Log view shows eQSL delivery independently of QRZ.
+
+Enable **Read my eQSL inbox** to fetch incoming cards hourly. **Sync inbox now / test login** reads the inbox
+with the values entered on this page, even before saving them. A sync stores incoming cards and confirms a
+local contact when its callsign, band, mode and UTC minute uniquely match. Unmatched cards remain visible in
+the recent inbox list; they do not create contacts automatically. FT4 and MFSK/FT4 match as the same mode.
+
+Both automatic features are off by default. Save to apply. Simulation never contacts eQSL.

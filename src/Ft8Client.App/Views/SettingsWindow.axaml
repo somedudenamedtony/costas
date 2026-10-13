@@ -216,7 +216,7 @@
                 <CheckBox Content="Leave out long shots (signals too weak to likely complete)" IsChecked="{Binding SkipLongShots}" />
                 <CheckBox Content="Count a country or state as worked only when confirmed" IsChecked="{Binding ConfirmedOnly}" />
                 <CheckBox Content="Count only LoTW confirmations (what DXCC and WAS credit)" IsChecked="{Binding ConfirmedByLotw}" Margin="24,0,0,0" />
-                <TextBlock Classes="help" Margin="24,0,0,0" Text="QRZ's own confirmations do not count for DXCC. Turn this off to count QRZ and card confirmations too. With only confirmed contacts counting, stations that upload to LoTW rank ahead of those that do not." />
+                <TextBlock Classes="help" Margin="24,0,0,0" Text="QRZ and eQSL confirmations do not count for DXCC. Turn this off to count QRZ, eQSL and card confirmations too. With only confirmed contacts counting, stations that upload to LoTW rank ahead of those that do not." />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
@@ -589,6 +589,36 @@
               <TextBlock Classes="label" Text="Developer mode" />
               <CheckBox Grid.Column="1" Content="On (untick to hide this page)" IsChecked="{Binding DeveloperMode}" />
             </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="eQSL">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="eQSL" />
+            <TextBlock Classes="intro" Text="Send newly logged contacts to eQSL.cc. Uploads are optional, run in the background and retry when eQSL is unavailable. These settings belong to the current station profile." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Account" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <TextBox Text="{Binding EqslUser}" Width="260" HorizontalAlignment="Left" PlaceholderText="eQSL username" />
+                <TextBox Text="{Binding EqslPassword}" Width="260" HorizontalAlignment="Left" PasswordChar="•" PlaceholderText="eQSL password" />
+                <TextBlock Classes="help" Text="{Binding SecretsNote}" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="QTH nickname" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding EqslQthNickname}" Width="260" HorizontalAlignment="Left" />
+                <TextBlock Classes="help" Text="Copy the nickname from your eQSL account for this callsign and location. Leave blank only if your account has a single matching QTH." />
+              </StackPanel>
+            </Grid>
+            <CheckBox Content="Upload each new contact to eQSL as soon as it is logged" IsChecked="{Binding EqslUploadOnComplete}" />
+            <CheckBox Content="Read my eQSL inbox and sync confirmations hourly" IsChecked="{Binding EqslSyncEnabled}" />
+            <Button Content="Sync inbox now / test login" Command="{Binding SyncEqslCommand}" HorizontalAlignment="Left" />
+            <TextBlock Classes="help" Text="{Binding EqslSyncStatus}" />
+            <TextBlock Classes="help" Text="Save to apply automatic sync and uploads. Incoming cards confirm matching contacts in your local log. Unmatched cards stay in your inbox below. Simulation never contacts eQSL." />
+            <TextBlock Text="Recent inbox cards (up to 100)" FontWeight="SemiBold" Margin="0,12,0,4" />
+            <ItemsControl ItemsSource="{Binding EqslInboxCards}" />
           </StackPanel>
         </ScrollViewer>
       </TabItem>

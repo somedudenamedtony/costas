@@ -21,6 +21,21 @@ namespace Ft8Client.Core.Decoding;
 public sealed record DecodeContext(string MyCall, string MyGrid, string? DxCall, string? DxGrid,
                                    int LowHz = 200, int HighHz = 3000, int Depth = 3, int QsoProgress = 0, int RxOffsetHz = 1500)
 {
+    /// <summary>
+    /// A quick extra decode of the other station's frequency that runs beside the full decode. A decoder that keeps
+    /// <c>jt9</c> running gives it a process of its own, so it never waits for the full decode.
+    /// </summary>
+    public bool Quick { get; init; }
+
+    /// <summary>Hound mode: the decoder looks for a Fox's multi-answer messages (WSJT-X special operation 7).</summary>
+    public bool Hound { get; init; }
+
+    /// <summary>
+    /// With <see cref="Hound"/>: the Fox runs SuperFox. In the Fox's (even) slots only the SuperFox signal is decoded,
+    /// at 750 Hz ±100 Hz, as WSJT-X does. Only a decoder that keeps <c>jt9</c> running can decode it.
+    /// </summary>
+    public bool SuperFox { get; init; }
+
     /// <summary>A context with no station details, for offline decoding.</summary>
     public static DecodeContext Anonymous { get; } = new(string.Empty, string.Empty, null, null);
 }

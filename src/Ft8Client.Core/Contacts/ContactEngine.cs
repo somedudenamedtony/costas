@@ -29,6 +29,12 @@ public sealed class ContactEngine
     /// <summary>How long a caller stays in Waiting for you, and how long a stopped contact can be resumed.</summary>
     public static readonly TimeSpan WaitingWindow = TimeSpan.FromMinutes(5);
 
+    /// <summary>How long a Hound keeps calling a Fox that has not answered (as in WSJT-X, which stops after 2 minutes).</summary>
+    public static readonly TimeSpan HoundCallLimit = TimeSpan.FromMinutes(2);
+
+    /// <summary>Slots a Hound keeps sending its R-report without the Fox's RR73 (WSJT-X's timeout of 11 slots).</summary>
+    public const int HoundReportSlots = 11;
+
     private readonly List<WaitingCaller> _waiting = [];
     private ContactSettings _settings;
     private string _myCall;
@@ -42,6 +48,7 @@ public sealed class ContactEngine
     private Stopped? _stopped;
     private string? _extraMessage;
     private SlotParity _extraParity;
+    private bool _hound;
 
     /// <summary>Creates the engine.</summary>
     public ContactEngine(string myCall, string myGrid, ContactSettings settings, DateTime nowUtc)
@@ -76,13 +83,16 @@ public sealed class ContactEngine
     /// <summary>The DX station's audio offset, for the decoder's receive frequency.</summary>
     public int? DxOffsetHz => _c?.DxOffset;
 
+    /// <summary>True in Hound mode: calling a station starts a <see cref="ContactFlow.Hound"/> contact and CQ is not sent.</summary>
+    public bool Hound => _hound;
+
     /// <summary>The DX station's grid, if known.</summary>
     public string? DxGrid => _c?.DxGrid;
 
     /// <summary>QSO progress 0 to 5 for jt9 a-priori decoding.</summary>
     public int QsoProgress => _c is null ? 0 : (_c.Flow, _c.Phase) switch
     {
-        (ContactFlow.AnswerCq, 0) => 1,
+        (ContactFlow.AnswerCq or ContactFlow.Hound, 0) => 1,
         (ContactFlow.CalledCq, 2) => 2,
         (ContactFlow.CalledCq, _) => 4,
         (_, 2) => 3,
@@ -100,6 +110,20 @@ public sealed class ContactEngine
         _settings = settings;
     }
 
+    /// <summary>
+    /// Turns Hound mode on or off (an operator command). Changing it ends a contact in progress (logging nothing) and
+    /// stops CQ, since a Hound never calls CQ and an ordinary contact cannot continue as a Hound one.
+    /// </summary>
+    public void SetHound(bool on, DateTime nowUtc)
+    {
+        OperatorActivity(nowUtc);
+        if (_hound == on) return;
+        _hound = on;
+        _cqRunning = false;
+        _extraMessage = null;
+        if (_c is not null) End(ContactOutcome.Abandoned, nowUtc, resume: false);
+    }
+
     /// <summary>Records operator input (key or click) for the watchdog.</summary>
     public void OperatorActivity(DateTime nowUtc)
     {
@@ -110,7 +134,8 @@ public sealed class ContactEngine
     /// <summary>
     /// Flow A: call a station (answering its CQ, or replying to its report if it called me first). When
     /// <paramref name="busyWith"/> names another station it is working right now, nothing is sent: the contact ends at
-    /// once as <see cref="ContactOutcome.AnsweredOther"/> so the operator sees why.
+    /// once as <see cref="ContactOutcome.AnsweredOther"/> so the operator sees why. In Hound mode the station is a Fox,
+    /// which is always working someone: it is called as a Hound and <paramref name="busyWith"/> is ignored.
     /// </summary>
     public void CallStation(string call, string? grid, int snr, SlotParity dxParity, int dxOffsetHz, DateTime nowUtc, string? busyWith = null)
     {
@@ -118,11 +143,12 @@ public sealed class ContactEngine
         call = Callsign.Normalize(call);
         _finished = null;
         _extraMessage = null;
-        _c = new Contact(ContactFlow.AnswerCq, call, Grid.Grid4(grid), SlotMath.Opposite(dxParity), Report.Clamp(snr), dxOffsetHz);
+        var flow = _hound ? ContactFlow.Hound : ContactFlow.AnswerCq;
+        _c = new Contact(flow, call, Grid.Grid4(grid), SlotMath.Opposite(dxParity), Report.Clamp(snr), dxOffsetHz);
         _c.Steps.AddRange(StepsFor(_c));
         RemoveWaiting(call);
         if (_stopped is { } s && Callsign.EqualsCall(s.Contact.DxCall, call)) ForgetStopped();
-        if (busyWith is not null)
+        if (busyWith is not null && !_hound)
         {
             _c.OtherCall = Callsign.Normalize(busyWith);
             _c.BusyAtStart = true;
@@ -130,10 +156,11 @@ public sealed class ContactEngine
         }
     }
 
-    /// <summary>Starts calling CQ in slots of the given parity.</summary>
+    /// <summary>Starts calling CQ in slots of the given parity. Does nothing in Hound mode.</summary>
     public void CallCq(SlotParity parity, DateTime nowUtc)
     {
         OperatorActivity(nowUtc);
+        if (_hound) return;
         _cqRunning = true;
         _cqParity = parity;
     }
@@ -175,7 +202,7 @@ public sealed class ContactEngine
             _c.AwaitingReply = false;
             if (_c.StepTxCount > 0) _c.StepTxCount--; // an operator resend is not counted against the retry limit
         }
-        else if (_finished is { } f && f.Logged)
+        else if (_finished is { } f && f.Logged && f.Flow != ContactFlow.Hound)
         {
             _extraMessage = Format(f, 4);
             _extraParity = f.MyParity;
@@ -229,8 +256,9 @@ public sealed class ContactEngine
         foreach (var h in heard)
         {
             if (h.Decode.LowConfidence) continue;
-            foreach (var m in h.Message.Expand())
+            foreach (var part in h.Message.Expand())
             {
+                var m = FromFox(h, part);
                 if (m.SenderCall is null || !m.IsAddressedTo(_myCall)) continue;
                 if (m.To is { } t && !Callsign.EqualsCall(t.Call, _myCall)) continue;
                 toMe.Add((h, m));
@@ -241,7 +269,7 @@ public sealed class ContactEngine
         {
             foreach (var (h, m) in toMe.Where(x => Callsign.EqualsCall(x.M.SenderCall, _c.DxCall)))
             {
-                Advance(_c, m, slotStartUtc, nowUtc);
+                Advance(_c, m, slotStartUtc, nowUtc, h);
                 if (_c is null) break;
             }
         }
@@ -277,7 +305,7 @@ public sealed class ContactEngine
             if (_lastLogged is { } l && Callsign.EqualsCall(m.SenderCall, l.DxCall) && nowUtc - l.LoggedUtc < LateWindow) continue;
             if (_stopped is { } s && Callsign.EqualsCall(m.SenderCall, s.Contact.DxCall))
             {
-                s.Late.Add((m, slotStartUtc));
+                s.Late.Add((m, slotStartUtc, h));
                 AddWaiting(h, m, parity, slotStartUtc, afterStop: true);
                 continue;
             }
@@ -309,6 +337,7 @@ public sealed class ContactEngine
         {
             if (parity != _c.MyParity) return null;
             if (_c.Phase >= _c.Steps.Count || !_c.Steps[_c.Phase].Mine) return null;
+            if (_c.Flow == ContactFlow.Hound) return PlanHound(_c, slotStartUtc, mode, nowUtc);
             var isFinal = IsFinalCourtesy(_c, _c.Phase);
             if (!isFinal && _c.StepTxCount >= 1 + _settings.RetryLimit)
             {
@@ -341,6 +370,7 @@ public sealed class ContactEngine
         var step = _c.Steps[_c.Phase];
         if (plan.Message != step.Message) return;
         _c.TimeOnUtc ??= startedUtc;
+        if (_c.StepTxCount == 0) _c.StepStartedUtc = startedUtc;
         _c.StepTxCount++;
         _c.AwaitingReply = true;
         _c.Steps[_c.Phase] = step with { Count = step.Count + 1, TimeUtc = startedUtc };
@@ -371,8 +401,9 @@ public sealed class ContactEngine
 
     private static bool IsFinalCourtesy(Contact c, int phase) => c.Flow != ContactFlow.CalledCq && phase == 4;
 
-    private bool Advance(Contact c, ParsedMessage m, DateTime slotUtc, DateTime nowUtc)
+    private bool Advance(Contact c, ParsedMessage m, DateTime slotUtc, DateTime nowUtc, HeardMessage? heard = null)
     {
+        if (c.Flow == ContactFlow.Hound) return AdvanceHound(c, m, slotUtc, nowUtc, heard);
         if (c.Flow == ContactFlow.CalledCq)
         {
             switch (m.Kind)
@@ -425,6 +456,65 @@ public sealed class ContactEngine
         }
     }
 
+    // A Hound (WSJT-X mainwindow.cpp, hound_reply and the RR73 check before it): the Fox's report, alone or in a
+    // multi-answer message, moves me to my R-report on the frequency it answered on, with its SNR as my report; a
+    // repeated report keeps me sending it; RR73 logs and ends the contact with nothing more sent.
+    private bool AdvanceHound(Contact c, ParsedMessage m, DateTime slotUtc, DateTime nowUtc, HeardMessage? heard)
+    {
+        switch (m.Kind)
+        {
+            case MessageKind.Report when c.Phase is 0 or 2:
+                c.ReportReceived = m.Report;
+                c.ReportReceivedUtc = slotUtc;
+                if (heard is not null)
+                {
+                    c.TxOffset = heard.Decode.OffsetHz;
+                    c.ReportSent = Report.Clamp(heard.Decode.Snr);
+                }
+                c.Steps[2] = c.Steps[2] with { Message = $"{Dx(c.DxCall)} {_myCall} R{Report.Format(c.ReportSent)}" };
+                if (c.Phase == 0)
+                {
+                    MarkReceived(c, 1, m.Text, slotUtc);
+                    SetPhase(c, 2);
+                    return true;
+                }
+                Count(c, 1, slotUtc); // it did not copy my R-report: keep sending it
+                c.AwaitingReply = false;
+                return false;
+            case MessageKind.RogerBye when c.Phase == 2:
+                MarkReceived(c, 3, m.Text, slotUtc);
+                if (_settings.AutoLog) DoLog(c, nowUtc);
+                c.Steps[2] = c.Steps[2] with { State = StepState.Done };
+                c.Phase = 3;
+                End(ContactOutcome.Logged, nowUtc, resume: false);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    // Calling: up to HoundCallLimit from my first call. R-report: up to HoundReportSlots from the Fox's latest report.
+    private TxPlan? PlanHound(Contact c, DateTime slotStartUtc, Mode mode, DateTime nowUtc)
+    {
+        var expired = c.Phase == 0
+            ? c.StepStartedUtc is { } first && slotStartUtc - first >= HoundCallLimit
+            : c.ReportReceivedUtc is { } rpt && slotStartUtc - rpt >= HoundReportSlots * ModeInfo.SlotLength(mode);
+        if (expired)
+        {
+            End(ContactOutcome.NoReply, nowUtc, resume: false);
+            return null;
+        }
+        c.AwaitingReply = false;
+        return new TxPlan(slotStartUtc, c.Steps[c.Phase].Message, c.DxCall, c.DxOffset, c.Phase == 2 ? c.TxOffset : null);
+    }
+
+    // In a Hound contact, a multi-answer message whose sender hash did not resolve is the Fox's: it is the station I am
+    // working, and WSJT-X also reads these by position without checking the Fox's call.
+    private ParsedMessage FromFox(HeardMessage h, ParsedMessage m) =>
+        _c is { Flow: ContactFlow.Hound } c && h.Message.Kind == MessageKind.DxpeditionMulti && m.From is { Unresolved: true }
+            ? m with { From = new CallToken(c.DxCall, Hashed: true, Unresolved: false) }
+            : m;
+
     // The call the DX station started a contact with in these decodes, when it is not me.
     private string? AnsweredOther(Contact c, IReadOnlyList<HeardMessage> heard)
     {
@@ -449,7 +539,7 @@ public sealed class ContactEngine
         if (_lastLogged is not { } l || slotUtc - l.LoggedUtc >= LateWindow) return;
         foreach (var (_, m) in toMe)
         {
-            if (!Callsign.EqualsCall(m.SenderCall, l.DxCall)) continue;
+            if (!Callsign.EqualsCall(m.SenderCall, l.DxCall) || l.Flow == ContactFlow.Hound) continue;
             // After my RR73, their 73 is the normal answer, not a repeat.
             var signedOffRr73 = Format(l.Contact, 4).EndsWith(" RR73", StringComparison.Ordinal);
             if (l.Flow != ContactFlow.CalledCq && (m.Kind is MessageKind.RogerBye or MessageKind.Roger || (m.Kind == MessageKind.Bye && !signedOffRr73)))
@@ -469,7 +559,20 @@ public sealed class ContactEngine
     {
         var parity = SlotMath.Opposite(w.Parity);
         _extraMessage = null;
-        if (w.Kind == MessageKind.Report)
+        if (_hound && w.Kind == MessageKind.Report)
+        {
+            // A Fox's report with no Hound contact running (I stopped calling it): my R-report on its frequency.
+            var c = new Contact(ContactFlow.Hound, w.Call, w.Grid, parity, Report.Clamp(w.Snr), w.OffsetHz)
+            {
+                ReportReceived = w.Report, ReportReceivedUtc = w.LastCalledUtc, TxOffset = w.OffsetHz,
+            };
+            c.Steps.AddRange(StepsFor(c));
+            c.Steps[0] = c.Steps[0] with { State = StepState.Done };
+            MarkReceived(c, 1, $"{_myCall} {Dx(w.Call)} {Report.Format(w.Report ?? 0)}", w.LastCalledUtc);
+            SetPhase(c, 2);
+            _c = c;
+        }
+        else if (w.Kind == MessageKind.Report)
         {
             var c = new Contact(ContactFlow.CalledCqSkippedGrid, w.Call, w.Grid, parity, Report.Clamp(w.Snr), w.OffsetHz) { ReportReceived = w.Report };
             c.Steps.AddRange(StepsFor(c));
@@ -513,7 +616,11 @@ public sealed class ContactEngine
         c.StepTxCount = 0;
         c.AwaitingReply = false;
         _c = c;
-        foreach (var (m, slot) in s.Late) Advance(c, m, slot, nowUtc);
+        foreach (var (m, slot, heard) in s.Late)
+        {
+            Advance(c, m, slot, nowUtc, heard);
+            if (_c is null) break;
+        }
         RemoveWaiting(c.DxCall);
     }
 
@@ -561,6 +668,7 @@ public sealed class ContactEngine
         if (c.Phase < c.Steps.Count && c.Steps[c.Phase].Count > 0) c.Steps[c.Phase] = c.Steps[c.Phase] with { State = StepState.Done };
         c.Phase = phase;
         c.StepTxCount = 0;
+        c.StepStartedUtc = null;
         c.AwaitingReply = false;
     }
 
@@ -617,6 +725,10 @@ public sealed class ContactEngine
                 Mine(OutgoingMessages.Reply(dx, me, _myGrid, _settings)), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"),
                 Mine(final),
             ],
+            ContactFlow.Hound =>
+            [
+                Mine(OutgoingMessages.Reply(dx, me, _myGrid, _settings)), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"),
+            ],
             ContactFlow.CalledCq =>
             [
                 Mine(cq), Theirs($"{me} {dx} {c.DxGrid}".TrimEnd()), Mine($"{dx} {me} {rpt}"), Theirs($"{me} {dx} R±NN"),
@@ -653,6 +765,8 @@ public sealed class ContactEngine
             ContactOutcome.InProgress when c.AwaitingReply => $"Waiting for {c.DxCall}.",
             ContactOutcome.InProgress => $"Transmitting to {c.DxCall}.",
             ContactOutcome.Logged => $"Logged {c.DxCall}.",
+            ContactOutcome.NoReply when c.Flow == ContactFlow.Hound && c.Phase == 0 =>
+                $"{c.DxCall} did not answer in {HoundCallLimit.TotalMinutes:0} minutes. Call it again to keep trying.",
             ContactOutcome.NoReply => $"No reply from {c.DxCall}.",
             ContactOutcome.Watchdog => "Stopped by watchdog.",
             ContactOutcome.AnsweredOther when c.BusyAtStart => $"{c.DxCall} is in a contact with {c.OtherCall}. Not calling.",
@@ -673,11 +787,17 @@ public sealed class ContactEngine
 
         public SlotParity MyParity { get; } = myParity;
 
-        public int ReportSent { get; } = reportSent;
+        public int ReportSent { get; set; } = reportSent;
 
         public int DxOffset { get; } = dxOffset;
 
         public int? ReportReceived { get; set; }
+
+        public DateTime? ReportReceivedUtc { get; set; }
+
+        public int? TxOffset { get; set; }
+
+        public DateTime? StepStartedUtc { get; set; }
 
         public List<ContactStep> Steps { get; } = [];
 
@@ -702,7 +822,7 @@ public sealed class ContactEngine
 
     private sealed record Finished(string DxCall, ContactFlow Flow, SlotParity MyParity, DateTime LoggedUtc, Contact Contact);
 
-    private sealed record Stopped(Contact Contact, DateTime EndedUtc, List<(ParsedMessage Message, DateTime SlotUtc)> Late);
+    private sealed record Stopped(Contact Contact, DateTime EndedUtc, List<(ParsedMessage Message, DateTime SlotUtc, HeardMessage Heard)> Late);
 
     private string Format(Finished f, int index) => Format(f.Contact, index);
 }

@@ -29,7 +29,7 @@ Options confirmed from the source option table:
 | `-M`, `-N THREADS` | Multithreaded FT8 decoder and its thread count (0 to 12) |
 | `-m THREADS` | FFT threads |
 | `-q` | Quiet: no `<DecodeFinished>` line |
-| `-s KEY` | Shared-memory mode (not used in v1) |
+| `-s KEY` | Shared-memory mode: stays running and takes its input from a `QSharedMemory` segment (see below) |
 
 Positional arguments are WAV files: `jt9 [OPTIONS] file1 [file2 ...]`.
 
@@ -48,9 +48,24 @@ Positional arguments are WAV files: `jt9 [OPTIONS] file1 [file2 ...]`.
 ### Details to settle in Milestone 0
 
 - **VERIFY** the correct `-p` value and sample count for FT4.
-- **VERIFY** whether hashed callsigns (`<...>`) resolve across separate `jt9` runs. If the hash table lives only in process memory, nonstandard calls heard in an earlier slot will show as `<...>` in file mode. If so, keep our own table of full calls seen and substitute when the 10, 12 or 22-bit hash matches, or accept the limitation until streaming mode.
+- Hashed callsigns (`<...>`) do not resolve across separate `jt9` runs (V3); shared-memory mode keeps them.
 - **VERIFY** which files `jt9.exe` needs beside it (FFTW, Fortran runtime DLLs). During development, run it in place from an installed WSJT-X (`C:\WSJT\wsjtx\bin\jt9.exe`, path configurable). For release, bundle that set under `third_party/wsjtx/` with the GPLv3 licence text and a link to the exact source.
 - Measure decode time on the busiest sample. If it exceeds 1.2 s, try `-M -N 4`.
+
+### Running it (shared-memory mode)
+
+Confirmed from WSJT-X 2.7.0 and 3.0.2 (`main.cpp`, `widgets/mainwindow.cpp`, `lib/jt9a.f90`, `lib/shmem.cpp`, `commons.h`) and run against both `jt9` builds:
+
+```
+jt9 -s <key> -w 1 -m <FFT threads> -e <bin dir> -a <data dir> -t <temp dir>
+```
+
+- `jt9` attaches to the `QSharedMemory` with that key; the creator (Costas) makes it first. Qt's native name is `qipc_sharedmemory_` + the key's ASCII letters + the SHA-1 of the key in lower-case hex. On Windows that is the name of a page-file mapping (`OpenFileMapping`); on Linux it is a file in Qt's temp folder (`TMPDIR`), and the segment is System V, keyed by `ftok(file, 'Q')`. If it cannot attach, `jt9` aborts.
+- The segment holds `dec_data`: `int ipc[3]`, spectra (`ss`, `savg`, `sred`), the audio `short d2[1800*12000]` at byte offset 5,075,032, then `params` at 48,275,032 (236 bytes in 2.7, 344 in 3.0, which appends the multithreaded decoder's fields). Size 48,275,376 serves both. WSJT-X 3.2 and later change the layout entirely (a new IPC header), so only 2.7.x and 3.0.x are fed this way; the version is read from `wsjtx_app_version -v` beside `jt9`.
+- Handshake: write `params` and the audio, then set `ipc[1]` = 1. `jt9` clears it, decodes, prints its decodes and `<DecodeFinished>`, then waits for `ipc[2]` = 1. `ipc[1]` = 999 makes it exit. `jt9` takes Qt's lock on the segment around these checks; Costas does not need it, because it writes `ipc[1]` last and never while a request is running.
+- FT8 is decoded in three requests, as WSJT-X does: `nzhsym` 41 with the first 41 × 3456 samples, 47 with 47 × 3456, and 50 with all of them, `ndiskdat` false. The 50 pass relies on the 41 and 47 passes having filled its buffers; with `ndiskdat` true, `jt9` runs all three itself on one request (as for a file), which is what Costas sends when there was no early pass. The early pass stops early when the PC clock says the slot is more than 13.4 s in.
+- Hashed calls resolve across requests (`<PJ4/K1ABC> W7LIT DN40` after `CQ PJ4/K1ABC`), and the DX call in `params` is added to the table, so the other station's hashed call resolves even if its full call was never heard.
+- SuperFox: in Hound mode (`nexp_decode` 7) with `b_superfox` set, the Fox's (even) slots are decoded only for SuperFox at `nfqso` 750 Hz, `ntol` 100. WSJT-X 3.0.2 prints the Fox's messages as normal decode lines and a `$VERIFY$ <fox call> <code>` line; the 2.7.0-rc3 Ubuntu build printed nothing for the same `sfoxsim` file.
 
 ### Licensing
 
@@ -215,7 +230,7 @@ Test by decoding our own datagrams with a small reader in the test project and, 
 
 Optional, off until the operator enters a LoTW login. The password is in the credential store (`lotw-password`).
 
-- **Confirmations.** `GET https://lotw.arrl.org/lotwuser/lotwreport.adi?login=…&password=…&qso_query=1&qso_qsl=yes&qso_qslsince=<last>&qso_qsldetail=yes&qso_withown=yes&qso_owncall=<call>` every 12 hours and on demand, 2-minute timeout. `qso_qslsince` is the `APP_LoTW_LASTQSL` of the previous answer, kept in `sync_state` under target `lotw`. A page without `<eoh>` is a failed login or query. Each record with `QSL_RCVD=Y` marks the matching contact (call, band, mode, within 30 minutes) `lotw_confirmed`, or is added with source `lotw`. The URL carries the password and is never logged. FT4: VERIFY V19.
+- **Confirmations.** `GET https://lotw.arrl.org/lotwuser/lotwreport.adi?login=…&password=…&qso_query=1&qso_qsl=yes&qso_qslsince=<last>&qso_qsldetail=yes&qso_withown=yes&qso_owncall=<call>` every 12 hours and on demand, 2-minute timeout. `qso_qslsince` is the `APP_LoTW_LASTQSL` of the previous answer, kept in `sync_state` under target `lotw`. A page without `<eoh>` is a failed login or query. Each record with `QSL_RCVD=Y` marks the matching contact (call, band, mode, within 30 minutes) `lotw_confirmed`, or is added with source `lotw`. The URL carries the password and is never logged. FT4: VERIFY V20.
 - **Uploads.** Through TQSL, which holds the operator's certificate: `tqsl -x -d -u -a compliant [-l <station location>] <file.adi>` on an ADIF file of contacts not yet uploaded, 5-minute timeout, process tree killed on timeout. Exit codes 0, 8 (all duplicates) and 9 (some duplicates) mark the contacts `uploaded`; any other code is shown and the contacts stay pending. Manual from the Log view, or after each logged contact when the operator turns that on.
 - **User list.** `GET https://lotw.arrl.org/lotw-user-activity.csv` once a week, cached in `cache/lotw-user-activity.csv`. A call that uploaded within 365 days is a LoTW user (`LotwUsers`, Core). It feeds "Uses LoTW" in station details and the Why tooltip, and the ranking when only confirmed contacts count.
 
@@ -242,3 +257,26 @@ GitHub Releases for `somedudenamedtony/costas` (public). CI publishes every gree
 - Draft and pre-release releases are ignored. A release is offered only when its version is greater than the running build's, and not after the operator chose "Skip this version".
 - Install: download to the data folder's `tmp/updates`, verify, start the installer through a hidden `cmd` that runs it with `/SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /LOG=<logs>/update-<time>.log` (Inno Setup's progress window only), waits for it and then starts the app again, whether or not the upgrade succeeded, close the app normally (PTT released, child processes stopped). Refused while transmitting or in a contact. The installer upgrades in place.
 
+
+## 11. eQSL
+
+Optional uploads and incoming-card sync, configured per station profile. The account username and password
+are kept in the secret store; QTH nickname and enable switches are non-secret profile settings.
+
+- HTTPS POST `https://www.eqsl.cc/qslcard/ImportADIF.cfm`, form field `ADIFData`: ADIF header fields
+  `EQSL_USER`, `EQSL_PSWD`, optional `EQSL_QTH_NICKNAME`, then EOH and one QSO. Positive single-record
+  acknowledgments and explicit duplicate counts complete delivery; errors and unknown replies retry with
+  persistent exponential backoff. At most one upload per second. QRZ and eQSL delivery fields are separate.
+- HTTPS POST `https://www.eqsl.cc/qslcard/DownloadInBox.cfm`, fields `UserName`, `Password`, `QTHNickname`.
+  Accept direct ADIF or follow a same-origin HTTPS ADIF download link under `/qslcard/`. Credentials never
+  go in URLs; redirects are disabled. Replies are not logged or persisted as diagnostics.
+- Full inbox sync hourly (five-minute retry after failure), so recently received cards for old QSOs are included.
+  Store valid cards idempotently by profile/call/band/mode/UTC minute. Mark only unique local matches confirmed;
+  keep unmatched cards in the inbox. Preserve eQSL confirmations across later QRZ refreshes.
+- Incoming cards are available on the eQSL Settings page, including a manual sync/account test. Simulation
+  disables both uploads and sync. Offline services never interrupt radio operation.
+
+**VERIFY** against the primary eQSL API documentation and a redacted live account response before release:
+ADIF upload acknowledgment/duplicate wording, QTH nickname form parameter, and inbox download-link format.
+The implementation tests use synthetic replies. This workspace had no .NET SDK and an unreachable network
+proxy, so neither a build nor live eQSL verification was possible in this session.

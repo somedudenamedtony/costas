@@ -9,6 +9,12 @@ detail; click to open **Diagnostics**.
 median DT of the last slot, clock offset, audio dropouts, input level, the radio and its last transmit meters, the
 state of each service, the QRZ upload queue and the country file version.
 
+**jt9 runs** says how the decoder runs. Normally it stays running between slots. If it says *jt9 starts for each
+slot*, the reason follows: usually a `jt9` from a WSJT-X version other than 2.7 or 3.0, which Costas cannot feed
+directly. Decoding still works then, but portable calls show as `<...>`, decodes arrive later and SuperFox signals
+are not decoded. Use the `jt9` that comes with Costas (clear **jt9 decoder** in [Settings](settings.md)) to fix it.
+**jt9 starts** counts how often the decoder was started; more than two means it keeps stopping.
+
 ![Diagnostics](images/diagnostics.png)
 
 **Save diagnostics bundle** writes a zip of the logs and settings, with your QRZ key and password removed. Attach

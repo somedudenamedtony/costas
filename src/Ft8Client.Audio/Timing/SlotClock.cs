@@ -19,6 +19,7 @@ namespace Ft8Client.Audio.Timing;
 public sealed class SlotClock
 {
     private static readonly TimeSpan ResyncThreshold = TimeSpan.FromMilliseconds(50);
+    private static readonly int MarkCount = Enum.GetValues<SlotMark>().Length;
     private readonly IClock _clock;
     private readonly object _gate = new();
     private DateTime _anchorUtc;
@@ -90,6 +91,7 @@ public sealed class SlotClock
         SlotMark.Start => TimeSpan.Zero,
         SlotMark.PttOn => TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode) - PttLeadMs),
         SlotMark.TxStart => TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode)),
+        SlotMark.EarlyDecode when mode == Mode.Ft8 => TimeSpan.FromSeconds(11.85),
         _ => mode == Mode.Ft8 ? TimeSpan.FromSeconds(13.6) : TimeSpan.FromSeconds(6.1),
     };
 
@@ -107,7 +109,7 @@ public sealed class SlotClock
             var now = Estimate();
             while (true)
             {
-                if (_nextMark < 4)
+                if (_nextMark < MarkCount)
                 {
                     var mark = (SlotMark)_nextMark;
                     var due = _current + OffsetOf(mark, _mode);
@@ -143,7 +145,7 @@ public sealed class SlotClock
                     {
                         // Clock went back: wait for the slot after the last one announced.
                         _current = _lastAnnounced;
-                        _nextMark = 4;
+                        _nextMark = MarkCount;
                         continue;
                     }
                     _current = wallSlot;
@@ -190,7 +192,7 @@ public sealed class SlotClock
         _current = SlotMath.SlotStart(_anchorUtc, _mode);
         // Joined mid-slot: skip this partial slot.
         _lastAnnounced = _current;
-        _nextMark = 4;
+        _nextMark = MarkCount;
         _started = true;
     }
 
