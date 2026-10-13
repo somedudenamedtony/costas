@@ -43,6 +43,9 @@ public sealed class PskChannelBank
     /// <summary>The channels being read, lowest frequency first.</summary>
     public IReadOnlyList<PskChannel> Channels => [.. _channels.OrderBy(c => c.Receiver.FrequencyHz)];
 
+    /// <summary>A channel's SNR in dB in 2,500 Hz (see <see cref="PskChannelFinder.SnrDb"/>), or null when unknown.</summary>
+    public int? SnrDb(PskChannel channel) => _finder.SnrDb(channel.Receiver.FrequencyHz);
+
     /// <summary>Starts reading a signal at a frequency the operator picked (or returns the channel already on it) and pins it.</summary>
     public PskChannel Listen(double frequencyHz)
     {

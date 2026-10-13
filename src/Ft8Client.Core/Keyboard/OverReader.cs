@@ -13,7 +13,7 @@ namespace Ft8Client.Core.Keyboard;
 /// <summary>
 /// Finds callsigns in keyboard-mode text (docs/09-keyboard-modes.md section 6). A call is the sender when it follows
 /// DE, follows CQ and is repeated, or is repeated just before the K that ends an over; when several patterns match,
-/// the one latest in the text wins.
+/// the one latest in the text wins. Only complete words count: the last word is read once a space or new line follows it.
 /// </summary>
 public static partial class OverReader
 {
@@ -22,7 +22,11 @@ public static partial class OverReader
     /// <summary>Reads one over's text.</summary>
     public static OverSummary Read(string text)
     {
-        var words = Words().Split(text.ToUpperInvariant()).Where(w => w.Length > 0).ToArray();
+        var upper = text.ToUpperInvariant();
+        var words = Words().Split(upper).Where(w => w.Length > 0).ToArray();
+        // Text arrives a character at a time: a word still being received (no space after it yet) is not read, so
+        // "DE KP4J" is not taken for a call and "K" is not taken for the end of the over before "KP4JRS" is complete.
+        if (words.Length > 0 && upper.Length > 0 && !Words().IsMatch(upper[^1..])) words = words[..^1];
         var cq = words.Any(w => w is "CQ" or "QRZ");
         var ended = words.Length > 0 && EndWords.Contains(words[^1]);
 

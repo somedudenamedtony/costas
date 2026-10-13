@@ -89,6 +89,8 @@ public sealed class ContactPanelViewModel
         if (station is not null) parts.Add(StationText.Where(station, units));
         // Why it stopped, on the card itself: "N8WCR answered K1ABC instead. Stopped calling."
         if (c.Outcome == ContactOutcome.AnsweredOther) parts = [c.StatusText];
+        // A contact is always FT8 or FT4 for now; one left over after a switch to a keyboard mode keeps FT8 timing.
+        if (!ModeInfo.IsSlotted(s.Mode)) s = s with { Mode = Mode.Ft8 };
         var slotLen = ModeInfo.SlotLength(s.Mode);
         var currentSlot = SlotMath.SlotStart(nowUtc, s.Mode);
         var txIndex = TransmittingIndex(c, s, currentSlot);

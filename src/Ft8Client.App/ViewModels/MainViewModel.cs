@@ -80,7 +80,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             () => Shutdown());
         Mini = new MiniViewModel(Operate, this, () => HaltCommand.Execute(null));
         Mini.HuntDismissed += () => HuntDismissCommand.Execute(null);
-        Modes = ["FT8", "FT4"];
+        Modes = [.. ModeInfo.Operable.Select(ModeInfo.Name)];
         ApplySettings();
         _host.Settings.Changed += _ => Dispatch(ApplySettings);
         _host.Remote.Changed += () => Dispatch(UpdateRemote);
@@ -369,12 +369,20 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var now = _host.Clock.UtcNow;
         ClockText = now.ToString("HH:mm:ss", CultureInfo.InvariantCulture) + " UTC";
         var mode = _host.Session.Config.Mode;
-        var len = ModeInfo.SlotLength(mode);
-        var start = SlotMath.SlotStart(now, mode);
-        var into = now - start;
-        SlotProgress = into / len;
-        var left = (int)Math.Ceiling((len - into).TotalSeconds);
-        SlotRemaining = $"{left} s to next slot";
+        if (ModeInfo.IsSlotted(mode))
+        {
+            var len = ModeInfo.SlotLength(mode);
+            var start = SlotMath.SlotStart(now, mode);
+            var into = now - start;
+            SlotProgress = into / len;
+            var left = (int)Math.Ceiling((len - into).TotalSeconds);
+            SlotRemaining = $"{left} s to next slot";
+        }
+        else
+        {
+            SlotProgress = 0;
+            SlotRemaining = "Reading continuously";
+        }
         SlotLabel = Transmitting ? "Transmitting" : "Receiving";
         UpdateTune(_host.Session.Snapshot);
         Operate.Tick();

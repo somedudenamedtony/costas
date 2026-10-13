@@ -20,9 +20,9 @@ public static class ModeInfo
 
     /// <summary>
     /// The modes an operator can pick today. <see cref="TryParse"/> accepts only these, so settings, the remote and the
-    /// frequency table cannot switch to a mode whose receive and transmit are not built yet.
+    /// frequency table cannot switch to a mode whose receive is not built yet. PSK31 and PSK63 receive only so far.
     /// </summary>
-    public static IReadOnlyList<Mode> Operable { get; } = [Mode.Ft8, Mode.Ft4];
+    public static IReadOnlyList<Mode> Operable { get; } = [Mode.Ft8, Mode.Ft4, Mode.Psk31, Mode.Psk63];
 
     /// <summary>True for modes that run in fixed time slots (FT8, FT4).</summary>
     public static bool IsSlotted(Mode mode) => mode is Mode.Ft8 or Mode.Ft4;

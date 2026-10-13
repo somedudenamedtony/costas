@@ -12,6 +12,7 @@ using Ft8Client.Core.Bands;
 using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Geo;
+using Ft8Client.Core.Keyboard;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Pileups;
@@ -169,6 +170,12 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Slot clock events, on the slot thread. Never waits on I/O.</summary>
     public void OnSlotEvent(SlotEvent e)
     {
+        // In a keyboard mode nothing is cut into slots: text arrives through ApplyText as it is read.
+        if (!ModeInfo.IsSlotted(Config.Mode))
+        {
+            _tx.OnSlotEvent(e);
+            return;
+        }
         switch (e.Mark)
         {
             case SlotMark.Start:
@@ -443,6 +450,28 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
+    /// <summary>
+    /// Applies what <see cref="KeyboardSession"/> read since its last call: text from stations it has named, and finished
+    /// lines for Raw decodes. Keyboard stations are aged at the same time. Ignored unless the session is in that mode.
+    /// </summary>
+    public void ApplyText(Mode mode, IReadOnlyList<TextHeard> heard, IReadOnlyList<KeyboardLine> lines, DateTime utc)
+    {
+        lock (_gate)
+        {
+            if (mode != _config.Mode) return;
+            foreach (var h in heard) _tracker.ApplyText(h);
+            _tracker.AgeText(utc);
+            foreach (var l in lines)
+            {
+                var decode = new Decode(l.Utc, l.Snr, 0, l.OffsetHz, l.Text, LowConfidence: false);
+                _raw.Add(new RawDecodeLine(decode, MessageParser.Parse(l.Text), l.Sender is null ? null : _countries.Lookup(l.Sender)?.Entity.Name,
+                    l.To is not null && Callsign.EqualsCall(l.To, _config.MyCall)));
+            }
+            if (_raw.Count > MaxRaw) _raw.RemoveRange(0, _raw.Count - MaxRaw);
+        }
+        Publish();
+    }
+
     // Raw decode lines, each message of a slot once: the early pass shows its decodes before the full decode lists them again.
     private void AddRaw(DateTime slot, List<HeardMessage> heard)
     {
@@ -595,7 +624,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag));
             _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
-            _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
+            if (ModeInfo.IsSlotted(_config.Mode)) _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
         }
         _log?.Write(entry, ctx);
     }
@@ -611,6 +640,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Calls a station from the line or the raw decodes.</summary>
     public bool CallStation(string call)
     {
+        if (RefuseKeyboardTransmit()) return false;
         lock (_gate)
         {
             var now = _clock.UtcNow;
@@ -654,6 +684,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Starts or stops calling CQ.</summary>
     public void ToggleCq()
     {
+        if (RefuseKeyboardTransmit()) return;
         lock (_gate)
         {
             if (_engine.CallingCq) _engine.StopCq(_clock.UtcNow);
@@ -666,6 +697,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Answers a waiting caller now.</summary>
     public void AnswerCaller(string call)
     {
+        if (RefuseKeyboardTransmit()) return;
         lock (_gate) _engine.AnswerCaller(call, _clock.UtcNow);
         AfterCommand();
     }
@@ -680,6 +712,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Resend the current step.</summary>
     public void Resend()
     {
+        if (RefuseKeyboardTransmit()) return;
         lock (_gate) _engine.Resend(_clock.UtcNow);
         AfterCommand();
     }
@@ -694,6 +727,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Jump to one of my upcoming steps.</summary>
     public void JumpTo(int step)
     {
+        if (RefuseKeyboardTransmit()) return;
         lock (_gate) _engine.JumpTo(step, _clock.UtcNow);
         _tx.CancelPending();
         AfterCommand();
@@ -939,7 +973,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     // most once a slot (sooner when it is empty). Under _gate.
     private IReadOnlyDictionary<string, BandOpening> Openings(DateTime now)
     {
-        var stale = now - _openingsUtc >= ModeInfo.SlotLength(_config.Mode);
+        var stale = now - _openingsUtc >= (ModeInfo.IsSlotted(_config.Mode) ? ModeInfo.SlotLength(_config.Mode) : TimeSpan.FromSeconds(15));
         if (!stale && !(_openingsDirty && _openings.Count == 0)) return _openings;
         _openingsUtc = now;
         _openingsDirty = false;
@@ -977,10 +1011,28 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate) return _lookups.ContainsKey(Callsign.Normalize(call));
     }
 
+    // Keyboard-mode contacts and transmit come in a later build (docs/07-milestones.md M12): until then the commands
+    // that would send in one say so and do nothing.
+    private bool RefuseKeyboardTransmit()
+    {
+        lock (_gate)
+        {
+            if (ModeInfo.IsSlotted(_config.Mode)) return false;
+            _fault = $"{ModeInfo.Name(_config.Mode)} only receives in this build: calling and CQ are not built yet.";
+        }
+        Publish();
+        return true;
+    }
+
     private void AfterCommand()
     {
         // A command may start a transmission in the current slot if its start is still within the late limit.
         var mode = Config.Mode;
+        if (!ModeInfo.IsSlotted(mode))
+        {
+            Publish();
+            return;
+        }
         PlanFor(SlotMath.SlotStart(_clock.UtcNow, mode), mode, late: true, command: true);
         Publish();
     }

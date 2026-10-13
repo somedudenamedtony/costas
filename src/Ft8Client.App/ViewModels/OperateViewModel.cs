@@ -375,6 +375,14 @@ public sealed partial class OperateViewModel : ObservableObject
     private void UpdateSlot(DateTime now)
     {
         var mode = _snap?.Mode ?? Mode.Ft8;
+        if (!ModeInfo.IsSlotted(mode))
+        {
+            // Keyboard modes read continuously: no slot to count down.
+            SlotProgress = 0;
+            SlotLeft = string.Empty;
+            SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+            return;
+        }
         // While transmitting, count down to the end of the transmission (as the conversation strip does), not the slot.
         var len = Transmitting ? ModeInfo.TxEnd(mode) : ModeInfo.SlotLength(mode);
         var into = now - SlotMath.SlotStart(now, mode);

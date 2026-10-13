@@ -37,7 +37,7 @@ public sealed class SlotClock
     public SlotClock(IClock clock, Mode mode, int pttLeadMs = 200)
     {
         _clock = clock;
-        _mode = mode;
+        _mode = ModeInfo.IsSlotted(mode) ? mode : Mode.Ft8;
         PttLeadMs = pttLeadMs;
     }
 
@@ -79,9 +79,13 @@ public sealed class SlotClock
         }
     }
 
-    /// <summary>Changes mode at the next slot boundary.</summary>
+    /// <summary>
+    /// Changes mode at the next slot boundary. A keyboard mode has no slots: the clock keeps the last slotted mode's
+    /// timing (the transmitter still takes its marks) and the session ignores its slots.
+    /// </summary>
     public void SetMode(Mode mode)
     {
+        if (!ModeInfo.IsSlotted(mode)) return;
         lock (_gate) _pendingMode = mode;
     }
 

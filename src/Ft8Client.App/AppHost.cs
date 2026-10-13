@@ -144,6 +144,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>The slot clock.</summary>
     public SlotClock SlotClock { get; private set; } = null!;
 
+    /// <summary>Reads PSK (and later RTTY) from the continuous audio while the session is in a keyboard mode.</summary>
+    public KeyboardSession Keyboard { get; private set; } = null!;
+
     /// <summary>QRZ background work.</summary>
     public QrzService Qrz { get; private set; } = null!;
 
@@ -318,6 +321,10 @@ public sealed class AppHost : IAsyncDisposable
             : new ServiceStatus(ServiceHealth.Ok, "Receiving", Clock.UtcNow));
 
         await OpenRigAsync().ConfigureAwait(false);
+
+        Keyboard = new KeyboardSession(Session, Clock);
+        if (_pump is not null) _pump.Continuous = Keyboard.Input;
+        Keyboard.Start();
 
         SlotClock = new SlotClock(Clock, config.Mode, s.Operating.PttLeadMs);
         SlotClock.Event += Session.OnSlotEvent;
@@ -705,6 +712,7 @@ public sealed class AppHost : IAsyncDisposable
         if (Remote is not null) await Remote.DisposeAsync().ConfigureAwait(false);
         _loop?.Dispose();
         _pump?.Dispose();
+        Keyboard?.Dispose();
         _input?.Dispose();
         _output?.Dispose();
         _mutedOutput?.Dispose();

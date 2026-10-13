@@ -101,6 +101,28 @@ public sealed class PskChannelFinder
         return found;
     }
 
+    /// <summary>
+    /// The SNR of a signal at <paramref name="hz"/> in dB in 2,500 Hz, as WSJT-X measures FT8, so the dB column means the
+    /// same in every mode: the signal's power over its width above the band's median, against the median noise over
+    /// 2,500 Hz. Null before any spectrum, or when nothing stands above the noise there.
+    /// </summary>
+    public int? SnrDb(double hz)
+    {
+        if (_frames == 0) return null;
+        var binHz = (double)_sampleRate / Size;
+        var lo = (int)(LowHz / binHz);
+        var hi = Math.Min((int)(HighHz / binHz), _average.Length - 1);
+        var floor = _average[lo..(hi + 1)].Order().ElementAt((hi - lo + 1) / 2);
+        if (floor <= 0) return null;
+        double power = 0;
+        var centre = (int)Math.Round(hz / binHz);
+        var half = (int)Math.Ceiling(_widthHz / binHz);
+        for (var i = Math.Max(0, centre - half); i <= Math.Min(_average.Length - 1, centre + half); i++) power += _average[i] - floor;
+        // The median of an exponential (noise power) distribution is ln 2 of its mean.
+        var noise = floor / Math.Log(2) * 2500 / binHz;
+        return power <= 0 ? null : (int)Math.Round(10 * Math.Log10(power / noise));
+    }
+
     private void Frame()
     {
         var data = new Complex[Size];

@@ -12,10 +12,10 @@ namespace Ft8Client.Core.Tests;
 public class OverReaderTests
 {
     [Theory]
-    [InlineData("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K", "KP4JRS")]
-    [InlineData("cq cq ja7qvi ja7qvi", "JA7QVI")]
-    [InlineData("CQ CQ DX DE EA8TL EA8TL", "EA8TL")]
-    [InlineData("QRZ? DE 3D2AG K", "3D2AG")]
+    [InlineData("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n", "KP4JRS")]
+    [InlineData("cq cq ja7qvi ja7qvi ", "JA7QVI")]
+    [InlineData("CQ CQ DX DE EA8TL EA8TL ", "EA8TL")]
+    [InlineData("QRZ? DE 3D2AG K ", "3D2AG")]
     public void Read_Cq_FindsCaller(string text, string call)
     {
         var o = OverReader.Read(text);
@@ -27,7 +27,7 @@ public class OverReaderTests
     [Fact]
     public void Read_ADeB_SenderIsBAndToIsA()
     {
-        var o = OverReader.Read("W7LIT DE EA8TL GE TONY UR 599 599 NAME JUAN HW? W7LIT DE EA8TL KN");
+        var o = OverReader.Read("W7LIT DE EA8TL GE TONY UR 599 599 NAME JUAN HW? W7LIT DE EA8TL KN ");
         o.Sender.Should().Be("EA8TL");
         o.To.Should().Be("W7LIT");
         o.Cq.Should().BeFalse();
@@ -37,15 +37,15 @@ public class OverReaderTests
     [Fact]
     public void Read_RepeatedCallBeforeK_IsSender()
     {
-        var o = OverReader.Read("TNX FER QSO 73 ES GL 2E0ABC 2E0ABC SK");
+        var o = OverReader.Read("TNX FER QSO 73 ES GL 2E0ABC 2E0ABC SK\n");
         o.Sender.Should().Be("2E0ABC");
         o.Ended.Should().BeTrue();
     }
 
     [Theory]
     [InlineData("UR RST 5NN 5NN NAME BOB")]
-    [InlineData("73S ES TNX 73S ES TNX K")]
-    [InlineData("QTH NR DN40 DN40 K")]
+    [InlineData("73S ES TNX 73S ES TNX K ")]
+    [InlineData("QTH NR DN40 DN40 K ")]
     [InlineData("THE WX HR IS SUNNY")]
     public void Read_NoCallPattern_NoSender(string text)
     {
@@ -55,7 +55,17 @@ public class OverReaderTests
     [Fact]
     public void Read_CallNotInPattern_NotSender()
     {
-        OverReader.Read("I WORKED JA1ABC YESTERDAY").Sender.Should().BeNull();
+        OverReader.Read("I WORKED JA1ABC YESTERDAY ").Sender.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("CQ CQ DE KP4J")]
+    [InlineData("CQ CQ DE K")]
+    public void Read_LastWordIncomplete_NotRead(string text)
+    {
+        var o = OverReader.Read(text);
+        o.Sender.Should().BeNull();
+        o.Ended.Should().BeFalse();
     }
 
     [Fact]

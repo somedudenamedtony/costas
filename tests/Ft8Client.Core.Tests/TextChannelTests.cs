@@ -24,7 +24,8 @@ public class TextChannelTests
     {
         var ch = new TextChannel();
         ch.Add("CQ CQ DE KP4", T0, 1000, -5).Should().BeNull();
-        var h = ch.Add("JRS KP4JRS K\n", T0.AddSeconds(2), 1001, -4);
+        ch.Add("J", T0.AddSeconds(1), 1000, -5).Should().BeNull();
+        var h = ch.Add("RS KP4JRS K\n", T0.AddSeconds(2), 1001, -4);
         h!.Call.Should().Be("KP4JRS");
         h.Cq.Should().BeTrue();
         h.OverEnded.Should().BeTrue();

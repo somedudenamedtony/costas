@@ -16,6 +16,7 @@
     <ProjectReference Include="..\Ft8Client.Rig\Ft8Client.Rig.csproj" />
     <ProjectReference Include="..\Ft8Client.Data\Ft8Client.Data.csproj" />
     <ProjectReference Include="..\Ft8Client.Integrations\Ft8Client.Integrations.csproj" />
+    <ProjectReference Include="..\Ft8Client.Modems\Ft8Client.Modems.csproj" />
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\costas.ico" />
