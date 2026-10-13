@@ -12,7 +12,7 @@ should not need Settings while operating.
 | **Band** | The band you are on, filled in at start-up. Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
 | **Mode** | FT8 or FT4. Changes the slot length and dial frequency. Locked while transmitting |
 | Frequency | The dial frequency read from the radio, in MHz |
-| **Operate**, **Raw decodes**, **Reach**, **Log** | The four views. ++ctrl+1++ to ++ctrl+4++ |
+| **Operate**, **Raw decodes**, **Reach**, **Log**, **Awards** | The five views. ++ctrl+1++ to ++ctrl+5++ |
 | Clock | UTC. Turns amber with a tooltip when your clock is off by more than 0.5 s, red above 2 s |
 | **☰** | Mini mode, Settings, Station setup, Diagnostics, Keyboard shortcuts, About |
 

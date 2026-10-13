@@ -10,7 +10,7 @@ Press ++f1++ in Costas to see this list.
 | ++ctrl+q++ | Call CQ / Stop CQ |
 | ++ctrl+r++ | Resend |
 | ++ctrl+l++ | Log now |
-| ++ctrl+1++ to ++ctrl+4++ | Operate, Raw decodes, Reach, Log |
+| ++ctrl+1++ to ++ctrl+5++ | Operate, Raw decodes, Reach, Log, [Awards](awards.md) |
 | ++ctrl+m++ | [Mini mode](operate.md#mini-mode): a small strip that stays on top |
 | ++f1++ | This list |
 
