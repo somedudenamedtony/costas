@@ -31,6 +31,11 @@ Costas controls the radio through Hamlib, the same library WSJT-X uses.
 | **Speed (baud)** | **Automatic** tries the common rates. Or pick the rate set in the radio's menu |
 | **Transmit (PTT)** | How the radio is keyed, below |
 
+If Hamlib Launcher or another program already runs rigctld, choose **Hamlib › NET rigctl**.
+Enter its listening address in **Server (host:port)**, for example `127.0.0.1:4532` for a server
+on this PC. Keep the launcher running: it owns the radio's COM port and sets the radio model
+and baud rate. Costas connects over TCP, so it does not check or scan COM ports or baud rates.
+
 PTT choices:
 
 - **CAT command (most radios with USB)**: Costas tells the radio to transmit over the same cable. Use this for an

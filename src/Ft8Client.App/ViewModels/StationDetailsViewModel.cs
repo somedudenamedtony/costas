@@ -64,6 +64,9 @@ public sealed class StationDetailsViewModel
     /// <summary>The rarity line is shown.</summary>
     public bool HasRarity => Rarity.Length > 0;
 
+    /// <summary>The confirmation and awards group has at least one known fact.</summary>
+    public bool HasConfirmationDetails => HasQsl || HasRarity;
+
     /// <summary>"No QRZ details" hint when nothing was looked up.</summary>
     public string LookupNote { get; private init; } = string.Empty;
 

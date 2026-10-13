@@ -58,6 +58,12 @@ Press **Reach** in the top bar (++ctrl+3++), or **Open reach view** under *Your 
   stored. Nothing is recorded while the comparison is turned off in Settings, or in simulation. Deleting the file
   starts the history again.
 
+### Band activity near you
+
+Open **Reach** or the **Band** dropdown to see, before you switch, which bands are open from your area right now. For each band it shows how many PSK Reporter spots stations within 300 miles of you got in the last 15 minutes, which continents heard them (darker means more), and countries hearing them that you still need on that band, for example *You need Brazil +2*. Hover over it for the full list.
+
+It needs **Receive live reports of stations hearing my signal** and **Show band activity near me in Reach and the band menu** in [Settings](settings.md). The rows fill in once PSK Reporter has reported your own signal, which tells Costas your country; Costas remembers it, so after that they fill in at start-up. Until then each row says *Needs a spot of you*. If PSK Reporter sends more reports than Costas can keep up with, it follows only the band you are on and the other rows say *Too busy to follow* until you restart Costas.
+
 Reports appear a few minutes after you transmit. Until then the view says *No reports yet*.
 
 The populated Reach view looks like this design mock-up (sample data):

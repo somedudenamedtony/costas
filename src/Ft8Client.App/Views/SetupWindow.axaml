@@ -39,10 +39,12 @@
                       PlaceholderText="Choose…" MaxDropDownHeight="360">
               <ComboBox.ItemTemplate><DataTemplate x:DataType="rig:HamlibModel"><TextBlock Text="{Binding Model}" /></DataTemplate></ComboBox.ItemTemplate>
             </ComboBox>
-            <TextBlock Grid.Row="2" Text="Port" VerticalAlignment="Center" />
-            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Ports}" SelectedItem="{Binding Port}" Width="300" PlaceholderText="Find automatically" />
-            <TextBlock Grid.Row="3" Text="Speed (baud)" VerticalAlignment="Center" />
-            <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding BaudChoices}" SelectedItem="{Binding BaudChoice}" Width="300" />
+            <TextBlock Grid.Row="2" IsVisible="{Binding !IsNetwork}" Text="Port" VerticalAlignment="Center" />
+            <ComboBox Grid.Row="2" Grid.Column="1" IsVisible="{Binding !IsNetwork}" ItemsSource="{Binding Ports}" SelectedItem="{Binding Port}" Width="300" PlaceholderText="Find automatically" />
+            <TextBlock Grid.Row="2" Text="Server (host:port)" IsVisible="{Binding IsNetwork}" VerticalAlignment="Center" />
+            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding NetworkAddress}" IsVisible="{Binding IsNetwork}" Width="300" HorizontalAlignment="Left" PlaceholderText="127.0.0.1:4532" />
+            <TextBlock Grid.Row="3" IsVisible="{Binding !IsNetwork}" Text="Speed (baud)" VerticalAlignment="Center" />
+            <ComboBox Grid.Row="3" Grid.Column="1" IsVisible="{Binding !IsNetwork}" ItemsSource="{Binding BaudChoices}" SelectedItem="{Binding BaudChoice}" Width="300" />
             <TextBlock Grid.Row="4" Text="Transmit (PTT)" VerticalAlignment="Center" />
             <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding PttChoices}" SelectedItem="{Binding PttChoice}" Width="300" />
           </Grid>

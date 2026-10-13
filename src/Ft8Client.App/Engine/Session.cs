@@ -61,6 +61,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private SessionConfig _config;
     private LogIndex _logIndex = LogIndex.Empty;
     private HearsMe _hearsMe;
+    private readonly ReceptionHistory _receptionHistory = new();
     private EntityMatch? _myEntity;
     private long _dialHz;
     private int _txOffset = 1500;
@@ -467,16 +468,18 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             var s = _tracker.Find(entry.Call);
-            var entity = s?.Entity ?? _countries.Lookup(entry.Call);
-            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid ?? s?.Grid, _config.Band, ModeInfo.Name(_config.Mode),
-                _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
             var lk = _lookups.GetValueOrDefault(Callsign.Normalize(entry.Call));
+            // A caller can skip the grid exchange. Persist the same known grid that we index.
+            entry = entry with { Grid = entry.Grid ?? s?.Grid ?? lk?.Grid };
+            var entity = s?.Entity ?? _countries.Lookup(entry.Call);
+            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid, _config.Band, ModeInfo.Name(_config.Mode),
+                _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
             ctx = new LogContext(_config.Band, _config.Mode, _dialHz + _txOffset, _config.MyCall, _config.MyGrid, _config.PowerWatts, need,
                 entity?.Entity.Key, entity?.Entity.Name, lk?.Name, lk?.State, entity?.Continent, lk?.City);
             if (entry.TimeOffUtc - _lastContactUtc > TimeSpan.FromHours(2)) _tonight.Clear();
             _lastContactUtc = entry.TimeOffUtc;
             _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag));
-            _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid ?? s?.Grid, entity?.Entity.Key, lk?.State,
+            _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
             _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
         }
@@ -659,6 +662,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         {
             _config = _config with { FixedTxOffsetHz = hz };
             if (hz is { } v) _txOffset = v;
+            else UpdateTxOffset(_config.Mode);
         }
         Publish();
     }
@@ -709,6 +713,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _engine.Configure(config.MyCall, config.MyGrid, CappedContact());
             if (stationChanged)
             {
+                _receptionHistory.Clear();
                 _tracker.SetMyStation(config.MyCall, config.MyGrid);
                 _myEntity = _countries.Lookup(config.MyCall);
             }
@@ -754,7 +759,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Adds a reception report of my signal.</summary>
     public void AddReport(ReceptionReport r)
     {
-        lock (_gate) _hearsMe.Add(r);
+        lock (_gate)
+        {
+            _hearsMe.Add(r);
+            _receptionHistory.Add(r, _clock.UtcNow);
+        }
         Publish();
     }
 
@@ -868,6 +877,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 LogIsEmpty = _logIndex.IsEmpty,
                 Tonight = _tonight.ToList(),
                 Reports = _hearsMe.Reports.OrderByDescending(r => r.TimeUtc).ToList(),
+                ReceptionHistory = _receptionHistory.Buckets(_config.Band, ModeInfo.Name(_config.Mode), now),
                 Neighbours = NeighbourComparison.Compare(_hearsMe.Reports, _neighbours, _config.MyCall, _config.MyGrid, _config.Band,
                     ModeInfo.Name(_config.Mode), _countries, now),
                 BandOpenings = Openings(now),

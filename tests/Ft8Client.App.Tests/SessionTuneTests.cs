@@ -52,6 +52,19 @@ public class SessionTuneTests
     }
 
     [Fact]
+    public void SetTxOffset_ManualThenAutomatic_UpdatesSelectionWithoutKeying()
+    {
+        _session.SetTxOffset(2200);
+        _session.Snapshot.TxOffsetHz.Should().Be(2200);
+        _session.Snapshot.TxOffsetAuto.Should().BeFalse();
+
+        _session.SetTxOffset(null);
+        _session.Snapshot.TxOffsetAuto.Should().BeTrue();
+        _session.Snapshot.TxOffsetClear.Should().BeTrue();
+        _rig.PttLog.Should().NotContain(p => p.On);
+    }
+
+    [Fact]
     public async Task TuneAsync_Idle_KeysAndShowsTune()
     {
         var why = await _session.TuneAsync(10);

@@ -177,6 +177,10 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial string SignalHeadline { get; set; } = string.Empty;
 
+    /// <summary>Five-minute distinct receiver counts.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<ReceptionBucket> SignalHistory { get; set; } = [];
+
     /// <summary>Farthest.</summary>
     [ObservableProperty]
     public partial string SignalFarthest { get; set; } = "—";
@@ -583,6 +587,7 @@ public sealed partial class OperateViewModel : ObservableObject
     private void ApplySignal(SessionSnapshot s, DateTime now, string band)
     {
         SignalTitle = $"Your signal on {band}";
+        SignalHistory = s.ReceptionHistory;
         var available = s.Services.TryGetValue(ServiceNames.Psk, out var psk) ? psk : null;
         SignalNeighbours = NeighbourText.Headline(s.Neighbours);
         SignalSource = available?.Health switch

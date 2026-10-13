@@ -125,6 +125,60 @@ public class RigTests
     }
 
     [Fact]
+    public void Options_NetRigctl_UsesServerAddressWithoutBaud()
+    {
+        string.Join(' ', new RigctldOptions("rigctld", 2, "127.0.0.1:4532", 19200).Arguments(5000))
+            .Should().Be("-m 2 -r 127.0.0.1:4532 -P RIG -T 127.0.0.1 -t 5000");
+        new HamlibModel(2, "Hamlib", "NET rigctl", "Stable").IsNetwork.Should().BeTrue();
+        new HamlibModel(3073, "Icom", "IC-7300", "Stable").IsNetwork.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task NetRigctl_ExistingDummyServer_ReadsRadioAndLeavesServerRunning()
+    {
+        var exe = HamlibModels.Find("rigctld", null);
+        Assert.SkipWhen(exe is null, "rigctld is not installed.");
+        var ct = TestContext.Current.CancellationToken;
+        var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        using var server = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe!,
+            ["-m", "1", "-P", "RIG", "-T", "127.0.0.1", "-t", port.ToString(System.Globalization.CultureInfo.InvariantCulture)]))!;
+        try
+        {
+            await using var direct = new RigctldClient("127.0.0.1", port);
+            for (var i = 0; ; i++)
+            {
+                try { await direct.GetFrequencyAsync(ct); break; }
+                catch (RigException) when (i < 30) { await Task.Delay(100, ct); }
+            }
+            await direct.SetAsync("F 14074000", ct);
+            await using (var proxy = await RigctldRig.StartAsync(
+                new RigctldOptions(exe!, 2, $"127.0.0.1:{port}", null), NullProcessGuard.Instance, SystemClock.Instance, ct))
+            {
+                (await proxy.GetStateAsync(ct)).FrequencyHz.Should().Be(14_074_000);
+            }
+            server.HasExited.Should().BeFalse();
+            (await direct.GetFrequencyAsync(ct)).Should().Be(14_074_000);
+        }
+        finally
+        {
+            if (!server.HasExited) server.Kill();
+            await server.WaitForExitAsync(ct);
+        }
+    }
+
+    [Fact]
+    public void SerialPorts_WindowsDriverGarbage_ReturnsCleanDistinctComNames()
+    {
+        RigctldRig.CleanSerialPorts(["COM3\0垃圾", "com3", "COM12garbage", "not a port", "COM"], true)
+            .Should().Equal("COM12", "COM3");
+        RigctldRig.CleanSerialPorts(["/dev/ttyUSB0", "/dev/ttyUSB0", "/dev/ttyACM0"], false)
+            .Should().Equal("/dev/ttyACM0", "/dev/ttyUSB0");
+    }
+
+    [Fact]
     public void Models_ParseRigctlList()
     {
         const string text = """

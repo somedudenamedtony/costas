@@ -90,8 +90,8 @@ The key and password are kept in Windows Credential Manager.
   Chance.
 - **Who hears me › Compare my signal with stations near me**: on. Also receives reports of other stations within
   300 miles on your band, for *Compared with stations near you* in the Reach view. Nothing about them is saved.
-- **Who hears me › Show band activity near me in the band menu**: on. Receives reports of stations within 300 miles on
-  every band, so the band menu shows which bands are open from your area. Nothing about them is saved.
+- **Who hears me › Show band activity near me in Reach and the band menu**: on. Receives reports of stations within 300 miles on
+  every band, so Reach and the band menu show which bands are open from your area. Nothing about them is saved.
 - **Share what I hear › Send the stations I decode to PSK Reporter**: off. Helps other operators see where their
   signals reach. Sent every few minutes, never in simulation.
 

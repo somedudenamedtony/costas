@@ -72,6 +72,13 @@ public sealed partial class ReachViewModel : ObservableObject
     /// <summary>Who heard you rows.</summary>
     public ObservableCollection<ReachRowViewModel> Rows { get; } = [];
 
+    /// <summary>Live activity of nearby stations across the available bands.</summary>
+    public ObservableCollection<BandChoiceViewModel> BandActivity { get; init; } = [];
+
+    /// <summary>Why activity has not arrived yet, when no band has reports or a feed status.</summary>
+    [ObservableProperty]
+    public partial string BandActivityStatus { get; set; } = "Waiting for reports of nearby stations.";
+
     /// <summary>By band, last 24 hours.</summary>
     public ObservableCollection<BandReachRowViewModel> ByBand { get; } = [];
 

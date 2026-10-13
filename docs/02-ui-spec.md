@@ -121,6 +121,8 @@ The engine counts a message as sent when its transmission starts. While that mes
 
 Clicking one of my upcoming boxes jumps the sequence to that step (manual override). The boxes are generated from the contact state machine's step list, so the CQ-run flow shows its own six steps.
 
+**Contact station details** (beneath the horizontal conversation in the contact card): a shaded strip groups the station name, licence and QRZ/photo links; location, distance, county and local time; grid, bearing and CQ/ITU zones; and QSL methods and most-wanted rank. Values are emphasized above secondary details, and groups wrap on narrower windows. Missing optional facts are omitted, including the QSL/awards group when empty. Lookup status and Who else is calling appear below the groups when available. The contact's station is looked up on QRZ when the contact starts. These facts no longer occupy the top of the right column.
+
 ### Next in line
 
 A grid with a header row. One row per station that is needed (tiers 1 to 4), callable (see `04-domain-logic.md`) and passes the filters. Sorted by the ranking rule. At most 12 rows; the rest are counted in a footer link "and N more".
@@ -157,9 +159,7 @@ Directly under Next in line. Stations heard now that are already worked (tier 5:
 
 ### Right column
 
-**About <call>** (top, only during a contact): the same facts as the station details flyout for the station in the contact, including Who else is calling, so the operator can see who they are working without selecting a row. The contact's station is looked up on QRZ when the contact starts.
-
-**Heard here** (first card below it): a map of the stations I decoded in the last 15 minutes, with choices that are remembered in settings (`Map`):
+**Heard here** (first card): a map of the stations I decoded in the last 15 minutes, with choices that are remembered in settings (`Map`):
 
 | Choice | Options |
 | --- | --- |

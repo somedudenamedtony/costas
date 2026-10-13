@@ -90,6 +90,13 @@ Notes:
 
 `HearsMe` holds reception reports of my callsign from PSK Reporter for the current band, keeping the last 60 minutes.
 
+`ReceptionHistory` also counts distinct receiving callsigns in fixed UTC five-minute intervals, per band and mode,
+for twelve completed intervals plus the current partial interval. It uses reception time, accepts late reports,
+and deduplicates receivers across feed and fallback reports. The graph labels local times and marks the partial
+interval; missing reports count as zero reports, not proof of a closed band. Counts remain available across band
+and mode changes in the session and clear when the operator's call or grid changes. Existing stored reports refill
+the last hour at start-up. No extra queries are made.
+
 For a station S:
 
 - **Direct report**: the newest report from S's callsign within 15 minutes. Display "Yes, -22".

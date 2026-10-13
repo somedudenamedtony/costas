@@ -309,8 +309,8 @@
                 <CheckBox Content="Receive live reports of stations hearing my signal" IsChecked="{Binding FeedEnabled}" />
                 <CheckBox Content="Compare my signal with stations near me" IsChecked="{Binding CompareNeighbours}" IsEnabled="{Binding FeedEnabled}" />
                 <TextBlock Classes="help" Text="Also receives reports of stations within 300 miles on your band, so the Reach view can show where you are stronger or weaker than them." TextWrapping="Wrap" />
-                <CheckBox Content="Show band activity near me in the band menu" IsChecked="{Binding BandActivity}" IsEnabled="{Binding FeedEnabled}" Margin="0,8,0,0" />
-                <TextBlock Classes="help" Text="Receives reports of stations within 300 miles on every band, so the band menu shows which bands are open from your area and where they are heard." TextWrapping="Wrap" />
+                <CheckBox Content="Show band activity near me in Reach and the band menu" IsChecked="{Binding BandActivity}" IsEnabled="{Binding FeedEnabled}" Margin="0,8,0,0" />
+                <TextBlock Classes="help" Text="Receives reports of stations within 300 miles on every band, so Reach and the band menu show which bands are open from your area and where they are heard." TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">

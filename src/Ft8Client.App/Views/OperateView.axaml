@@ -146,6 +146,9 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <v:StationInfoStrip Margin="0,8,0,0"
+                               DataContext="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Calling}"
+                               IsVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Calling, Converter={x:Static ObjectConverters.IsNotNull}}" />
           </StackPanel>
         </Border>
         <!-- Top slot: band summary (idle) -->
@@ -410,92 +413,89 @@
     <!-- Right column -->
     <ScrollViewer Grid.Column="1" Grid.Row="0" x:Name="RightColumn" VerticalScrollBarVisibility="Auto">
       <StackPanel Spacing="12">
-        <!-- Who you're calling: QRZ details of the station in the current contact. -->
-        <Border Classes="card" Padding="14,12" IsVisible="{Binding Calling, Converter={x:Static ObjectConverters.IsNotNull}}"
-                AutomationProperties.Name="Who you're calling">
-          <StackPanel DataContext="{Binding Calling}" x:DataType="vm:StationDetailsViewModel" Spacing="4">
-            <TextBlock Classes="title"><Run Text="About " /><Run Text="{Binding Call}" /></TextBlock>
-            <v:StationFacts />
-          </StackPanel>
-        </Border>
-
         <!-- Heard here: map and band activity -->
         <Border Classes="card" Padding="14,12">
-          <StackPanel Spacing="8" DataContext="{Binding Map}" x:DataType="vm:HeardMapViewModel">
-            <TextBlock Text="Heard here" Classes="title" />
-            <TextBlock Text="{Binding Headline}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,-4,0,0" />
-            <WrapPanel ItemSpacing="6" LineSpacing="6">
-              <ComboBox ItemsSource="{x:Static vm:HeardMapViewModel.Views}" SelectedItem="{Binding View}" MinWidth="110" AutomationProperties.Name="Map view" ToolTip.Tip="Map view" />
-              <ComboBox ItemsSource="{x:Static vm:HeardMapViewModel.Shows}" SelectedItem="{Binding Show}" MinWidth="130" AutomationProperties.Name="Stations shown" ToolTip.Tip="Stations shown" />
-              <ComboBox ItemsSource="{x:Static vm:HeardMapViewModel.Colours}" SelectedItem="{Binding Colour}" MinWidth="110" AutomationProperties.Name="Colour by" ToolTip.Tip="Colour by" />
-            </WrapPanel>
-            <WrapPanel ItemSpacing="14">
-              <CheckBox Content="Who heard you" IsChecked="{Binding HearsMe}" />
-              <CheckBox Content="Day and night" IsChecked="{Binding DayNight}" IsVisible="{Binding World}" />
-            </WrapPanel>
-            <v:StationMap Points="{Binding Points}" Centre="{Binding Centre}" World="{Binding World}" DayNight="{Binding DayNight}"
-                          NowUtc="{Binding NowUtc}" Units="{Binding Units}" HorizontalAlignment="Stretch" />
-            <TextBlock Text="{Binding Notice}" Classes="secondary" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding Notice, Converter={x:Static v:Converters.NotEmpty}}" />
-            <ItemsControl ItemsSource="{Binding Legend}">
-              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="12" LineSpacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:LegendItem">
-                  <StackPanel Orientation="Horizontal" Spacing="5">
-                    <Ellipse Width="9" Height="9" VerticalAlignment="Center" Opacity="{Binding Opacity}"
-                             Fill="{Binding Converter={x:Static v:Converters.LegendFill}}" Stroke="{Binding Converter={x:Static v:Converters.LegendStroke}}" StrokeThickness="1.5" />
-                    <TextBlock Text="{Binding Text}" Classes="secondary" FontSize="12" />
-                  </StackPanel>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="Band activity, last hour" Classes="title" Margin="0,6,0,0" />
-            <v:ActivityChart Activity="{Binding Activity}" NowUtc="{Binding NowUtc}" Height="80" HorizontalAlignment="Stretch"
-                             AutomationProperties.Name="{Binding ActivityText}" />
-            <TextBlock Text="{Binding ActivityText}" Classes="secondary" FontSize="12" TextWrapping="Wrap" />
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <StackPanel Orientation="Horizontal" Spacing="5">
-                <Rectangle Width="9" Height="9" Fill="{DynamicResource TextSecondaryBrush}" Opacity="0.35" VerticalAlignment="Center" />
-                <TextBlock Text="Decodes per slot" Classes="secondary" FontSize="12" />
-              </StackPanel>
-              <StackPanel Orientation="Horizontal" Spacing="5">
-                <Rectangle Width="9" Height="9" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-                <TextBlock Text="Needed stations" Classes="secondary" FontSize="12" />
+          <StackPanel Spacing="8">
+            <StackPanel Spacing="8" DataContext="{Binding Map}" x:DataType="vm:HeardMapViewModel">
+              <TextBlock Text="Heard here" Classes="title" />
+              <TextBlock Text="{Binding Headline}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,-4,0,0" />
+              <WrapPanel ItemSpacing="6" LineSpacing="6">
+                <ComboBox ItemsSource="{x:Static vm:HeardMapViewModel.Views}" SelectedItem="{Binding View}" MinWidth="110" AutomationProperties.Name="Map view" ToolTip.Tip="Map view" />
+                <ComboBox ItemsSource="{x:Static vm:HeardMapViewModel.Shows}" SelectedItem="{Binding Show}" MinWidth="130" AutomationProperties.Name="Stations shown" ToolTip.Tip="Stations shown" />
+                <ComboBox ItemsSource="{x:Static vm:HeardMapViewModel.Colours}" SelectedItem="{Binding Colour}" MinWidth="110" AutomationProperties.Name="Colour by" ToolTip.Tip="Colour by" />
+              </WrapPanel>
+              <WrapPanel ItemSpacing="14">
+                <CheckBox Content="Who heard you" IsChecked="{Binding HearsMe}" />
+                <CheckBox Content="Day and night" IsChecked="{Binding DayNight}" IsVisible="{Binding World}" />
+              </WrapPanel>
+              <v:StationMap Points="{Binding Points}" Centre="{Binding Centre}" World="{Binding World}" DayNight="{Binding DayNight}"
+                            NowUtc="{Binding NowUtc}" Units="{Binding Units}" HorizontalAlignment="Stretch" />
+              <TextBlock Text="{Binding Notice}" Classes="secondary" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding Notice, Converter={x:Static v:Converters.NotEmpty}}" />
+              <ItemsControl ItemsSource="{Binding Legend}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="12" LineSpacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LegendItem">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                      <Ellipse Width="9" Height="9" VerticalAlignment="Center" Opacity="{Binding Opacity}"
+                               Fill="{Binding Converter={x:Static v:Converters.LegendFill}}" Stroke="{Binding Converter={x:Static v:Converters.LegendStroke}}" StrokeThickness="1.5" />
+                      <TextBlock Text="{Binding Text}" Classes="secondary" FontSize="12" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="Band activity, last hour" Classes="title" Margin="0,6,0,0" />
+              <v:ActivityChart Activity="{Binding Activity}" NowUtc="{Binding NowUtc}" Height="80" HorizontalAlignment="Stretch"
+                               AutomationProperties.Name="{Binding ActivityText}" />
+              <TextBlock Text="{Binding ActivityText}" Classes="secondary" FontSize="12" TextWrapping="Wrap" />
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <Rectangle Width="9" Height="9" Fill="{DynamicResource TextSecondaryBrush}" Opacity="0.35" VerticalAlignment="Center" />
+                  <TextBlock Text="Decodes per slot" Classes="secondary" FontSize="12" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <Rectangle Width="9" Height="9" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                  <TextBlock Text="Needed stations" Classes="secondary" FontSize="12" />
+                </StackPanel>
               </StackPanel>
             </StackPanel>
-          </StackPanel>
-        </Border>
-
-        <Border Classes="card" Padding="14,12">
-          <StackPanel Spacing="6">
-            <TextBlock Text="{Binding SignalTitle}" Classes="title" />
-            <TextBlock Text="{Binding SignalSource}" Classes="secondary" FontSize="12" Margin="0,-4,0,0" />
-            <!-- No map here: Heard here's "Who heard you" rings already show these stations on a map. -->
-            <TextBlock Text="{Binding SignalHeadline}" TextWrapping="Wrap" />
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-              <StackPanel>
-                <TextBlock Text="Farthest" Classes="secondary" FontSize="12" />
-                <TextBlock Text="{Binding SignalFarthest}" TextTrimming="CharacterEllipsis" />
+            <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlBorderBrush}" Padding="0,10,0,0">
+              <StackPanel Spacing="6">
+                <TextBlock Text="{Binding SignalTitle}" Classes="title" />
+                <TextBlock Text="{Binding SignalSource}" Classes="secondary" FontSize="12" Margin="0,-4,0,0" />
+                <!-- No map here: Heard here's "Who heard you" rings already show these stations on a map. -->
+                <TextBlock Text="{Binding SignalHeadline}" TextWrapping="Wrap" />
+                <TextBlock Text="Stations hearing you · every 5 minutes" Classes="secondary" FontSize="12" />
+                <v:ReceptionChart History="{Binding SignalHistory}" Height="100"
+                                  AutomationProperties.Name="Distinct stations hearing you in five-minute intervals over the last hour"
+                                  ToolTip.Tip="One count per receiver per interval, on this band and mode. Times are local. The final bar is incomplete. Reports can arrive late; fewer transmissions or a feed outage can also lower counts." />
+                <TextBlock Text="Last hour · local time · * current interval incomplete" Classes="secondary" FontSize="11" TextWrapping="Wrap" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                  <StackPanel>
+                    <TextBlock Text="Farthest" Classes="secondary" FontSize="12" />
+                    <TextBlock Text="{Binding SignalFarthest}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1">
+                    <TextBlock Text="Best report" Classes="secondary" FontSize="12" />
+                    <TextBlock Text="{Binding SignalBest}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                </Grid>
+                <TextBlock Text="{Binding SignalNeighbours}" TextWrapping="Wrap" IsVisible="{Binding SignalNeighbours, Converter={x:Static v:Converters.NotEmpty}}"
+                           ToolTip.Tip="From PSK Reporter receivers that heard both you and stations within 300 miles in the last 30 minutes. Details in the Reach view." />
+                <ItemsControl ItemsSource="{Binding ReportRows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ReportRowViewModel">
+                      <Grid ColumnDefinitions="70,*,36,70" MinHeight="28">
+                        <TextBlock Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="2" Text="{Binding Db}" Classes="num" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{Binding Age}" Classes="secondary" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Classes="link" Command="{Binding OpenReachCommand}"><TextBlock Text="Open reach view" /></Button>
               </StackPanel>
-              <StackPanel Grid.Column="1">
-                <TextBlock Text="Best report" Classes="secondary" FontSize="12" />
-                <TextBlock Text="{Binding SignalBest}" TextTrimming="CharacterEllipsis" />
-              </StackPanel>
-            </Grid>
-            <TextBlock Text="{Binding SignalNeighbours}" TextWrapping="Wrap" IsVisible="{Binding SignalNeighbours, Converter={x:Static v:Converters.NotEmpty}}"
-                       ToolTip.Tip="From PSK Reporter receivers that heard both you and stations within 300 miles in the last 30 minutes. Details in the Reach view." />
-            <ItemsControl ItemsSource="{Binding ReportRows}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:ReportRowViewModel">
-                  <Grid ColumnDefinitions="70,*,36,70" MinHeight="28">
-                    <TextBlock Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Grid.Column="2" Text="{Binding Db}" Classes="num" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="3" Text="{Binding Age}" Classes="secondary" VerticalAlignment="Center" HorizontalAlignment="Right" />
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Button Classes="link" Command="{Binding OpenReachCommand}"><TextBlock Text="Open reach view" /></Button>
+            </Border>
           </StackPanel>
         </Border>
 
