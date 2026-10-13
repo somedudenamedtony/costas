@@ -74,6 +74,10 @@ public static class SettingsMapper
         };
     }
 
+    /// <summary>Which confirmations count as confirmed: LoTW only unless the operator chose any.</summary>
+    public static ConfirmationSource ConfirmationSource(AppSettings s) =>
+        string.Equals(s.Ranking.ConfirmedBy, "any", StringComparison.OrdinalIgnoreCase) ? Core.Logbook.ConfirmationSource.Any : Core.Logbook.ConfirmationSource.Lotw;
+
     /// <summary>Stored tier names from tags.</summary>
     public static List<string> TierNames(IEnumerable<NeedTag> tags) => tags.Select(t => t switch
     {

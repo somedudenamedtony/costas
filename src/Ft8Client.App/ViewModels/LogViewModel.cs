@@ -38,6 +38,12 @@ public sealed partial class LogViewModel : ObservableObject
         _changed = changed;
     }
 
+    /// <summary>Downloads LoTW confirmations; returns a message. Null when LoTW is not available.</summary>
+    public Func<CancellationToken, Task<string>>? LotwDownload { get; init; }
+
+    /// <summary>Signs and uploads new contacts to LoTW through TQSL; returns a message.</summary>
+    public Func<CancellationToken, Task<string>>? LotwUpload { get; init; }
+
     /// <summary>Rows, newest first.</summary>
     public ObservableCollection<LogRowViewModel> Rows { get; } = [];
 
@@ -156,6 +162,30 @@ public sealed partial class LogViewModel : ObservableObject
         try
         {
             Message = await _sync(CancellationToken.None);
+        }
+        finally
+        {
+            Syncing = false;
+            Refresh();
+        }
+    }
+
+    /// <summary>Downloads new LoTW confirmations now.</summary>
+    [RelayCommand]
+    private Task LotwDownloadNowAsync() => RunAsync(LotwDownload, "Downloading LoTW confirmations…");
+
+    /// <summary>Signs and uploads contacts LoTW does not have yet, through TQSL.</summary>
+    [RelayCommand]
+    private Task LotwUploadNowAsync() => RunAsync(LotwUpload, "Signing and uploading to LoTW with TQSL…");
+
+    private async Task RunAsync(Func<CancellationToken, Task<string>>? action, string busy)
+    {
+        if (action is null) return;
+        Syncing = true;
+        Message = busy;
+        try
+        {
+            Message = await action(CancellationToken.None);
         }
         finally
         {

@@ -83,6 +83,12 @@ public sealed class QsoRecord
     /// <summary>True if any confirmation field says so.</summary>
     public bool Confirmed { get; set; }
 
+    /// <summary>True when LoTW confirms it.</summary>
+    public bool LotwConfirmed { get; set; }
+
+    /// <summary>LoTW upload through TQSL: <c>none</c>, <c>uploaded</c> or <c>failed</c>.</summary>
+    public string LotwUploadState { get; set; } = Log.UploadState.None;
+
     /// <summary>Need tier at the time of the contact (local contacts).</summary>
     public int? NeedTier { get; set; }
 

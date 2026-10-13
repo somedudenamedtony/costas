@@ -22,4 +22,7 @@ public sealed record RankedStation(Station Station, NeedResult Need, HearsYou He
 {
     /// <summary>True when the station is calling me.</summary>
     public bool CallingMe => Station.State == StationState.CallingMe;
+
+    /// <summary>True when the station uploaded to LoTW within the last year.</summary>
+    public bool UsesLotw { get; init; }
 }

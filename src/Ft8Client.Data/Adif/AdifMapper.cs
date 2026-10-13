@@ -27,7 +27,8 @@ public static class AdifMapper
         if (off is not null && off < on && r["qso_date_off"] is null) off = off.Value.AddDays(1);
 
         var mode = (r["mode"] ?? string.Empty).Trim().ToUpperInvariant();
-        var submode = r["submode"]?.Trim().ToUpperInvariant();
+        // LoTW reports FT4 as mode MFSK with the mode it was uploaded as in APP_LoTW_MODE.
+        var submode = (r["submode"] ?? (mode == "MFSK" ? r["app_lotw_mode"] : null))?.Trim().ToUpperInvariant();
         var match = countries?.Lookup(call);
         long? freq = double.TryParse(r["freq"], NumberStyles.Float, CultureInfo.InvariantCulture, out var mhz) ? (long)Math.Round(mhz * 1_000_000) : null;
 
@@ -56,6 +57,8 @@ public static class AdifMapper
             TxPwr = r["tx_pwr"],
             Comment = r["comment"],
             Confirmed = IsConfirmed(r),
+            LotwConfirmed = r["lotw_qsl_rcvd"]?.ToUpperInvariant() is "Y" or "V",
+            LotwUploadState = r["lotw_qsl_sent"]?.ToUpperInvariant() is "Y" ? UploadState.Uploaded : UploadState.None,
             Source = source,
             QrzLogid = long.TryParse(r["app_qrzlog_logid"], NumberStyles.None, CultureInfo.InvariantCulture, out var logid) ? logid : null,
             UploadState = source == QsoSource.Qrz ? UploadState.Uploaded : UploadState.None,
@@ -101,6 +104,8 @@ public static class AdifMapper
         r["dxcc"] = q.Dxcc?.ToString(CultureInfo.InvariantCulture);
         r["comment"] = q.Comment;
         r["app_qrzlog_logid"] = q.QrzLogid?.ToString(CultureInfo.InvariantCulture);
+        if (q.LotwUploadState == UploadState.Uploaded) r["lotw_qsl_sent"] = "Y";
+        if (q.LotwConfirmed) r["lotw_qsl_rcvd"] = "Y";
         return r;
     }
 
