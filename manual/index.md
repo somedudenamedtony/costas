@@ -44,7 +44,7 @@ If something does not work, see [Troubleshooting](troubleshooting.md).
 
 | Item | Notes |
 | --- | --- |
-| Windows 10 or 11, 64-bit | Costas is built for Windows first. macOS and Linux builds are not offered yet |
+| Windows 10 or 11, 64-bit | Costas is built for Windows first. A [Linux preview](install.md#linux-preview) receives but does not transmit yet; macOS is not offered |
 | An HF radio with USB audio (or a sound card interface) | Tested design target: Icom IC-7300 over one USB cable |
 | CAT control (optional) | Lets Costas set the frequency and key the radio. Without it, use audio and VOX only |
 | An accurate PC clock | Within about one second of UTC. Costas checks it for you |

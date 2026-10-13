@@ -9,7 +9,8 @@ screen: instead of a scrolling list of decoded lines, you get one row per statio
 log, whether the station is free to call, and whether it can hear you.
 
 **[Read the user manual](https://somedudenamedtony.github.io/costas/)** ·
-**[Download for Windows](https://github.com/somedudenamedtony/costas/releases/latest)**
+**[Download for Windows](https://github.com/somedudenamedtony/costas/releases/latest)** ·
+**[Download for Linux (preview)](https://github.com/somedudenamedtony/costas/releases/latest)**
 
 ![The Operate screen](manual/images/operate-idle.png)
 
@@ -54,6 +55,17 @@ log, whether the station is free to call, and whether it can hear you.
 Requires 64-bit Windows 10 (1809) or later. The decoder (`jt9` from WSJT-X) and radio control (Hamlib) are
 bundled; you do not need WSJT-X installed. Costas checks for new builds at start and daily and offers to install them, keeping
 your log and settings.
+
+### Linux (preview, receive only)
+
+1. Install the decoder, radio control and audio library from your distribution:
+   `sudo apt install wsjtx libhamlib-utils libportaudio2 libsecret-tools` (Debian and Ubuntu names).
+2. Download `Costas-<version>-linux-x64.tar.gz` from the
+   [latest release](https://github.com/somedudenamedtony/costas/releases/latest), unpack it and run `./Costas`.
+
+The Linux version decodes, ranks stations, logs and uploads, but **does not transmit yet**: Call, Tune and the
+transmit test say so and do nothing. Transmit will be turned on once its audio has been checked with a real radio.
+See [Install](https://somedudenamedtony.github.io/costas/install/#linux-preview) in the manual for details.
 
 ## Use it
 
