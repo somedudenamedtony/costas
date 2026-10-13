@@ -92,6 +92,8 @@ public static class StationText
     public static string DoingNow(Station s)
     {
         if (s.RunsFox && s.State != StationState.CallingMe) return "DXpedition (Fox/Hound), working Hounds";
+        // A keyboard-mode station shows what it is sending (docs/09-keyboard-modes.md section 6).
+        if (s.RecentText is { } text) return text.Trim();
         switch (s.State)
         {
             case StationState.CallingMe:

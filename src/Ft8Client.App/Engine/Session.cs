@@ -621,13 +621,14 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             else
             {
                 var s = _tracker.Find(call);
-                if (s is null) return false;
+                // A station heard in a keyboard mode has no slot parity, and keyboard contacts are not built yet (M12).
+                if (s?.Parity is not { } parity) return false;
                 // A station heard working someone else (reports or grids exchanged, not signing off) will not hear me:
                 // the contact ends at once and says so rather than calling into its contact.
                 var busyWith = s is { State: StationState.InContact, Partner: { } p } && !Callsign.EqualsCall(p, _config.MyCall) ? p : null;
                 // A Fox (Fox/Hound DXpedition) is worked as a Hound: my calls at 1000 Hz or above, where it listens.
-                if (s.RunsFox) HoundCallOffset(SlotMath.Opposite(s.Parity));
-                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, busyWith, fox: s.RunsFox);
+                if (s.RunsFox) HoundCallOffset(SlotMath.Opposite(parity));
+                _engine.CallStation(s.Call, s.Grid, s.LastSnr, parity, s.OffsetHz, now, busyWith, fox: s.RunsFox);
             }
             _fault = null;
         }
