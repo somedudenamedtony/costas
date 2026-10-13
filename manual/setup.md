@@ -36,7 +36,7 @@ Enter its listening address in **Server (host:port)**, for example `127.0.0.1:45
 on this PC. Keep the launcher running: it owns the radio's COM port and sets the radio model
 and baud rate. Costas connects over TCP, so it does not check or scan COM ports or baud rates.
 
-If flrig controls the radio, choose **Hamlib › FLRig** and enter flrig's XML-RPC address in
+If flrig controls the radio, choose **FLRig** as both the manufacturer and the model, then enter flrig's XML-RPC address in
 **Flrig server (host:port)**. Costas fills in flrig's default, `127.0.0.1:12345`; change it when flrig
 runs on another PC or listens on another port (flrig's *Config › Setup › Server* page shows both).
 Keep flrig running: it owns the radio's COM port. TRXManager and ACLog work the same way.
@@ -55,9 +55,14 @@ Press **Test connection**. Costas checks each part in turn and shows a ✓ or �
 When it works you see the radio's dial frequency and mode read back, for example
 *The radio answered: 14.074.000 MHz USB-D*. **Test connection never keys the radio.** Keying is checked in step 4.
 
+If you press **Next** with the port still on **Find automatically**, Costas runs the test for you first, because a
+radio with no port cannot be opened. If it still cannot find the radio, the results stay on screen; press **Next**
+again to carry on and set the radio up later.
+
 !!! tip "Close other radio programs first"
     Only one program can use a COM port at a time. If WSJT-X, JTDX, Flrig, N1MM+ or the radio maker's own utility is
-    running, close it before you test.
+    running, close it before you test. When Costas searches every port it names any port another program is holding.
+    The exception is a program you chose as the radio (flrig, or a rigctld server for NET rigctl): keep that one running.
 
 **No CAT cable?** Tick **My radio has no CAT control: use audio and VOX only**. Costas then cannot read or set the
 frequency, and keys the radio by VOX. Set the radio to the right frequency yourself.

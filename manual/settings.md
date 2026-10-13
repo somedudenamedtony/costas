@@ -157,7 +157,7 @@ See [Operating from a phone](phone.md).
 ![Settings: Advanced](images/settings-advanced.png)
 
 Costas finds its decoder and radio control programs by itself. Set **jt9 decoder** (full path to `jt9.exe`) or
-**Hamlib folder** (the folder containing `rigctld.exe`) only to use a different copy, for example a newer Hamlib
+**Hamlib folder** (the folder containing `rigctld.exe`, or the Hamlib folder with it in `bin`) only to use a different copy, for example a newer Hamlib
 for a radio the bundled one does not support.
 
 ## Developer mode

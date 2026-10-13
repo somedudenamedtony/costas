@@ -30,6 +30,8 @@
           <TextBlock Classes="secondary" TextWrapping="Wrap"
                      Text="Choose your radio so the app can set its frequency and key it for transmit. Not connected yet? Press Next and come back from ☰ › Station setup." />
           <CheckBox Content="My radio has no CAT control: use audio and VOX only" IsChecked="{Binding AudioOnly}" />
+          <TextBlock Text="{Binding ModelListProblem}" IsVisible="{Binding ModelListProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     TextWrapping="Wrap" Foreground="{DynamicResource AccentTextBrush}" />
           <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="10" IsEnabled="{Binding !AudioOnly}">
             <TextBlock Grid.Row="0" Text="Manufacturer" VerticalAlignment="Center" />
             <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Manufacturers}" SelectedItem="{Binding Manufacturer}" Width="300"

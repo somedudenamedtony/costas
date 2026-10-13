@@ -41,7 +41,7 @@ public sealed partial class SetupViewModel : ObservableObject
         UnitsKm = s.Appearance.Units == "km";
         AudioOnly = s.Profile.Rig.Mode == RigModes.Vox;
         var networkModel = s.Profile.Rig.Model is { } m && HamlibModel.IsNetworkModel(m);
-        Port = networkModel ? string.Empty : s.Profile.Rig.Port ?? string.Empty;
+        Port = networkModel ? string.Empty : RigctldRig.CleanSerialPort(s.Profile.Rig.Port, OperatingSystem.IsWindows()) ?? string.Empty;
         NetworkAddress = networkModel && IsNetworkAddress(s.Profile.Rig.Port)
             ? s.Profile.Rig.Port!
             : HamlibModel.DefaultAddressFor(s.Profile.Rig.Model ?? 0) ?? "127.0.0.1:4532";
@@ -130,6 +130,10 @@ public sealed partial class SetupViewModel : ObservableObject
             OnPropertyChanged();
         }
     }
+
+    /// <summary>Why the radio list is empty (Hamlib missing or failing), or empty when it loaded.</summary>
+    [ObservableProperty]
+    public partial string ModelListProblem { get; set; } = string.Empty;
 
     /// <summary>Matching models.</summary>
     public ObservableCollection<HamlibModel> Models { get; } = [];
@@ -328,10 +332,28 @@ public sealed partial class SetupViewModel : ObservableObject
             await FinishAsync();
             return;
         }
+        // A radio chosen with "Find automatically" and never tested has no port, and could never open: find it now. If
+        // that fails the results stay on screen; a second Next moves on and the radio can be set up later.
+        if (Step == 1 && NeedsPortSearch && !_searchedOnNext)
+        {
+            _searchedOnNext = true;
+            await ScanAsync();
+            if (string.IsNullOrEmpty(Port))
+            {
+                Message = "Costas could not find the radio. Fix what is listed above and press Test connection, or press Next to set up the radio later.";
+                return;
+            }
+        }
         // The transmit test must go through the radio and output chosen here, not the ones the app started with.
         if (Step is 1 or 2) await ApplyDevicesAsync();
         Step++;
     }
+
+    private bool _searchedOnNext;
+
+    // A serial radio is chosen but no port: it cannot open until the port is found.
+    private bool NeedsPortSearch =>
+        !AudioOnly && Model is not null && !IsNetwork && !HamlibModels.IsTestModel(Model.Number) && string.IsNullOrEmpty(Port);
 
     /// <summary>Back.</summary>
     [RelayCommand]
@@ -372,7 +394,7 @@ public sealed partial class SetupViewModel : ObservableObject
         var exe = HamlibModels.Find("rigctld", _host.Settings.Current.Paths.HamlibDir);
         if (exe is null)
         {
-            Check(false, "rigctld (Hamlib) was not found. Run third_party/fetch or set the Hamlib folder in Settings.");
+            Check(false, HamlibMissing);
             return;
         }
         Check(true, "Found rigctld (Hamlib).");
@@ -408,13 +430,31 @@ public sealed partial class SetupViewModel : ObservableObject
                 await _host.ReleaseRigAsync(); // the open radio would hold its serial port
                 int[] bauds = int.TryParse(Baud, out var b) ? [b] : [115200, 38400, 19200, 9600, 4800];
                 var ports = string.IsNullOrEmpty(Port) ? Ports.ToList() : [Port];
+                // Searching every port: one another program holds (WSJT-X, flrig, the radio maker's software) cannot
+                // answer, so say so instead of "no answer from the radio", and don't spend a rigctld start on it.
+                var busy = new List<string>();
+                if (string.IsNullOrEmpty(Port))
+                {
+                    foreach (var p in ports.ToList())
+                    {
+                        var (open, _) = await Task.Run(() => SerialPortProbe.TryOpen(p), ct);
+                        if (open == PortOpenResult.InUse)
+                        {
+                            busy.Add(p);
+                            ports.Remove(p);
+                        }
+                    }
+                }
                 var progress = new Progress<(string Port, int Baud)>(t => Message = $"Trying {t.Port} at {t.Baud} baud…");
                 var hit = await RigctldRig.ScanAsync(exe, Model.Number, ports, bauds, _host.Guard, _host.Clock, ct, progress);
                 Message = string.Empty;
                 if (hit is not { } h)
                 {
                     await ApplyDevicesAsync();
-                    Check(false, (ports.Count == 0 ? "No serial ports were found. Check the radio's USB cable and its driver. " : "No answer from the radio on any port. ") + NoAnswerAdvice);
+                    if (busy.Count > 0)
+                        Check(false, $"{string.Join(", ", busy)} {(busy.Count == 1 ? "is" : "are")} in use by another program. Close WSJT-X, JTDX, Flrig, OmniRig or the radio's own software, then test again.");
+                    Check(false, (ports.Count == 0 && busy.Count == 0 ? "No serial ports were found. Check the radio's USB cable and its driver. "
+                        : ports.Count == 0 ? string.Empty : "No answer from the radio on " + (busy.Count == 0 ? "any port. " : "the other ports. ")) + NoAnswerAdvice);
                     return;
                 }
                 Port = h.Port;
@@ -482,6 +522,9 @@ public sealed partial class SetupViewModel : ObservableObject
                 return false;
         }
     }
+
+    private const string HamlibMissing =
+        "Hamlib (rigctl and rigctld), which Costas uses to talk to the radio, was not found. Reinstall Costas, or set the Hamlib folder in Settings › Advanced.";
 
     private const string NoAnswerAdvice =
         "Check that the radio is on, the model is right, and the radio's CAT (CI-V) baud rate matches. On Icom radios also check the CI-V address and that CI-V USB Echo Back is off.";
@@ -558,6 +601,7 @@ public sealed partial class SetupViewModel : ObservableObject
         TestRadio = radio.Health == Core.Services.ServiceHealth.Down
             ? $"No radio is open, so the test cannot key it: {radio.Message}"
             : AudioOnly ? "Audio only: the radio keys on the tone by VOX."
+            : IsNetwork ? $"The tone keys the radio through {ServerName} at {NetworkAddress.Trim()} ({PttChoice?.Label ?? Ptt})."
             : $"The tone keys the radio on {Port} ({PttChoice?.Label ?? Ptt}).";
     }
 
@@ -753,13 +797,23 @@ public sealed partial class SetupViewModel : ObservableObject
     private async Task LoadModelsAsync(int? current)
     {
         var rigctl = HamlibModels.Find("rigctl", _host.Settings.Current.Paths.HamlibDir);
-        if (rigctl is null) return;
+        if (rigctl is null)
+        {
+            MainViewModel.Dispatch(() => ModelListProblem = HamlibMissing);
+            return;
+        }
         try
         {
             _allModels = HamlibModels.ForPicker(await HamlibModels.LoadAsync(rigctl, CancellationToken.None), _host.Settings.Current.Developer.Enabled);
         }
-        catch (Exception ex) when (ex is RigException or System.ComponentModel.Win32Exception)
+        catch (Exception ex) when (ex is RigException or System.ComponentModel.Win32Exception or IOException)
         {
+            MainViewModel.Dispatch(() => ModelListProblem = $"The radio list could not be read from Hamlib ({rigctl}): {ex.Message}");
+            return;
+        }
+        if (_allModels.Count == 0)
+        {
+            MainViewModel.Dispatch(() => ModelListProblem = $"Hamlib ({rigctl}) listed no radios. Reinstall Costas, or set the Hamlib folder in Settings › Advanced.");
             return;
         }
         MainViewModel.Dispatch(() =>
