@@ -11,7 +11,7 @@ namespace Ft8Client.Rig;
 /// <summary>How to start <c>rigctld</c>.</summary>
 /// <param name="ExecutablePath">Path of rigctld.</param>
 /// <param name="Model">Hamlib model number.</param>
-/// <param name="SerialPort">CAT serial port (COM4, /dev/ttyUSB0), host:port for NET rigctl, or null for dummy rigs.</param>
+/// <param name="SerialPort">CAT serial port (COM4, /dev/ttyUSB0), host:port for network models (NET rigctl, FLRig), or null for dummy rigs.</param>
 /// <param name="Baud">Baud rate, or null for the model default.</param>
 /// <param name="Ptt"><c>cat</c>, <c>rts</c>, <c>dtr</c> or <c>vox</c>.</param>
 /// <param name="PttPort">Separate serial port for RTS or DTR PTT.</param>
@@ -22,7 +22,7 @@ public sealed record RigctldOptions(string ExecutablePath, int Model, string? Se
     {
         var a = new List<string> { "-m", Model.ToString(System.Globalization.CultureInfo.InvariantCulture) };
         if (!string.IsNullOrEmpty(SerialPort)) a.AddRange(["-r", SerialPort]);
-        if (Model != 2 && Baud is { } b) a.AddRange(["-s", b.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+        if (!HamlibModel.IsNetworkModel(Model) && Baud is { } b) a.AddRange(["-s", b.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
         switch (Ptt.ToLowerInvariant())
         {
             case "cat": a.AddRange(["-P", "RIG"]); break;

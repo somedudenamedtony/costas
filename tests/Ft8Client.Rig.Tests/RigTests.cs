@@ -134,6 +134,35 @@ public class RigTests
     }
 
     [Fact]
+    public void Options_Flrig_UsesServerAddressWithoutBaud()
+    {
+        string.Join(' ', new RigctldOptions("rigctld", 4, "192.168.1.20:12345", 38400).Arguments(4532))
+            .Should().Be("-m 4 -r 192.168.1.20:12345 -P RIG -T 127.0.0.1 -t 4532");
+    }
+
+    [Theory]
+    [InlineData(2, "127.0.0.1:4532", "rigctld")]
+    [InlineData(4, "127.0.0.1:12345", "flrig")]
+    [InlineData(5, "127.0.0.1:1003", "TRXManager")]
+    public void HamlibModel_NetworkModel_HasHamlibDefaultAddress(int number, string address, string server)
+    {
+        var model = new HamlibModel(number, "Hamlib", "Network", "Stable");
+        model.IsNetwork.Should().BeTrue();
+        model.DefaultAddress.Should().Be(address);
+        model.ServerName.Should().Be(server);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3073)]
+    public void HamlibModel_SerialModel_IsNotNetwork(int number)
+    {
+        var model = new HamlibModel(number, "Icom", "IC-7300", "Stable");
+        model.IsNetwork.Should().BeFalse();
+        model.DefaultAddress.Should().BeNull();
+    }
+
+    [Fact]
     public async Task NetRigctl_ExistingDummyServer_ReadsRadioAndLeavesServerRunning()
     {
         var exe = HamlibModels.Find("rigctld", null);

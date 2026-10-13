@@ -140,3 +140,8 @@ Before release, verify the primary documentation at `https://www.eqsl.cc/qslcard
 `https://www.eqsl.cc/qslcard/DownloadInBox.cfm`, including QTH selection, upload/duplicate acknowledgment
 wording, empty inbox behavior and the ADIF download-link path. Capture redacted fixtures without credentials.
 This session could not reach the network proxy or run .NET tests (SDK absent).
+
+Hamlib network models (Hamlib master, `include/hamlib/riglist.h` and `rigs/dummy/*.c`, read 2026-10-13): NET rigctl is
+model 2, FLRig 4, TRXManager 5, ACLog 8, SDR# 9. Each takes its server as `host:port` in `-r` (rig_pathname) and
+defaults to `127.0.0.1:4532`, `127.0.0.1:12345`, `127.0.0.1:1003`, `127.0.0.1:1100` and `127.0.0.1:4532`. Setup shows
+the host:port box for these and prefills the default. Not yet tried against a running flrig.
