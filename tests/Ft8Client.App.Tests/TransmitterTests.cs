@@ -103,6 +103,22 @@ public class TransmitterTests
         r.Faults.Should().ContainSingle();
     }
 
+    [Fact]
+    public async Task Disabled_TransmitTuneAndTuner_RefusedWithoutKeying()
+    {
+        var r = new Rig();
+        r.Tx.DisabledReason = "receive-only preview";
+
+        r.Tx.Prepare(new TxPlan(Slot, "CQ W7LIT DN40", null, null), Mode.Ft8, 1500, Guard(), out var why).Should().BeNull();
+        why.Should().Be("receive-only preview");
+        (await r.Tx.TuneAsync(1500, 2.0, Guard())).Should().Be("receive-only preview");
+        (await r.Tx.StartRigTunerAsync(1500, Guard())).Should().BeFalse();
+        r.Run(TimeSpan.FromSeconds(16));
+
+        r.Radio.PttLog.Should().BeEmpty();
+        r.Out.Played.Should().BeEmpty();
+    }
+
     [Theory]
     [InlineData("30m", 10_148_000L, 2000, "outside")]
     [InlineData("20m", 14_349_000L, 1500, "outside")]

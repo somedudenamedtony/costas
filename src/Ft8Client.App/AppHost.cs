@@ -52,6 +52,7 @@ public sealed class AppHost : IAsyncDisposable
     private string? _rigKey;
     private string? _inputId;
     private string? _outputId;
+    private string? _audioProblem;
 
     private AppHost(CommandLine args, AppPaths paths, AppSettingsAccessor settings)
     {
@@ -284,10 +285,21 @@ public sealed class AppHost : IAsyncDisposable
             var recorder = new SlotRecorder();
             source = new LiveSlotSource(recorder);
             if (OperatingSystem.IsWindows()) AudioBackend = new WasapiAudioBackend();
+            else if (OperatingSystem.IsLinux())
+            {
+                if (PortAudioBackend.TryCreate(out var why) is { } pa) AudioBackend = pa;
+                else
+                {
+                    _audioProblem = why;
+                    Log.Warning("No audio on Linux: {Why}", why);
+                }
+            }
             OpenAudio(recorder);
         }
 
         Transmitter = new Transmitter(_rig, _output, Clock, Frequencies);
+        // The Linux build is a receive-only preview until its transmit audio has been checked on a real radio.
+        if (OperatingSystem.IsLinux() && !Simulating) Transmitter.DisabledReason = LinuxPreview.TransmitRefusal;
         TxLevel = new TxLevelController(Transmitter, Settings);
         var log = new DatabaseSessionLog(Qsos, Uploads, s.Profile.Id, () => Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
             () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band));
@@ -302,7 +314,7 @@ public sealed class AppHost : IAsyncDisposable
             : new ServiceStatus(ServiceHealth.Ok, "Ready", Clock.UtcNow));
         Session.SetService(ServiceNames.Audio, _output is NullAudioOutput
             ? new ServiceStatus(ServiceHealth.Ok, "Simulation", Clock.UtcNow)
-            : _input is null ? new ServiceStatus(ServiceHealth.Down, "No input device configured", Clock.UtcNow)
+            : _input is null ? new ServiceStatus(ServiceHealth.Down, _audioProblem ?? "No input device configured", Clock.UtcNow)
             : new ServiceStatus(ServiceHealth.Ok, "Receiving", Clock.UtcNow));
 
         await OpenRigAsync().ConfigureAwait(false);

@@ -70,6 +70,12 @@ public sealed class Transmitter
     /// <summary>Transmit gain in dBFS.</summary>
     public double GainDb { get; set; } = -6.0;
 
+    /// <summary>
+    /// Why this build does not transmit at all, or null. Every transmission, Tune and tuner start is refused with it
+    /// before PTT is touched.
+    /// </summary>
+    public string? DisabledReason { get; set; }
+
     /// <summary>A start later than this after its mark is skipped.</summary>
     public TimeSpan LateStartLimit { get; set; } = TimeSpan.FromSeconds(1);
 
@@ -127,7 +133,8 @@ public sealed class Transmitter
     /// </summary>
     public PreparedTx? Prepare(TxPlan plan, Mode mode, int offsetHz, TxGuardInput guard, out string? refusal, TxHold? hold = null)
     {
-        refusal = null;
+        refusal = DisabledReason;
+        if (refusal is not null) return null;
         if (!guard.AudioReady || _output is null)
         {
             refusal = "No audio output device is open; transmitting is disabled.";
@@ -336,7 +343,7 @@ public sealed class Transmitter
     /// </summary>
     public async Task<bool> StartRigTunerAsync(int offsetHz, TxGuardInput guard)
     {
-        if (guard.RigFault is not null) return false;
+        if (DisabledReason is not null || guard.RigFault is not null) return false;
         if (!_frequencies.TransmitAllowed(guard.Band, Mode.Ft8, guard.DialHz, offsetHz, out _)) return false;
         return await _rig.StartTunerAsync(CancellationToken.None).ConfigureAwait(false);
     }
@@ -348,6 +355,7 @@ public sealed class Transmitter
     /// </summary>
     public async Task<string?> TuneAsync(int offsetHz, double seconds, TxGuardInput guard)
     {
+        if (DisabledReason is not null) return DisabledReason;
         if (!guard.AudioReady || _output is null) return "No audio output device is open.";
         if (guard.RigFault is not null) return $"Radio fault: {guard.RigFault}";
         if (!_frequencies.TransmitAllowed(guard.Band, Mode.Ft8, guard.DialHz, offsetHz, out var why)) return why;
