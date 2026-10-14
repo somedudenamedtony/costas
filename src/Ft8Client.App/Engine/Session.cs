@@ -1136,6 +1136,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 Conversation = keyboard ? _conversation.ToList() : [],
                 NextMacro = keyboard ? _kbd.NextMacro : null,
                 Macros = _config.Macros,
+                MacroPreviews = keyboard ? MacroPreviews() : new Dictionary<int, string>(),
                 RadioNote = keyboard ? _radioNote : null,
                 BlockedMacro = BlockedMacro(),
             };

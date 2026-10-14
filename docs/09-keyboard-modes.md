@@ -133,13 +133,15 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
 
 - **Type-ahead.** Typed text is queued and goes out as the transmitter reaches it. The part already sent is dimmed. Backspace removes characters not yet sent.
 - **Macros.** F1 to F12, edited in Settings > Transmitting > Macros. They can contain these fields: `{CALL}` `{NAME}` `{RST}` `{QTH}` `{MYCALL}` `{MYNAME}` `{MYQTH}` `{MYGRID}` `{MYRIG}` `{MYANT}`. A field with no value is shown in red in the type-ahead line, and nothing is sent until it is filled or removed.
+  - As built (owner decision 2026-10-14, finding H1): a part of a macro in square brackets is optional. It goes out, without the brackets, when every field in it has a value, and is left out whole (with the space before it) when one of its fields has none; it is never sent with a blank or guessed value. The default F3 marks `[GE {NAME}]` optional, so a station that answers with only its call ("W7LIT DE KP4JRS K") can be sent the exchange; with a name known, F3 goes out exactly as before. A stored F3 that is still the old default is read as the new one. Fields outside brackets still refuse as above. Each macro button's tooltip shows the text as it would go out now. Brackets with no field inside are plain text.
+  - Anything in braces is a field name. A name that is not one of the fields (`{MY_CALL}`, say) refuses the macro, and the bottom bar names it and lists the fields; it is never sent as written.
 - **Defaults** (US-style, editable):
 
 | Key | Macro | Text |
 | --- | --- | --- |
 | F1 | CQ | `CQ CQ CQ DE {MYCALL} {MYCALL} {MYCALL} {MYGRID} K` |
 | F2 | Answer | `{CALL} DE {MYCALL} {MYCALL} K` |
-| F3 | Exchange | `{CALL} DE {MYCALL} GE {NAME} UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN` |
+| F3 | Exchange | `{CALL} DE {MYCALL} [GE {NAME}] UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN` |
 | F4 | 73 | `TNX {NAME} 73 {CALL} DE {MYCALL} SK` |
 | F5 | Rig and antenna | `RIG {MYRIG} ANT {MYANT}` |
 

@@ -59,12 +59,18 @@ public static class SettingsMapper
         };
     }
 
+    // The first default Exchange, which could never be sent before the partner's name was known. Stored unchanged, it
+    // becomes the current default, which leaves out "GE {NAME}" until there is a name (owner decision, H1).
+    private const string OldDefaultExchange = "{CALL} DE {MYCALL} GE {NAME} UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN";
+
     /// <summary>The PSK and RTTY macros: the stored ones, or the defaults when none are stored.</summary>
     public static IReadOnlyList<Macro> Macros(OperatingSettings o)
     {
+        var exchange = Macro.Defaults.First(m => m.Key == Macro.ExchangeKey).Text;
         var stored = o.Macros.Where(m => m.Key is >= 1 and <= 12 && !string.IsNullOrWhiteSpace(m.Text))
             .GroupBy(m => m.Key).Select(g => g.First()).OrderBy(m => m.Key)
-            .Select(m => new Macro(m.Key, string.IsNullOrWhiteSpace(m.Label) ? $"F{m.Key}" : m.Label.Trim(), m.Text.Trim())).ToList();
+            .Select(m => new Macro(m.Key, string.IsNullOrWhiteSpace(m.Label) ? $"F{m.Key}" : m.Label.Trim(),
+                m.Text.Trim() == OldDefaultExchange ? exchange : m.Text.Trim())).ToList();
         return stored.Count == 0 ? Macro.Defaults : stored;
     }
 

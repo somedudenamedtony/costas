@@ -74,7 +74,7 @@ The macro keys and your details are in **Settings › PSK and RTTY**. The defaul
 | --- | --- | --- |
 | F1 | CQ | `CQ CQ CQ DE {MYCALL} {MYCALL} {MYCALL} {MYGRID} K` |
 | F2 | Answer | `{CALL} DE {MYCALL} {MYCALL} K` |
-| F3 | Exchange | `{CALL} DE {MYCALL} GE {NAME} UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN` |
+| F3 | Exchange | `{CALL} DE {MYCALL} [GE {NAME}] UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN` |
 | F4 | 73 | `TNX {NAME} 73 {CALL} DE {MYCALL} SK` |
 | F5 | Rig and antenna | `RIG {MYRIG} ANT {MYANT}` |
 
@@ -82,6 +82,11 @@ Fill in **Your name**, **Your QTH** and your radio and antenna there first. A ma
 sent: it appears above the typing line as it would go out, with the empty field in red, and the bottom bar says where
 to fill it. Click the right word in the conversation (for their name or QTH) or fill in Settings, then press the key
 again. Your report to them is 599.
+
+A part in square brackets is optional: in F3, `[GE {NAME}]` goes out as "GE Jose" once you have their name, and is
+left out when you do not, so a station that sends only its call can still be given your exchange. Hover over a macro
+key to see exactly what it will send. A name in braces that is not one of the fields (a typo such as `{MY_CALL}`)
+stops the macro from going out until you correct it.
 
 ## Away from the desk
 

@@ -215,8 +215,21 @@ public sealed partial class Session
         return null;
     }
 
+    // Under _gate. Each macro as it would go out now, for its button's tooltip.
+    private Dictionary<int, string> MacroPreviews()
+    {
+        var values = MacroValues();
+        var previews = new Dictionary<int, string>();
+        foreach (var m in _config.Macros) previews.TryAdd(m.Key, MacroText.Expand(m.Text, values, out _));
+        return previews;
+    }
+
     private static string MissingFields(Macro macro, IReadOnlyList<string> missing)
     {
+        var unknown = missing.Where(f => !MacroText.IsField(f)).ToList();
+        if (unknown.Count > 0)
+            return $"{macro.Label} not sent: {MacroText.Describe(unknown)} {(unknown.Count == 1 ? "is not a field" : "are not fields")}. " +
+                   $"Fix the macro under Settings > PSK and RTTY; the fields are {MacroText.Describe(MacroText.Fields)}.";
         var theirs = missing.Where(f => f is "CALL" or "NAME" or "QTH").ToList();
         var where = theirs.Count == missing.Count
             ? "Click the word in the conversation to set it, or remove it from the macro."

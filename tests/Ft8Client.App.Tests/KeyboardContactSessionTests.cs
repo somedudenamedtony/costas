@@ -224,6 +224,31 @@ public class KeyboardContactSessionTests : IDisposable
     }
 
     [Fact]
+    public void KeyEnter_CallerSentNoName_ExchangeLeavesOutGreeting()
+    {
+        _session.Reconfigure(_config with { MyName = "Tony", MyQth = "Boise" });
+        _session.SetTxOffset(1600);
+        _session.ToggleCq();
+        SendOver();
+        Hear("W7LIT DE KP4JRS K\n");
+        _session.Snapshot.NextMacro.Should().Be(Macro.ExchangeKey);
+
+        const string f3 = "KP4JRS DE W7LIT UR 599 599 NAME Tony Tony QTH Boise HW? KP4JRS DE W7LIT KN";
+        _session.Snapshot.MacroPreviews[Macro.ExchangeKey].Should().Be(f3);
+        _session.KeyEnter(string.Empty).Should().BeNull();
+        SendOver();
+        Sent.Should().EndWith(f3 + "|");
+    }
+
+    [Fact]
+    public void SendMacro_MisspeltField_RefusedWithReason()
+    {
+        _session.Reconfigure(_config with { Macros = [new Macro(5, "Me", "DE {MY_CALL} K")] });
+        _session.SendMacro(5).Should().Contain("{MY_CALL} is not a field");
+        _rig.PttLog.Should().BeEmpty();
+    }
+
+    [Fact]
     public void SendMacro_SlottedMode_DoesNothing()
     {
         _session.SetBand("20m", Mode.Ft8);
