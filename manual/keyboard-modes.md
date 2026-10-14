@@ -132,4 +132,7 @@ Costas reads; what you send is always the right way round.
 | **Reverse** | off | Swaps the two tones. Turn it on only for a station whose text reads as gibberish while its signal looks clean |
 | **Unshift on space** | on | Returns to letters after a space, as most stations expect. Turn it off if numbers keep turning into letters |
 
+RTTY sends letters (as capitals), figures and `- ? : $ ' ! ( ) " # & . / ; ,`. Anything else, such as `@`, `%` or
+`*`, is refused rather than sent; Costas never swaps it for something else.
+
 Costas reads RTTY through fading that takes out one tone at a time, as long as the other tone stays above the noise.
