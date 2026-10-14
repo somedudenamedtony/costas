@@ -130,15 +130,13 @@ public class KeyboardSessionTests : IDisposable
     }
 
     [Fact]
-    public void CallStation_KeyboardMode_RefusedWithoutKeying()
+    public void Resend_KeyboardMode_RefusedWithoutKeying()
     {
         Feed(Psk31(1180, "CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n"));
 
-        _session.CallStation("KP4JRS").Should().BeFalse();
-        _session.ToggleCq();
+        _session.Resend();
 
-        _session.Snapshot.Fault.Should().Contain("only receives");
-        _session.Snapshot.CallingCq.Should().BeFalse();
+        _session.Snapshot.Fault.Should().Contain("macro keys");
         _rig.PttLog.Should().BeEmpty();
     }
 

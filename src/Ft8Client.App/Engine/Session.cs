@@ -31,7 +31,7 @@ namespace Ft8Client.App.Engine;
 /// out through the transmitter, immutable snapshots to the UI. Headless; the UI only renders snapshots and sends
 /// commands. State changes happen under one lock; decoding and I/O happen outside it.
 /// </summary>
-public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
+public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
 {
     private const int MaxRaw = 1500;
     private const int QuickSpanHz = 100;
@@ -110,6 +110,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         _tx.Started += OnTxStarted;
         _tx.Ended += (_, _) => Publish();
         _tx.Fault += OnTxFault;
+        _kbd = new KeyboardContactEngine(config.MyCall);
+        _kbd.Logged += OnKeyboardLogged;
+        _keys = new KeyboardTransmitter(tx, clock);
+        _keys.OverEnded += OnKeyboardOverEnded;
+        _keys.Changed += Publish;
         foreach (var name in new[] { ServiceNames.Radio, ServiceNames.Audio, ServiceNames.Decoder, ServiceNames.Qrz, ServiceNames.Psk })
             _services[name] = ServiceStatus.Off("Not started");
         Publish();
@@ -463,6 +468,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _tracker.AgeText(utc);
             foreach (var l in lines)
             {
+                ApplyKeyboardLine(l);
                 var decode = new Decode(l.Utc, l.Snr, 0, l.OffsetHz, l.Text, LowConfidence: false);
                 _raw.Add(new RawDecodeLine(decode, MessageParser.Parse(l.Text), l.Sender is null ? null : _countries.Lookup(l.Sender)?.Entity.Name,
                     l.To is not null && Callsign.EqualsCall(l.To, _config.MyCall)));
@@ -607,6 +613,15 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
 
     private void OnLogged(ContactLogEntry entry)
     {
+        long freq;
+        lock (_gate) freq = _dialHz + _txOffset;
+        Record(entry, freq, null, null);
+    }
+
+    // Writes a logged contact, with QRZ data and the need it met. Keyboard modes give the name and QTH read from the
+    // conversation; FT8 takes them from QRZ.
+    private void Record(ContactLogEntry entry, long frequencyHz, string? name, string? qth)
+    {
         LogContext ctx;
         lock (_gate)
         {
@@ -617,8 +632,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             var entity = s?.Entity ?? _countries.Lookup(entry.Call);
             var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid, _config.Band, ModeInfo.Name(_config.Mode),
                 _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
-            ctx = new LogContext(_config.Band, _config.Mode, _dialHz + _txOffset, _config.MyCall, _config.MyGrid, _config.PowerWatts, need,
-                entity?.Entity.Key, entity?.Entity.Name, lk?.Name, lk?.State, entity?.Continent, lk?.City);
+            ctx = new LogContext(_config.Band, _config.Mode, frequencyHz, _config.MyCall, _config.MyGrid, _config.PowerWatts, need,
+                entity?.Entity.Key, entity?.Entity.Name, name ?? lk?.Name, lk?.State, entity?.Continent, qth ?? lk?.City);
             if (entry.TimeOffUtc - _lastContactUtc > TimeSpan.FromHours(2)) _tonight.Clear();
             _lastContactUtc = entry.TimeOffUtc;
             _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag));
@@ -640,7 +655,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Calls a station from the line or the raw decodes.</summary>
     public bool CallStation(string call)
     {
-        if (RefuseKeyboardTransmit()) return false;
+        if (!ModeInfo.IsSlotted(Config.Mode)) return CallKeyboardStation(call);
         lock (_gate)
         {
             var now = _clock.UtcNow;
@@ -651,7 +666,6 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             else
             {
                 var s = _tracker.Find(call);
-                // A station heard in a keyboard mode has no slot parity, and keyboard contacts are not built yet (M12).
                 if (s?.Parity is not { } parity) return false;
                 // A station heard working someone else (reports or grids exchanged, not signing off) will not hear me:
                 // the contact ends at once and says so rather than calling into its contact.
@@ -684,7 +698,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Starts or stops calling CQ.</summary>
     public void ToggleCq()
     {
-        if (RefuseKeyboardTransmit()) return;
+        if (!ModeInfo.IsSlotted(Config.Mode))
+        {
+            ToggleKeyboardCq();
+            return;
+        }
         lock (_gate)
         {
             if (_engine.CallingCq) _engine.StopCq(_clock.UtcNow);
@@ -720,7 +738,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Log the contact now.</summary>
     public void LogNow()
     {
-        lock (_gate) _engine.LogNow(_clock.UtcNow);
+        lock (_gate)
+        {
+            if (ModeInfo.IsSlotted(_config.Mode)) _engine.LogNow(_clock.UtcNow);
+            else _kbd.LogNow(_clock.UtcNow);
+        }
         Publish();
     }
 
@@ -736,7 +758,12 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Abandon the contact: stop transmitting, log nothing.</summary>
     public async Task AbandonAsync()
     {
-        lock (_gate) _engine.Abandon(_clock.UtcNow);
+        lock (_gate)
+        {
+            _engine.Abandon(_clock.UtcNow);
+            _kbd.Abandon();
+        }
+        _keys.Clear();
         await _tx.HaltAsync().ConfigureAwait(false);
         Publish();
     }
@@ -750,9 +777,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             _engine.Halt(_clock.UtcNow);
+            _kbd.StopCq();
             _rigTuningUntil = null;
             if (reason is not null) _fault = reason;
         }
+        _keys.Clear();
         await _tx.HaltAsync().ConfigureAwait(false);
         Publish();
     }
@@ -846,6 +875,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             foreach (var (call, e) in _lookups) _tracker.SetLookup(call, e.Grid, e.State, e.City);
             _engine.Abandon(_clock.UtcNow);
             _engine.StopCq(_clock.UtcNow);
+            _kbd.Abandon();
+            _conversation.Clear();
             _hearsMe = new HearsMe(band, _hearsMe.Available);
             // Reports of nearby stations cover every band (for the band menu); only a mode change makes them irrelevant.
             if (mode != oldMode)
@@ -877,6 +908,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             var stationChanged = config.MyCall != _config.MyCall || config.MyGrid != _config.MyGrid;
             _config = config;
             _engine.Configure(config.MyCall, config.MyGrid, CappedContact());
+            _kbd.Configure(config.MyCall);
             if (stationChanged)
             {
                 _receptionHistory.Clear();
@@ -1011,14 +1043,13 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate) return _lookups.ContainsKey(Callsign.Normalize(call));
     }
 
-    // Keyboard-mode contacts and transmit come in a later build (docs/07-milestones.md M12): until then the commands
-    // that would send in one say so and do nothing.
+    // Commands with no meaning in a keyboard mode, where the operator sends with the macro keys, say so and do nothing.
     private bool RefuseKeyboardTransmit()
     {
         lock (_gate)
         {
             if (ModeInfo.IsSlotted(_config.Mode)) return false;
-            _fault = $"{ModeInfo.Name(_config.Mode)} only receives in this build: calling and CQ are not built yet.";
+            _fault = $"In {ModeInfo.Name(_config.Mode)}, send with the macro keys (F1 to F5) or type and press Enter.";
         }
         Publish();
         return true;
@@ -1046,6 +1077,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             var now = _clock.UtcNow;
+            var keyboard = !ModeInfo.IsSlotted(_config.Mode);
             var stations = _tracker.Stations.ToList();
             var rank = Ranker.Rank(new RankInput(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity,
                 _config.Band, ModeInfo.Name(_config.Mode), now, _countries, Lotw: _lotwUsers));
@@ -1074,10 +1106,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 BandOpenings = Openings(now),
                 BandActivityFeed = _bandFeed,
                 Services = new Dictionary<string, ServiceStatus>(_services),
-                Contact = _engine.View,
+                Contact = keyboard ? _kbd.View() : _engine.View,
                 Transmitting = _tx.Transmitting,
                 TransmittingMessage = _tx.CurrentMessage,
-                CallingCq = _engine.CallingCq,
+                CallingCq = keyboard ? _kbd.CallingCq : _engine.CallingCq,
                 RigTuningUntilUtc = _rigTuningUntil is { } until && until > now ? until : null,
                 TxOffsetHz = _txOffset,
                 TxOffsetClear = _txOffsetClear,
@@ -1088,6 +1120,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 TxMeters = _txMeters,
                 Activity = _activity.ToList(),
                 Pileups = _pileups.All(now),
+                KeyboardTx = keyboard ? _keys.View : KeyboardTxView.Idle,
+                Conversation = keyboard ? _conversation.ToList() : [],
+                NextMacro = keyboard ? _kbd.NextMacro : null,
+                Macros = _config.Macros,
             };
             _snapshot = snap;
         }
