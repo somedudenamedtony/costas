@@ -187,4 +187,15 @@ public sealed class KeyboardEnterSessionTests : IDisposable
         (await _session.TuneAsync(1)).Should().Contain("only available while nothing else");
         _tx.Transmitting.Should().BeFalse();
     }
+
+    [Fact]
+    public void SetBand_AfterRefusal_ClearsFault()
+    {
+        _session.SendMacro(9).Should().NotBeNull();
+        _session.Snapshot.Fault.Should().NotBeNull();
+
+        _session.SetBand("20m", Mode.Rtty);
+
+        _session.Snapshot.Fault.Should().BeNull();
+    }
 }

@@ -891,6 +891,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _kbd.Abandon();
             _conversation.Clear();
             _blockedMacro = null;
+            // A refusal or fault from the old band or mode no longer applies.
+            _fault = null;
             _hearsMe = new HearsMe(band, _hearsMe.Available);
             // Reports of nearby stations cover every band (for the band menu); only a mode change makes them irrelevant.
             if (mode != oldMode)
