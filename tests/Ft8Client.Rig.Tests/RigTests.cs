@@ -26,6 +26,62 @@ public class RigTests
     }
 
     [Fact]
+    public async Task SendAsync_CallerCancelsMidReply_NextCommandGetsItsOwnReply()
+    {
+        // A slow radio: each reply comes 300 ms after its command. Accepts new connections like rigctld.
+        var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        l.Start();
+        var port = ((System.Net.IPEndPoint)l.LocalEndpoint).Port;
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                System.Net.Sockets.TcpClient c;
+                try { c = await l.AcceptTcpClientAsync(TestContext.Current.CancellationToken); }
+                catch (Exception) { return; }
+                _ = Task.Run(async () =>
+                {
+                    using (c)
+                    {
+                        var s = c.GetStream();
+                        var r = new StreamReader(s);
+                        try
+                        {
+                            while (await r.ReadLineAsync(TestContext.Current.CancellationToken) is { } line)
+                            {
+                                var name = line[3..];
+                                await Task.Delay(300, TestContext.Current.CancellationToken);
+                                var val = name == "SWR" ? "1.500000" : "0.100000";
+                                await s.WriteAsync(System.Text.Encoding.ASCII.GetBytes($"get_level: {name}\n{val}\nRPRT 0\n"), TestContext.Current.CancellationToken);
+                            }
+                        }
+                        catch (IOException)
+                        {
+                        }
+                    }
+                }, TestContext.Current.CancellationToken);
+            }
+        }, TestContext.Current.CancellationToken);
+        try
+        {
+            await using var client = new RigctldClient("127.0.0.1", port, TimeSpan.FromSeconds(2));
+            using (var cts = new CancellationTokenSource(100))
+            {
+                var cancelled = () => client.GetLevelAsync("SWR", cts.Token);
+                await cancelled.Should().ThrowAsync<OperationCanceledException>();
+            }
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+
+            (await client.GetLevelAsync("ALC", TestContext.Current.CancellationToken)).Should().Be(0.1);
+            (await client.GetLevelAsync("SWR", TestContext.Current.CancellationToken)).Should().Be(1.5);
+        }
+        finally
+        {
+            l.Stop();
+        }
+    }
+
+    [Fact]
     public void Reply_GetLevel_ValueOnItsOwnLine()
     {
         // Captured from rigctld 4.5.5 (-m 1): "+l SWR" answers with the echo, the bare value, then RPRT.
