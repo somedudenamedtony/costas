@@ -62,6 +62,12 @@ public static class ModeInfo
         _ => throw Unknown(mode),
     };
 
+    /// <summary>
+    /// The width of an RTTY signal with <paramref name="shiftHz"/> between mark and space at <paramref name="baud"/>:
+    /// the shift plus a keying sideband of about the baud rate either side (170 Hz at 45.45 baud is about 260 Hz).
+    /// </summary>
+    public static int RttyBandwidthHz(int shiftHz, double baud) => shiftHz + (int)Math.Ceiling(2 * baud);
+
     /// <summary>The ADIF mode and submode for a contact made in this mode (ADIF 3.1.6).</summary>
     public static (string Mode, string? Submode) Adif(Mode mode) => mode switch
     {
