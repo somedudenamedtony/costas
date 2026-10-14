@@ -111,6 +111,60 @@ public class ChannelBankTests
         }
     }
 
+    [Theory]
+    [InlineData(Mode.Psk31, 5, false)]
+    [InlineData(Mode.Psk31, 20, false)]
+    [InlineData(Mode.Psk31, 20, true)]
+    [InlineData(Mode.Psk31, 30, true)]
+    [InlineData(Mode.Psk63, 10, false)]
+    [InlineData(Mode.Psk63, 30, true)]
+    public void Process_ReplyAFewHertzOffAfterAPause_IsRead(Mode mode, double offHz, bool listened)
+    {
+        // A station calls CQ at 1000 Hz and stops; 3 s later the reply comes a little off. The channel that read the
+        // CQ held its frequency and was deaf to the reply, and kept any new channel from opening near it.
+        const string reply = "W1AW DE K9ABC K9ABC K9ABC KN ";
+        var cq = new PskModulator(mode, TestSignal.Rate, 1000, 0.5) { IdleSymbols = 64 }.Modulate("CQ CQ CQ DE W1AW W1AW W1AW PSE K ");
+        var answer = new PskModulator(mode, TestSignal.Rate, 1000 + offHz, 0.5) { IdleSymbols = 64 }.Modulate(reply + reply);
+        var audio = TestSignal.WithNoise([.. cq, .. new float[TestSignal.Rate * 3], .. answer], 0.5, 5, seed: 9);
+        var bank = new ChannelBank(mode, TestSignal.Rate);
+        var before = Run(bank, audio[..cq.Length]);
+        if (listened) bank.Listen(1000);
+        var after = Run(bank, audio[cq.Length..]);
+
+        after.Values.Should().Contain(t => t.Contains("K9ABC K9ABC K9ABC KN W1AW DE K9ABC", StringComparison.Ordinal));
+        before.Values.Should().Contain(t => t.Contains("W1AW W1AW W1AW", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Process_TwoPskSignals45HzApart_EachOnItsOwnChannel()
+    {
+        (double Hz, string Text)[] stations = [(1000, "CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K "), (1045, "CQ CQ DE JA7QVI JA7QVI JA7QVI PSE K ")];
+        var signals = stations.Select(s => new PskModulator(Mode.Psk31, TestSignal.Rate, s.Hz, 0.5) { IdleSymbols = 64 }.Modulate(s.Text + s.Text)).ToArray();
+        var bank = new ChannelBank(Mode.Psk31, TestSignal.Rate);
+        var texts = Run(bank, TestSignal.WithNoise(TestSignal.Mix(signals), 0.5, 10, seed: 10));
+        foreach (var (hz, text) in stations)
+        {
+            var channel = bank.Channels.Single(c => Math.Abs(c.Receiver.FrequencyHz - hz) < 5);
+            texts.GetValueOrDefault(channel.Id, "").Should().Contain(text.Trim(), $"the signal at {hz} Hz");
+        }
+    }
+
+    [Fact]
+    public void Process_RttyWithCarrierOneShiftBelowItsSpace_ReadsTheStationOnly()
+    {
+        // The carrier at 915 Hz and the station's space tone at 1085 Hz look like a station at 1000 Hz.
+        const string text = "CQ CQ CQ DE W7LIT W7LIT W7LIT PSE K\n";
+        var carrier = Enumerable.Range(0, TestSignal.Rate * 20).Select(i => (float)(0.3 * Math.Sin(Math.Tau * 915 * i / TestSignal.Rate))).ToArray();
+        var station = new RttyModulator(RttyFormat.Standard, TestSignal.Rate, 1170, 0.5).Modulate(text + text + text);
+        var bank = new ChannelBank(RttyFormat.Standard, TestSignal.Rate);
+        var texts = Run(bank, TestSignal.WithNoise(TestSignal.Mix(carrier, station), 0.5, 10, seed: 3));
+
+        var channel = bank.Listen(1170);
+        channel.Receiver.FrequencyHz.Should().BeApproximately(1170, 5);
+        texts.GetValueOrDefault(channel.Id, "").Should().Contain(text + text);
+        bank.Channels.Should().ContainSingle();
+    }
+
     [Fact]
     public void Process_RttyNoiseOnly_FindsNoTextAnywhere()
     {

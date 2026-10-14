@@ -20,7 +20,8 @@ passband at once (up to 20).
   ("CQ CQ DE KP4JRS KP4JRS K", "W7LIT DE EA8TL") and ranks it by what you need. A station is listed as calling CQ
   for two minutes after its CQ, and the list refreshes every few seconds.
 - **The waterfall** labels each signal with its station's call. Click a signal to read it, even before Costas has
-  noticed it; it stays read while that station is quiet. For RTTY, click either of its two tones or between them.
+  noticed it; it stays read while that station is quiet. When a reply comes back a little off that frequency, the
+  same channel moves onto it. For RTTY, click either of its two tones or between them.
 - **Raw decodes** shows the text, a line per over or per line typed, with the audio frequency and signal strength.
 - **dB** is measured in a 2,500 Hz bandwidth, the same scale as FT8, so −10 dB means the same in both.
 

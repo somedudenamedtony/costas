@@ -50,14 +50,14 @@ public sealed class ChannelBank
             new RttyChannelFinder(format, sampleRate),
             hz => new RttyDemodulator(format, sampleRate, hz) { UnshiftOnSpace = unshiftOnSpace },
             Math.Max(format.Baud, format.ShiftHz / 4.0),
-            format.ShiftHz / 2.0 + 2 * format.Baud,
+            format.ShiftHz / 2.0 + format.Baud,
             sampleRate)
     {
     }
 
     /// <param name="finder">Finds signals.</param>
     /// <param name="receiver">Makes a receiver tuned to a frequency.</param>
-    /// <param name="widthHz">Two channels closer than this are on the same signal; a new one is not opened within twice it.</param>
+    /// <param name="widthHz">Two channels closer than this are on the same signal; a new one is not opened within 1.2 times it.</param>
     /// <param name="snapHz">A frequency the operator picks this close to a signal reads that signal.</param>
     /// <param name="sampleRate">Input sample rate.</param>
     public ChannelBank(IChannelFinder finder, Func<double, IKeyboardReceiver> receiver, double widthHz, double snapHz, int sampleRate)
@@ -102,10 +102,22 @@ public sealed class ChannelBank
     /// <summary>Starts reading a signal at a frequency the operator picked (or returns the channel already on it) and pins it.</summary>
     public ReceiveChannel Listen(double frequencyHz)
     {
-        var channel = _channels
-            .Where(c => Math.Abs(c.Receiver.FrequencyHz - frequencyHz) <= _snapHz)
-            .MinBy(c => Math.Abs(c.Receiver.FrequencyHz - frequencyHz))
-            ?? Add(Nearest(_finder.Signals(), frequencyHz) ?? frequencyHz);
+        // The signal clicked is the one the finder sees nearest the click; a channel already on it reads it. A quiet
+        // channel near it is moved onto it; otherwise a channel opens there. With no signal seen, the nearest channel
+        // within reach of the click is taken, else one opens at the click.
+        ReceiveChannel channel;
+        if (Nearest(_finder.Signals(), frequencyHz) is { } signal)
+        {
+            var idle = Quiet(signal);
+            channel = Near(signal) ?? (idle is null ? Add(signal) : Retune(idle, signal));
+        }
+        else
+        {
+            channel = _channels
+                .Where(c => Math.Abs(c.Receiver.FrequencyHz - frequencyHz) <= _snapHz)
+                .MinBy(c => Math.Abs(c.Receiver.FrequencyHz - frequencyHz))
+                ?? Add(frequencyHz);
+        }
         channel.Pinned = true;
         return channel;
     }
@@ -156,10 +168,36 @@ public sealed class ChannelBank
                 _channels.Remove(c);
         }
 
-        foreach (var hz in _finder.Signals())
+        // A signal is acted on once two looks in a row (half a second apart) find it in the same place, so the
+        // passing shapes of the spectrum while signals come and go do not open channels or move them.
+        var previous = _lastSignals;
+        _lastSignals = _finder.Signals();
+
+        // A channel that keeps printing while the finder sees no signal on it is reading a neighbour's edge or a
+        // carrier, not a station: it is dropped (unless pinned). A quiet channel stays its usual time.
+        foreach (var c in _channels)
         {
-            if (_channels.Count >= MaxChannels) break;
-            if (Near(hz) is not null) continue;
+            if (_lastSignals.Any(hz => Math.Abs(hz - c.Receiver.FrequencyHz) < 1.2 * _widthHz)) c.AbsentSample = null;
+            else c.AbsentSample ??= _samples;
+        }
+        _channels.RemoveAll(c => !c.Pinned && c.AbsentSample is { } absent
+            && _samples - absent >= AbsentSeconds * _sampleRate && c.LastTextSample > absent);
+        foreach (var hz in _lastSignals)
+        {
+            if (!previous.Any(p => Math.Abs(p - hz) <= SteadyHz * _widthHz)) continue;
+            if (Near(hz) is { } near)
+            {
+                // A channel gone quiet a little off a signal is deaf to it: its receiver holds where the last signal was,
+                // and AFC reaches only a few hertz. It is moved onto the signal (a reply a few hertz off, say).
+                if (IsQuiet(near) && Math.Abs(near.Receiver.FrequencyHz - hz) > RetuneHz * _widthHz) Retune(near, hz);
+                continue;
+            }
+            if (Quiet(hz) is { } idle)
+            {
+                Retune(idle, hz);
+                continue;
+            }
+            if (_channels.Count >= MaxChannels) continue;
             var c = Add(hz);
             var text = c.Receiver.Process(History());
             if (text.Length == 0) continue;
@@ -168,7 +206,48 @@ public sealed class ChannelBank
         }
     }
 
+    // A quiet channel is moved onto a signal this far off it (in signal widths), so AFC need not reach it.
+    private const double RetuneHz = 0.08;
+
+    // A channel without text for this long, whose receiver hears nothing and has had time to lock, is quiet.
+    private const double QuietRetuneSeconds = 1;
+    private const double LockSeconds = 2;
+
+    private bool IsQuiet(ReceiveChannel c) =>
+        _samples - c.LastTextSample >= QuietRetuneSeconds * _sampleRate
+        && _samples - c.TunedSample >= LockSeconds * _sampleRate
+        && c.Receiver.Quality < 0.3;
+
+    // The nearest quiet channel within reach of a signal that no channel is reading.
+    private ReceiveChannel? Quiet(double hz) => _channels
+        .Where(c => Math.Abs(c.Receiver.FrequencyHz - hz) <= _snapHz && IsQuiet(c))
+        .MinBy(c => Math.Abs(c.Receiver.FrequencyHz - hz));
+
+    // Gives a channel a new receiver on a signal, keeping its number (and pin), and reads the audio since its last text.
+    private ReceiveChannel Retune(ReceiveChannel channel, double hz)
+    {
+        channel.Receiver = _receiver(hz);
+        channel.Receiver.Afc = _afc;
+        channel.TunedSample = _samples;
+        var history = History();
+        var since = (int)Math.Min(history.Length, _samples - channel.LastTextSample);
+        var text = channel.Receiver.Process(history.AsSpan(history.Length - since));
+        if (text.Length > 0)
+        {
+            channel.LastTextSample = _samples;
+            _backfill.Add(new ChannelText(channel.Id, channel.Receiver.FrequencyHz, text));
+        }
+        return channel;
+    }
+
     private readonly List<ChannelText> _backfill = [];
+    private IReadOnlyList<double> _lastSignals = [];
+
+    // Seconds a channel may print with no signal under it before it is dropped.
+    private const double AbsentSeconds = 5;
+
+    // How far a signal may move between two looks and still be the same one, in signal widths.
+    private const double SteadyHz = 0.1;
 
     private void Remember(ReadOnlySpan<float> samples)
     {
@@ -193,7 +272,10 @@ public sealed class ChannelBank
         return best;
     }
 
-    private ReceiveChannel? Near(double hz) => _channels.Find(c => Math.Abs(c.Receiver.FrequencyHz - hz) < 2 * _widthHz);
+    // A channel reading the signal at hz. Closer than 1.2 widths: two PSK31 stations 40 Hz apart get a channel each.
+    private ReceiveChannel? Near(double hz) => _channels
+        .Where(c => Math.Abs(c.Receiver.FrequencyHz - hz) < 1.2 * _widthHz)
+        .MinBy(c => Math.Abs(c.Receiver.FrequencyHz - hz));
 
     private ReceiveChannel Add(double hz)
     {
