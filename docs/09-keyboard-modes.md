@@ -67,7 +67,7 @@ Sources:
 Audio is the same 12 kHz stream from `CapturePump` that feeds `jt9`. It arrives continuously, not cut into slots.
 
 - **Channel finder.** An FFT of the passband finds PSK carriers (a peak about 31 or 62 Hz wide) and RTTY pairs (two peaks one shift apart). Up to 20 channels are decoded at once. A channel is dropped after 60 s without characters.
-  - As built (M10): a 4,096-point FFT averaged over about 1.4 s and smoothed over one signal's width; a peak 6 dB above the band's median is a signal, its carrier the power-weighted centre. It looks twice a second.
+  - As built (M10): a 4,096-point FFT averaged over about 1.4 s and smoothed over half a signal's width; a peak 6 dB above the band's noise floor is a signal, its carrier the power-weighted centre of the peaks within 0.6 of a signal's width of it (so PSK idle reversals are one signal, and two PSK31 stations 45 Hz apart are two). The floor is the 20th percentile of the band, not the median, so a band more than half full of signals still has one (24 PSK31 stations 105 Hz apart are all found). The SNR column still measures against the median. It looks twice a second.
   - A new channel first reads the last 4 s of audio, so the start of the over that made it visible is not lost.
   - Clicking the waterfall in a keyboard mode reads the signal there and keeps reading it through quiet spells (one clicked channel at a time).
 - **PSK demodulator.**
