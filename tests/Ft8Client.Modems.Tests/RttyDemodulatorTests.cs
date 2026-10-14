@@ -66,9 +66,11 @@ public class RttyDemodulatorTests
     [InlineData(false)]
     public void Process_OneToneLost_AtcStillReads(bool loseMark)
     {
+        // Averaged over a few noise seeds: one seed alone moves by a few characters with any change to the text sent.
         var (mark, space) = SplitTones(Send(Standard, 1500), 1500);
-        var audio = TestSignal.WithNoise(TestSignal.Mix(Scale(mark, loseMark ? 0.03 : 1), Scale(space, loseMark ? 1 : 0.03)), Peak, 3, seed: 2);
-        TestSignal.ErrorRate(Text, Receive(Standard, audio, 1500)).Should().BeLessThan(0.06);
+        var faded = TestSignal.Mix(Scale(mark, loseMark ? 0.03 : 1), Scale(space, loseMark ? 1 : 0.03));
+        var rate = Enumerable.Range(2, 4).Average(seed => TestSignal.ErrorRate(Text, Receive(Standard, TestSignal.WithNoise(faded, Peak, 3, seed), 1500)));
+        rate.Should().BeLessThan(0.06);
     }
 
     [Fact]
@@ -113,6 +115,40 @@ public class RttyDemodulatorTests
         // Sent by hand: FIGS 1 2 SPACE A — with unshift-on-space the A reads as A, not as the figure on its key (-).
         var text = Receive(Standard, Send(Standard, 1500, "12 A\n"), 1500);
         text.Should().Be("12 A\n");
+    }
+
+    [Theory]
+    [InlineData(true, "UR 599 TU\n")]
+    [InlineData(false, "UR 599 TU\n")]
+    [InlineData(true, "599 599 5NN TU 73 GL\n")]
+    [InlineData(false, "599 599 5NN TU 73 GL\n")]
+    public void Modulate_FiguresSpaceLetters_ReadsRightWithOrWithoutUnshiftOnSpace(bool unshiftOnSpace, string text)
+    {
+        // After a space that follows figures the receiver may be in either case: an explicit shift is sent for the
+        // next character whatever its case, so both kinds of receiver print what was typed.
+        Receive(Standard, Send(Standard, 1500, text), 1500, r => r.UnshiftOnSpace = unshiftOnSpace).Should().Be(text);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Send_FiguresSpaceLetters_ReadsRightWithOrWithoutUnshiftOnSpace(bool unshiftOnSpace)
+    {
+        var tx = new RttyModulator(Standard, TestSignal.Rate, 1500, Peak);
+        var audio = new List<float>(tx.Start());
+        foreach (var c in "UR 599 TU 73 GL\n") audio.AddRange(tx.Send(c));
+        audio.AddRange(tx.Stop());
+        Receive(Standard, [.. audio], 1500, r => r.UnshiftOnSpace = unshiftOnSpace).Should().Be("UR 599 TU 73 GL\n");
+    }
+
+    [Fact]
+    public void Modulate_LettersOnly_SendsNoExtraShifts()
+    {
+        // An explicit shift costs a character's time: it is sent only where the receiver's case is in doubt.
+        var character = 7.5 * TestSignal.Rate / Standard.Baud;
+        var empty = new RttyModulator(Standard, TestSignal.Rate, 1500, Peak).Modulate("").Length;
+        var plain = new RttyModulator(Standard, TestSignal.Rate, 1500, Peak).Modulate("CQ CQ DE W").Length;
+        ((plain - empty) / character).Should().BeApproximately(10, 0.01);
     }
 
     [Fact]

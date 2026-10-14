@@ -148,7 +148,7 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
   - In a contact, on the partner's audio offset. AFC keeps following them.
   - A CQ goes out on the offset last clicked on the waterfall. If nothing has been clicked, it uses the clear spot that the existing `TxOffsetPicker` finds, with the mode's bandwidth.
 - **PSK.** Each over opens with 1 s of carrier (phase reversals) and closes with 0.5 s of carrier, then a raised-cosine fade.
-- **RTTY.** The idle is LTRS characters. The over opens with a carriage return and line feed (CR LF), and figure shifts are re-sent after each space while unshift-on-space is on.
+- **RTTY.** The idle is LTRS characters. The over opens with a carriage return and line feed (CR LF). After a space that follows figures, the next letter or figure is always sent after its shift (LTRS or FIGS), so receivers with unshift-on-space on and off both print it right: `UR 599 TU` goes out as `UR 599 ` then LTRS `TU`. fldigi does the same job by sending LTRS before every space ("UOS on TX", on by default; `src/rtty/rtty.cxx`, read 2026-10-14); Costas sends the shift only where the receiver's case is in doubt. Approved by the owner, 2026-10-14.
 - **Characters.** RTTY sends only ITA2 characters: lower case is sent as capitals as the operator types, since the type-ahead line shows capitals. `@ % & * # _ < > [ ] { }` and accented letters are flagged and not sent. PSK Varicode covers ASCII 0–127; anything else is flagged.
 - **Transmit level.** For PSK, Auto ALC aims for zero ALC: the 0.02 threshold becomes 0, because any ALC action spreads a PSK signal (IMD). RTTY uses the FT8 thresholds.
 - As built (M12):
