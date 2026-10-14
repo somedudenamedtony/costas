@@ -217,6 +217,12 @@ As built (M13):
   - Spots: each station named from its text is spotted with the dial plus the channel's audio frequency and the ADIF mode name, at most once per call every 5 minutes (fldigi waits 30 minutes per call and band). The locator is left out, as fldigi does for automatic spots. Off in simulation, as for FT8.
   - UDP: Status, heartbeats, Clear and the logged-contact messages go out as in FT8 (a logged PSK or RTTY contact reaches loggers as Logged ADIF with `MODE` and `SUBMODE`). A Reply from another program is refused in keyboard modes, with a line in the bottom bar, since it cannot name a keyboard station and would otherwise key the radio on another program's guess.
 - **QRZ, LoTW, Club Log, eQSL.** Logging uploads use the ADIF modes in section 2 and need no other change.
+- As built (worked before, M13 fixes):
+  - Worked before, need tiers, the confirmed mark and Hunt use one mode key (`LogModeKey`): `FT8`, `FT4`, `PSK31`, `PSK63`, `RTTY`, the same for a contact just made and for it read back from the log. PSK31 and PSK63 are separate keys; `PSK`/`PSK31` and the older `PSK31` mode give the same key (likewise PSK63). No stored row is rewritten.
+  - The duplicate rule compares that key, and the submodes when both contacts have one. LoTW's `APP_LoTW_MODE` gives the submode for `MODE=PSK` as it does for `MFSK` (V20).
+  - Reports of my signal (Your signal, Reach, Who heard you, hears-you ranking) are for the current band and mode only. The neighbour and band-activity feed follows a band or mode change at once rather than at the next FT8 slot.
+  - Hunt alerts accept PSK Reporter reports in any mode Costas operates. Worked tonight shows the mode on each row.
+  - Not yet: the decode journal and saved WAV files cover FT8 and FT4 only.
 
 ## 12. Code structure
 

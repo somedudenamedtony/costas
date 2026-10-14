@@ -107,7 +107,7 @@ public static class RemoteStateBuilder
             Signal = Signal(s, nowUtc, ctx, log, band),
             TonightTitle = $"Worked tonight · {s.Tonight.Count}",
             Tonight = [.. s.Tonight.OrderByDescending(t => t.TimeUtc).Take(MaxRecent).Select(t => new RemoteTonight(t.Call,
-                StationText.Place(ctx.Countries?.Lookup(t.Call), null), BandPlan.Display(t.Band), StationText.Need(t.Need), OperateViewModel.Hm(t.TimeUtc)))],
+                StationText.Place(ctx.Countries?.Lookup(t.Call), null), $"{BandPlan.Display(t.Band)} {t.ModeKey}", StationText.Need(t.Need), OperateViewModel.Hm(t.TimeUtc)))],
             Decodes = [.. s.RawDecodes.Reverse().Take(MaxDecodes).Select(Decode)],
             Details = viewing is null ? null : Details(viewing, s, nowUtc, ctx, log, inContact),
         };

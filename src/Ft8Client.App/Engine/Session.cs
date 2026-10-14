@@ -643,7 +643,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 entity?.Entity.Key, entity?.Entity.Name, name ?? lk?.Name, lk?.State, entity?.Continent, qth ?? lk?.City);
             if (entry.TimeOffUtc - _lastContactUtc > TimeSpan.FromHours(2)) _tonight.Clear();
             _lastContactUtc = entry.TimeOffUtc;
-            _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag));
+            _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag, LogModeKey.Of(_config.Mode)));
             _logIndex.Add(new LogContact(entry.Call, _config.Band, LogModeKey.Of(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
             if (ModeInfo.IsSlotted(_config.Mode)) _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
