@@ -122,7 +122,7 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
 | 4. Their exchange | 4. My exchange (mine) |
 | 5. 73 (mine) | 5. Their 73 |
 
-- **Exchange fields.** RST, name, QTH and grid are found in the partner's text by the patterns `UR 599`, `RST 599`, `NAME <word>`, `OP <word>`, `QTH <words up to .>` and `LOC <grid>`.
+- **Exchange fields.** RST, name, QTH and grid are found in the partner's text by the patterns `UR 599`, `RST 599`, `NAME <word>`, `OP <word>`, `QTH <words up to .>` and `LOC <grid>`. As built: a filler between the keyword and the value is skipped (`NAME IS JOSE`, `QTH HR SAN JUAN`, `UR RST IS 599`, `NAME: BOB`, `LOC = FN31`); a report they thank me for (`TNX FER RST 579`) is the one I sent and is not read as theirs; a QTH sent twice for copy counts once, and a two-letter last word (a state, `DENVER CO`) stays in capitals.
 - **Capture by click.** The operator can click any word in the conversation and choose Call, Name, QTH, RST or Grid. A clicked value always beats a found one.
 - **Moving the strip on.** A step moves to Done when its macro is sent (my steps), or when the partner's over contains what the step needs (their steps). The next step of mine is highlighted, and Enter sends its macro.
 - **Logging.** It happens on the step marked Logged, or on Log now, and takes the RST, name and QTH shown in the card. The frequency logged is the dial plus the partner's audio offset, rounded to 1 Hz. This differs from FT8, which logs the dial.
