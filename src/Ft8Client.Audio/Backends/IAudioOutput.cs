@@ -8,7 +8,7 @@
 
 namespace Ft8Client.Audio.Backends;
 
-/// <summary>An open playback device. Plays one pre-rendered buffer at a time.</summary>
+/// <summary>An open playback device. Plays one pre-rendered buffer or one stream at a time.</summary>
 public interface IAudioOutput : IDisposable
 {
     /// <summary>Sample rate the output expects.</summary>
@@ -22,6 +22,12 @@ public interface IAudioOutput : IDisposable
 
     /// <summary>Starts playing mono samples now. The buffer is not copied and must not change while playing.</summary>
     void Play(float[] samples);
+
+    /// <summary>
+    /// Starts playing a stream now, read on the audio thread as it plays, until it finishes or <see cref="Stop"/>. While
+    /// the stream has nothing ready, silence is played.
+    /// </summary>
+    void PlayStream(IAudioStream stream);
 
     /// <summary>Stops playback immediately.</summary>
     void Stop();

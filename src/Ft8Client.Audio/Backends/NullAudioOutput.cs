@@ -22,6 +22,12 @@ public sealed class NullAudioOutput(int sampleRate = 48_000) : IAudioOutput
     /// <summary>Every buffer played, with when it started (wall clock).</summary>
     public List<(DateTime StartedUtc, float[] Samples)> Played { get; } = [];
 
+    /// <summary>The stream being played, if any.</summary>
+    public IAudioStream? Stream { get; private set; }
+
+    /// <summary>Every sample read from streams so far (tests read them with <see cref="Pull"/>).</summary>
+    public List<float> Streamed { get; } = [];
+
     /// <summary>Clock used to stamp buffers.</summary>
     public Func<DateTime> Now { get; set; } = () => DateTime.UtcNow;
 
@@ -36,6 +42,39 @@ public sealed class NullAudioOutput(int sampleRate = 48_000) : IAudioOutput
             Played.Add((Now(), samples));
             IsPlaying = true;
         }
+    }
+
+    /// <inheritdoc />
+    public void PlayStream(IAudioStream stream)
+    {
+        lock (_gate)
+        {
+            Stream = stream;
+            IsPlaying = true;
+        }
+    }
+
+    /// <summary>
+    /// Plays <paramref name="samples"/> of the stream as a device would (tests call it to move time on). Returns how many
+    /// the stream had ready.
+    /// </summary>
+    public int Pull(int samples)
+    {
+        IAudioStream? s;
+        lock (_gate) s = Stream;
+        if (s is null) return 0;
+        var buffer = new float[samples];
+        var n = s.Read(buffer);
+        lock (_gate)
+        {
+            Streamed.AddRange(buffer.AsSpan(0, n).ToArray());
+            if (s.Finished && ReferenceEquals(Stream, s))
+            {
+                Stream = null;
+                IsPlaying = false;
+            }
+        }
+        return n;
     }
 
     /// <summary>Marks the current buffer finished (tests call this to simulate the end of audio).</summary>
@@ -54,7 +93,11 @@ public sealed class NullAudioOutput(int sampleRate = 48_000) : IAudioOutput
     /// <inheritdoc />
     public void Stop()
     {
-        lock (_gate) IsPlaying = false;
+        lock (_gate)
+        {
+            IsPlaying = false;
+            Stream = null;
+        }
     }
 
     /// <inheritdoc />
