@@ -176,4 +176,15 @@ public sealed class KeyboardEnterSessionTests : IDisposable
     [InlineData(new[] { 1240, 1500, 1890 }, "3 signals without a callsign yet, at 1240, 1500 and 1890 Hz.")]
     public void UnnamedSignalsText_Offsets_Described(int[] offsets, string expected) =>
         ViewModels.OperateViewModel.UnnamedSignalsText(offsets).Should().Be(expected);
+
+    [Fact]
+    public async Task TuneAsync_InKeyboardContact_Refused()
+    {
+        Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n", 1180);
+        _session.CallStation("KP4JRS").Should().BeTrue();
+        SendOver();
+
+        (await _session.TuneAsync(1)).Should().Contain("only available while nothing else");
+        _tx.Transmitting.Should().BeFalse();
+    }
 }

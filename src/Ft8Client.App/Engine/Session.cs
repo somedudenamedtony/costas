@@ -826,10 +826,12 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         int offset;
         lock (_gate)
         {
-            if (_engine.CallingCq || _engine.InContact || _tx.Transmitting || _rigTuningUntil > _clock.UtcNow)
+            if (_engine.CallingCq || _engine.InContact || _kbd.CallingCq || _kbd.InContact || _keys.Active || _tx.Transmitting
+                || _rigTuningUntil > _clock.UtcNow)
                 return "Tune is only available while nothing else is being sent.";
             offset = _txOffset;
-            guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
+            // PSK and RTTY have no slots, so the clock check does not apply to them (docs/09-keyboard-modes.md section 9).
+            guard = new TxGuardInput(_config.Band, _dialHz, KeyboardMode ? null : _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         }
         if (await _tx.StartRigTunerAsync(offset, guard).ConfigureAwait(false))

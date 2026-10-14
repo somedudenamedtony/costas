@@ -74,6 +74,7 @@
                     <ComboBox ItemsSource="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CqModifiers}"
                               SelectedItem="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SelectedCqModifier}"
                               MinWidth="96" AutomationProperties.Name="CQ modifier"
+                              IsVisible="{Binding !$parent[UserControl].((vm:OperateViewModel)DataContext).Keyboard.Visible}"
                               ToolTip.Tip="What your CQ says: CQ for everyone, CQ DX for stations outside your country, CQ NA and the like for one continent. Applies to your next CQ.">
                       <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:CqModifierChoice">
@@ -81,7 +82,9 @@
                         </DataTemplate>
                       </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <Button Content="Resend" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ResendCommand}" IsEnabled="{Binding Active}" />
+                    <!-- PSK and RTTY resend with the macro keys, so Resend is an FT8 and FT4 control. -->
+                    <Button Content="Resend" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ResendCommand}" IsEnabled="{Binding Active}"
+                            IsVisible="{Binding !$parent[UserControl].((vm:OperateViewModel)DataContext).Keyboard.Visible}" />
                     <Button Content="Log now" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).LogNowCommand}" IsEnabled="{Binding CanLogNow}" />
                     <Button Content="Abandon (Esc)" Classes="critical" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).AbandonCommand}" IsEnabled="{Binding Active}" />
                   </StackPanel>
