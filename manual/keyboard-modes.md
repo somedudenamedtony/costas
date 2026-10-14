@@ -64,7 +64,10 @@ A macro goes back to receive when it has gone out, unless you keep typing. Typed
 sending idle between words, until you press Enter on an empty line.
 
 **Logging.** The contact is logged with the report, name and QTH shown on the card, and the frequency of the
-station's signal (the dial plus its audio frequency). Reports are RST, such as 599. **Log now** logs it at any time.
+station's signal (the dial plus its audio frequency). Reports are RST, such as 599. **Log now** logs it at any time
+until you abandon the contact; if your exchange has not gone out yet, no sent report is logged. Calling CQ (F1) in the
+middle of a contact ends it without logging, so log it first if you want to keep it. A station that calls you within two
+minutes of a logged contact starts the next contact.
 
 ## Macros
 
@@ -102,8 +105,8 @@ stops the macro from going out until you correct it.
 ## Safety
 
 - Costas will not send outside the band's limits, and it drops PTT on any radio or audio error.
-- A single over stops after 3 minutes, and an over with nothing to send stops after 20 seconds. The strip then says
-  "Stopped by watchdog".
+- A single over stops after 3 minutes; the strip then says "Stopped by watchdog". An over you typed that has had
+  nothing to send for 20 seconds simply goes back to receive, and the contact carries on.
 - RTTY keeps the transmitter at full output for the whole over. When you pick RTTY, Costas turns the radio's power down
   to half of what you set, and puts it back when you leave RTTY or close Costas (unless you turned the power yourself
   meanwhile). Change the share under **RTTY power** in Settings; 100 % leaves the power alone.

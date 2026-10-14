@@ -128,6 +128,14 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
 - **Logging.** It happens on the step marked Logged, or on Log now, and takes the RST, name and QTH shown in the card. The frequency logged is the dial plus the partner's audio offset, rounded to 1 Hz. This differs from FT8, which logs the dial.
 - **Abandon (Esc).** Clears the contact, as for FT8.
 - As built (M12): `KeyboardContactEngine` in Core, beside the FT8 `ContactEngine`; the session picks one by mode. A CQ counts as sent as soon as it is queued, so a quick answer is never missed; my other steps are done when their macro has gone out whole. While their step is pending, Enter still offers my next macro, so the operator can move on without waiting. A clicked word is offered from a menu: their name, QTH, report, grid or call.
+- As built (contact fixes, 2026-10-14):
+  - An answer to my CQ counts when the over is to me, even if my call and theirs arrive on different lines (the channel's "sent to" for the over is used). A station that calls me within 2 minutes of a logged contact (a tail-ender) starts a new contact the same way; the station just logged does not.
+  - The partner's text is read as one piece from my last over on, so an exchange split across lines is found. Their text to another station (`N0XYZ DE <partner>`) is shown but not taken as their exchange. Text with no sender counts as the partner's only when it is on their offset and names me. A call with a portable suffix (`W7LIT/P`) is the same station.
+  - Their 73 step needs 73 or SK; TU alone no longer closes and logs the contact.
+  - After answering a CQ, my F4 73 logs the contact once both exchanges are done.
+  - F1 CQ during an unfinished contact ends that contact without logging (Log now keeps it) and listens for answers.
+  - Log now does nothing after Abandon. The report sent is logged only once my exchange (F3) went out; otherwise the log has no sent report.
+  - A clicked report must be an RST (5NN is read as 599) and a clicked grid a grid; anything else is refused with a note in the bottom bar.
 
 ## 8. Transmit
 
@@ -177,6 +185,7 @@ There is a watchdog for the keyboard modes:
 - Transmit stops after **3 minutes** of continuous transmitting. This matches the remote-control cap in D14.
 - It also stops after **20 seconds** of idle with nothing left to send.
 - Either stop is shown on the strip as "Stopped by watchdog".
+- As built (finding H3, 2026-10-14): the 20-second idle close only returns a typed over to receive. The contact goes on, and the bottom bar says "Back to receive: nothing was sent for 20 seconds." Only the 3-minute limit ends the contact as "Stopped by watchdog". `KeyboardOver.Idle` tells the two apart.
 - As built (M12): if an over has still not ended 10 s past the 3-minute limit (the audio device stopped taking samples, so the over cannot play out), Halt drops PTT at once.
 
 ## 10. Screen (see `02-ui-spec.md` for the FT8 layout)

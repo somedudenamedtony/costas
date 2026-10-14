@@ -117,13 +117,27 @@ public sealed partial class Session
         Publish();
     }
 
-    /// <summary>Sets part of the exchange (or the partner's call) from a word the operator clicked.</summary>
+    /// <summary>
+    /// Sets part of the exchange (or the partner's call) from a word the operator clicked. A word that cannot be that
+    /// part is refused, with the reason in the bottom bar.
+    /// </summary>
     public void CaptureWord(ExchangeField field, string word)
     {
+        ArgumentNullException.ThrowIfNull(word);
         lock (_gate)
         {
             if (!KeyboardMode) return;
-            _kbd.Capture(field, word);
+            if (!_kbd.Capture(field, word))
+            {
+                var what = field switch
+                {
+                    ExchangeField.Rst => "report (such as 599 or 5NN)",
+                    ExchangeField.Grid => "grid (such as FN31)",
+                    ExchangeField.Call => "callsign",
+                    _ => "value for that",
+                };
+                _fault = $"\"{word.Trim()}\" is not a {what}: nothing was changed.";
+            }
         }
         Publish();
     }
@@ -273,12 +287,9 @@ public sealed partial class Session
     private void ApplyKeyboardLine(KeyboardLine l)
     {
         var before = _kbd.Partner;
-        _kbd.Heard(l.Text, l.Sender, l.OffsetHz, l.Utc);
+        var fromPartner = _kbd.Heard(l.Text, l.Sender, l.OffsetHz, l.Utc, l.To);
         if (_kbd.Partner is not { } partner) return;
         if (before is not null && !Callsign.EqualsCall(before, partner)) _conversation.Clear();
-        var fromPartner = l.Sender is not null
-            ? Callsign.EqualsCall(l.Sender, partner)
-            : Math.Abs(l.OffsetHz - _kbd.PartnerOffsetHz) <= 50;
         if (fromPartner) AddConversation(partner, l.Text, mine: false);
     }
 
@@ -299,10 +310,15 @@ public sealed partial class Session
             foreach (var key in over.Macros.Where(k => k != Macro.CqKey))
                 _kbd.Sent(key, _macroTexts.GetValueOrDefault(key) ?? string.Empty, now);
             _macroTexts.Clear();
-            if (over.Watchdog)
+            if (over.Watchdog && over.Idle)
+            {
+                // A typed over left with nothing to send just returns to receive; the contact goes on.
+                _fault = "Back to receive: nothing was sent for 20 seconds.";
+            }
+            else if (over.Watchdog)
             {
                 _kbd.Watchdog();
-                _fault = "Stopped by watchdog: an over is limited to 3 minutes, and closes after 20 seconds with nothing to send.";
+                _fault = "Stopped by watchdog: an over is limited to 3 minutes.";
             }
         }
         Publish();

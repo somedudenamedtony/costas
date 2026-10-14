@@ -241,6 +241,33 @@ public class KeyboardContactSessionTests : IDisposable
     }
 
     [Fact]
+    public void ToggleCq_AnswerSplitAcrossLines_ContactStarts()
+    {
+        _session.SetTxOffset(1600);
+        _session.ToggleCq();
+        SendOver();
+
+        Hear("W7LIT DE\nKP4JRS KP4JRS K\n");
+
+        _session.Snapshot.Contact!.DxCall.Should().Be(Partner);
+        _session.Snapshot.NextMacro.Should().Be(Macro.ExchangeKey);
+    }
+
+    [Fact]
+    public void KeyEnter_TypedOverLeftIdle_BackToReceiveAndContactGoesOn()
+    {
+        Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n");
+        _session.CallStation(Partner);
+        SendOver();
+
+        _session.KeyEnter("hello").Should().BeNull();
+        SendOver();
+
+        _session.Snapshot.Contact!.Outcome.Should().Be(ContactOutcome.InProgress);
+        _session.Snapshot.Fault.Should().Contain("Back to receive");
+    }
+
+    [Fact]
     public void SendMacro_MisspeltField_RefusedWithReason()
     {
         _session.Reconfigure(_config with { Macros = [new Macro(5, "Me", "DE {MY_CALL} K")] });
