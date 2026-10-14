@@ -6,10 +6,13 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Ft8Client.App.ViewModels;
 
 namespace Ft8Client.App.Views;
@@ -38,6 +41,8 @@ public partial class MainWindow : Window
             if (!Core.ModeInfo.IsSlotted(vm.Host.Session.Config.Mode)) vm.Host.Keyboard.Listen(hz);
         };
         AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, OnKeyUp, RoutingStrategies.Tunnel);
+        AddHandler(TextInputEvent, OnText, RoutingStrategies.Tunnel);
         AddHandler(PointerPressedEvent, (_, _) => Vm?.Activity(), RoutingStrategies.Tunnel);
     }
 
@@ -151,6 +156,29 @@ public partial class MainWindow : Window
 
     private void CloseMini() => _mini?.Close();
 
+    // True for a key aimed at an open dropdown, menu or flyout, which handles it itself (Esc closes it).
+    private bool InPopup(object? source) => source switch
+    {
+        ComboBox { IsDropDownOpen: true } or MenuItem => true,
+        Visual v => TopLevel.GetTopLevel(v) != this || v.FindAncestorOfType<OverlayPopupHost>(includeSelf: true) is not null,
+        _ => false,
+    };
+
+    // PSK and RTTY on Operate: typing belongs to the type-ahead line wherever the keyboard is.
+    private bool KeyboardTyping(MainViewModel vm, object? source) =>
+        vm.Tab == 0 && vm.Operate.Keyboard.Visible && source is not TextBox && !InPopup(source);
+
+    private void OnText(object? sender, TextInputEventArgs e)
+    {
+        if (Vm is not { } vm || string.IsNullOrEmpty(e.Text) || !KeyboardTyping(vm, e.Source)) return;
+        if (OperatePage.TakeText(e.Text)) e.Handled = true;
+    }
+
+    private void OnKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (Vm is { } vm && vm.Operate.Keyboard.Visible) OperatePage.TakeKeyUp(e);
+    }
+
     private void OnKey(object? sender, KeyEventArgs e)
     {
         if (Vm is not { } vm) return;
@@ -159,6 +187,10 @@ public partial class MainWindow : Window
         var typing = e.Source is TextBox;
         switch (e.Key)
         {
+            // Esc aimed at an open dropdown or menu closes it, and halts only when something is on the air.
+            case Key.Escape when InPopup(e.Source):
+                if (vm.Host.Session.Snapshot.Transmitting) vm.HaltCommand.Execute(null);
+                break;
             case Key.Escape:
                 vm.Escape();
                 e.Handled = true;
@@ -192,12 +224,13 @@ public partial class MainWindow : Window
                 OpenDialog("shortcuts");
                 e.Handled = true;
                 break;
-            // In a PSK or RTTY contact, Enter sends the next step's macro.
-            case Key.Enter when vm.Tab == 0 && !typing && vm.Operate.Keyboard.Visible && vm.Operate.Panel.Active:
+            // PSK and RTTY: Enter does what it does in the type-ahead line (sends what is typed, or the next step's
+            // macro, which the hint names) wherever the keyboard is.
+            case Key.Enter when KeyboardTyping(vm, e.Source):
                 vm.Operate.Keyboard.Enter();
                 e.Handled = true;
                 break;
-            case Key.Enter when vm.Tab == 0 && !typing:
+            case Key.Enter when vm.Tab == 0 && !typing && !vm.Operate.Keyboard.Visible:
                 vm.Operate.CallSelected();
                 e.Handled = true;
                 break;
@@ -208,6 +241,10 @@ public partial class MainWindow : Window
             case Key.Down when vm.Tab == 0 && !typing:
                 vm.Operate.MoveSelection(1);
                 e.Handled = true;
+                break;
+            // PSK and RTTY: Space and Backspace go to the type-ahead line, not to the button that has the keyboard.
+            case Key.Space or Key.Back when !ctrl && !e.KeyModifiers.HasFlag(KeyModifiers.Alt) && KeyboardTyping(vm, e.Source):
+                e.Handled = OperatePage.TakeKey(e);
                 break;
         }
     }
