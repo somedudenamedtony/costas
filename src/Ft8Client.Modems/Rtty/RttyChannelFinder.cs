@@ -22,8 +22,9 @@ public sealed class RttyChannelFinder : IChannelFinder
     public RttyChannelFinder(RttyFormat format, int sampleRate)
     {
         _format = format;
-        // A keyed tone spreads about one baud either side.
-        _tones = new ChannelFinder(sampleRate, 2 * format.Baud);
+        // A keyed tone spreads about one baud either side. Each tone carries only half the signal's power, so a tone
+        // need stand only 3 dB above the noise: requiring a second tone exactly one shift away keeps noise out.
+        _tones = new ChannelFinder(sampleRate, 2 * format.Baud) { ThresholdDb = 3 };
     }
 
     /// <inheritdoc />

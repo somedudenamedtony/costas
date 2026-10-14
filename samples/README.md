@@ -13,9 +13,11 @@ captured by `scripts/capture-golden.sh`; its `# args:` line holds the decode con
 | `ft8/260101_000015.wav` | `ft8sim "<PJ4/K1ABC> W7LIT DN40"` | Hashed call, unresolved in a separate run (V3) |
 | `ft8/260101_000030.wav`, `260101_000045.wav` | `ft8sim "CQ K1ABC FN42" ... -22` | A-priori decodes (`a1`, `? a1`) |
 | `ft8/260101_000100.wav` | `ft8sim "W7LIT K1ABC FN42" ... -22` | A-priori decode with low confidence (`? a3`) |
-
 | `psk31/synthetic-busy-20m.wav` | Costas's `PskModulator` with Gaussian noise (seed 2026) | Five overs from four PSK31 stations, one weak; sent text in `.expected.txt` |
 | `psk63/synthetic-two-stations.wav` | Same | Three PSK63 overs from two stations |
+| `rtty/synthetic-busy-20m.wav` | Costas's `RttyModulator` (45.45 Bd, 170 Hz) with Gaussian noise (seed 2026) | Three RTTY stations at 0, -3 and -6 dB |
+| `rtty/synthetic-fading.wav` | Same, mark and space faded independently to -26 dB | Selective fading, read through ATC |
+| `rtty/synthetic-reversed.wav` | Same, mark and space swapped | A station sending upside down; read with Reverse on (`# format:` line in its `.expected.txt`) |
 
 The `psk31`, `psk63` and `rtty` folders hold continuous keyboard-mode audio, not slots: the `jt9` golden tests and FT8
 simulation skip them, and `--simulate` plays them in a loop while the Mode menu is on that mode.
