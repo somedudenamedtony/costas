@@ -151,4 +151,14 @@ public sealed class KeyboardEnterSessionTests : IDisposable
 
         _session.Snapshot.Contact?.Mode.Should().Be(Mode.Psk31);
     }
+
+    [Fact]
+    public void ApplyText_ThreeMinutesOfText_AddsBandActivity()
+    {
+        Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n", 1180);
+        _clock.Advance(Session.KeyboardActivityPeriod);
+        _keyboard.Drain();
+
+        _session.Snapshot.Activity.Should().ContainSingle().Which.Decodes.Should().Be(1);
+    }
 }

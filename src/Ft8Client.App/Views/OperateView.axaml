@@ -303,8 +303,10 @@
                   </Button>
                 </StackPanel>
               </DockPanel>
-              <!-- Next in line and Repeats share these columns so the two tables line up. -->
-              <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" Margin="14,0,14,4">
+              <!-- Next in line and Repeats share these columns so the two tables line up. Where, Why, Doing now, Chance and
+                   Last worked share the width left in proportion, so at narrower windows none of them, and not the Call button,
+                   is squeezed out. -->
+              <Grid ColumnDefinitions="36,100,19*,16*,25*,100,46,64,23*,12*,74" Margin="14,0,14,4">
                 <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
                 <TextBlock Grid.Column="1" Text="Call" Classes="secondary" />
                 <TextBlock Grid.Column="2" Text="Where" Classes="secondary" />
@@ -336,7 +338,7 @@
                         <Border Width="3" HorizontalAlignment="Left" Background="{Binding IsInContact, Converter={x:Static v:Converters.SelectedBar}}" />
                         <Border BorderThickness="1" CornerRadius="3" Margin="1" IsHitTestVisible="False"
                                 BorderBrush="{Binding IsSelected, Converter={x:Static v:Converters.CursorOutline}}" />
-                        <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" MinHeight="40" Margin="14,0">
+                        <Grid ColumnDefinitions="36,100,19*,16*,25*,100,46,64,23*,12*,74" MinHeight="40" Margin="14,0">
                           <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -411,7 +413,7 @@
             <TextBlock Text="Repeats" Classes="title" Margin="14,0" />
             <TextBlock Text="{Binding RepeatsSubtitle}" Classes="secondary" Margin="14,2,14,6" />
             <!-- The same columns as Next in line. -->
-            <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" Margin="14,0,14,4" IsVisible="{Binding !!Repeats.Count}">
+            <Grid ColumnDefinitions="36,100,19*,16*,25*,100,46,64,23*,12*,74" Margin="14,0,14,4" IsVisible="{Binding !!Repeats.Count}">
               <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
               <TextBlock Grid.Column="1" Text="Call" Classes="secondary" />
               <TextBlock Grid.Column="2" Text="Where" Classes="secondary" />
@@ -430,7 +432,7 @@
                           BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
                     <Panel>
                       <Border Width="3" HorizontalAlignment="Left" Background="{Binding IsInContact, Converter={x:Static v:Converters.SelectedBar}}" />
-                      <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" MinHeight="36" Margin="14,0">
+                      <Grid ColumnDefinitions="36,100,19*,16*,25*,100,46,64,23*,12*,74" MinHeight="36" Margin="14,0">
                         <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -536,7 +538,7 @@
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <StackPanel Orientation="Horizontal" Spacing="5">
                   <Rectangle Width="9" Height="9" Fill="{DynamicResource TextSecondaryBrush}" Opacity="0.35" VerticalAlignment="Center" />
-                  <TextBlock Text="Decodes per slot" Classes="secondary" FontSize="12" />
+                  <TextBlock Text="{Binding ActivityLegend}" Classes="secondary" FontSize="12" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="5">
                   <Rectangle Width="9" Height="9" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" />

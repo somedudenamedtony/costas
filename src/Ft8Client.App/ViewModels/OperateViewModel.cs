@@ -381,7 +381,7 @@ public sealed partial class OperateViewModel : ObservableObject
         RepeatsSubtitle = $"Heard now and already in your log on {band} {ModeInfo.Name(s.Mode)}.";
         RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {band} is on the air right now.";
 
-        Summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty);
+        Summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty, ModeInfo.IsSlotted(s.Mode) ? null : s.Activity);
         Contact = s.Contact is null ? null : ContactPanelViewModel.For(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall));
         OnPropertyChanged(nameof(InContact));
         OnPropertyChanged(nameof(Panel));

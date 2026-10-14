@@ -11,8 +11,10 @@ using System.Globalization;
 using Ft8Client.Core;
 using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Keyboard;
+using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Services;
+using Ft8Client.Core.Stations;
 using Ft8Client.Core.Transmit;
 using Ft8Client.Modems;
 using Ft8Client.Modems.Psk;
@@ -35,6 +37,7 @@ public sealed partial class Session
     private string? _radioNote;
     private int? _blockedMacro;
     private Mode _kbdContactMode;
+    private DateTime _kbdActivityFrom;
 
     /// <summary>The keyboard transmitter, so tests can render its audio on a manual clock.</summary>
     internal KeyboardTransmitter Keys => _keys;
@@ -289,6 +292,29 @@ public sealed partial class Session
             : Math.Abs(l.OffsetHz - _kbd.PartnerOffsetHz) <= 50;
         // An abandoned contact stays on the card, but its conversation box stops collecting their text.
         if (fromPartner && _kbd.View() is not { Outcome: ContactOutcome.Abandoned }) AddConversation(partner, l.Text, mine: false);
+    }
+
+    /// <summary>PSK and RTTY have no slots: band activity counts the stations read in each period of this length.</summary>
+    public static readonly TimeSpan KeyboardActivityPeriod = TimeSpan.FromMinutes(3);
+
+    // Under _gate. Band activity in PSK and RTTY (docs/09-keyboard-modes.md section 10): every three minutes, the stations
+    // read in those minutes and how many of them I need, kept for an hour like the FT8 slots.
+    private void KeyboardActivity(DateTime utc)
+    {
+        if (_kbdActivityFrom == default || utc < _kbdActivityFrom)
+        {
+            _kbdActivityFrom = utc;
+            return;
+        }
+        if (utc - _kbdActivityFrom < KeyboardActivityPeriod) return;
+        var from = _kbdActivityFrom;
+        var modeKey = ModeInfo.Name(_config.Mode);
+        var read = _tracker.Stations.Where(st => st.LastHeardUtc >= from).ToList();
+        var needed = read.Count(st => _logIndex.Need(st.Call, st.EntityKey, st.Grid, _config.Band, modeKey, _config.Ranking.TierOrder,
+            _config.Ranking.ConfirmedOnly).Tag != NeedTag.Worked);
+        _activity.Add(new SlotActivity(from, read.Count, needed));
+        _activity.RemoveAll(x => utc - x.SlotStartUtc > TimeSpan.FromHours(1));
+        _kbdActivityFrom = utc;
     }
 
     // Under _gate. The keyboard contact, with the mode it was made in, so an ended contact keeps its own mode label

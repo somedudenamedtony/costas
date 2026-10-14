@@ -472,6 +472,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             if (mode != _config.Mode) return;
             foreach (var h in heard) _tracker.ApplyText(h);
             _tracker.AgeText(utc);
+            KeyboardActivity(utc);
             foreach (var l in lines)
             {
                 ApplyKeyboardLine(l);
@@ -896,6 +897,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _recentOffsets.Clear();
             _slotCounts.Clear();
             _activity.Clear();
+            _kbdActivityFrom = default;
             _txMeters = null; // SWR belongs to the antenna on the old band
         }
         // A PSK or RTTY over does not follow the radio to another band or mode.

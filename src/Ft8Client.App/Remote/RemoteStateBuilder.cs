@@ -64,7 +64,7 @@ public static class RemoteStateBuilder
         var slotLen = !slotted ? TimeSpan.Zero : s.Transmitting ? ModeInfo.TxEnd(s.Mode) : ModeInfo.SlotLength(s.Mode);
         var into = slotted ? nowUtc - SlotMath.SlotStart(nowUtc, s.Mode) : TimeSpan.Zero;
         var (meter, meterTip, meterKind) = TxMeterText.Warning(s.TxMeters);
-        var summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty);
+        var summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty, ModeInfo.IsSlotted(s.Mode) ? null : s.Activity);
 
         return new RemoteState
         {
