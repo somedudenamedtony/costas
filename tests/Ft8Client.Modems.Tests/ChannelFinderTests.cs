@@ -10,7 +10,7 @@ using Ft8Client.Modems.Psk;
 
 namespace Ft8Client.Modems.Tests;
 
-public class PskChannelFinderTests
+public class ChannelFinderTests
 {
     [Fact]
     public void Signals_ThreeStations_FoundNearTheirCarriers()
@@ -19,7 +19,7 @@ public class PskChannelFinderTests
         var audio = TestSignal.WithNoise(
             TestSignal.Mix([.. carriers.Select(hz => new PskModulator(Mode.Psk31, TestSignal.Rate, hz, 0.5).Modulate("CQ CQ CQ DE W7LIT W7LIT W7LIT PSE K "))]),
             0.5, 0, seed: 7);
-        var finder = new PskChannelFinder(Mode.Psk31, TestSignal.Rate);
+        var finder = new ChannelFinder(Mode.Psk31, TestSignal.Rate);
         finder.Process(audio.AsSpan(0, TestSignal.Rate * 5));
 
         var found = finder.Signals();
@@ -30,7 +30,7 @@ public class PskChannelFinderTests
     [Fact]
     public void Signals_NoiseOnly_FindsNothing()
     {
-        var finder = new PskChannelFinder(Mode.Psk31, TestSignal.Rate);
+        var finder = new ChannelFinder(Mode.Psk31, TestSignal.Rate);
         finder.Process(TestSignal.Noise(TestSignal.Rate * 10, seed: 8));
         finder.Signals().Should().BeEmpty();
     }
@@ -38,7 +38,7 @@ public class PskChannelFinderTests
     [Fact]
     public void Signals_Silence_FindsNothing()
     {
-        var finder = new PskChannelFinder(Mode.Psk31, TestSignal.Rate);
+        var finder = new ChannelFinder(Mode.Psk31, TestSignal.Rate);
         finder.Process(new float[TestSignal.Rate * 2]);
         finder.Signals().Should().BeEmpty();
     }
@@ -50,7 +50,7 @@ public class PskChannelFinderTests
     public void SnrDb_SignalInNoise_WithinTwoDb(int snrDb)
     {
         var signal = new PskModulator(Mode.Psk31, TestSignal.Rate, 1500, 0.5) { IdleSymbols = 600 }.Modulate("CQ");
-        var finder = new PskChannelFinder(Mode.Psk31, TestSignal.Rate);
+        var finder = new ChannelFinder(Mode.Psk31, TestSignal.Rate);
         finder.Process(TestSignal.WithNoise(signal, 0.5, snrDb, seed: 9));
         finder.SnrDb(1500).Should().BeInRange(snrDb - 2, snrDb + 2);
     }

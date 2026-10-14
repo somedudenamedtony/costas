@@ -5,10 +5,10 @@
 // GNU General Public License as published by the Free Software Foundation, either version 3 of the
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
-namespace Ft8Client.Modems.Psk;
+namespace Ft8Client.Modems;
 
 /// <summary>Characters received on one channel.</summary>
 /// <param name="Channel">The channel's number, stable while it lives.</param>
 /// <param name="FrequencyHz">The channel's audio frequency when the text arrived.</param>
 /// <param name="Text">The characters.</param>
-public sealed record PskText(int Channel, double FrequencyHz, string Text);
+public sealed record ChannelText(int Channel, double FrequencyHz, string Text);

@@ -26,7 +26,7 @@ namespace Ft8Client.Modems.Psk;
 /// signal, near 0 for noise; characters are passed on only while it is above <see cref="SquelchLevel"/>.
 /// Not thread-safe; feed it from one thread.
 /// </summary>
-public sealed class PskDemodulator
+public sealed class PskDemodulator : IKeyboardReceiver
 {
     private const int SamplesPerSymbolDecimated = 16;
 

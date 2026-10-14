@@ -8,7 +8,9 @@
 
 using Ft8Client.App.Engine;
 using Ft8Client.App.ViewModels;
+using Ft8Client.Core;
 using Ft8Client.Core.Contacts;
+using Ft8Client.Modems.Rtty;
 
 namespace Ft8Client.App.Tests;
 
@@ -37,5 +39,13 @@ public class StatusLineTests
     public void Status_NotTransmitting_SaysWaiting()
     {
         MainViewModel.Status(InContact(false, null)).Item1.Should().Be("Waiting for K1ABC.");
+    }
+
+    [Fact]
+    public void Status_ReadingRtty_NamesSpeedShiftAndReverse()
+    {
+        var format = new RttyFormat(45.45, 170, Reverse: true);
+        MainViewModel.Status(new SessionSnapshot { Mode = Mode.Rtty }, format).Item1
+            .Should().StartWith("Reading RTTY 45.45 Bd, 170 Hz shift, reversed.");
     }
 }

@@ -145,6 +145,7 @@ publishes a GitHub Release when the owner runs the CI workflow on `main` by hand
 | M7 setup, settings, log, interop | UDP datagrams for every type; settings migration; secrets kept out of settings, logs and the bundle | GridTracker on Windows; first-run timing with an IC-7300 |
 | M8 FT4, hardening, release | FT4 vectors and decode round trip; user manual | 24-hour soak, code signing |
 | M10 PSK31 and PSK63 receive (feature branch) | Demodulators against generated signals in noise; synthetic recordings with three stations; stations found from text | Real recordings against fldigi (V25); transmit is M12 |
+| M11 RTTY receive (feature branch) | Demodulator with ATC against noise, fading, one lost tone and Reverse; synthetic recordings (busy, fading, reversed) | Real recordings against fldigi or MMTTY (V25); transmit is M12 |
 
 ### The manual
 

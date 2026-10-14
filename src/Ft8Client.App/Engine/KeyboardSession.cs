@@ -10,7 +10,8 @@ using Ft8Client.Audio.Dsp;
 using Ft8Client.Core;
 using Ft8Client.Core.Keyboard;
 using Ft8Client.Core.Time;
-using Ft8Client.Modems.Psk;
+using Ft8Client.Modems;
+using Ft8Client.Modems.Rtty;
 
 namespace Ft8Client.App.Engine;
 
@@ -35,7 +36,9 @@ public sealed class KeyboardSession : IDisposable
     private readonly float[] _buffer = new float[ModeInfo.DecoderSampleRate];
     private readonly Dictionary<int, Reading> _channels = [];
     private Mode _mode = Mode.Ft8;
-    private PskChannelBank? _bank;
+    private RttyFormat _rtty = RttyFormat.Standard;
+    private bool _unshiftOnSpace = true;
+    private ChannelBank? _bank;
     private int? _listening;
     private DateTime _agedUtc;
     private Thread? _thread;
@@ -54,18 +57,41 @@ public sealed class KeyboardSession : IDisposable
     public SpscRingBuffer Input { get; } = new(8 * ModeInfo.DecoderSampleRate);
 
     /// <summary>
-    /// Follows the session's band and mode: starts afresh reading PSK31 or PSK63, or reads nothing in a slotted mode.
+    /// Follows the session's band and mode: starts afresh reading PSK31, PSK63 or RTTY, or reads nothing in a slotted
+    /// mode.
     /// </summary>
     public void SetMode(Mode mode)
     {
         lock (_gate)
         {
             _mode = mode;
-            _bank = mode is Mode.Psk31 or Mode.Psk63 ? new PskChannelBank(mode, ModeInfo.DecoderSampleRate) : null;
-            _channels.Clear();
-            _listening = null;
-            Input.Clear();
+            Restart();
         }
+    }
+
+    /// <summary>The RTTY speed, shift and polarity to read, and unshift-on-space. Starts afresh when they change in RTTY.</summary>
+    public void SetRtty(RttyFormat format, bool unshiftOnSpace)
+    {
+        lock (_gate)
+        {
+            if (format == _rtty && unshiftOnSpace == _unshiftOnSpace) return;
+            _rtty = format;
+            _unshiftOnSpace = unshiftOnSpace;
+            if (_mode == Mode.Rtty) Restart();
+        }
+    }
+
+    private void Restart()
+    {
+        _bank = _mode switch
+        {
+            Mode.Psk31 or Mode.Psk63 => new ChannelBank(_mode, ModeInfo.DecoderSampleRate),
+            Mode.Rtty => new ChannelBank(_rtty, ModeInfo.DecoderSampleRate, _unshiftOnSpace),
+            _ => null,
+        };
+        _channels.Clear();
+        _listening = null;
+        Input.Clear();
     }
 
     /// <summary>Reads the signal at an audio frequency the operator clicked, and keeps reading it while it is quiet.</summary>
@@ -125,7 +151,7 @@ public sealed class KeyboardSession : IDisposable
         _session.ApplyText(mode, heard, lines, _clock.UtcNow);
     }
 
-    private void Read(PskChannelBank bank, ReadOnlySpan<float> samples, List<TextHeard> heard, List<KeyboardLine> lines)
+    private void Read(ChannelBank bank, ReadOnlySpan<float> samples, List<TextHeard> heard, List<KeyboardLine> lines)
     {
         var now = _clock.UtcNow;
         foreach (var t in bank.Process(samples))

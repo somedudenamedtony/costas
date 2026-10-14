@@ -135,6 +135,8 @@ Accept:
 - Automated: golden text from RTTY recordings, including a fading one and a reversed one.
 - Manual: as M10, against fldigi or MMTTY.
 
+Status (2026-10-14, `feature/keyboard-modes`): built. The demodulator, the RTTY channel finder (tone pairs one shift apart) and the settings are in; the bank, channel and text types are shared with PSK. Golden text passes on three synthetic recordings (busy band with a weak station, selective fading, reversed). Real recordings checked against fldigi or MMTTY are still to do (V25).
+
 ## M12 · Keyboard transmit and contacts
 
 Build:

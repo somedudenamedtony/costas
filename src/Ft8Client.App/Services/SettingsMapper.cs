@@ -13,6 +13,7 @@ using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Time;
 using Ft8Client.Data.Settings;
+using Ft8Client.Modems.Rtty;
 
 namespace Ft8Client.App.Services;
 
@@ -86,6 +87,16 @@ public static class SettingsMapper
         NeedTag.NewGrid => "grid",
         _ => "call",
     }).ToList();
+
+    /// <summary>The RTTY speed, shift and polarity to read.</summary>
+    public static RttyFormat Rtty(AppSettings s)
+    {
+        var o = s.Operating;
+        // A hand-edited settings file with a speed or shift the receiver does not offer reads the amateur standard.
+        var baud = RttyFormat.Speeds.FirstOrDefault(b => Math.Abs(b - o.RttyBaud) < 0.01, RttyFormat.Standard.Baud);
+        var shift = RttyFormat.Shifts.Contains(o.RttyShiftHz) ? o.RttyShiftHz : RttyFormat.Standard.ShiftHz;
+        return new RttyFormat(baud, shift, o.RttyReverse);
+    }
 
     /// <summary>Distance units setting.</summary>
     public static DistanceUnit Units(AppSettings s) => s.Appearance.Units == "km" ? DistanceUnit.Kilometres : DistanceUnit.Miles;

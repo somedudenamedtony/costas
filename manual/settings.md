@@ -49,6 +49,11 @@ exchange and the reports are fixed by FT8, so only the parts above can change.
 | **Logging** | on | Log each contact automatically when it completes |
 | **Calling you › Chime** | off | A chime on the computer's default speakers when a new station calls you. Never on the radio's audio device |
 
+## PSK and RTTY
+
+How RTTY is read: speed (45.45 baud), shift (170 Hz), **Reverse** (off) and **Unshift on space** (on). PSK31 and PSK63
+need no settings. See [RTTY settings](keyboard-modes.md#rtty-settings).
+
 ## Who to call
 
 How the Next in line list on the Operate screen is ordered. The same options open from the **ⓘ** beside *Next in

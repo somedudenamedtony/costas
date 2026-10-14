@@ -58,6 +58,7 @@ public class ModeInfoTests
     [InlineData("FT4", Mode.Ft4)]
     [InlineData("psk31", Mode.Psk31)]
     [InlineData("PSK63", Mode.Psk63)]
+    [InlineData("rtty", Mode.Rtty)]
     public void TryParse_OperableMode_Parses(string text, Mode expected)
     {
         ModeInfo.TryParse(text, out var mode).Should().BeTrue();
@@ -65,8 +66,8 @@ public class ModeInfoTests
     }
 
     [Theory]
-    [InlineData("RTTY")]
+    [InlineData("MFSK16")]
     [InlineData("")]
     [InlineData(null)]
-    public void TryParse_ModeNotOperableYet_Refuses(string? text) => ModeInfo.TryParse(text, out _).Should().BeFalse();
+    public void TryParse_UnknownMode_Refuses(string? text) => ModeInfo.TryParse(text, out _).Should().BeFalse();
 }

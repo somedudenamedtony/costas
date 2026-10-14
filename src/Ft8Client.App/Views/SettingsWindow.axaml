@@ -201,6 +201,49 @@
         </ScrollViewer>
       </TabItem>
 
+      <TabItem Header="PSK and RTTY">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="PSK and RTTY" />
+            <TextBlock Classes="intro" Text="How RTTY signals are read. PSK31 and PSK63 need no settings. Changes apply at once." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="RTTY speed" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <ComboBox ItemsSource="{Binding RttySpeeds}" SelectedItem="{Binding RttySpeed}" MinWidth="110" />
+                  <TextBlock Text="baud" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="Almost all amateur RTTY is 45.45 baud." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="RTTY shift" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <ComboBox ItemsSource="{Binding RttyShifts}" SelectedItem="{Binding RttyShift}" MinWidth="110" />
+                  <TextBlock Text="Hz" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="The distance between the two tones. Almost all amateur RTTY uses 170 Hz." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Reverse" />
+              <StackPanel Grid.Column="1">
+                <CheckBox IsChecked="{Binding RttyReverse}" Content="Swap mark and space" />
+                <TextBlock Classes="help" Text="Turn this on only for a station whose text reads as gibberish while its signal looks clean: it is sending with its tones the wrong way round." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Unshift on space" />
+              <StackPanel Grid.Column="1">
+                <CheckBox IsChecked="{Binding RttyUnshiftOnSpace}" Content="Return to letters after a space" />
+                <TextBlock Classes="help" Text="On by default, as most stations expect. Turn it off if numbers in a station's text keep turning into letters." />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <!-- 2 Who to call -->
       <TabItem Header="Who to call">
         <ScrollViewer>

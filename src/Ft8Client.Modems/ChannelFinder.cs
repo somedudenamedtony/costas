@@ -8,16 +8,18 @@
 using System.Numerics;
 using Ft8Client.Core;
 using Ft8Client.Modems.Dsp;
+using Ft8Client.Modems.Psk;
 
-namespace Ft8Client.Modems.Psk;
+namespace Ft8Client.Modems;
 
 /// <summary>
-/// Finds PSK signals in the passband (docs/09-keyboard-modes.md section 5). The power spectrum (4,096-point FFT,
-/// about 3 Hz per bin at 12 kHz) is averaged over the last few seconds and smoothed over one signal's width; a peak
-/// standing <see cref="ThresholdDb"/> above the median of the band is a signal, and its carrier is the power-weighted
-/// centre of the peak.
+/// Finds narrow signals in the passband (docs/09-keyboard-modes.md section 5): PSK carriers, or the tones of an RTTY
+/// signal for <see cref="Rtty.RttyChannelFinder"/>. The power spectrum (4,096-point FFT, about 3 Hz per bin at 12 kHz)
+/// is averaged over the last few seconds and smoothed over one signal's width; a peak standing
+/// <see cref="ThresholdDb"/> above the median of the band is a signal, and its frequency is the power-weighted centre
+/// of the peak.
 /// </summary>
-public sealed class PskChannelFinder
+public sealed class ChannelFinder : IChannelFinder
 {
     private const int Size = 4096;
 
@@ -29,12 +31,18 @@ public sealed class PskChannelFinder
     private readonly double[] _window;
     private int _frames;
 
-    /// <param name="mode">PSK31 or PSK63: sets the expected signal width.</param>
+    /// <summary>A finder for PSK31 or PSK63 carriers.</summary>
+    public ChannelFinder(Mode mode, int sampleRate)
+        : this(sampleRate, 2 * PskMode.Baud(mode))
+    {
+    }
+
     /// <param name="sampleRate">Input sample rate.</param>
-    public PskChannelFinder(Mode mode, int sampleRate)
+    /// <param name="widthHz">The width of one signal (or one tone).</param>
+    public ChannelFinder(int sampleRate, double widthHz)
     {
         _sampleRate = sampleRate;
-        _widthHz = 2 * PskMode.Baud(mode);
+        _widthHz = widthHz;
         _window = Enumerable.Range(0, Size).Select(i => 0.5 - 0.5 * Math.Cos(Math.Tau * i / (Size - 1))).ToArray();
     }
 
@@ -60,7 +68,7 @@ public sealed class PskChannelFinder
         }
     }
 
-    /// <summary>The carrier frequencies of the signals found, lowest first.</summary>
+    /// <summary>The centre frequencies of the peaks found, lowest first.</summary>
     public IReadOnlyList<double> Signals()
     {
         if (_frames == 0) return [];
@@ -106,7 +114,10 @@ public sealed class PskChannelFinder
     /// same in every mode: the signal's power over its width above the band's median, against the median noise over
     /// 2,500 Hz. Null before any spectrum, or when nothing stands above the noise there.
     /// </summary>
-    public int? SnrDb(double hz)
+    public int? SnrDb(double hz) => SnrDb([hz]);
+
+    /// <summary>The SNR of a signal made of narrow parts at these frequencies (an RTTY signal's two tones), as above.</summary>
+    public int? SnrDb(ReadOnlySpan<double> parts)
     {
         if (_frames == 0) return null;
         var binHz = (double)_sampleRate / Size;
@@ -115,9 +126,12 @@ public sealed class PskChannelFinder
         var floor = _average[lo..(hi + 1)].Order().ElementAt((hi - lo + 1) / 2);
         if (floor <= 0) return null;
         double power = 0;
-        var centre = (int)Math.Round(hz / binHz);
         var half = (int)Math.Ceiling(_widthHz / binHz);
-        for (var i = Math.Max(0, centre - half); i <= Math.Min(_average.Length - 1, centre + half); i++) power += _average[i] - floor;
+        foreach (var hz in parts)
+        {
+            var centre = (int)Math.Round(hz / binHz);
+            for (var i = Math.Max(0, centre - half); i <= Math.Min(_average.Length - 1, centre + half); i++) power += _average[i] - floor;
+        }
         // The median of an exponential (noise power) distribution is ln 2 of its mean.
         var noise = floor / Math.Log(2) * 2500 / binHz;
         return power <= 0 ? null : (int)Math.Round(10 * Math.Log10(power / noise));
