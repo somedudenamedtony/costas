@@ -342,7 +342,6 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         BarShowsCqAndSlot = ShowCqAndSlotInBar(Tab);
         FillLookups(s);
         ApplyBandOpenings(s);
-        RefreshHuntGo();
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
         Raw.Apply(s.RawDecodes);
         Frequency = FormatFrequency(s.DialHz);
@@ -353,6 +352,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         NoRadio = !s.Transmitting && radio is not null && radio.Health != ServiceHealth.Ok;
         NoRadioText = radio is null ? string.Empty : $"Radio not connected · {radio.Message}";
         CanChangeBand = !s.Transmitting;
+        RefreshHuntGo(); // after CanChangeBand, so Go hides as soon as a transmission starts
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
         UpdateTune(s);
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
@@ -578,6 +578,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     private void HuntGo()
     {
         if (_hunt is not { } h || !CanChangeBand || !ModeInfo.TryParse(h.Heard.ModeKey, out var mode)) return;
+        // The button can be a tick behind the radio: never change band under a transmission.
+        if (_host.Session.Snapshot.Transmitting)
+        {
+            StatusText = "Wait until this transmission ends to change band.";
+            return;
+        }
         Activity();
         if (_host.Frequencies.Find(h.Heard.Band, mode) is null)
         {

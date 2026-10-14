@@ -32,6 +32,7 @@ public sealed partial class Session
     private readonly List<ConversationLine> _conversation = [];
     private readonly Dictionary<int, string> _macroTexts = [];
     private string? _radioNote;
+    private string? _keyboardHold;
     private int? _blockedMacro;
 
     /// <summary>The keyboard transmitter, so tests can render its audio on a manual clock.</summary>
@@ -117,6 +118,15 @@ public sealed partial class Session
         Publish();
     }
 
+    /// <summary>
+    /// Holds PSK and RTTY transmit back, with the reason given to the operator, while the radio is being set up for the
+    /// mode (the RTTY power cap goes on before the first over can key the radio). Null lets transmit go again.
+    /// </summary>
+    public void HoldKeyboardTransmit(string? reason)
+    {
+        lock (_gate) _keyboardHold = reason;
+    }
+
     /// <summary>Sets part of the exchange (or the partner's call) from a word the operator clicked.</summary>
     public void CaptureWord(ExchangeField field, string word)
     {
@@ -164,6 +174,8 @@ public sealed partial class Session
     private string? QueueMacro(int key)
     {
         if (_config.Macros.FirstOrDefault(m => m.Key == key) is not { } macro) return $"F{key} has no macro. Set one in Settings > PSK and RTTY.";
+        // A second press (or a key held down) must not queue the same macro again behind itself.
+        if (_keys.MacroWaiting(key)) return $"{macro.Label} is already waiting to go out.";
         if (key != Macro.CqKey && _kbd.Partner is null && macro.Text.Contains("{CALL}", StringComparison.OrdinalIgnoreCase))
             return $"{macro.Label} needs a station: click Call on one first.";
         var text = MacroText.Expand(macro.Text, MacroValues(), out var missing);
@@ -227,6 +239,7 @@ public sealed partial class Session
     // Under _gate. Starts or adds to an over.
     private string? Queue(string text, int? key, bool returnToReceive, int offset)
     {
+        if (_keyboardHold is { } hold) return hold;
         var mode = _config.Mode;
         // Reverse is for reading a station on the other sideband; Costas itself always sends the standard way round
         // (mark the higher tone in USB), so every other station reads it.
@@ -234,11 +247,12 @@ public sealed partial class Session
         var guard = new TxGuardInput(_config.Band, _dialHz, null, _config.ClockBlockSeconds,
             _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         var lead = _config.PttLead;
+        int? width = mode == Mode.Rtty ? ModeInfo.RttyBandwidthHz(rtty.ShiftHz, rtty.Baud) : null;
         var why = _keys.Send(text, key, returnToReceive,
             () => mode == Mode.Rtty
                 ? new RttyModulator(rtty, _tx.OutputSampleRate, offset)
                 : new PskModulator(mode, _tx.OutputSampleRate, offset),
-            s => _tx.StartStream(s, mode, offset, guard, lead));
+            s => _tx.StartStream(s, mode, offset, guard, lead, width));
         if (why is null) _blockedMacro = null;
         return why;
     }

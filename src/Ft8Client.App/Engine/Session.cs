@@ -773,6 +773,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         }
         _keys.Clear();
         await _tx.HaltAsync().ConfigureAwait(false);
+        _keys.EndIfNotOnAir();
         Publish();
     }
 
@@ -791,6 +792,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         }
         _keys.Clear();
         await _tx.HaltAsync().ConfigureAwait(false);
+        _keys.EndIfNotOnAir();
         Publish();
     }
 
@@ -897,10 +899,14 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _slotCounts.Clear();
             _activity.Clear();
             _txMeters = null; // SWR belongs to the antenna on the old band
+            _rigTuningUntil = null;
         }
-        // A PSK or RTTY over does not follow the radio to another band or mode.
+        // Nothing on the air follows the radio to another band or mode: an FT8 message, a Tune tone or a PSK or RTTY
+        // over is stopped, and anything prepared for the old band is dropped.
         _keys.Clear();
-        if (_keys.Active) _ = _tx.HaltAsync();
+        _tx.CancelPending();
+        if (_keys.Active || _tx.Transmitting) _ = _tx.HaltAsync();
+        _keys.EndIfNotOnAir();
         BandChanged?.Invoke();
         Publish();
     }
@@ -908,7 +914,14 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Records the dial frequency read from the radio.</summary>
     public void SetDial(long hz)
     {
-        lock (_gate) _dialHz = hz;
+        string? outside = null;
+        lock (_gate)
+        {
+            // The dial moved while something is on the air: check it still fits inside the band.
+            if (hz != _dialHz) outside = _tx.OnAirOutsideBand(_config.Band, hz);
+            _dialHz = hz;
+        }
+        if (outside is not null) _ = HaltAsync($"Transmission stopped: the dial moved. {outside}");
         Publish();
     }
 
