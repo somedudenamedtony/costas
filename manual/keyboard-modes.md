@@ -19,9 +19,14 @@ passband at once (up to 20).
 - **Next in line, Repeats and Watching** work as they do for FT8. Costas finds each station's call in its text
   ("CQ CQ DE KP4JRS KP4JRS K", "W7LIT DE EA8TL") and ranks it by what you need. A station is listed as calling CQ
   for two minutes after its CQ, and the list refreshes every few seconds.
-- **The waterfall** labels each signal with its station's call. Click a signal to read it, even before Costas has
-  noticed it; it stays read while that station is quiet. For RTTY, click either of its two tones or between them.
-- **Raw decodes** shows the text, a line per over or per line typed, with the audio frequency and signal strength.
+- **The waterfall** labels each signal with its station's call, "?" until Costas has read a call, and the station you
+  are in contact with in red. Click a signal to read it, even before Costas has noticed it; it stays read while that
+  station is quiet. For RTTY, click either of its two tones or between them.
+- **Signals without a callsign yet** are counted in a line under Next in line, with their audio frequencies.
+- **Band activity** (right column) and the band summary count the stations read every three minutes, as there are no
+  slots to count.
+- **Raw decodes** shows the text, a line per over or per line typed, with the audio frequency and signal strength. The
+  DT column is empty: these modes have no time offset.
 - **dB** is measured in a 2,500 Hz bandwidth, the same scale as FT8, so −10 dB means the same in both.
 
 There are no slots, so where FT8 shows the slot countdown the contact card shows how many characters you have typed
@@ -33,7 +38,7 @@ Nothing is ever sent without a key press or a click from you.
 
 ![Answering a PSK31 CQ](images/psk-sending.png)
 
-**Answering a CQ.** Pick the station in **Next in line** and click **Call** (or press Enter). Costas sends your
+**Answering a CQ.** Pick the station in **Next in line** and click **Call** (or double-click it). Costas sends your
 answer (F2) on the station's own audio frequency and moves the contact strip on, just as for FT8:
 
 1. Their CQ
@@ -46,9 +51,11 @@ answer (F2) on the station's own audio frequency and moves the contact strip on,
 **Calling CQ.** Press F1 or **Call CQ**. A station that answers with your call starts the contact, and the strip runs
 CQ, their call, your exchange (F3), their exchange, then your 73 (F4), which logs it.
 
-**The conversation box** under the strip shows what each of you sent, with your own text dimmed. If Costas read a
-name or QTH wrong, or missed it, click the word in the conversation and choose what it is: their name, QTH, report,
-grid or call. What you pick always wins over what Costas read.
+**The conversation box** under the strip shows what each of you sent, with your own text dimmed. It keeps its size
+and only follows new text while you are at the end, so words and keys do not move as you aim at them. If Costas read
+a name or QTH wrong, or missed it, click the word in the conversation and choose what it is: their name, QTH, report,
+grid or call. What you pick always wins over what Costas read, and the name and QTH to be logged show under the call.
+A contact you abandon stays on the card, marked Abandoned, but stops collecting their text.
 
 **Keys.**
 
@@ -60,8 +67,17 @@ grid or call. What you pick always wins over what Costas read.
 | F1 to F12 | Send that macro | Add that macro to what is going out |
 | Esc | Abandons the contact | Stops sending at once; press again to abandon the contact |
 
-A macro goes back to receive when it has gone out, unless you keep typing. Typed text keeps the transmitter on,
-sending idle between words, until you press Enter on an empty line.
+These keys work wherever you last clicked on the Operate screen: typing, Space, Backspace and Enter always go to the
+typing line, never to a button. A macro goes back to receive when it has gone out, unless you keep typing. Typed text
+keeps the transmitter on, sending idle between words, until you press Enter on an empty line. Keys typed while an over
+is closing wait in the typing line for your next Enter.
+
+**Characters.** RTTY sends capitals only, so the typing line shows capitals in RTTY. A character the mode cannot send
+(in RTTY `@ % & * # _ < > [ ] { }` and accented letters; in PSK anything outside plain ASCII) is named in red under
+the typing line before you press Enter. If you press Enter anyway, nothing is sent, the bar says why, and your line is
+kept so you can fix it. While sending, such a key is left out and named under the line.
+
+**Resend and the CQ modifier** are FT8 and FT4 controls and are hidden in these modes: send again with the macro keys.
 
 **Logging.** The contact is logged with the report, name and QTH shown on the card, and the frequency of the
 station's signal (the dial plus its audio frequency). Reports are RST, such as 599. **Log now** logs it at any time.
@@ -82,6 +98,11 @@ Fill in **Your name**, **Your QTH** and your radio and antenna there first. A ma
 sent: it appears above the typing line as it would go out, with the empty field in red, and the bottom bar says where
 to fill it. Click the right word in the conversation (for their name or QTH) or fill in Settings, then press the key
 again. Your report to them is 599.
+
+When you save, Settings checks every macro: a name in braces that is not one of the fields above (a typo such as
+`{NAM}`) or a character neither mode can send stops the save and names the key. A character only RTTY cannot send, such
+as `@`, is a warning: press Save again to keep it, and that key will be refused in RTTY. **Remove** empties a key (the
+last added key goes altogether). If every key is empty, the default macros come back; Settings says so first.
 
 ## Away from the desk
 
