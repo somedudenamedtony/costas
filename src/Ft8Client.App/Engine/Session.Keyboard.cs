@@ -9,6 +9,7 @@
 
 using System.Globalization;
 using Ft8Client.Core;
+using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Keyboard;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Services;
@@ -33,6 +34,7 @@ public sealed partial class Session
     private readonly Dictionary<int, string> _macroTexts = [];
     private string? _radioNote;
     private int? _blockedMacro;
+    private Mode _kbdContactMode;
 
     /// <summary>The keyboard transmitter, so tests can render its audio on a manual clock.</summary>
     internal KeyboardTransmitter Keys => _keys;
@@ -285,7 +287,17 @@ public sealed partial class Session
         var fromPartner = l.Sender is not null
             ? Callsign.EqualsCall(l.Sender, partner)
             : Math.Abs(l.OffsetHz - _kbd.PartnerOffsetHz) <= 50;
-        if (fromPartner) AddConversation(partner, l.Text, mine: false);
+        // An abandoned contact stays on the card, but its conversation box stops collecting their text.
+        if (fromPartner && _kbd.View() is not { Outcome: ContactOutcome.Abandoned }) AddConversation(partner, l.Text, mine: false);
+    }
+
+    // Under _gate. The keyboard contact, with the mode it was made in, so an ended contact keeps its own mode label
+    // after a switch between PSK and RTTY.
+    private ContactView? KeyboardContactView()
+    {
+        if (_kbd.View() is not { } v) return null;
+        if (v.Outcome == ContactOutcome.InProgress) _kbdContactMode = _config.Mode;
+        return v with { Mode = _kbdContactMode };
     }
 
     private void AddConversation(string who, string text, bool mine)

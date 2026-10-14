@@ -136,4 +136,19 @@ public sealed class KeyboardEnterSessionTests : IDisposable
 
         _session.Snapshot.Conversation.Should().ContainSingle().Which.Text.Should().Be("hello there");
     }
+
+    [Fact]
+    public async Task AbandonAsync_PartnerKeepsSending_ConversationStopsAndModeKept()
+    {
+        Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n", 1180);
+        _session.CallStation("KP4JRS").Should().BeTrue();
+        await _session.AbandonAsync();
+        var lines = _session.Snapshot.Conversation.Count;
+
+        Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n", 1180);
+        _session.Snapshot.Conversation.Should().HaveCount(lines);
+        _session.SetBand("20m", Mode.Rtty);
+
+        _session.Snapshot.Contact?.Mode.Should().Be(Mode.Psk31);
+    }
 }

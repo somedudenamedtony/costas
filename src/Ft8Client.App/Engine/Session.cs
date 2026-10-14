@@ -1118,7 +1118,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 BandOpenings = Openings(now),
                 BandActivityFeed = _bandFeed,
                 Services = new Dictionary<string, ServiceStatus>(_services),
-                Contact = keyboard ? _kbd.View() : _engine.View,
+                Contact = keyboard ? KeyboardContactView() : _engine.View,
                 Transmitting = _tx.Transmitting,
                 TransmittingMessage = _tx.CurrentMessage,
                 CallingCq = keyboard ? _kbd.CallingCq : _engine.CallingCq,
@@ -1138,6 +1138,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 Macros = _config.Macros,
                 RadioNote = keyboard ? _radioNote : null,
                 BlockedMacro = BlockedMacro(),
+                Received = keyboard && _kbd.Partner is not null ? _kbd.Received : null,
             };
             _snapshot = snap;
         }
