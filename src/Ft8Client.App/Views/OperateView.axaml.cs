@@ -10,6 +10,7 @@ using Avalonia.Controls;
 using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Ft8Client.App.ViewModels;
 
 namespace Ft8Client.App.Views;
@@ -34,6 +35,36 @@ public partial class OperateView : UserControl
             if (Vm?.Selected is { } row) Vm.CallSelected();
         };
         SizeChanged += (_, e) => Relayout(e.NewSize.Width);
+        TypeAhead.AddHandler(KeyDownEvent, OnTypeAheadKey, RoutingStrategies.Tunnel);
+        TypeAhead.AddHandler(TextInputEvent, OnTypeAheadText, RoutingStrategies.Tunnel);
+        DataContextChanged += (_, _) =>
+        {
+            if (Vm is { } vm) vm.Keyboard.Conversation.CollectionChanged += (_, _) => Dispatcher.UIThread.Post(() => ConversationScroll.ScrollToEnd());
+        };
+    }
+
+    // PSK and RTTY: Enter sends; on the air, Backspace takes back what has not gone yet.
+    private void OnTypeAheadKey(object? sender, KeyEventArgs e)
+    {
+        if (Vm?.Keyboard is not { } k) return;
+        if (e.Key == Key.Enter)
+        {
+            k.Enter();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Back && k.OnAir)
+        {
+            k.Backspace();
+            e.Handled = true;
+        }
+    }
+
+    // On the air every key goes straight to the transmitter instead of into the box.
+    private void OnTypeAheadText(object? sender, TextInputEventArgs e)
+    {
+        if (Vm?.Keyboard is not { OnAir: true } k || string.IsNullOrEmpty(e.Text)) return;
+        foreach (var c in e.Text) k.Type(c);
+        e.Handled = true;
     }
 
     private OperateViewModel? Vm => DataContext as OperateViewModel;

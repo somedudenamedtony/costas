@@ -68,6 +68,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         RttyShift = rtty.ShiftHz.ToString(CultureInfo.InvariantCulture);
         RttyReverse = rtty.Reverse;
         RttyUnshiftOnSpace = s.Operating.RttyUnshiftOnSpace;
+        RttyPowerPercent = s.Operating.RttyPowerPercent.ToString(CultureInfo.InvariantCulture);
+        OperatorName = s.Profile.OperatorName;
+        Qth = s.Profile.Qth;
+        RigDescription = s.Profile.RigDescription;
+        Antenna = s.Profile.Antenna;
+        LoadMacros(SettingsMapper.Macros(s.Operating));
         CqParity = s.Operating.CqParity;
         ClockBlock = s.Operating.ClockBlockSeconds.ToString("0.0", CultureInfo.InvariantCulture);
         foreach (var t in SettingsMapper.ToRanking(s.Ranking).TierOrder) TierOrder.Add(new TierItem(t, StationText.Need(t)));
@@ -427,6 +433,54 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>RTTY unshift-on-space.</summary>
     [ObservableProperty]
     public partial bool RttyUnshiftOnSpace { get; set; }
+
+    /// <summary>RTTY power as a share of the radio's setting, in percent.</summary>
+    [ObservableProperty]
+    public partial string RttyPowerPercent { get; set; }
+
+    /// <summary>My first name, for {MYNAME}.</summary>
+    [ObservableProperty]
+    public partial string OperatorName { get; set; }
+
+    /// <summary>Where I am, for {MYQTH}.</summary>
+    [ObservableProperty]
+    public partial string Qth { get; set; }
+
+    /// <summary>My radio, for {MYRIG}.</summary>
+    [ObservableProperty]
+    public partial string RigDescription { get; set; }
+
+    /// <summary>My antenna, for {MYANT}.</summary>
+    [ObservableProperty]
+    public partial string Antenna { get; set; }
+
+    /// <summary>The PSK and RTTY macros, F1 up.</summary>
+    public ObservableCollection<MacroEditViewModel> Macros { get; } = [];
+
+    /// <summary>The fields a macro can hold, for the help line.</summary>
+    public string MacroFields { get; } = string.Join(" ", Core.Keyboard.MacroText.Fields.Select(f => "{" + f + "}"));
+
+    private void LoadMacros(IReadOnlyList<Core.Keyboard.Macro> macros)
+    {
+        Macros.Clear();
+        // F1 to F5 always have a row, so a default can be put back by typing it; more keys can be added below.
+        for (var key = 1; key <= Math.Max(5, macros.Count == 0 ? 0 : macros.Max(m => m.Key)); key++)
+        {
+            var m = macros.FirstOrDefault(x => x.Key == key);
+            Macros.Add(new MacroEditViewModel(key, m?.Label ?? string.Empty, m?.Text ?? string.Empty));
+        }
+    }
+
+    /// <summary>Puts the default macros back.</summary>
+    [RelayCommand]
+    private void RestoreMacros() => LoadMacros(Core.Keyboard.Macro.Defaults);
+
+    /// <summary>Adds a row for the next function key, up to F12.</summary>
+    [RelayCommand]
+    private void AddMacro()
+    {
+        if (Macros.Count < 12) Macros.Add(new MacroEditViewModel(Macros.Count + 1, string.Empty, string.Empty));
+    }
 
     /// <summary>Parities.</summary>
     public IReadOnlyList<string> Parities { get; } = ["even", "odd"];
@@ -1011,6 +1065,13 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.RttyShiftHz = Int(RttyShift, 170, 850, RttyFormat.Standard.ShiftHz);
             s.Operating.RttyReverse = RttyReverse;
             s.Operating.RttyUnshiftOnSpace = RttyUnshiftOnSpace;
+            s.Operating.RttyPowerPercent = Int(RttyPowerPercent, 10, 100, 50);
+            s.Profile.OperatorName = OperatorName.Trim();
+            s.Profile.Qth = Qth.Trim();
+            s.Profile.RigDescription = RigDescription.Trim();
+            s.Profile.Antenna = Antenna.Trim();
+            s.Operating.Macros = [.. Macros.Where(m => !string.IsNullOrWhiteSpace(m.Text))
+                .Select(m => new MacroOptions { Key = m.Key, Label = m.Label.Trim(), Text = m.Text.Trim() })];
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
             s.Qrz.LogbookEnabled = LogbookEnabled;

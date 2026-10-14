@@ -52,6 +52,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         };
         host.MostWanted.Changed += list => Dispatch(() => Operate.MostWanted = list);
         host.Pota.Changed += parks => Dispatch(() => Operate.Parks = parks);
+        Operate.ShowRttyReverse(host.Settings.Current.Operating.RttyReverse);
+        Operate.RttyReverseChanged = on => host.Settings.Update(x => x.Operating.RttyReverse = on);
         Operate.Lotw = host.Lotw.Users;
         host.Lotw.UsersChanged += list => Dispatch(() => Operate.Lotw = list);
         host.Hunt.Alert += s => Dispatch(() => ShowHunt(s));
@@ -610,6 +612,37 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _host.Session.ToggleCq();
     }
 
+    /// <inheritdoc />
+    public void SendMacro(int key)
+    {
+        Activity();
+        _host.Session.SendMacro(key);
+    }
+
+    /// <inheritdoc />
+    public void KeyboardEnter(string typed)
+    {
+        Activity();
+        _host.Session.KeyEnter(typed);
+    }
+
+    /// <inheritdoc />
+    public bool KeyboardType(char c)
+    {
+        Activity();
+        return _host.Session.TypeKey(c);
+    }
+
+    /// <inheritdoc />
+    public void KeyboardBackspace()
+    {
+        Activity();
+        _host.Session.BackspaceKey();
+    }
+
+    /// <inheritdoc />
+    public void Capture(Core.Keyboard.ExchangeField field, string word) => _host.Session.CaptureWord(field, word);
+
     /// <summary>How long a Tune tone lasts unless stopped sooner (the Tune watchdog).</summary>
     public const double TuneSeconds = 10;
 
@@ -686,6 +719,14 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>Esc: halt; in a contact, abandon (a second press confirms once both reports are exchanged).</summary>
     public void Escape()
     {
+        // PSK and RTTY: the first Esc stops the over on the air and keeps the contact; the next one abandons it.
+        if (_host.Session.Snapshot.KeyboardTx.Active)
+        {
+            _ = _host.Session.HaltAsync();
+            StatusText = "Transmitting stopped. Press Esc again to abandon the contact.";
+            StatusKind = TextKind.Critical;
+            return;
+        }
         var c = _host.Session.Snapshot.Contact;
         if (c is { Outcome: ContactOutcome.InProgress } && c.ReportSent is not null && c.ReportReceived is not null && !_escArmed)
         {
@@ -709,6 +750,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     private void ApplySettings()
     {
         var s = _host.Settings.Current;
+        Operate.ShowRttyReverse(s.Operating.RttyReverse);
         _updatingBand = true;
         SelectedMode = s.Operating.Mode;
         ModeInfo.TryParse(s.Operating.Mode, out var mode);
@@ -801,6 +843,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (s.Contact is { Outcome: ContactOutcome.InProgress } c)
         {
             if (!s.Transmitting) return ($"Waiting for {c.DxCall}.", TextKind.Normal);
+            if (!ModeInfo.IsSlotted(s.Mode)) return ($"Transmitting to {c.DxCall}.", TextKind.Critical);
             // An answer decoded after the slot began cannot change what is already on the air (usually still the CQ).
             var onAir = s.TransmittingMessage;
             var toDx = onAir is not null && Callsign.EqualsCall(onAir.Split(' ')[0].Trim('<', '>'), c.DxCall);
@@ -809,10 +852,15 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         // Shown while the ended contact stays in the top slot: "ZL2RPA answered K1ABC instead. Stopped calling."
         if (s.Contact is { Outcome: ContactOutcome.AnsweredOther } other) return (other.StatusText, TextKind.Caution);
         if (s.CallingCq) return (s.Transmitting ? "Transmitting CQ." : "Calling CQ.", s.Transmitting ? TextKind.Critical : TextKind.Normal);
+        if (s.KeyboardTx.Active) return ("Transmitting.", TextKind.Critical);
         if (s.Contact is { Outcome: ContactOutcome.NoReply, Flow: ContactFlow.Hound } fox) return (fox.StatusText, TextKind.Caution);
         var top = s.Rank.Line.FirstOrDefault();
         if (!ModeInfo.IsSlotted(s.Mode))
-            return ($"Reading {KeyboardModeName(s.Mode, rtty ?? RttyFormat.Standard)}. This build receives only; calling and CQ come later.", TextKind.Normal);
+        {
+            var name = KeyboardModeName(s.Mode, rtty ?? RttyFormat.Standard);
+            if (s.Transmitting) return ($"Transmitting {name}.", TextKind.Critical);
+            return (top is null ? $"Reading {name}. Not in a contact." : $"Reading {name}. Not in a contact. Call answers {top.Station.Call}, F1 calls CQ.", TextKind.Normal);
+        }
         return (top is null ? "Not in a contact." : $"Not in a contact. Enter calls {top.Station.Call}, the top of the line.", TextKind.Normal);
     }
 

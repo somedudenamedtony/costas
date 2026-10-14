@@ -183,8 +183,18 @@ public partial class MainWindow : Window
                 OpenDialog("mini");
                 e.Handled = true;
                 break;
+            // PSK and RTTY: the function keys send their macros.
+            case >= Key.F1 and <= Key.F12 when vm.Operate.Keyboard.Visible:
+                vm.Operate.Keyboard.SendMacro(e.Key - Key.F1 + 1);
+                e.Handled = true;
+                break;
             case Key.F1:
                 OpenDialog("shortcuts");
+                e.Handled = true;
+                break;
+            // In a PSK or RTTY contact, Enter sends the next step's macro.
+            case Key.Enter when vm.Tab == 0 && !typing && vm.Operate.Keyboard.Visible && vm.Operate.Panel.Active:
+                vm.Operate.Keyboard.Enter();
                 e.Handled = true;
                 break;
             case Key.Enter when vm.Tab == 0 && !typing:

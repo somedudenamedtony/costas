@@ -205,7 +205,61 @@
         <ScrollViewer>
           <StackPanel>
             <TextBlock Classes="page" Text="PSK and RTTY" />
-            <TextBlock Classes="intro" Text="How RTTY signals are read. PSK31 and PSK63 need no settings. Changes apply at once." />
+            <TextBlock Classes="intro" Text="Your details for the macros, the macros themselves, and how RTTY is sent and read." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Your name" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding OperatorName}" MaxWidth="260" HorizontalAlignment="Left" MinWidth="200" />
+                <TextBlock Classes="help" Text="The first name you give on the air, sent as {MYNAME}." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Your QTH" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding Qth}" MaxWidth="260" HorizontalAlignment="Left" MinWidth="200" />
+                <TextBlock Classes="help" Text="Where you are, in words, such as Boise ID. Sent as {MYQTH}." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Your radio and antenna" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <TextBox Text="{Binding RigDescription}" Watermark="Radio, such as FT-710 at 50 W" MaxWidth="320" HorizontalAlignment="Left" MinWidth="260" />
+                <TextBox Text="{Binding Antenna}" Watermark="Antenna, such as EFHW at 30 ft" MaxWidth="320" HorizontalAlignment="Left" MinWidth="260" />
+                <TextBlock Classes="help" Text="Sent as {MYRIG} and {MYANT}." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Macros" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <ItemsControl ItemsSource="{Binding Macros}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MacroEditViewModel">
+                      <Grid ColumnDefinitions="36,130,*" ColumnSpacing="8" Margin="0,0,0,6">
+                        <TextBlock Text="{Binding KeyName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Label}" Watermark="Name" />
+                        <TextBox Grid.Column="2" Text="{Binding Text}" Watermark="Text" FontFamily="{StaticResource MessageFont}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="Add a key" Command="{Binding AddMacroCommand}" />
+                  <Button Content="Restore the defaults" Command="{Binding RestoreMacrosCommand}" />
+                </StackPanel>
+                <TextBlock Classes="help" TextWrapping="Wrap"
+                           Text="{Binding MacroFields, StringFormat='F1 calls CQ, F2 answers a CQ, F3 sends your exchange and F4 signs off: the contact strip moves on when they are sent. A macro can hold {0}. A macro with a field that has no value is not sent; Costas says which field is missing.'}" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="RTTY power" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBox Text="{Binding RttyPowerPercent}" Width="70" />
+                  <TextBlock Text="% of the power set on the radio" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" TextWrapping="Wrap" Text="RTTY keeps the transmitter at full output for the whole over, which heats it far more than FT8 or PSK. Costas turns the radio's power down to this share when you pick RTTY and puts it back when you leave RTTY or close Costas. 100 leaves the power alone." />
+              </StackPanel>
+            </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="RTTY speed" />
               <StackPanel Grid.Column="1">

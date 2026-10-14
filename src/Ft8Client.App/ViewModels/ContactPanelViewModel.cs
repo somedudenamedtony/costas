@@ -164,6 +164,69 @@ public sealed class ContactPanelViewModel
         };
     }
 
+    /// <summary>
+    /// Builds the panel for a PSK or RTTY contact (docs/09-keyboard-modes.md section 7): the same strip, moved on by
+    /// macros sent and text read rather than by slots, with RST reports.
+    /// </summary>
+    public static ContactPanelViewModel FromKeyboard(ContactView c, SessionSnapshot s, DistanceUnit units, string? qrzName)
+    {
+        var station = s.Stations.FirstOrDefault(x => Callsign.EqualsCall(x.Call, c.DxCall));
+        var need = s.Rank.Line.Concat(s.Rank.Watching).Concat(s.Rank.Worked).FirstOrDefault(x => Callsign.EqualsCall(x.Station.Call, c.DxCall))?.Need;
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(qrzName)) parts.Add(qrzName);
+        if (station is not null) parts.Add(StationText.Where(station, units));
+        var active = c.Outcome == ContactOutcome.InProgress;
+        // The next step of mine is the one on the air while transmitting, else the one Enter sends.
+        var mineNext = active ? Enumerable.Range(0, c.Steps.Count).FirstOrDefault(i => c.Steps[i] is { Mine: true, State: not StepState.Done }, -1) : -1;
+        var steps = new List<StepViewModel>();
+        for (var i = 0; i < c.Steps.Count; i++)
+        {
+            var st = c.Steps[i];
+            var who = st.Mine ? "You" : c.DxCall;
+            StepLook look;
+            string status;
+            if (st.State == StepState.Done)
+            {
+                look = StepLook.Done;
+                status = st.Mine ? "Sent" : "Received";
+            }
+            else if (i == mineNext && s.KeyboardTx.Active)
+            {
+                look = StepLook.Transmitting;
+                status = $"Sending · {s.KeyboardTx.Waiting.Length} characters left";
+            }
+            else if (st.State == StepState.Now)
+            {
+                look = StepLook.Waiting;
+                status = st.Mine ? (i == mineNext && s.NextMacro is { } k ? $"Enter sends F{k}" : "Next") : "Waiting for reply";
+            }
+            else
+            {
+                look = StepLook.Upcoming;
+                status = st.Mine ? (i == c.Steps.Count - 1 ? "Then logged" : "Next") : "Expected";
+            }
+            steps.Add(new StepViewModel(i, st.Mine, who, Time(st.TimeUtc), st.Message, status, look, false));
+        }
+        return new ContactPanelViewModel
+        {
+            Caption = $"{ModeInfo.Name(s.Mode)} · {c.Caption}",
+            Call = c.DxCall,
+            Need = need is { } n ? StationText.Need(n.Tag) : string.Empty,
+            NeedKind = need is { } n2 ? StationRowViewModel.KindOf(n2.Tag) : TextKind.Normal,
+            Subline = string.Join(" · ", parts),
+            Sent = c.ReportSent is { } rs ? rs.ToString(CultureInfo.InvariantCulture) : NotYet,
+            Received = c.ReportReceived is { } rr ? rr.ToString(CultureInfo.InvariantCulture) : NotYet,
+            CanLogNow = c.CanLogNow,
+            Active = active,
+            Steps = [.. steps.Select((x, i) => x with
+            {
+                First = i == 0,
+                Last = i == steps.Count - 1,
+                NextReached = i + 1 < steps.Count && steps[i + 1].Reached,
+            })],
+        };
+    }
+
     // The mine step on the air now: the one still to send, or the one the engine already counted as sent in this slot.
     private static int TransmittingIndex(ContactView c, SessionSnapshot s, DateTime currentSlot)
     {

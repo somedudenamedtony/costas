@@ -66,6 +66,29 @@ public interface IOperateCommands
     /// <summary>Retry a failed upload.</summary>
     void RetryUpload(long qsoId);
 
+    /// <summary>PSK and RTTY: sends the macro on function key <paramref name="key"/>.</summary>
+    void SendMacro(int key)
+    {
+    }
+
+    /// <summary>PSK and RTTY: Enter, with what is typed while receiving.</summary>
+    void KeyboardEnter(string typed)
+    {
+    }
+
+    /// <summary>PSK and RTTY: a key typed while an over is on the air. False when it cannot be sent.</summary>
+    bool KeyboardType(char c) => false;
+
+    /// <summary>PSK and RTTY: Backspace while an over is on the air.</summary>
+    void KeyboardBackspace()
+    {
+    }
+
+    /// <summary>PSK and RTTY: uses a word from the conversation as part of the exchange.</summary>
+    void Capture(Core.Keyboard.ExchangeField field, string word)
+    {
+    }
+
     /// <summary>Adds an entry to the Hunt list (station details). Nothing is called or sent.</summary>
     void Hunt(Core.Hunting.HuntTarget target)
     {
