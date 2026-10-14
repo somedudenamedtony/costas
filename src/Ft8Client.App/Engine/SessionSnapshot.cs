@@ -137,6 +137,12 @@ public sealed record SessionSnapshot
     /// <summary>PSK and RTTY: the macros on the function keys.</summary>
     public IReadOnlyList<Macro> Macros { get; init; } = Macro.Defaults;
 
+    /// <summary>
+    /// PSK and RTTY: the macro last refused because a field has no value, in pieces with those fields marked (shown in
+    /// red in the type-ahead line), or null.
+    /// </summary>
+    public IReadOnlyList<MacroSegment>? BlockedMacro { get; init; }
+
     /// <summary>PSK and RTTY: a note about the radio's settings for the mode (power cap, speech processor), or null.</summary>
     public string? RadioNote { get; init; }
 }

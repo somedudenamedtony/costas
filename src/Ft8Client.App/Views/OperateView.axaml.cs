@@ -7,11 +7,14 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Ft8Client.App.ViewModels;
+using Ft8Client.Core.Keyboard;
 
 namespace Ft8Client.App.Views;
 
@@ -39,7 +42,12 @@ public partial class OperateView : UserControl
         TypeAhead.AddHandler(TextInputEvent, OnTypeAheadText, RoutingStrategies.Tunnel);
         DataContextChanged += (_, _) =>
         {
-            if (Vm is { } vm) vm.Keyboard.Conversation.CollectionChanged += (_, _) => Dispatcher.UIThread.Post(() => ConversationScroll.ScrollToEnd());
+            if (Vm is not { } vm) return;
+            vm.Keyboard.Conversation.CollectionChanged += (_, _) => Dispatcher.UIThread.Post(() => ConversationScroll.ScrollToEnd());
+            vm.Keyboard.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(KeyboardPanelViewModel.BlockedMacro)) ShowBlocked(vm.Keyboard.BlockedMacro);
+            };
         };
     }
 
@@ -56,6 +64,23 @@ public partial class OperateView : UserControl
         {
             k.Backspace();
             e.Handled = true;
+        }
+    }
+
+    // The refused macro as it would go out, each field with no value in red (docs/09-keyboard-modes.md section 8).
+    private void ShowBlocked(IReadOnlyList<MacroSegment> segments)
+    {
+        var inlines = BlockedLine.Inlines ??= [];
+        inlines.Clear();
+        foreach (var s in segments)
+        {
+            var run = new Run(s.Text);
+            if (s.Missing)
+            {
+                run.Foreground = this.FindResource("CriticalBrush") as IBrush;
+                run.FontWeight = FontWeight.SemiBold;
+            }
+            inlines.Add(run);
         }
     }
 

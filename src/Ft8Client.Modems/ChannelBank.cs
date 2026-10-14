@@ -33,6 +33,7 @@ public sealed class ChannelBank
     private long _samples;
     private long _nextScan;
     private int _nextId = 1;
+    private bool _afc = true;
 
     /// <summary>A bank reading PSK31 or PSK63.</summary>
     public ChannelBank(Mode mode, int sampleRate)
@@ -77,6 +78,20 @@ public sealed class ChannelBank
 
     /// <summary>Seconds without text after which an unpinned channel is dropped.</summary>
     public double QuietSeconds { get; init; } = 60;
+
+    /// <summary>
+    /// True (the default) to let every channel follow its signal's drift; false holds each on its frequency, for a crowded
+    /// band where AFC would pull a channel onto a stronger neighbour.
+    /// </summary>
+    public bool Afc
+    {
+        get => _afc;
+        set
+        {
+            _afc = value;
+            foreach (var c in _channels) c.Receiver.Afc = value;
+        }
+    }
 
     /// <summary>The channels being read, lowest frequency first.</summary>
     public IReadOnlyList<ReceiveChannel> Channels => [.. _channels.OrderBy(c => c.Receiver.FrequencyHz)];
@@ -182,7 +197,9 @@ public sealed class ChannelBank
 
     private ReceiveChannel Add(double hz)
     {
-        var channel = new ReceiveChannel(_nextId++, _receiver(hz), _samples);
+        var receiver = _receiver(hz);
+        receiver.Afc = _afc;
+        var channel = new ReceiveChannel(_nextId++, receiver, _samples);
         _channels.Add(channel);
         return channel;
     }

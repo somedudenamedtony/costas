@@ -54,6 +54,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         host.Pota.Changed += parks => Dispatch(() => Operate.Parks = parks);
         Operate.ShowRttyReverse(host.Settings.Current.Operating.RttyReverse);
         Operate.RttyReverseChanged = on => host.Settings.Update(x => x.Operating.RttyReverse = on);
+        Operate.ShowKeyboardAfc(host.Settings.Current.Operating.KeyboardAfc);
+        Operate.KeyboardAfcChanged = on => host.Settings.Update(x => x.Operating.KeyboardAfc = on);
         Operate.Lotw = host.Lotw.Users;
         host.Lotw.UsersChanged += list => Dispatch(() => Operate.Lotw = list);
         host.Hunt.Alert += s => Dispatch(() => ShowHunt(s));
@@ -97,6 +99,11 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         switch (m)
         {
+            case Integrations.Wsjtx.WsjtxReply r when !ModeInfo.IsSlotted(_host.Session.Snapshot.Mode):
+                // Keyboard text is never sent as decodes, so a Reply cannot name one; calling from it would key the radio
+                // on another program's guess.
+                StatusText = "Another program asked to reply, which works only in FT8 and FT4. Call PSK and RTTY stations here.";
+                break;
             case Integrations.Wsjtx.WsjtxReply r:
                 if (UdpReplyRule.Sender(r, _host.Session.Snapshot.RawDecodes) is { } call) Call(call);
                 else StatusText = $"Another program asked to reply to \"{r.Message.Trim()}\". Only a recent CQ or a station calling you can be called that way.";
@@ -751,6 +758,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         var s = _host.Settings.Current;
         Operate.ShowRttyReverse(s.Operating.RttyReverse);
+        Operate.ShowKeyboardAfc(s.Operating.KeyboardAfc);
         _updatingBand = true;
         SelectedMode = s.Operating.Mode;
         ModeInfo.TryParse(s.Operating.Mode, out var mode);

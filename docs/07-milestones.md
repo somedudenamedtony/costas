@@ -155,6 +155,8 @@ Status (2026-10-14, `feature/keyboard-modes`): built. Automated: modulator audio
 
 Build: PSK Reporter spots (V23), WSJT-X UDP status (V24), Mini mode, the phone remote's strip and macros, Log and Awards mode filters, and manual pages.
 
+Status (2026-10-14, `feature/keyboard-modes`): built. V23 and V24 confirmed from fldigi and GridTracker source. Automated: stations named from text raise spots; a phone macro is sent in PSK and refused in FT8; the refused macro's empty fields are marked for the red display; AFC off reaches every channel; the All digital and PSK filters in SQL and in Awards. Also the two M12 leftovers: the AFC switch and the red missing-field marking. Not yet done: a spot seen on pskreporter.info and a Status seen in GridTracker.
+
 ## After v1
 
 In order of value: band advice, alerts, Hound mode, inbound UDP, LoTW, streaming decode, awards page, then macOS and Linux builds.

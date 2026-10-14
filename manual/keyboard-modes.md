@@ -79,7 +79,20 @@ The macro keys and your details are in **Settings › PSK and RTTY**. The defaul
 | F5 | Rig and antenna | `RIG {MYRIG} ANT {MYANT}` |
 
 Fill in **Your name**, **Your QTH** and your radio and antenna there first. A macro whose field has no value is not
-sent: the bottom bar says which field is missing and where to fill it. Your report to them is 599.
+sent: it appears above the typing line as it would go out, with the empty field in red, and the bottom bar says where
+to fill it. Click the right word in the conversation (for their name or QTH) or fill in Settings, then press the key
+again. Your report to them is 599.
+
+## Away from the desk
+
+- **Mini mode** shows the macro keys under the station instead of the step dots, with the next one in blue. F1 to F12
+  work in the strip too.
+- **The phone** shows the macro keys on the Operate tab instead of Resend and Call CQ (F1 is your CQ), with the last
+  few lines of the conversation. You cannot type from the phone yet.
+- **PSK Reporter.** With spot uploading on, stations Costas reads are reported as PSK31, PSK63 or RTTY, at the
+  frequency of their signal.
+- **GridTracker and loggers** see the mode in the status Costas sends, and logged contacts as usual. Costas sends them
+  no PSK or RTTY text, so calling a station from GridTracker works only in FT8 and FT4.
 
 ## Safety
 
@@ -100,6 +113,8 @@ sent: the bottom bar says which field is missing and where to fill it. Your repo
   shows text from plain noise.
 - PSK63 is twice as fast and needs a few dB more signal.
 - Keep the radio's receive filter at least 2.5 kHz wide so every signal in the waterfall can be read.
+- **AFC**, beside the macro keys, lets each channel follow a signal that drifts. It is on by default. On a crowded band,
+  if the text of one station turns into another's, turn it off so each channel stays where it started.
 
 ## RTTY settings
 

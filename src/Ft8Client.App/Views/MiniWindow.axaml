@@ -62,6 +62,16 @@
           </StackPanel>
         </Panel>
       </DockPanel>
+      <!-- PSK and RTTY: the macro keys, where FT8 shows the step dots. The next step's key is in the accent colour. -->
+      <ItemsControl ItemsSource="{Binding Macros}" IsVisible="{Binding IsKeyboard}" AutomationProperties.Name="Macros">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:MacroButtonViewModel">
+            <Button Content="{Binding Caption}" Classes="macro" Classes.next="{Binding IsNext}" ToolTip.Tip="{Binding Text}" FontSize="12"
+                    Command="{Binding $parent[Window].((vm:MiniViewModel)DataContext).SendMacroCommand}" CommandParameter="{Binding Key}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
       <!-- Hunt list alert: a wanted station was heard (on any band). -->
       <DockPanel IsVisible="{Binding HasHunt}">
         <Button DockPanel.Dock="Right" Content="✕" Command="{Binding DismissHuntCommand}" Padding="6,0" Margin="8,0,0,0"

@@ -326,6 +326,7 @@ public sealed class AppHost : IAsyncDisposable
 
         Keyboard = new KeyboardSession(Session, Clock);
         Keyboard.SetRtty(SettingsMapper.Rtty(s), s.Operating.RttyUnshiftOnSpace);
+        Keyboard.SetAfc(s.Operating.KeyboardAfc);
         if (_pump is not null) _pump.Continuous = Keyboard.Input;
         Keyboard.Start();
         if (Plan.ReplayFolder is not null)
@@ -412,6 +413,7 @@ public sealed class AppHost : IAsyncDisposable
             Pota.Wake();
             Session.Reconfigure(SettingsMapper.ToConfig(Settings.Current));
             Keyboard.SetRtty(SettingsMapper.Rtty(Settings.Current), Settings.Current.Operating.RttyUnshiftOnSpace);
+            Keyboard.SetAfc(Settings.Current.Operating.KeyboardAfc);
             if (Settings.Current.Operating.RttyPowerPercent != rttyPower)
             {
                 rttyPower = Settings.Current.Operating.RttyPowerPercent;

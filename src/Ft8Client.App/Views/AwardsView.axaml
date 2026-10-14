@@ -7,6 +7,11 @@
   <Grid ColumnDefinitions="440,*" Margin="16,0,16,12">
     <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,12,0">
       <StackPanel Spacing="12">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="Count" Classes="secondary" VerticalAlignment="Center" />
+          <ComboBox ItemsSource="{Binding ModeChoices}" SelectedItem="{Binding SelectedMode}" MinWidth="120" AutomationProperties.Name="Mode"
+                    ToolTip.Tip="All digital counts FT8, FT4, PSK, RTTY and other data modes, as ARRL's DXCC Digital award does. All modes adds phone and CW." />
+        </StackPanel>
         <Border Classes="card" Padding="14,10" IsVisible="{Binding LogEmpty}">
           <TextBlock Classes="secondary" TextWrapping="Wrap"
                      Text="Your log is empty. Sync with QRZ or import an ADIF file on the Log view, and your award progress appears here." />

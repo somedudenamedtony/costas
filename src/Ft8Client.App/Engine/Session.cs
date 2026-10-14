@@ -126,6 +126,12 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Raised after each decoded slot with its decodes (for interop and the journal).</summary>
     public event Action<DateTime, Mode, IReadOnlyList<Decode>>? SlotDecoded;
 
+    /// <summary>
+    /// Raised with the stations a keyboard mode named from their text (for PSK Reporter spots). Keyboard text never raises
+    /// <see cref="SlotDecoded"/>: programs listening on WSJT-X UDP understand only FT8 and FT4 decodes.
+    /// </summary>
+    public event Action<Mode, IReadOnlyList<TextHeard>>? KeyboardHeard;
+
     /// <summary>Raised after each decoded slot with its audio and decode count (for WAV saving).</summary>
     public event Action<SlotAudio, int>? SlotAudioDecoded;
 
@@ -476,6 +482,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             if (_raw.Count > MaxRaw) _raw.RemoveRange(0, _raw.Count - MaxRaw);
         }
         Publish();
+        if (heard.Count > 0) KeyboardHeard?.Invoke(mode, heard);
     }
 
     // Raw decode lines, each message of a slot once: the early pass shows its decodes before the full decode lists them again.
@@ -762,6 +769,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         {
             _engine.Abandon(_clock.UtcNow);
             _kbd.Abandon();
+            _blockedMacro = null;
         }
         _keys.Clear();
         await _tx.HaltAsync().ConfigureAwait(false);
@@ -877,6 +885,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _engine.StopCq(_clock.UtcNow);
             _kbd.Abandon();
             _conversation.Clear();
+            _blockedMacro = null;
             _hearsMe = new HearsMe(band, _hearsMe.Available);
             // Reports of nearby stations cover every band (for the band menu); only a mode change makes them irrelevant.
             if (mode != oldMode)
@@ -1128,6 +1137,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 NextMacro = keyboard ? _kbd.NextMacro : null,
                 Macros = _config.Macros,
                 RadioNote = keyboard ? _radioNote : null,
+                BlockedMacro = BlockedMacro(),
             };
             _snapshot = snap;
         }

@@ -7,6 +7,7 @@
 // see the GNU General Public License in LICENSE for details.
 
 
+using Ft8Client.Core.Logbook;
 using Ft8Client.Data.Database;
 using Ft8Client.Data.Log;
 
@@ -48,6 +49,31 @@ public class LogFilterTests
         using var _ = keep;
         repo.List(new LogFilter(ModeKey: "FT4")).Select(q => q.Call).Should().Equal("G4ABC", "K2ABC");
         repo.List(new LogFilter(ModeKey: "FT8")).Select(q => q.Call).Should().Equal("JA1ABC", "K1ABC");
+    }
+
+    [Fact]
+    public void List_AllDigital_LeavesOutPhoneAndCw()
+    {
+        var repo = Seeded(out var keep);
+        using var _ = keep;
+        repo.Insert(new QsoRecord { Call = "EA8TL", Band = "20m", Mode = "PSK", Submode = "PSK31", QsoDateOn = T0.AddDays(4), StationCallsign = "N0CALL" });
+        repo.Insert(new QsoRecord { Call = "VE7XYZ", Band = "20m", Mode = "RTTY", QsoDateOn = T0.AddDays(5), StationCallsign = "N0CALL" });
+        repo.Insert(new QsoRecord { Call = "W1SSB", Band = "20m", Mode = "SSB", QsoDateOn = T0.AddDays(6), StationCallsign = "N0CALL" });
+        repo.Insert(new QsoRecord { Call = "W1CW", Band = "20m", Mode = "CW", QsoDateOn = T0.AddDays(7), StationCallsign = "N0CALL" });
+
+        repo.List(new LogFilter(ModeKey: ModeGroups.AllDigital)).Select(q => q.Call).Should().NotContain(["W1SSB", "W1CW"]).And.HaveCount(6);
+        repo.List(new LogFilter(ModeKey: "RTTY")).Select(q => q.Call).Should().Equal("VE7XYZ");
+    }
+
+    [Fact]
+    public void List_PskFilter_MatchesSubmodesAndOldModes()
+    {
+        var repo = Seeded(out var keep);
+        using var _ = keep;
+        repo.Insert(new QsoRecord { Call = "EA8TL", Band = "20m", Mode = "PSK", Submode = "PSK63", QsoDateOn = T0.AddDays(4), StationCallsign = "N0CALL" });
+        repo.Insert(new QsoRecord { Call = "KP4JRS", Band = "20m", Mode = "PSK31", QsoDateOn = T0.AddDays(5), StationCallsign = "N0CALL" });
+
+        repo.List(new LogFilter(ModeKey: "PSK")).Select(q => q.Call).Should().Equal("KP4JRS", "EA8TL");
     }
 
     [Fact]

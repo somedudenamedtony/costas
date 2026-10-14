@@ -39,6 +39,36 @@ public static partial class MacroText
         return text;
     }
 
+    /// <summary>
+    /// The macro's text in pieces, each field with no value (or name that is not a field) apart and marked, so the
+    /// type-ahead line can show it in red. Joined, the pieces are what <see cref="Expand"/> returns.
+    /// </summary>
+    public static IReadOnlyList<MacroSegment> Segments(string template, IReadOnlyDictionary<string, string?> values)
+    {
+        ArgumentNullException.ThrowIfNull(template);
+        ArgumentNullException.ThrowIfNull(values);
+        var segments = new List<MacroSegment>();
+        var plain = new StringBuilder();
+        var at = 0;
+        foreach (Match m in Field().Matches(template))
+        {
+            plain.Append(template, at, m.Index - at);
+            at = m.Index + m.Length;
+            var name = m.Groups[1].Value.ToUpperInvariant();
+            if (Fields.Contains(name) && values.TryGetValue(name, out var v) && !string.IsNullOrWhiteSpace(v))
+            {
+                plain.Append(v.Trim());
+                continue;
+            }
+            if (plain.Length > 0) segments.Add(new MacroSegment(plain.ToString(), false));
+            plain.Clear();
+            segments.Add(new MacroSegment(m.Value, true));
+        }
+        plain.Append(template, at, template.Length - at);
+        if (plain.Length > 0) segments.Add(new MacroSegment(plain.ToString(), false));
+        return segments;
+    }
+
     /// <summary>A list of fields for a message: "{NAME} and {QTH}".</summary>
     public static string Describe(IReadOnlyList<string> fields)
     {

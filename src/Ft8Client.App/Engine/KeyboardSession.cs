@@ -38,6 +38,7 @@ public sealed class KeyboardSession : IDisposable
     private Mode _mode = Mode.Ft8;
     private RttyFormat _rtty = RttyFormat.Standard;
     private bool _unshiftOnSpace = true;
+    private bool _afc = true;
     private ChannelBank? _bank;
     private int? _listening;
     private DateTime _agedUtc;
@@ -81,6 +82,16 @@ public sealed class KeyboardSession : IDisposable
         }
     }
 
+    /// <summary>Lets channels follow drift (true, the default) or holds each on its frequency. Applies to channels being read.</summary>
+    public void SetAfc(bool on)
+    {
+        lock (_gate)
+        {
+            _afc = on;
+            _bank?.Afc = on;
+        }
+    }
+
     private void Restart()
     {
         _bank = _mode switch
@@ -89,6 +100,7 @@ public sealed class KeyboardSession : IDisposable
             Mode.Rtty => new ChannelBank(_rtty, ModeInfo.DecoderSampleRate, _unshiftOnSpace),
             _ => null,
         };
+        _bank?.Afc = _afc;
         _channels.Clear();
         _listening = null;
         Input.Clear();

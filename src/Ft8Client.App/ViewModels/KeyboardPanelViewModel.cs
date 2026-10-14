@@ -61,6 +61,17 @@ public sealed partial class KeyboardPanelViewModel : ObservableObject
     [ObservableProperty]
     public partial string WaitingPart { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The macro refused because a field has no value, in pieces; the view shows those fields in red until they are filled.
+    /// Empty when none.
+    /// </summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<MacroSegment> BlockedMacro { get; set; } = [];
+
+    /// <summary>True while a refused macro is shown.</summary>
+    [ObservableProperty]
+    public partial bool HasBlockedMacro { get; set; }
+
     /// <summary>The macro buttons.</summary>
     public ObservableCollection<MacroButtonViewModel> Macros { get; } = [];
 
@@ -112,6 +123,9 @@ public sealed partial class KeyboardPanelViewModel : ObservableObject
             foreach (var m in macros) Macros.Add(m);
         }
         RadioNote = s.RadioNote ?? string.Empty;
+        var blocked = s.BlockedMacro ?? [];
+        if (!blocked.SequenceEqual(BlockedMacro)) BlockedMacro = blocked;
+        HasBlockedMacro = blocked.Count > 0;
         var next = s.Macros.FirstOrDefault(m => m.Key == s.NextMacro);
         Hints = OnAir
             ? "Typing goes out as you type · Backspace takes back what has not gone · Enter on an empty line returns to receive · Esc stops now"

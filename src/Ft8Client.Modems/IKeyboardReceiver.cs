@@ -16,6 +16,9 @@ public interface IKeyboardReceiver
     /// <summary>The frequency it is on now (moves with AFC): the carrier for PSK, midway between the tones for RTTY.</summary>
     double FrequencyHz { get; }
 
+    /// <summary>True (the default) to follow a signal that drifts, within the receiver's range; false holds the frequency.</summary>
+    bool Afc { get; set; }
+
     /// <summary>Signal quality, 0 (noise) to 1 (clean).</summary>
     double Quality { get; }
 

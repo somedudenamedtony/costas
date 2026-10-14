@@ -154,11 +154,11 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
 - As built (M12):
   - Keys. While receiving, typing fills the type-ahead line and Enter sends it; the over then stays on the air for more typing. With the line empty, Enter sends the next step's macro. While transmitting, every key goes straight to the transmitter, Backspace takes back what has not gone, and Enter starts a new line (or, on an empty line, returns to receive). F1 to F12 send macros; F1 no longer opens the shortcuts list in these modes. The first Esc stops the over and keeps the contact; the second abandons it.
   - Audio is rendered 0.3 s ahead of the radio, so Backspace can still take back what was just typed.
-  - A macro with a field that has no value is refused, and the bottom bar names the fields and where to fill them (Settings, or a word in the conversation). The type-ahead line does not colour the missing field red yet.
+  - A macro with a field that has no value is refused, and the bottom bar names the fields and where to fill them (Settings, or a word in the conversation). Since M13 the refused macro also appears above the type-ahead line, as it would go out, with each empty field in red; it goes away once every field has a value (the operator then presses the key again) or something else is sent.
   - PSK keeps its own transmit level on each band ("20m PSK"), so its zero-ALC level does not pull the FT8 level down. Any ALC reading at or above 0.01 lowers it.
   - The CQ offset: the waterfall click (which sets a fixed offset), else a clear spot between the stations being read.
   - Audio captured while transmitting is dropped, so Costas never reads its own signal.
-  - The AFC switch is not built: AFC is always on, as in M10.
+  - The AFC switch (M13) sits at the right end of the macro row and is saved as a setting, on by default. Off holds every channel on the frequency it started on.
   - Reverse changes only what Costas reads. It always sends with the mark as the higher tone, so every station reads it.
   - Changing band or mode stops an over on the air.
 
@@ -204,10 +204,18 @@ There is a watchdog for the keyboard modes:
 
 **Log and Awards.** These gain a Mode filter; "All digital" is the default. Awards count PSK and RTTY under Digital.
 
+As built (M13):
+- Mini mode shows the macro keys in a row under the station in place of the step dots, the next step's key in the accent colour; F1 to F12 work while it has the keyboard.
+- The phone's contact card shows the macro keys in place of Resend and Call CQ (F1 is the CQ), plus Log now and Abandon in a contact, and the last six lines of the conversation in place of the step messages. A key pressed on the phone goes through the same checks as on the desk, and the phone's 3-minute watchdog cap matches the keyboard over limit.
+- The Mode filter offers All digital, All modes, FT8, FT4, PSK and RTTY. All digital is every ADIF mode but SSB, USB, LSB, AM, FM, CW, DIGITALVOICE and PHONE, as ARRL's DXCC Digital award counts them. PSK covers PSK31 and PSK63 (ADIF 3 submodes of PSK) and the older `PSK31` and `PSK63` modes. All digital alone does not show "Clear filters".
+
 ## 11. Integrations
 
-- **PSK Reporter spots.** Spots of PSK31, PSK63 and RTTY stations go through the same uploader (section 6 of `05-integrations.md`) with modes `PSK31`, `PSK63` and `RTTY`, and the frequency of the channel. An upload happens once per station per 5 minutes, as for FT8. **VERIFY V23:** PSK Reporter's mode names for these modes, checked against a fldigi upload.
-- **WSJT-X UDP.** No messages are sent in keyboard modes, since GridTracker and similar programs understand only WSJT-X modes. A Status message names the mode, so that they show it. **VERIFY V24:** that GridTracker ignores the unknown mode rather than failing.
+- **PSK Reporter spots.** Spots of PSK31, PSK63 and RTTY stations go through the same uploader (section 6 of `05-integrations.md`) with modes `PSK31`, `PSK63` and `RTTY`, and the frequency of the channel. An upload happens once per station per 5 minutes, as for FT8. Confirmed (V23, `08-open-questions.md`): fldigi sends the same names.
+- **WSJT-X UDP.** No decodes are sent in keyboard modes, since GridTracker and similar programs understand only WSJT-X decodes. A Status message names the mode, so that they show it. Confirmed from GridTracker source (V24): it shows the mode as given and does not check it.
+- As built (M13):
+  - Spots: each station named from its text is spotted with the dial plus the channel's audio frequency and the ADIF mode name, at most once per call every 5 minutes (fldigi waits 30 minutes per call and band). The locator is left out, as fldigi does for automatic spots. Off in simulation, as for FT8.
+  - UDP: Status, heartbeats, Clear and the logged-contact messages go out as in FT8 (a logged PSK or RTTY contact reaches loggers as Logged ADIF with `MODE` and `SUBMODE`). A Reply from another program is refused in keyboard modes, with a line in the bottom bar, since it cannot name a keyboard station and would otherwise key the radio on another program's guess.
 - **QRZ, LoTW, Club Log, eQSL.** Logging uploads use the ADIF modes in section 2 and need no other change.
 
 ## 12. Code structure

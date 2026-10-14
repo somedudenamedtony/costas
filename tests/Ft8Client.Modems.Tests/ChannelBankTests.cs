@@ -69,6 +69,19 @@ public class ChannelBankTests
     }
 
     [Fact]
+    public void Afc_TurnedOff_HoldsChannelsNowAndLater()
+    {
+        var bank = new ChannelBank(Mode.Psk31, TestSignal.Rate);
+        var first = bank.Listen(1000);
+        first.Receiver.Afc.Should().BeTrue();
+
+        bank.Afc = false;
+
+        first.Receiver.Afc.Should().BeFalse();
+        bank.Listen(2000).Receiver.Afc.Should().BeFalse();
+    }
+
+    [Fact]
     public void Listen_QuietPinnedChannel_IsKept()
     {
         var bank = new ChannelBank(Mode.Psk31, TestSignal.Rate) { QuietSeconds = 5 };

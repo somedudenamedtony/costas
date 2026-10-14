@@ -84,6 +84,26 @@ public sealed partial class OperateViewModel : ObservableObject
         _applyingReverse = false;
     }
 
+    /// <summary>PSK and RTTY: channels follow a drifting signal (the AFC switch beside the macro keys). Saved as the setting.</summary>
+    [ObservableProperty]
+    public partial bool KeyboardAfc { get; set; } = true;
+
+    /// <summary>Called when the operator flips AFC.</summary>
+    public Action<bool>? KeyboardAfcChanged { get; set; }
+
+    partial void OnKeyboardAfcChanged(bool value)
+    {
+        if (!_applyingReverse) KeyboardAfcChanged?.Invoke(value);
+    }
+
+    /// <summary>Shows the stored AFC setting without saving it again.</summary>
+    public void ShowKeyboardAfc(bool value)
+    {
+        _applyingReverse = true;
+        KeyboardAfc = value;
+        _applyingReverse = false;
+    }
+
     /// <summary>The unit after the reports: dB in FT8 and FT4, none for an RST.</summary>
     [ObservableProperty]
     public partial string ReportUnit { get; set; } = "dB";
