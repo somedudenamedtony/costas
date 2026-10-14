@@ -116,8 +116,8 @@ public sealed partial class KeyboardPanelViewModel : ObservableObject
         Hints = OnAir
             ? "Typing goes out as you type · Backspace takes back what has not gone · Enter on an empty line returns to receive · Esc stops now"
             : next is not null
-                ? $"Enter sends F{next.Key} {next.Label} (or what you typed) · F1 to F{Math.Max(5, s.Macros.Count)} send a macro · Right-click a word to use it · Esc stops"
-                : "Type and press Enter to send · F1 to F5 send a macro · Right-click a word to use it · Esc stops";
+                ? $"Enter sends F{next.Key} {next.Label} (or what you typed) · F1 to F{Math.Max(5, s.Macros.Count)} send a macro · Click a word to use it · Esc stops"
+                : "Type and press Enter to send · F1 to F5 send a macro · Click a word to use it · Esc stops";
         Readout();
     }
 

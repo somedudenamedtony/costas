@@ -212,6 +212,27 @@ public class KeyboardTransmitterTests
     }
 
     [Fact]
+    public void Pump_AudioDeviceStopsTakingSamples_HaltedAfterGrace()
+    {
+        var s = new Station();
+        s.Send("TEST ", returnToReceive: false);
+        var limit = KeyboardTransmitter.MaxOver + KeyboardTransmitter.StallGrace;
+        // Nothing reads the stream: the over can never play out by itself.
+        while (s.Radio.PttLog.Count < 2 && s.Clock.UtcNow - s.Radio.PttLog[0].TimeUtc < limit + TimeSpan.FromSeconds(1))
+        {
+            s.Clock.Advance(TimeSpan.FromMilliseconds(100));
+            s.Tx.Poll();
+            s.Keys.Pump();
+        }
+
+        s.Radio.PttLog.Select(p => p.On).Should().Equal(true, false);
+        (s.Radio.PttLog[1].TimeUtc - s.Radio.PttLog[0].TimeUtc).Should().BeCloseTo(limit, TimeSpan.FromMilliseconds(200));
+        var over = s.Overs.Should().ContainSingle().Subject;
+        over.Watchdog.Should().BeTrue();
+        s.Keys.Active.Should().BeFalse();
+    }
+
+    [Fact]
     public void Backspace_CharacterNotYetSent_IsNotSent()
     {
         var s = new Station();

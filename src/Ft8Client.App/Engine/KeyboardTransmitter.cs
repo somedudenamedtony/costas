@@ -28,6 +28,12 @@ public sealed class KeyboardTransmitter : IDisposable
     /// <summary>Longest idle with nothing to send before the watchdog closes the over.</summary>
     public static readonly TimeSpan MaxIdle = TimeSpan.FromSeconds(20);
 
+    /// <summary>
+    /// Past <see cref="MaxOver"/> by this much the over has not closed by itself (the audio device stopped taking
+    /// samples, say), so PTT is dropped at once through Halt.
+    /// </summary>
+    public static readonly TimeSpan StallGrace = TimeSpan.FromSeconds(10);
+
     // Audio rendered ahead of the radio: enough to ride out a busy moment on the reader thread, little enough that
     // Backspace can still take back what was just typed.
     private const double AheadSeconds = 0.3;
@@ -45,6 +51,7 @@ public sealed class KeyboardTransmitter : IDisposable
     private bool _endAfter;
     private bool _closing;
     private bool _watchdog;
+    private volatile bool _disposed;
     private int _sentChars;
     private DateTime _overStartUtc;
     private DateTime _lastActivityUtc;
@@ -199,53 +206,67 @@ public sealed class KeyboardTransmitter : IDisposable
         Changed?.Invoke();
     }
 
-    // Reader thread: keeps the stream a little ahead of the radio.
+    // Reader thread: keeps the stream a little ahead of the radio until the over has ended.
     private void Run()
     {
         while (Pump()) Thread.Sleep(20);
     }
 
     /// <summary>
-    /// Renders audio until the stream is a little ahead of the radio, applying the watchdog. Returns false once the over
-    /// is closing or has ended. The reader thread calls it; tests call it directly.
+    /// Renders audio until the stream is a little ahead of the radio, applying the watchdog. An over that has not ended
+    /// <see cref="StallGrace"/> after the watchdog limit is halted. Returns false once the over has ended. The reader
+    /// thread calls it; tests call it directly.
     /// </summary>
     public bool Pump()
     {
         var changed = false;
+        var stalled = false;
         lock (_gate)
         {
-            if (_stream is not { } stream || _mod is not { } mod) return false;
-            if (_closing) return false;
-            var ahead = (int)(AheadSeconds * _tx.OutputSampleRate);
-            while (stream.Buffered < ahead && !_closing)
+            if (_disposed || _stream is not { } stream || _mod is not { } mod) return false;
+            var now = _clock.UtcNow;
+            if (now - _overStartUtc >= MaxOver + StallGrace)
             {
-                var now = _clock.UtcNow;
-                if (now - _overStartUtc >= MaxOver || (_waiting.Length == 0 && !_endAfter && now - _lastActivityUtc >= MaxIdle))
+                _watchdog = true;
+                stalled = true;
+            }
+            else
+            {
+                var ahead = (int)(AheadSeconds * _tx.OutputSampleRate);
+                while (stream.Buffered < ahead && !_closing)
                 {
-                    _watchdog = true;
-                    _waiting.Clear();
-                    Close(mod, stream);
-                }
-                else if (_waiting.Length > 0)
-                {
-                    var c = _waiting[0];
-                    _waiting.Remove(0, 1);
-                    Write(mod.Send(c));
-                    _sent.Append(c);
-                    _sentChars++;
-                    foreach (var m in _macroEnds.Where(m => m.End == _sentChars)) _macrosSent.Add(m.Key);
-                    _lastActivityUtc = now;
-                    changed = true;
-                }
-                else if (_endAfter)
-                {
-                    Close(mod, stream);
-                }
-                else
-                {
-                    Write(mod.Idle());
+                    if (now - _overStartUtc >= MaxOver || (_waiting.Length == 0 && !_endAfter && now - _lastActivityUtc >= MaxIdle))
+                    {
+                        _watchdog = true;
+                        _waiting.Clear();
+                        Close(mod, stream);
+                    }
+                    else if (_waiting.Length > 0)
+                    {
+                        var c = _waiting[0];
+                        _waiting.Remove(0, 1);
+                        Write(mod.Send(c));
+                        _sent.Append(c);
+                        _sentChars++;
+                        foreach (var m in _macroEnds.Where(m => m.End == _sentChars)) _macrosSent.Add(m.Key);
+                        _lastActivityUtc = now;
+                        changed = true;
+                    }
+                    else if (_endAfter)
+                    {
+                        Close(mod, stream);
+                    }
+                    else
+                    {
+                        Write(mod.Idle());
+                    }
                 }
             }
+        }
+        if (stalled)
+        {
+            _ = _tx.HaltAsync();
+            return false;
         }
         if (changed) Changed?.Invoke();
         return true;
@@ -296,7 +317,7 @@ public sealed class KeyboardTransmitter : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
-        lock (_gate) _closing = true;
+        _disposed = true;
         _thread?.Join(500);
     }
 }

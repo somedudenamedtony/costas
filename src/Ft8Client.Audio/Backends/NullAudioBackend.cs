@@ -29,7 +29,7 @@ public sealed class NullAudioBackend : IAudioBackend
     public IAudioInput OpenInput(string deviceId, int sampleRate) => new SilentInput(sampleRate);
 
     /// <inheritdoc />
-    public IAudioOutput OpenOutput(string deviceId, int sampleRate) => LastOutput = new NullAudioOutput(sampleRate);
+    public IAudioOutput OpenOutput(string deviceId, int sampleRate) => LastOutput = new NullAudioOutput(sampleRate) { RealTime = true };
 
     /// <inheritdoc />
     public string? DefaultOutputId() => null;

@@ -531,7 +531,7 @@ public sealed class AppHost : IAsyncDisposable
         }
         else
         {
-            Transmitter.SetOutput(Plan.MutesTransmitAudio(Settings.Current.Profile.Rig) ? _mutedOutput ??= new NullAudioOutput() : _output);
+            Transmitter.SetOutput(Plan.MutesTransmitAudio(Settings.Current.Profile.Rig) ? _mutedOutput ??= new NullAudioOutput { RealTime = true } : _output);
         }
         closed?.Dispose(); // after the transmitter has let go of it
         if (!Simulating && !string.Equals(a.InputId, _inputId, StringComparison.Ordinal))
@@ -661,7 +661,7 @@ public sealed class AppHost : IAsyncDisposable
         Transmitter?.SetRig(rig);
         if (Plan.MutesTransmitAudio(r))
         {
-            Transmitter?.SetOutput(_mutedOutput ??= new NullAudioOutput());
+            Transmitter?.SetOutput(_mutedOutput ??= new NullAudioOutput { RealTime = true });
             if (HamlibModels.IsTestModel(r.Model) && status.Health == ServiceHealth.Ok)
                 status = status with { Message = "Hamlib test radio (transmit audio muted)" };
         }

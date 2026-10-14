@@ -32,7 +32,7 @@ Picking a mode sets the radio over CAT, the same way FT8 does today (`RigctldRig
 | Radio mode | `M PKTUSB -1` (USB data), falling back to `USB` as FT8 does | Same. The tones are made by Costas (AFSK) |
 | Passband | Left as the radio has it (`-1`), as for FT8 | Same |
 | Mark and space | n/a | The mark is the higher RF frequency. In USB, that makes the mark the **higher** audio tone: space = mark − shift. A Reverse switch swaps them for stations on the other sideband |
-| Transmit power | Unchanged | Capped at 50 % of the operator's set power by default (`L RFPOWER`), restored when leaving RTTY. Changeable in Settings > Transmitting |
+| Transmit power | Unchanged | Capped at 50 % of the operator's set power by default (`L RFPOWER`), restored when leaving RTTY or closing Costas, unless the operator turned the power since. Changeable in Settings > PSK and RTTY |
 | Speech processor | Read with `u COMP` where the radio supports it. If it is on, a warning is shown; Costas does not change it | Same |
 
 Confirmed from Hamlib master (`rigs/yaesu/newcat.c`, `ft710.c`, `ft710.h`, read 2026-10-13):
@@ -127,6 +127,7 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
 - **Moving the strip on.** A step moves to Done when its macro is sent (my steps), or when the partner's over contains what the step needs (their steps). The next step of mine is highlighted, and Enter sends its macro.
 - **Logging.** It happens on the step marked Logged, or on Log now, and takes the RST, name and QTH shown in the card. The frequency logged is the dial plus the partner's audio offset, rounded to 1 Hz. This differs from FT8, which logs the dial.
 - **Abandon (Esc).** Clears the contact, as for FT8.
+- As built (M12): `KeyboardContactEngine` in Core, beside the FT8 `ContactEngine`; the session picks one by mode. A CQ counts as sent as soon as it is queued, so a quick answer is never missed; my other steps are done when their macro has gone out whole. While their step is pending, Enter still offers my next macro, so the operator can move on without waiting. A clicked word is offered from a menu: their name, QTH, report, grid or call.
 
 ## 8. Transmit
 
@@ -150,6 +151,14 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
 - **RTTY.** The idle is LTRS characters. The over opens with a carriage return and line feed (CR LF), and figure shifts are re-sent after each space while unshift-on-space is on.
 - **Characters.** RTTY sends only ITA2 characters: lower case is sent as capitals as the operator types, since the type-ahead line shows capitals. `@ % & * # _ < > [ ] { }` and accented letters are flagged and not sent. PSK Varicode covers ASCII 0–127; anything else is flagged.
 - **Transmit level.** For PSK, Auto ALC aims for zero ALC: the 0.02 threshold becomes 0, because any ALC action spreads a PSK signal (IMD). RTTY uses the FT8 thresholds.
+- As built (M12):
+  - Keys. While receiving, typing fills the type-ahead line and Enter sends it; the over then stays on the air for more typing. With the line empty, Enter sends the next step's macro. While transmitting, every key goes straight to the transmitter, Backspace takes back what has not gone, and Enter starts a new line (or, on an empty line, returns to receive). F1 to F12 send macros; F1 no longer opens the shortcuts list in these modes. The first Esc stops the over and keeps the contact; the second abandons it.
+  - Audio is rendered 0.3 s ahead of the radio, so Backspace can still take back what was just typed.
+  - A macro with a field that has no value is refused, and the bottom bar names the fields and where to fill them (Settings, or a word in the conversation). The type-ahead line does not colour the missing field red yet.
+  - PSK keeps its own transmit level on each band ("20m PSK"), so its zero-ALC level does not pull the FT8 level down. Any ALC reading at or above 0.01 lowers it.
+  - The CQ offset: the waterfall click (which sets a fixed offset), else a clear spot between the stations being read.
+  - Audio captured while transmitting is dropped, so Costas never reads its own signal.
+  - The AFC switch is not built: AFC is always on, as in M10.
 
 ## 9. Safety
 
@@ -164,6 +173,7 @@ There is a watchdog for the keyboard modes:
 - Transmit stops after **3 minutes** of continuous transmitting. This matches the remote-control cap in D14.
 - It also stops after **20 seconds** of idle with nothing left to send.
 - Either stop is shown on the strip as "Stopped by watchdog".
+- As built (M12): if an over has still not ended 10 s past the 3-minute limit (the audio device stopped taking samples, so the over cannot play out), Halt drops PTT at once.
 
 ## 10. Screen (see `02-ui-spec.md` for the FT8 layout)
 
@@ -209,6 +219,7 @@ These steps come in order. Step 1 (M9) changes nothing the operator can see. Ste
 2. **Contact engine interface.**
    - `IContactEngine` is extracted from `ContactEngine`, which keeps its behaviour and tests.
    - `ContactView.MyParity` becomes nullable.
+   - As built (M12): not extracted. The two engines share `ContactView` but little else (one plans slots, the other follows text), so the session calls whichever the mode needs.
 3. **Heard events.**
    - `HeardMessage` gets a source: a slot decode, or text from a channel.
    - `Decode.SlotStartUtc` stays for FT8, and text events carry their own time.
@@ -217,6 +228,6 @@ These steps come in order. Step 1 (M9) changes nothing the operator can see. Ste
    - channel finder, PSK and RTTY demodulators and modulators, Varicode and ITA2 tables
    - golden-file tests against recordings
 5. **Continuous session.**
-   - `KeyboardSession` runs beside `Session` and owns the channel decoders, the keyboard contact engine and the type-ahead.
+   - `KeyboardSession` runs beside `Session` and owns the channel decoders. As built (M12), the keyboard contact engine and the type-ahead (`KeyboardTransmitter`) live in `Session` (`Session.Keyboard.cs`), next to the FT8 engine, so commands, logging and snapshots stay in one place.
    - `Transmitter` gets a streaming audio source next to the slot waveform. Its guards and the keyboard watchdog are shared.
 6. **UI.** The Operate changes in section 10, then Raw decodes, Mini, the remote, Log and Awards filters, and the manual pages.

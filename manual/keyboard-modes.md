@@ -1,8 +1,8 @@
 # PSK31, PSK63 and RTTY
 
-!!! note "Preview: receive only"
-    This build reads PSK31, PSK63 and RTTY but does not send them yet. **Call**, **Call CQ** and Enter say so and do
-    nothing. Sending, macros and the conversation box come in a later build.
+!!! note "Preview"
+    PSK and RTTY are new and have not yet been tried on the air. Watch your first few contacts closely, and keep
+    **Halt Tx** (Esc) in reach.
 
 Pick **PSK31**, **PSK63** or **RTTY** in the **Mode** menu. Costas tunes the radio to the band's PSK frequency
 (14.070 MHz on 20 m) or RTTY frequency (14.080 MHz) in the same data mode it uses for FT8, so nothing else needs
@@ -24,7 +24,75 @@ passband at once (up to 20).
 - **Raw decodes** shows the text, a line per over or per line typed, with the audio frequency and signal strength.
 - **dB** is measured in a 2,500 Hz bandwidth, the same scale as FT8, so −10 dB means the same in both.
 
-The slot countdown is hidden in these modes, since there are no slots.
+There are no slots, so where FT8 shows the slot countdown the contact card shows how many characters you have typed
+ahead, or how many are still to go while sending.
+
+## Making a contact
+
+Nothing is ever sent without a key press or a click from you.
+
+![Answering a PSK31 CQ](images/psk-sending.png)
+
+**Answering a CQ.** Pick the station in **Next in line** and click **Call** (or press Enter). Costas sends your
+answer (F2) on the station's own audio frequency and moves the contact strip on, just as for FT8:
+
+1. Their CQ
+2. Your answer (F2)
+3. Their exchange: Costas reads their report, name, QTH and grid from what they send ("UR 579", "NAME JOSE",
+   "QTH SAN JUAN.", "LOC FK68")
+4. Your exchange (F3)
+5. Their 73: the contact is logged
+
+**Calling CQ.** Press F1 or **Call CQ**. A station that answers with your call starts the contact, and the strip runs
+CQ, their call, your exchange (F3), their exchange, then your 73 (F4), which logs it.
+
+**The conversation box** under the strip shows what each of you sent, with your own text dimmed. If Costas read a
+name or QTH wrong, or missed it, click the word in the conversation and choose what it is: their name, QTH, report,
+grid or call. What you pick always wins over what Costas read.
+
+**Keys.**
+
+| Key | While receiving | While sending |
+| --- | --- | --- |
+| Typing | Goes into the line under the conversation | Goes out as you type |
+| Enter | Sends what you typed, or the next step's macro (its button is highlighted) | A new line; on an empty line, back to receive once everything has gone |
+| Backspace | Edits the line | Takes back what has not gone out yet |
+| F1 to F12 | Send that macro | Add that macro to what is going out |
+| Esc | Abandons the contact | Stops sending at once; press again to abandon the contact |
+
+A macro goes back to receive when it has gone out, unless you keep typing. Typed text keeps the transmitter on,
+sending idle between words, until you press Enter on an empty line.
+
+**Logging.** The contact is logged with the report, name and QTH shown on the card, and the frequency of the
+station's signal (the dial plus its audio frequency). Reports are RST, such as 599. **Log now** logs it at any time.
+
+## Macros
+
+The macro keys and your details are in **Settings › PSK and RTTY**. The defaults are:
+
+| Key | Macro | Text |
+| --- | --- | --- |
+| F1 | CQ | `CQ CQ CQ DE {MYCALL} {MYCALL} {MYCALL} {MYGRID} K` |
+| F2 | Answer | `{CALL} DE {MYCALL} {MYCALL} K` |
+| F3 | Exchange | `{CALL} DE {MYCALL} GE {NAME} UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN` |
+| F4 | 73 | `TNX {NAME} 73 {CALL} DE {MYCALL} SK` |
+| F5 | Rig and antenna | `RIG {MYRIG} ANT {MYANT}` |
+
+Fill in **Your name**, **Your QTH** and your radio and antenna there first. A macro whose field has no value is not
+sent: the bottom bar says which field is missing and where to fill it. Your report to them is 599.
+
+## Safety
+
+- Costas will not send outside the band's limits, and it drops PTT on any radio or audio error.
+- A single over stops after 3 minutes, and an over with nothing to send stops after 20 seconds. The strip then says
+  "Stopped by watchdog".
+- RTTY keeps the transmitter at full output for the whole over. When you pick RTTY, Costas turns the radio's power down
+  to half of what you set, and puts it back when you leave RTTY or close Costas (unless you turned the power yourself
+  meanwhile). Change the share under **RTTY power** in Settings; 100 % leaves the power alone.
+- For PSK, automatic transmit level aims for no ALC at all, since any ALC action makes a PSK signal wider. It keeps a
+  separate level for PSK on each band, so your FT8 level is not affected.
+- If the radio's speech processor is on, a warning appears under the macro keys. It distorts PSK and RTTY; turn it
+  off on the radio. Costas does not change it.
 
 ## Tips
 
@@ -38,7 +106,7 @@ The slot countdown is hidden in these modes, since there are no slots.
 ![RTTY on the Operate screen](images/rtty-operate.png)
 
 RTTY has a few settings, in **Settings › PSK and RTTY**. The status line shows the ones in use, for
-example "Reading RTTY 45.45 Bd, 170 Hz shift".
+example "Reading RTTY 45.45 Bd, 170 Hz shift". **Reverse** is also beside the macro keys.
 
 | Setting | Default | What it does |
 | --- | --- | --- |

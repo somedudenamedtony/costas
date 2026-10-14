@@ -28,6 +28,12 @@ public sealed class NullAudioOutput(int sampleRate = 48_000) : IAudioOutput
     /// <summary>Every sample read from streams so far (tests read them with <see cref="Pull"/>).</summary>
     public List<float> Streamed { get; } = [];
 
+    /// <summary>
+    /// Reads streams at the real sample rate on a thread of its own, as a device would, without keeping the samples
+    /// (simulation and a muted radio). Off for tests, which move streams on with <see cref="Pull"/>.
+    /// </summary>
+    public bool RealTime { get; init; }
+
     /// <summary>Clock used to stamp buffers.</summary>
     public Func<DateTime> Now { get; set; } = () => DateTime.UtcNow;
 
@@ -51,6 +57,32 @@ public sealed class NullAudioOutput(int sampleRate = 48_000) : IAudioOutput
         {
             Stream = stream;
             IsPlaying = true;
+        }
+        if (RealTime) new Thread(() => Drain(stream)) { IsBackground = true, Name = "Null audio output" }.Start();
+    }
+
+    // Plays a stream in real time, 10 ms at a time, until it finishes or another replaces it.
+    private void Drain(IAudioStream stream)
+    {
+        var buffer = new float[SampleRate / 100];
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        long played = 0;
+        while (true)
+        {
+            lock (_gate)
+            {
+                if (!ReferenceEquals(Stream, stream)) return;
+                stream.Read(buffer);
+                played += buffer.Length;
+                if (stream.Finished)
+                {
+                    Stream = null;
+                    IsPlaying = false;
+                    return;
+                }
+            }
+            var ahead = played / (double)SampleRate - clock.Elapsed.TotalSeconds;
+            if (ahead > 0) Thread.Sleep(TimeSpan.FromSeconds(ahead));
         }
     }
 

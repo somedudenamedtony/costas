@@ -1111,7 +1111,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 TransmittingMessage = _tx.CurrentMessage,
                 CallingCq = keyboard ? _kbd.CallingCq : _engine.CallingCq,
                 RigTuningUntilUtc = _rigTuningUntil is { } until && until > now ? until : null,
-                TxOffsetHz = _txOffset,
+                TxOffsetHz = keyboard && _kbd.InContact ? _kbd.PartnerOffsetHz : _txOffset,
                 TxOffsetClear = _txOffsetClear,
                 TxOffsetAuto = _config.FixedTxOffsetHz is null,
                 Fault = _fault ?? _engine.StopReason,
