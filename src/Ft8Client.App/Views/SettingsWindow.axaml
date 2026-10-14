@@ -234,10 +234,13 @@
                 <ItemsControl ItemsSource="{Binding Macros}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:MacroEditViewModel">
-                      <Grid ColumnDefinitions="36,130,*" ColumnSpacing="8" Margin="0,0,0,6">
+                      <Grid ColumnDefinitions="36,130,*,Auto" ColumnSpacing="8" Margin="0,0,0,6">
                         <TextBlock Text="{Binding KeyName}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBox Grid.Column="1" Text="{Binding Label}" PlaceholderText="Name" />
                         <TextBox Grid.Column="2" Text="{Binding Text}" PlaceholderText="Text" FontFamily="{StaticResource MessageFont}" />
+                        <Button Grid.Column="3" Content="Remove" CommandParameter="{Binding}"
+                                Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).RemoveMacroCommand}"
+                                AutomationProperties.Name="{Binding KeyName, StringFormat='Remove the {0} macro'}" />
                       </Grid>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
@@ -247,7 +250,7 @@
                   <Button Content="Restore the defaults" Command="{Binding RestoreMacrosCommand}" />
                 </StackPanel>
                 <TextBlock Classes="help" TextWrapping="Wrap"
-                           Text="{Binding MacroFields, StringFormat='F1 calls CQ, F2 answers a CQ, F3 sends your exchange and F4 signs off: the contact strip moves on when they are sent. A macro can hold {0}. A macro with a field that has no value is not sent; Costas says which field is missing.'}" />
+                           Text="{Binding MacroFields, StringFormat='F1 calls CQ, F2 answers a CQ, F3 sends your exchange and F4 signs off: the contact strip moves on when they are sent. A macro can hold {0}. A macro with a field that has no value is not sent; Costas says which field is missing. Remove empties a key; with every key empty the defaults come back.'}" />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
