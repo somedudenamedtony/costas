@@ -9,6 +9,7 @@
 using System.Globalization;
 using Ft8Client.Core.Bands;
 using Ft8Client.Core.Ranking;
+using Ft8Client.Core.Stations;
 
 namespace Ft8Client.App.ViewModels;
 
@@ -20,8 +21,11 @@ public sealed class SummaryViewModel
         ["NA"] = "N. Am.", ["EU"] = "Europe", ["AS"] = "Asia", ["OC"] = "Oceania", ["SA"] = "S. Am.", ["AF"] = "Africa",
     };
 
-    /// <summary>Builds the panel.</summary>
-    public SummaryViewModel(BandSummary s, bool logEmpty)
+    /// <summary>
+    /// Builds the panel. PSK and RTTY have no slots: pass <paramref name="keyboardActivity"/> (stations read per three
+    /// minutes) and the caption counts those instead of decodes per slot.
+    /// </summary>
+    public SummaryViewModel(BandSummary s, bool logEmpty, IReadOnlyList<SlotActivity>? keyboardActivity = null)
     {
         var band = BandPlan.Display(s.Band);
         Title = $"{band} right now";
@@ -30,7 +34,12 @@ public sealed class SummaryViewModel
         Countries = s.Countries.ToString(CultureInfo.InvariantCulture);
         CallingCq = s.CallingCq.ToString(CultureInfo.InvariantCulture);
         YouNeed = s.YouNeed.ToString(CultureInfo.InvariantCulture);
-        Caption = $"{s.DecodesLastSlot} decodes in the last slot · {s.DecodesPerSlotHour} per slot over the past hour";
+        Caption = keyboardActivity is null
+            ? $"{s.DecodesLastSlot} decodes in the last slot · {s.DecodesPerSlotHour} per slot over the past hour"
+            : keyboardActivity.Count == 0
+                ? "Stations read are counted every three minutes."
+                : $"{keyboardActivity[^1].Decodes} stations read in the last three minutes · "
+                  + $"{Math.Round(keyboardActivity.Average(a => a.Decodes)).ToString(CultureInfo.InvariantCulture)} per three minutes over the past hour";
         var max = Math.Max(1, s.HeardFrom.Values.DefaultIfEmpty(0).Max());
         Continents = BandSummary.ContinentOrder.Select(c => new ContinentBar(ContinentNames[c], s.HeardFrom.GetValueOrDefault(c),
             48.0 * s.HeardFrom.GetValueOrDefault(c) / max)).ToList();

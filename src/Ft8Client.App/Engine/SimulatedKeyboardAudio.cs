@@ -23,6 +23,7 @@ public sealed class SimulatedKeyboardAudio : IDisposable
     private readonly KeyboardSession _keyboard;
     private readonly Func<Mode> _mode;
     private readonly IClock _clock;
+    private readonly string? _replay;
     private readonly Dictionary<Mode, float[]> _audio = [];
     private Mode _playing;
     private int _position;
@@ -31,9 +32,10 @@ public sealed class SimulatedKeyboardAudio : IDisposable
     private volatile bool _run;
 
     /// <summary>Creates a player over a samples folder.</summary>
-    public SimulatedKeyboardAudio(string samples, KeyboardSession keyboard, Func<Mode> mode, IClock clock)
+    public SimulatedKeyboardAudio(string samples, KeyboardSession keyboard, Func<Mode> mode, IClock clock, string? replay = null)
     {
         _samples = samples;
+        _replay = replay;
         _keyboard = keyboard;
         _mode = mode;
         _clock = clock;
@@ -77,8 +79,7 @@ public sealed class SimulatedKeyboardAudio : IDisposable
             _position = 0;
         }
         if (_audio.TryGetValue(mode, out var a)) return a;
-        var folder = Path.Combine(_samples, ModeInfo.Name(mode).ToLowerInvariant());
-        if (ModeInfo.IsSlotted(mode) || !Directory.Exists(folder)) return _audio[mode] = [];
+        if (ModeInfo.IsSlotted(mode) || FolderFor(mode) is not { } folder) return _audio[mode] = [];
         var list = new List<float>();
         foreach (var f in Directory.EnumerateFiles(folder, "*.wav").Order(StringComparer.Ordinal))
         {
@@ -86,6 +87,21 @@ public sealed class SimulatedKeyboardAudio : IDisposable
             if (rate == ModeInfo.DecoderSampleRate) list.AddRange(samples.Select(s => s / 32768f));
         }
         return _audio[mode] = [.. list];
+    }
+
+    // The mode's recordings: the folder being replayed when it is that mode's folder (samples/rtty) or holds one, else
+    // the mode's folder under samples.
+    private string? FolderFor(Mode mode)
+    {
+        var name = ModeInfo.Name(mode).ToLowerInvariant();
+        foreach (var root in new[] { _replay, _samples })
+        {
+            if (root is null || !Directory.Exists(root)) continue;
+            if (string.Equals(Path.GetFileName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(root))), name, StringComparison.OrdinalIgnoreCase)) return root;
+            var sub = Path.Combine(root, name);
+            if (Directory.Exists(sub)) return sub;
+        }
+        return null;
     }
 
     /// <inheritdoc />

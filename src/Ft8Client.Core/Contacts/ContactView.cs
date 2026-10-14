@@ -37,4 +37,10 @@ public sealed record ContactView(string DxCall, string? DxGrid, ContactFlow Flow
 
     /// <summary>The slot parity I transmit in during this contact.</summary>
     public SlotParity MyParity { get; init; }
+
+    /// <summary>
+    /// The mode the contact was made in, when it can differ from the mode now (a PSK or RTTY contact stays on the card
+    /// after a mode change); null for the current mode.
+    /// </summary>
+    public Mode? Mode { get; init; }
 }

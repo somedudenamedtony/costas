@@ -463,15 +463,18 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
 
     /// <summary>
     /// Applies what <see cref="KeyboardSession"/> read since its last call: text from stations it has named, and finished
-    /// lines for Raw decodes. Keyboard stations are aged at the same time. Ignored unless the session is in that mode.
+    /// lines for Raw decodes. Keyboard stations are aged at the same time. <paramref name="unnamed"/> are the offsets of
+    /// signals with text but no callsign yet. Ignored unless the session is in that mode.
     /// </summary>
-    public void ApplyText(Mode mode, IReadOnlyList<TextHeard> heard, IReadOnlyList<KeyboardLine> lines, DateTime utc)
+    public void ApplyText(Mode mode, IReadOnlyList<TextHeard> heard, IReadOnlyList<KeyboardLine> lines, DateTime utc, IReadOnlyList<int>? unnamed = null)
     {
         lock (_gate)
         {
             if (mode != _config.Mode) return;
+            if (unnamed is not null) _unnamedSignals = unnamed;
             foreach (var h in heard) _tracker.ApplyText(h);
             _tracker.AgeText(utc);
+            KeyboardActivity(utc);
             foreach (var l in lines)
             {
                 ApplyKeyboardLine(l);
@@ -825,10 +828,12 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         int offset;
         lock (_gate)
         {
-            if (_engine.CallingCq || _engine.InContact || _tx.Transmitting || _rigTuningUntil > _clock.UtcNow)
+            if (_engine.CallingCq || _engine.InContact || _kbd.CallingCq || _kbd.InContact || _keys.Active || _tx.Transmitting
+                || _rigTuningUntil > _clock.UtcNow)
                 return "Tune is only available while nothing else is being sent.";
             offset = _txOffset;
-            guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
+            // PSK and RTTY have no slots, so the clock check does not apply to them (docs/09-keyboard-modes.md section 9).
+            guard = new TxGuardInput(_config.Band, _dialHz, KeyboardMode ? null : _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         }
         if (await _tx.StartRigTunerAsync(offset, guard).ConfigureAwait(false))
@@ -888,6 +893,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _kbd.Abandon();
             _conversation.Clear();
             _blockedMacro = null;
+            // A refusal or fault from the old band or mode no longer applies.
+            _fault = null;
             _hearsMe = new HearsMe(band, _hearsMe.Available, ModeInfo.Name(mode));
             // Reports of nearby stations cover every band (for the band menu); only a mode change makes them irrelevant.
             if (mode != oldMode)
@@ -898,6 +905,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _recentOffsets.Clear();
             _slotCounts.Clear();
             _activity.Clear();
+            _kbdActivityFrom = default;
+            _unnamedSignals = [];
             _txMeters = null; // SWR belongs to the antenna on the old band
             _rigTuningUntil = null;
         }
@@ -1131,7 +1140,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 BandOpenings = Openings(now),
                 BandActivityFeed = _bandFeed,
                 Services = new Dictionary<string, ServiceStatus>(_services),
-                Contact = keyboard ? _kbd.View() : _engine.View,
+                Contact = keyboard ? KeyboardContactView() : _engine.View,
                 Transmitting = _tx.Transmitting,
                 TransmittingMessage = _tx.CurrentMessage,
                 CallingCq = keyboard ? _kbd.CallingCq : _engine.CallingCq,
@@ -1152,6 +1161,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 MacroPreviews = keyboard ? MacroPreviews() : new Dictionary<int, string>(),
                 RadioNote = keyboard ? _radioNote : null,
                 BlockedMacro = BlockedMacro(),
+                Received = keyboard && _kbd.Partner is not null ? _kbd.Received : null,
+                UnnamedSignals = keyboard ? _unnamedSignals : [],
             };
             _snapshot = snap;
         }

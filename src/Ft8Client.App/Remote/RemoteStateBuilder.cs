@@ -64,7 +64,7 @@ public static class RemoteStateBuilder
         var slotLen = !slotted ? TimeSpan.Zero : s.Transmitting ? ModeInfo.TxEnd(s.Mode) : ModeInfo.SlotLength(s.Mode);
         var into = slotted ? nowUtc - SlotMath.SlotStart(nowUtc, s.Mode) : TimeSpan.Zero;
         var (meter, meterTip, meterKind) = TxMeterText.Warning(s.TxMeters);
-        var summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty);
+        var summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty, ModeInfo.IsSlotted(s.Mode) ? null : s.Activity);
 
         return new RemoteState
         {
@@ -80,7 +80,7 @@ public static class RemoteStateBuilder
             Fault = s.Fault,
             Hunt = ctx.Hunt(),
             Control = control,
-            Contact = s.Contact is null ? null : Contact(ContactPanelViewModel.From(s.Contact, s, nowUtc, units, ctx.QrzName(s.Contact.DxCall))),
+            Contact = s.Contact is null ? null : Contact(ContactPanelViewModel.For(s.Contact, s, nowUtc, units, ctx.QrzName(s.Contact.DxCall))),
             Macros = slotted ? [] : [.. s.Macros.Select(m => new RemoteMacro(m.Key, $"F{m.Key} {m.Label}", m.Text, m.Key == s.NextMacro))],
             Conversation = [.. s.Conversation.TakeLast(MaxConversation)
                 .Select(l => new RemoteLine(l.Utc.ToString("HH:mm:ss", CultureInfo.InvariantCulture), l.Who, l.Text, l.Mine))],

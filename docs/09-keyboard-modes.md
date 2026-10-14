@@ -140,7 +140,7 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
 ## 8. Transmit
 
 - **Type-ahead.** Typed text is queued and goes out as the transmitter reaches it. The part already sent is dimmed. Backspace removes characters not yet sent.
-- **Macros.** F1 to F12, edited in Settings > Transmitting > Macros. They can contain these fields: `{CALL}` `{NAME}` `{RST}` `{QTH}` `{MYCALL}` `{MYNAME}` `{MYQTH}` `{MYGRID}` `{MYRIG}` `{MYANT}`. A field with no value is shown in red in the type-ahead line, and nothing is sent until it is filled or removed.
+- **Macros.** F1 to F12, edited in Settings > PSK and RTTY. They can contain these fields: `{CALL}` `{NAME}` `{RST}` `{QTH}` `{MYCALL}` `{MYNAME}` `{MYQTH}` `{MYGRID}` `{MYRIG}` `{MYANT}`. A field with no value is shown in red in the type-ahead line, and nothing is sent until it is filled or removed.
   - As built (owner decision 2026-10-14, finding H1): a part of a macro in square brackets is optional. It goes out, without the brackets, when every field in it has a value, and is left out whole (with the space before it) when one of its fields has none; it is never sent with a blank or guessed value. The default F3 marks `[GE {NAME}]` optional, so a station that answers with only its call ("W7LIT DE KP4JRS K") can be sent the exchange; with a name known, F3 goes out exactly as before. A stored F3 that is still the old default is read as the new one. Fields outside brackets still refuse as above. Each macro button's tooltip shows the text as it would go out now. Brackets with no field inside are plain text.
   - Anything in braces is a field name. A name that is not one of the fields (`{MY_CALL}`, say) refuses the macro, and the bottom bar names it and lists the fields; it is never sent as written.
 - **Defaults** (US-style, editable):
@@ -171,6 +171,13 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
   - The AFC switch (M13) sits at the right end of the macro row and is saved as a setting, on by default. Off holds every channel on the frequency it started on.
   - Reverse changes only what Costas reads. It always sends with the mark as the higher tone, so every station reads it.
   - Changing band or mode stops an over on the air.
+  - As built (UI fixes, 2026-10-14): on Operate, typing, Space, Backspace and Enter go to the type-ahead line wherever
+    the keyboard is (macro and word buttons never take focus), so Space never clicks a button again. Enter pressed just
+    as an over ends does nothing rather than sending the next macro. A refused line stays in the box. Keys typed while
+    an over closes wait in the line. A character the mode cannot send is named in red under the line, while typing
+    ahead and when refused on the air; RTTY shows capitals as typed. The first Esc on an over in a contact arms the
+    second, which abandons. Settings checks macro field names and characters on save, and has Remove; every macro
+    empty still means the defaults (Settings warns first).
 
 ## 9. Safety
 
@@ -223,6 +230,12 @@ There is a watchdog for the keyboard modes:
 **Mini mode and the phone remote.** These show the strip with the macro buttons where the step boxes are. Typing from the phone is a later step.
 
 **Log and Awards.** These gain a Mode filter; "All digital" is the default. Awards count PSK and RTTY under Digital.
+
+As built (UI fixes, 2026-10-14):
+- Signals with text but no callsign are tagged "?" on the waterfall and counted under Next in line; the partner's tag is
+  red. Band activity and the band summary count the stations read every three minutes.
+- The phone uses the keyboard contact card (RST without sign, mode in the caption) and hides its slot bar.
+- An abandoned contact waits for nothing on the strip, stops collecting text, and keeps the mode it was made in.
 
 As built (M13):
 - Mini mode shows the macro keys in a row under the station in place of the step dots, the next step's key in the accent colour; F1 to F12 work while it has the keyboard.
