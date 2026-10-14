@@ -96,12 +96,23 @@ again. Your report to them is 599.
 
 ## Safety
 
-- Costas will not send outside the band's limits, and it drops PTT on any radio or audio error.
+- Costas will not send outside the band's limits, and it drops PTT on any radio or audio error. The limits count the
+  whole signal, so a wide RTTY shift needs more room from the band edge. A band with no row for the mode in the
+  frequency table (60 m and 6 m have only FT8 and FT4) is refused for PSK and RTTY, with the reason in the bottom bar.
+- If the radio refuses PTT when an over starts, nothing is sent and the bottom bar says why; the next key press tries
+  again.
+- Changing band or mode stops whatever is on the air, FT8 and Tune included. Typing a new frequency waits until the
+  transmission ends.
 - A single over stops after 3 minutes, and an over with nothing to send stops after 20 seconds. The strip then says
-  "Stopped by watchdog".
+  "Stopped by watchdog". If the sound card stops taking audio for 5 seconds, PTT is dropped and the bottom bar says so.
+- Holding a function key sends its macro once, and pressing it again while that macro is still waiting to go out is
+  refused, so a macro is never queued twice by accident.
 - RTTY keeps the transmitter at full output for the whole over. When you pick RTTY, Costas turns the radio's power down
   to half of what you set, and puts it back when you leave RTTY or close Costas (unless you turned the power yourself
-  meanwhile). Change the share under **RTTY power** in Settings; 100 % leaves the power alone.
+  meanwhile). Change the share under **RTTY power** in Settings; 100 % leaves the power alone. Nothing is sent in RTTY
+  until the cap is on the radio. Costas remembers the power to put back, so it is restored even after a crash; if the
+  radio does not take it back, a note under the macro keys says what to set, and Costas tries again on the next mode
+  change or reconnect.
 - For PSK, automatic transmit level aims for no ALC at all, since any ALC action makes a PSK signal wider. It keeps a
   separate level for PSK on each band, so your FT8 level is not affected.
 - If the radio's speech processor is on, a warning appears under the macro keys. It distorts PSK and RTTY; turn it

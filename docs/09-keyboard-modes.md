@@ -176,6 +176,15 @@ There is a watchdog for the keyboard modes:
 - It also stops after **20 seconds** of idle with nothing left to send.
 - Either stop is shown on the strip as "Stopped by watchdog".
 - As built (M12): if an over has still not ended 10 s past the 3-minute limit (the audio device stopped taking samples, so the over cannot play out), Halt drops PTT at once.
+- As built (transmit fixes, 2026-10-14):
+  - An audio device that takes no samples for 5 s (`KeyboardTransmitter.AudioStall`) drops PTT through the fault path, with a message, instead of waiting for the 3-minute limit. The 10 s backstop stays.
+  - A PTT failure as the over starts is returned as the refusal and leaves the keyboard free. `KeyboardOver.IdleTimeout` tells the 20 s idle close from the 3-minute limit.
+  - A macro counts as sent only once its last sample has played, so a Halt that cuts its buffered tail leaves the step not done.
+  - A function key held down sends once; a macro already waiting is refused ("already waiting to go out").
+  - Changing band or mode stops any transmission, FT8 and Tune included, and drops what was prepared. A dial change during a transmission rechecks the band edge and halts if it no longer fits; typing a frequency is refused while transmitting.
+  - The band-edge width of RTTY is the shift plus twice the baud rate (261 Hz at 170 Hz / 45.45 Bd). PSK and RTTY are refused on a band with no row for that mode, rather than borrowing the FT8 limits.
+  - The RTTY power cap holds keyboard transmit until it is on the radio, is saved in settings (with the radio it belongs to) so a crash does not compound it, stores the level the radio reads back, keeps a restore the radio refused (with a note) to retry, and is serialised so two applications never overlap.
+  - Automatic transmit level credits ALC to the band and mode the transmission started on.
 
 ## 10. Screen (see `02-ui-spec.md` for the FT8 layout)
 
