@@ -18,8 +18,11 @@ namespace Ft8Client.App.ViewModels;
 /// </summary>
 public static class KeyboardCharacters
 {
-    /// <summary>The character as the mode sends it: RTTY sends capitals.</summary>
-    public static char Normalize(bool rtty, char c) => rtty ? char.ToUpperInvariant(c) : c;
+    /// <summary>
+    /// The character as the mode sends it: RTTY sends capitals. Only a to z are raised; other letters (such as the long s,
+    /// whose capital is S) stay as typed, so they are flagged rather than changed.
+    /// </summary>
+    public static char Normalize(bool rtty, char c) => rtty && c is >= 'a' and <= 'z' ? (char)(c - 'a' + 'A') : c;
 
     /// <summary>True when the mode can send the character exactly (after <see cref="Normalize"/>).</summary>
     public static bool CanSend(bool rtty, char c) => rtty ? Ita2.CanSend(Normalize(true, c)) : Varicode.CanSend(c);

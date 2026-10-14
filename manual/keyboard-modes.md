@@ -21,7 +21,7 @@ passband at once (up to 20).
   for two minutes after its CQ, and the list refreshes every few seconds.
 - **The waterfall** labels each signal with its station's call, "?" until Costas has read a call, and the station you
   are in contact with in red. Click a signal to read it, even before Costas has noticed it; it stays read while that
-  station is quiet. For RTTY, click either of its two tones or between them.
+  station is quiet. When a reply comes back a little off that frequency, the same channel moves onto it. For RTTY, click either of its two tones or between them.
 - **Signals without a callsign yet** are counted in a line under Next in line, with their audio frequencies.
 - **Band activity** (right column) and the band summary count the stations read every three minutes, as there are no
   slots to count.
@@ -182,5 +182,8 @@ Costas reads; what you send is always the right way round.
 | **RTTY shift** | 170 Hz | The distance between the two tones. Almost all amateur RTTY uses 170 Hz |
 | **Reverse** | off | Swaps the two tones. Turn it on only for a station whose text reads as gibberish while its signal looks clean |
 | **Unshift on space** | on | Returns to letters after a space, as most stations expect. Turn it off if numbers keep turning into letters |
+
+RTTY sends letters (as capitals), figures and `- ? : $ ' ! ( ) " # & . / ; ,`. Anything else, such as `@`, `%` or
+`*`, is refused rather than sent; Costas never swaps it for something else.
 
 Costas reads RTTY through fading that takes out one tone at a time, as long as the other tone stays above the noise.

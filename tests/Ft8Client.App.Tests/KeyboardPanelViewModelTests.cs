@@ -134,7 +134,7 @@ public class KeyboardPanelViewModelTests
         panel.Typed = "HELLO @ 50% é";
 
         panel.HasKeyNote.Should().BeTrue();
-        panel.KeyNote.Should().Contain("'@'").And.Contain("'%'").And.Contain("'É'");
+        panel.KeyNote.Should().Contain("'@'").And.Contain("'%'").And.Contain("'é'");
         panel.Typed = "HELLO";
         panel.HasKeyNote.Should().BeFalse();
     }
