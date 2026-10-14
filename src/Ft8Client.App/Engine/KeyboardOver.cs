@@ -12,4 +12,11 @@ namespace Ft8Client.App.Engine;
 /// <param name="Macros">The keys of the macros sent whole, in order.</param>
 /// <param name="Completed">True when it ended normally (everything sent, then back to receive).</param>
 /// <param name="Watchdog">True when the keyboard watchdog ended it.</param>
-public sealed record KeyboardOver(string Sent, IReadOnlyList<int> Macros, bool Completed, bool Watchdog);
+public sealed record KeyboardOver(string Sent, IReadOnlyList<int> Macros, bool Completed, bool Watchdog)
+{
+    /// <summary>
+    /// True when the watchdog closed the over only because nothing was sent for <see cref="KeyboardTransmitter.MaxIdle"/>
+    /// (a typed over left idle), not because it reached <see cref="KeyboardTransmitter.MaxOver"/>.
+    /// </summary>
+    public bool Idle { get; init; }
+}

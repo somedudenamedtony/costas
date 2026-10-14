@@ -51,6 +51,7 @@ public sealed class KeyboardTransmitter : IDisposable
     private bool _endAfter;
     private bool _closing;
     private bool _watchdog;
+    private bool _idleClosed;
     private volatile bool _disposed;
     private int _sentChars;
     private DateTime _overStartUtc;
@@ -137,6 +138,7 @@ public sealed class KeyboardTransmitter : IDisposable
                 _macroEnds.Clear();
                 _macrosSent.Clear();
                 _watchdog = false;
+                _idleClosed = false;
                 _overStartUtc = _clock.UtcNow;
                 Write(mod.Start());
                 if (_background)
@@ -237,6 +239,7 @@ public sealed class KeyboardTransmitter : IDisposable
                 {
                     if (now - _overStartUtc >= MaxOver || (_waiting.Length == 0 && !_endAfter && now - _lastActivityUtc >= MaxIdle))
                     {
+                        _idleClosed = now - _overStartUtc < MaxOver;
                         _watchdog = true;
                         _waiting.Clear();
                         Close(mod, stream);
@@ -295,7 +298,7 @@ public sealed class KeyboardTransmitter : IDisposable
         lock (_gate)
         {
             if (_stream is null) return;
-            over = new KeyboardOver(_sent.ToString(), [.. _macrosSent], completed && !_watchdog, _watchdog);
+            over = new KeyboardOver(_sent.ToString(), [.. _macrosSent], completed && !_watchdog, _watchdog) { Idle = _idleClosed };
             _stream = null;
             _mod = null;
             _closing = false;

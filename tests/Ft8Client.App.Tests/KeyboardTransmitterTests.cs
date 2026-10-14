@@ -190,6 +190,7 @@ public class KeyboardTransmitterTests
 
         var over = s.Overs.Should().ContainSingle().Subject;
         over.Watchdog.Should().BeTrue();
+        over.Idle.Should().BeTrue();
         over.Completed.Should().BeFalse();
         s.Radio.PttLog.Last().On.Should().BeFalse();
     }
@@ -207,6 +208,7 @@ public class KeyboardTransmitterTests
 
         var over = s.Overs.Should().ContainSingle().Subject;
         over.Watchdog.Should().BeTrue();
+        over.Idle.Should().BeFalse();
         s.Radio.PttLog.Select(p => p.On).Should().Equal(true, false);
         (s.Radio.PttLog[1].TimeUtc - s.Radio.PttLog[0].TimeUtc).Should().BeCloseTo(KeyboardTransmitter.MaxOver, TimeSpan.FromSeconds(2));
     }
