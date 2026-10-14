@@ -34,6 +34,8 @@ public partial class MainWindow : Window
             vm.ManualOffset = hz.ToString(System.Globalization.CultureInfo.InvariantCulture);
             vm.OffsetManualCommand.Execute(null);
             ReceiveWaterfall.Update(null, hz);
+            // In a keyboard mode a click also reads the signal there, and keeps reading it while it is quiet.
+            if (!Core.ModeInfo.IsSlotted(vm.Host.Session.Config.Mode)) vm.Host.Keyboard.Listen(hz);
         };
         AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
         AddHandler(PointerPressedEvent, (_, _) => Vm?.Activity(), RoutingStrategies.Tunnel);
@@ -71,6 +73,9 @@ public partial class MainWindow : Window
             }
             var row = pump?.Spectrum.TakeLatest();
             ReceiveWaterfall.Update(snapshot.Transmitting ? null : row, snapshot.TxOffsetHz);
+            ReceiveWaterfall.SetTags(Core.ModeInfo.IsSlotted(snapshot.Mode)
+                ? []
+                : [.. snapshot.Stations.Where(st => st.Parity is null && st.HeardInLastOwnSlot).Select(st => (st.OffsetHz, st.Call))]);
         };
         _timer.Start();
         if (!vm.Host.Settings.Current.SetupComplete) Dispatcher.UIThread.Post(() => OpenDialog("setup"));

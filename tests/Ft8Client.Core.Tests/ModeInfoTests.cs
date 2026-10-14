@@ -56,6 +56,8 @@ public class ModeInfoTests
     [Theory]
     [InlineData("ft8", Mode.Ft8)]
     [InlineData("FT4", Mode.Ft4)]
+    [InlineData("psk31", Mode.Psk31)]
+    [InlineData("PSK63", Mode.Psk63)]
     public void TryParse_OperableMode_Parses(string text, Mode expected)
     {
         ModeInfo.TryParse(text, out var mode).Should().BeTrue();
@@ -63,8 +65,6 @@ public class ModeInfoTests
     }
 
     [Theory]
-    [InlineData("PSK31")]
-    [InlineData("PSK63")]
     [InlineData("RTTY")]
     [InlineData("")]
     [InlineData(null)]

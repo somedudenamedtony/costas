@@ -125,6 +125,8 @@ Accept:
 - Automated: three simultaneous signals in one recording all decode.
 - Manual: on the owner's radio, PSK31 on 20 m shows the same callsigns as fldigi on the same audio over 10 minutes.
 
+Status (2026-10-13, `feature/keyboard-modes`): built. The golden-text and three-signal tests pass on synthetic recordings; the fldigi recordings and the manual check on the radio are still to do (V25). Not yet built: the "signal without a callsign yet" row under Next in line, and the developer-mode Record button.
+
 ## M11 · RTTY receive
 
 Build: RTTY demodulator (ATC, unshift-on-space, Reverse), and the speed and shift settings.

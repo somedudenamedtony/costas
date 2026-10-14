@@ -56,8 +56,10 @@ public static class RemoteStateBuilder
         var band = BandPlan.Display(s.Band);
 
         // Same countdown as the contact card: while transmitting, to the end of the transmission.
-        var slotLen = s.Transmitting ? ModeInfo.TxEnd(s.Mode) : ModeInfo.SlotLength(s.Mode);
-        var into = nowUtc - SlotMath.SlotStart(nowUtc, s.Mode);
+        // A keyboard mode has no slots: a zero length hides the countdown.
+        var slotted = ModeInfo.IsSlotted(s.Mode);
+        var slotLen = !slotted ? TimeSpan.Zero : s.Transmitting ? ModeInfo.TxEnd(s.Mode) : ModeInfo.SlotLength(s.Mode);
+        var into = slotted ? nowUtc - SlotMath.SlotStart(nowUtc, s.Mode) : TimeSpan.Zero;
         var (meter, meterTip, meterKind) = TxMeterText.Warning(s.TxMeters);
         var summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty);
 

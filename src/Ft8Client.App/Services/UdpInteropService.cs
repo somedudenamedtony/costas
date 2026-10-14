@@ -111,7 +111,7 @@ public sealed class UdpInteropService : IDisposable
             DialHz = s.DialHz, Mode = ModeInfo.Name(s.Mode), DxCall = c?.DxCall ?? string.Empty,
             Report = c?.ReportSent is { } rs ? Report.Format(rs) : string.Empty, TxEnabled = c is not null || s.CallingCq,
             Transmitting = s.Transmitting, RxDf = s.TxOffsetHz, TxDf = s.TxOffsetHz, DeCall = s.MyCall, DeGrid = s.MyGrid,
-            DxGrid = c?.DxGrid ?? string.Empty, TrPeriodSeconds = (int)ModeInfo.SlotLength(s.Mode).TotalSeconds,
+            DxGrid = c?.DxGrid ?? string.Empty, TrPeriodSeconds = ModeInfo.IsSlotted(s.Mode) ? (int)ModeInfo.SlotLength(s.Mode).TotalSeconds : 0,
             ConfigurationName = _settings.Current.Profile.Name, TxMessage = s.TransmittingMessage ?? string.Empty,
         };
         lock (_gate)
