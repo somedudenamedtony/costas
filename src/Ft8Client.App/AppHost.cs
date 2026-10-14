@@ -47,7 +47,8 @@ public sealed class AppHost : IAsyncDisposable
     private volatile ServiceStatus? _rigOpenStatus;
     private CapturePump? _pump;
     private SimulatedKeyboardAudio? _keyboardSim;
-    private readonly KeyboardRadio _keyboardRadio = new();
+    private KeyboardRadio _keyboardRadio = new();
+    private int _keyboardRadioBusy;
     private ChimePlayer? _chime;
     private SlotLoop? _loop;
     private IRig _rig;
@@ -269,6 +270,8 @@ public sealed class AppHost : IAsyncDisposable
         var config = SettingsMapper.ToConfig(s);
         Plan = StartupPlan.Decide(Args, s, FindSamples());
         Simulating = Plan.Replaying;
+        // A real radio's RTTY power cap is remembered across a crash; a simulated one is not, so it never touches the real power.
+        if (!Simulating) _keyboardRadio = new KeyboardRadio(SavedRttyCap(s), SaveRttyCap);
 
         // Audio.
         ISlotSource source;
@@ -331,7 +334,7 @@ public sealed class AppHost : IAsyncDisposable
         Keyboard.Start();
         if (Plan.ReplayFolder is not null)
         {
-            _keyboardSim = new SimulatedKeyboardAudio(FindSamples(), Keyboard, () => Session.Config.Mode, Clock);
+            _keyboardSim = new SimulatedKeyboardAudio(FindSamples(), Keyboard, () => Session.Config.Mode, Clock, Plan.ReplayFolder);
             _keyboardSim.Start();
         }
 
@@ -434,8 +437,10 @@ public sealed class AppHost : IAsyncDisposable
         PotaAdif.Worked(Qsos.List().Where(q => string.Equals(q.StationCallsign, Settings.Current.Profile.Callsign, StringComparison.OrdinalIgnoreCase)));
 
     // The radio settings of a keyboard mode (RTTY power cap, speech processor check), shown when something needs doing.
+    // PSK and RTTY transmit is held back until they are on the radio, so the first RTTY over never goes at full power.
     private async Task ApplyKeyboardRadioAsync()
     {
+        BeginKeyboardRadio(Session.Config.Mode);
         try
         {
             var note = await _keyboardRadio.ApplyAsync(_rig, Session.Config.Mode, Settings.Current.Operating.RttyPowerPercent, _cts.Token)
@@ -445,31 +450,69 @@ public sealed class AppHost : IAsyncDisposable
         catch (OperationCanceledException)
         {
         }
+        finally
+        {
+            EndKeyboardRadio();
+        }
     }
+
+    private void BeginKeyboardRadio(Mode mode)
+    {
+        Interlocked.Increment(ref _keyboardRadioBusy);
+        if (mode == Mode.Rtty && Settings.Current.Operating.RttyPowerPercent is > 0 and < 100)
+            Session.HoldKeyboardTransmit("Setting the RTTY power cap on the radio; send again in a moment.");
+    }
+
+    private void EndKeyboardRadio()
+    {
+        if (Interlocked.Decrement(ref _keyboardRadioBusy) == 0) Session.HoldKeyboardTransmit(null);
+    }
+
+    // The cap an earlier run left on this radio (after a crash), or null.
+    private static RttyPowerCap? SavedRttyCap(AppSettings s) =>
+        s.Operating.RttyPowerCap is { } c && string.Equals(c.RigKey, RigKey(s.Profile.Rig), StringComparison.Ordinal)
+            ? new RttyPowerCap(c.Restore, c.Capped)
+            : null;
+
+    private void SaveRttyCap(RttyPowerCap? cap) => Settings.Update(s => s.Operating.RttyPowerCap = cap is null
+        ? null
+        : new RttyPowerCapOptions { Restore = cap.Restore, Capped = cap.Capped, RigKey = _rigKey ?? RigKey(s.Profile.Rig) });
 
     /// <summary>Changes band and mode: sets the dial through the radio.</summary>
     public async Task SetBandAsync(string band, Mode mode)
     {
         var oldMode = Session.Config.Mode;
-        Settings.Update(s =>
-        {
-            s.Operating.Band = band;
-            s.Operating.Mode = ModeInfo.Name(mode);
-        });
-        SlotClock.SetMode(mode);
-        Session.SetBand(band, mode);
-        var e = Frequencies.Find(band, mode);
-        if (e is null) return;
+        var modeChanged = mode != oldMode;
+        // Held from before the session changes mode until the RTTY cap is on, so no over can key the radio between.
+        if (modeChanged) BeginKeyboardRadio(mode);
         try
         {
-            await _rig.SetFrequencyAsync(e.DialHz, _cts.Token).ConfigureAwait(false);
-            await _rig.SetModeAsync(RigMode.PktUsb, _cts.Token).ConfigureAwait(false);
-            Session.SetDial(e.DialHz);
-            if (mode != oldMode) await ApplyKeyboardRadioAsync().ConfigureAwait(false);
+            Settings.Update(s =>
+            {
+                s.Operating.Band = band;
+                s.Operating.Mode = ModeInfo.Name(mode);
+            });
+            SlotClock.SetMode(mode);
+            Session.SetBand(band, mode);
+            if (Frequencies.Find(band, mode) is { } e)
+            {
+                try
+                {
+                    await _rig.SetFrequencyAsync(e.DialHz, _cts.Token).ConfigureAwait(false);
+                    await _rig.SetModeAsync(RigMode.PktUsb, _cts.Token).ConfigureAwait(false);
+                    Session.SetDial(e.DialHz);
+                }
+                catch (RigException ex)
+                {
+                    Session.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, ex.Message, Clock.UtcNow));
+                }
+            }
+            // The power cap does not depend on the dial: it goes on (or comes off) even if the radio refused the frequency.
+            if (modeChanged) await ApplyKeyboardRadioAsync().ConfigureAwait(false);
         }
-        catch (RigException ex)
+        finally
         {
-            Session.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, ex.Message, Clock.UtcNow));
+            if (modeChanged) EndKeyboardRadio();
         }
     }
 
@@ -480,6 +523,7 @@ public sealed class AppHost : IAsyncDisposable
     public async Task<string?> TuneDialAsync(long hz)
     {
         var mode = Session.Config.Mode;
+        if (Transmitter.Transmitting) return "Wait until this transmission ends to change frequency.";
         if (BandPlan.BandOf(hz) is not { } band) return $"{DialText.Mhz(hz)} MHz is outside the amateur bands.";
         if (!Frequencies.Entries.Any(e => string.Equals(e.Band, band, StringComparison.OrdinalIgnoreCase)))
             return $"Costas has no transmit limits for {BandPlan.Display(band)}, so it does not tune there.";
@@ -746,7 +790,8 @@ public sealed class AppHost : IAsyncDisposable
         {
             // The operator's own power comes back if RTTY capped it.
             using var restore = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-            await _keyboardRadio.RestoreAsync(_rig, restore.Token).ConfigureAwait(false);
+            if (await _keyboardRadio.RestoreAsync(_rig, restore.Token).ConfigureAwait(false) is { } why)
+                Log.Warning("Exit: {Why}", why);
         }
         catch (Exception ex)
         {

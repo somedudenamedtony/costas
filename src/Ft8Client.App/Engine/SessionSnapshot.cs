@@ -138,10 +138,25 @@ public sealed record SessionSnapshot
     public IReadOnlyList<Macro> Macros { get; init; } = Macro.Defaults;
 
     /// <summary>
+    /// PSK and RTTY: each macro's text as it would go out now, by key (fields filled, optional parts kept or left out,
+    /// fields with no value as written), for its button's tooltip.
+    /// </summary>
+    public IReadOnlyDictionary<int, string> MacroPreviews { get; init; } = new Dictionary<int, string>();
+
+    /// <summary>
     /// PSK and RTTY: the macro last refused because a field has no value, in pieces with those fields marked (shown in
     /// red in the type-ahead line), or null.
     /// </summary>
     public IReadOnlyList<MacroSegment>? BlockedMacro { get; init; }
+
+    /// <summary>
+    /// PSK and RTTY: the partner's report, name, QTH and grid as the contact will log them (clicked words beat values
+    /// read from their text), or null when not in a keyboard contact.
+    /// </summary>
+    public Exchange? Received { get; init; }
+
+    /// <summary>PSK and RTTY: the audio offsets of signals with text but no callsign yet, lowest first.</summary>
+    public IReadOnlyList<int> UnnamedSignals { get; init; } = [];
 
     /// <summary>PSK and RTTY: a note about the radio's settings for the mode (power cap, speech processor), or null.</summary>
     public string? RadioNote { get; init; }

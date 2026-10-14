@@ -43,6 +43,44 @@ public class ExchangeReaderTests
     [Fact]
     public void Read_NameFollowedByCall_NotTakenAsName() => ExchangeReader.Read("NAME W7LIT").Name.Should().BeNull();
 
+    [Theory]
+    [InlineData("NAME IS JOSE", "Jose")]
+    [InlineData("NAME HR JOHN", "John")]
+    [InlineData("OP IS BOB", "Bob")]
+    [InlineData("MY NAME IS BOB", "Bob")]
+    [InlineData("NAME: BOB", "Bob")]
+    [InlineData("NAME = BOB", "Bob")]
+    public void Read_NameAfterFiller_FillerSkipped(string text, string name) => ExchangeReader.Read(text).Name.Should().Be(name);
+
+    [Theory]
+    [InlineData("QTH IS SAN JUAN", "San Juan")]
+    [InlineData("QTH HR SAN JUAN. K", "San Juan")]
+    [InlineData("QTH: BOISE", "Boise")]
+    public void Read_QthAfterFiller_FillerSkipped(string text, string qth) => ExchangeReader.Read(text).Qth.Should().Be(qth);
+
+    [Theory]
+    [InlineData("RST: 579", 579)]
+    [InlineData("UR RST IS 599 599", 599)]
+    [InlineData("UR RST 5NN", 599)]
+    [InlineData("TNX FER RST 579 UR 599", 599)]
+    [InlineData("TNX FER RST 579", null)]
+    [InlineData("TU UR 559", 559)]
+    public void Read_ReportForms_TheirsOnly(string text, int? rst) => ExchangeReader.Read(text).Rst.Should().Be(rst);
+
+    [Theory]
+    [InlineData("MY LOC IS FN31")]
+    [InlineData("LOC: FN31")]
+    [InlineData("GRID = FN31")]
+    public void Read_GridAfterFiller_Found(string text) => ExchangeReader.Read(text).Grid.Should().Be("FN31");
+
+    [Fact]
+    public void Read_LongQthSentTwice_CountedOnce() =>
+        ExchangeReader.Read("QTH SALT LAKE CITY SALT LAKE CITY. K").Qth.Should().Be("Salt Lake City");
+
+    [Fact]
+    public void Read_QthEndsWithStateCode_CodeKeptInCapitals() =>
+        ExchangeReader.Read("QTH DENVER CO. NAME BOB").Qth.Should().Be("Denver CO");
+
     [Fact]
     public void Read_NoExchange_Empty() => ExchangeReader.Read("CQ CQ DE KP4JRS KP4JRS K").IsEmpty.Should().BeTrue();
 }

@@ -23,13 +23,13 @@ do a state or grid on an any-band entry.
   a state entry needs QRZ lookups set up.
 - **Every other band, through PSK Reporter.** Countries and calls on your list are followed in PSK Reporter's live
   feed. A report counts only when a receiver within 1,000 km (about 620 miles) of you heard the station in the last
-  15 minutes, so the station is likely workable from your area. Change the distance in Settings. This needs the live
+  15 minutes, so the station is likely workable from your area. Reports in FT8, FT4, PSK31, PSK63 and RTTY count. Change the distance in Settings. This needs the live
   feed turned on in [Settings › PSK Reporter](settings.md#psk-reporter).
 
 ## What an alert looks like
 
 - A bar under the top bar: *Christmas Island (VK9X): VK9XA is on 17 m, heard 300 mi from you at -14 dB.* **Go to
-  17 m** changes band (and mode, if the station is on FT4). **Dismiss** hides the bar.
+  17 m** changes band (and mode, if the station is in another mode). **Dismiss** hides the bar.
 - The band menu names hunted stations heard on each band in the last 15 minutes, for example
   *Hunting: VK9XA (Christmas Island)*.
 - Mini mode shows the alert as an extra line, with ✕ to dismiss it.

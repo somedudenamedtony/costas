@@ -176,7 +176,8 @@ public static class Converters
         _ => Brushes.White,
     });
 
-    private static IBrush? Brush(string key)
+    /// <summary>A theme brush by key, for the current theme variant; null when there is none.</summary>
+    internal static IBrush? Brush(string key)
     {
         var app = Application.Current;
         if (app is null) return null;

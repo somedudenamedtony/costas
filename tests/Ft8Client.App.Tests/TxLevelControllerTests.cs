@@ -58,6 +58,20 @@ public sealed class TxLevelControllerTests : IDisposable
     }
 
     [Fact]
+    public async Task OnMeasured_BandChangedBeforeMetersArrive_CreditedToBandItWasSentOn()
+    {
+        (await _tx.TuneAsync(1000, 1, new TxGuardInput("20m", 14_074_000, null, 2.0, null, true))).Should().BeNull();
+        // The band change halts the tone; its meters are reported after it.
+        _settings.Update(s => s.Operating.Band = "40m");
+        await _tx.HaltAsync();
+
+        _level.OnMeasured(Meters(0.6));
+
+        _settings.Current.Profile.Audio.TxGainByBand.Should().Equal(new Dictionary<string, double> { ["20m"] = -13 });
+        _tx.GainDb.Should().Be(-10);
+    }
+
+    [Fact]
     public void Apply_BandChange_UsesThatBandsOwnLevel()
     {
         _level.OnMeasured(Meters(0.6));

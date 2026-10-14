@@ -128,4 +128,10 @@ public class HeardMapTests
         SignalSparkline.Level(-4, scale).Should().Be(0);
         SignalSparkline.Level(-22, scale).Should().Be(1);
     }
+
+    [Fact]
+    public void ActivitySentence_KeyboardModeNoEntries_SaysThreeMinutes()
+    {
+        HeardMapViewModel.ActivitySentence([], Now, slotted: false).Should().Contain("every three minutes");
+    }
 }

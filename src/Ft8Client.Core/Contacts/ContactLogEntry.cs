@@ -11,8 +11,8 @@ namespace Ft8Client.Core.Contacts;
 /// <summary>A contact to log.</summary>
 /// <param name="Call">DX call.</param>
 /// <param name="Grid">DX grid, if known.</param>
-/// <param name="ReportSent">Report I sent.</param>
+/// <param name="ReportSent">Report I sent, or null when none went out (a PSK or RTTY contact logged before my exchange).</param>
 /// <param name="ReportReceived">Report I received, if any.</param>
 /// <param name="TimeOnUtc">Start of my first transmission in the contact.</param>
 /// <param name="TimeOffUtc">When it was logged.</param>
-public sealed record ContactLogEntry(string Call, string? Grid, int ReportSent, int? ReportReceived, DateTime TimeOnUtc, DateTime TimeOffUtc);
+public sealed record ContactLogEntry(string Call, string? Grid, int? ReportSent, int? ReportReceived, DateTime TimeOnUtc, DateTime TimeOffUtc);

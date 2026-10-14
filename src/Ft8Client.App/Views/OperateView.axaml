@@ -74,6 +74,7 @@
                     <ComboBox ItemsSource="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).CqModifiers}"
                               SelectedItem="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SelectedCqModifier}"
                               MinWidth="96" AutomationProperties.Name="CQ modifier"
+                              IsVisible="{Binding !$parent[UserControl].((vm:OperateViewModel)DataContext).Keyboard.Visible}"
                               ToolTip.Tip="What your CQ says: CQ for everyone, CQ DX for stations outside your country, CQ NA and the like for one continent. Applies to your next CQ.">
                       <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:CqModifierChoice">
@@ -81,7 +82,9 @@
                         </DataTemplate>
                       </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <Button Content="Resend" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ResendCommand}" IsEnabled="{Binding Active}" />
+                    <!-- PSK and RTTY resend with the macro keys, so Resend is an FT8 and FT4 control. -->
+                    <Button Content="Resend" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ResendCommand}" IsEnabled="{Binding Active}"
+                            IsVisible="{Binding !$parent[UserControl].((vm:OperateViewModel)DataContext).Keyboard.Visible}" />
                     <Button Content="Log now" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).LogNowCommand}" IsEnabled="{Binding CanLogNow}" />
                     <Button Content="Abandon (Esc)" Classes="critical" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).AbandonCommand}" IsEnabled="{Binding Active}" />
                   </StackPanel>
@@ -150,9 +153,13 @@
             <!-- PSK and RTTY: the conversation box, the type-ahead line, the macro keys and a line of hints (docs/09 section 10). -->
             <StackPanel DataContext="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard}" x:DataType="vm:KeyboardPanelViewModel"
                         IsVisible="{Binding Visible}" Spacing="6" Margin="0,8,0,0">
+              <!-- A fixed height, shown from the start, so text arriving never moves the type-ahead line and the macro keys. -->
               <Border BorderThickness="1" BorderBrush="{DynamicResource ControlBorderBrush}" CornerRadius="6" Padding="10,6"
-                      IsVisible="{Binding HasConversation}" AutomationProperties.Name="Conversation box">
-                <ScrollViewer x:Name="ConversationScroll" MaxHeight="160" VerticalScrollBarVisibility="Auto">
+                      AutomationProperties.Name="Conversation box">
+                <Panel>
+                <TextBlock Text="The conversation with the station in contact appears here." Classes="secondary" FontSize="12"
+                           IsVisible="{Binding !HasConversation}" />
+                <ScrollViewer x:Name="ConversationScroll" Height="120" VerticalScrollBarVisibility="Auto">
                   <ItemsControl ItemsSource="{Binding Conversation}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:ConversationRowViewModel">
@@ -164,7 +171,7 @@
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                               <DataTemplate x:DataType="x:String">
-                                <Button Classes="word" Padding="0,0,5,0" MinHeight="0" Background="Transparent" BorderThickness="0"
+                                <Button Classes="word" Focusable="False" Padding="0,0,5,0" MinHeight="0" Background="Transparent" BorderThickness="0"
                                         ToolTip.Tip="Use this word in the contact">
                                   <TextBlock Text="{Binding}" Classes="message" FontSize="13" />
                                   <Button.Flyout>
@@ -190,11 +197,12 @@
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
                 </ScrollViewer>
+                </Panel>
               </Border>
-              <!-- On the air: what has gone (dimmed) and what is still to go. -->
+              <!-- On the air: what has gone (dimmed) and what is still to go. The two runs sit on one line with nothing
+                   between them: whitespace there would show a space that is not sent. -->
               <TextBlock IsVisible="{Binding OnAir}" TextWrapping="Wrap" Classes="message" FontSize="13" AutomationProperties.Name="Sending">
-                <Run Text="{Binding SentPart}" Foreground="{DynamicResource TextSecondaryBrush}" />
-                <Run Text="{Binding WaitingPart}" FontWeight="SemiBold" />
+                <Run Text="{Binding SentPart}" Foreground="{DynamicResource TextSecondaryBrush}" /><Run Text="{Binding WaitingPart}" FontWeight="SemiBold" />
               </TextBlock>
               <!-- A macro refused for a field with no value: the field in red until it is filled. -->
               <Border IsVisible="{Binding HasBlockedMacro}" BorderBrush="{DynamicResource CriticalBrush}" BorderThickness="1" CornerRadius="4" Padding="8,4">
@@ -202,6 +210,9 @@
               </Border>
               <TextBox x:Name="TypeAhead" Text="{Binding Typed}" FontFamily="{StaticResource MessageFont}" AutomationProperties.Name="Type ahead"
                        PlaceholderText="Type here. Enter sends; while transmitting, keys go out as you type." />
+              <!-- Characters the mode cannot send, flagged before anything goes out (docs/09 section 1). -->
+              <TextBlock Text="{Binding KeyNote}" IsVisible="{Binding HasKeyNote}" Foreground="{DynamicResource CriticalBrush}" FontWeight="SemiBold"
+                         TextWrapping="Wrap" AutomationProperties.Name="Characters not sent" AutomationProperties.LiveSetting="Assertive" />
               <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
                   <ToggleSwitch IsChecked="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).RttyReverse}" OnContent="Reverse" OffContent="Reverse"
@@ -214,7 +225,7 @@
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:MacroButtonViewModel">
-                      <Button Content="{Binding Caption}" Classes="macro" Classes.next="{Binding IsNext}" ToolTip.Tip="{Binding Text}"
+                      <Button Content="{Binding Caption}" Classes="macro" Classes.next="{Binding IsNext}" Focusable="False" ToolTip.Tip="{Binding Text}"
                               Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.SendMacroCommand}" CommandParameter="{Binding Key}" />
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
@@ -300,8 +311,10 @@
                   </Button>
                 </StackPanel>
               </DockPanel>
-              <!-- Next in line and Repeats share these columns so the two tables line up. -->
-              <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" Margin="14,0,14,4">
+              <!-- Next in line and Repeats share these columns so the two tables line up. Where, Why, Doing now, Chance and
+                   Last worked share the width left in proportion, so at narrower windows none of them, and not the Call button,
+                   is squeezed out. -->
+              <Grid ColumnDefinitions="36,100,19*,16*,25*,100,46,64,23*,12*,74" Margin="14,0,14,4">
                 <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
                 <TextBlock Grid.Column="1" Text="Call" Classes="secondary" />
                 <TextBlock Grid.Column="2" Text="Where" Classes="secondary" />
@@ -333,7 +346,7 @@
                         <Border Width="3" HorizontalAlignment="Left" Background="{Binding IsInContact, Converter={x:Static v:Converters.SelectedBar}}" />
                         <Border BorderThickness="1" CornerRadius="3" Margin="1" IsHitTestVisible="False"
                                 BorderBrush="{Binding IsSelected, Converter={x:Static v:Converters.CursorOutline}}" />
-                        <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" MinHeight="40" Margin="14,0">
+                        <Grid ColumnDefinitions="36,100,19*,16*,25*,100,46,64,23*,12*,74" MinHeight="40" Margin="14,0">
                           <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -370,6 +383,8 @@
                 </ListBox.ItemTemplate>
               </ListBox>
               <TextBlock Text="Nobody you need is calling CQ right now." Classes="secondary" Margin="14,10" IsVisible="{Binding LineEmpty}" />
+              <TextBlock Text="{Binding UnnamedText}" Classes="secondary" Margin="14,6,14,0" TextWrapping="Wrap"
+                         IsVisible="{Binding UnnamedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <TextBlock Text="{Binding MoreText}" Classes="secondary" Margin="14,6,14,10" IsVisible="{Binding MoreText, Converter={x:Static v:Converters.NotEmpty}}" />
             </StackPanel>
 
@@ -408,7 +423,7 @@
             <TextBlock Text="Repeats" Classes="title" Margin="14,0" />
             <TextBlock Text="{Binding RepeatsSubtitle}" Classes="secondary" Margin="14,2,14,6" />
             <!-- The same columns as Next in line. -->
-            <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" Margin="14,0,14,4" IsVisible="{Binding !!Repeats.Count}">
+            <Grid ColumnDefinitions="36,100,19*,16*,25*,100,46,64,23*,12*,74" Margin="14,0,14,4" IsVisible="{Binding !!Repeats.Count}">
               <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
               <TextBlock Grid.Column="1" Text="Call" Classes="secondary" />
               <TextBlock Grid.Column="2" Text="Where" Classes="secondary" />
@@ -427,7 +442,7 @@
                           BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
                     <Panel>
                       <Border Width="3" HorizontalAlignment="Left" Background="{Binding IsInContact, Converter={x:Static v:Converters.SelectedBar}}" />
-                      <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" MinHeight="36" Margin="14,0">
+                      <Grid ColumnDefinitions="36,100,19*,16*,25*,100,46,64,23*,12*,74" MinHeight="36" Margin="14,0">
                         <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -533,7 +548,7 @@
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <StackPanel Orientation="Horizontal" Spacing="5">
                   <Rectangle Width="9" Height="9" Fill="{DynamicResource TextSecondaryBrush}" Opacity="0.35" VerticalAlignment="Center" />
-                  <TextBlock Text="Decodes per slot" Classes="secondary" FontSize="12" />
+                  <TextBlock Text="{Binding ActivityLegend}" Classes="secondary" FontSize="12" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="5">
                   <Rectangle Width="9" Height="9" Fill="{DynamicResource AccentBrush}" VerticalAlignment="Center" />

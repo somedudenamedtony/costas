@@ -59,14 +59,27 @@ public static class SettingsMapper
         };
     }
 
+    // The first default Exchange and 73, which could never be sent before the partner's name was known. Stored
+    // unchanged, each becomes the current default, which leaves out "GE {NAME}" or "TNX {NAME}" until there is a name
+    // (owner decisions, 2026-10-14).
+    private static readonly Dictionary<string, int> OldDefaults = new(StringComparer.Ordinal)
+    {
+        ["{CALL} DE {MYCALL} GE {NAME} UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN"] = Macro.ExchangeKey,
+        ["TNX {NAME} 73 {CALL} DE {MYCALL} SK"] = 4,
+    };
+
     /// <summary>The PSK and RTTY macros: the stored ones, or the defaults when none are stored.</summary>
     public static IReadOnlyList<Macro> Macros(OperatingSettings o)
     {
         var stored = o.Macros.Where(m => m.Key is >= 1 and <= 12 && !string.IsNullOrWhiteSpace(m.Text))
             .GroupBy(m => m.Key).Select(g => g.First()).OrderBy(m => m.Key)
-            .Select(m => new Macro(m.Key, string.IsNullOrWhiteSpace(m.Label) ? $"F{m.Key}" : m.Label.Trim(), m.Text.Trim())).ToList();
+            .Select(m => new Macro(m.Key, string.IsNullOrWhiteSpace(m.Label) ? $"F{m.Key}" : m.Label.Trim(), Upgrade(m.Key, m.Text.Trim())))
+            .ToList();
         return stored.Count == 0 ? Macro.Defaults : stored;
     }
+
+    private static string Upgrade(int key, string text) =>
+        OldDefaults.TryGetValue(text, out var k) && k == key ? Macro.Defaults.First(m => m.Key == key).Text : text;
 
     /// <summary>Ranking settings from stored options.</summary>
     public static RankingSettings ToRanking(RankingOptions r)

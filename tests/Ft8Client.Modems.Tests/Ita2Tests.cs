@@ -39,6 +39,9 @@ public class Ita2Tests
     [InlineData('*')]
     [InlineData('é')]
     [InlineData('\a')]
+    [InlineData('\u017F')]
+    [InlineData('\u0131')]
+    [InlineData('\u212A')]
     public void CanSend_CharacterOutsideIta2_IsFalse(char c) => Ita2.CanSend(c).Should().BeFalse();
 
     [Fact]

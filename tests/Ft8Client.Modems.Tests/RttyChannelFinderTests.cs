@@ -30,6 +30,59 @@ public class RttyChannelFinderTests
         found[1].Should().BeApproximately(1700, 5);
     }
 
+    [Theory]
+    [InlineData(230)]
+    [InlineData(250)]
+    [InlineData(270)]
+    [InlineData(340)]
+    public void Signals_TwoStationsCloserThanTwoShifts_BothFoundAtTheirCentres(int apartHz)
+    {
+        // Their tones nearly touch, so pairing peaks found one at a time missed one station or made a third from a
+        // tone of each. (Closer still, 120 to 160 Hz, one station's mark lies within a baud of the other's space and
+        // only the stronger is found.)
+        var audio = TestSignal.WithNoise(TestSignal.Mix(
+            new RttyModulator(RttyFormat.Standard, TestSignal.Rate, 1000, 0.5).Modulate(Text + Text),
+            new RttyModulator(RttyFormat.Standard, TestSignal.Rate, 1000 + apartHz, 0.5).Modulate(Text.Replace("W7LIT", "K1ABC") + Text)), 0.5, 10, seed: 6);
+        var finder = new RttyChannelFinder(RttyFormat.Standard, TestSignal.Rate);
+        finder.Process(audio.AsSpan(0, TestSignal.Rate * 6));
+
+        var found = finder.Signals();
+        found.Should().HaveCount(2);
+        found[0].Should().BeApproximately(1000, 5);
+        found[1].Should().BeApproximately(1000 + apartHz, 5);
+    }
+
+    [Theory]
+    [InlineData(915)]
+    [InlineData(1340)]
+    public void Signals_CarrierOneShiftFromATone_OnlyTheStation(double carrierHz)
+    {
+        // A carrier 170 Hz below the space tone (or above the mark) pairs with that tone as well as the station's own
+        // pair does; the station is the pair whose tones are alike.
+        var carrier = Enumerable.Range(0, TestSignal.Rate * 8).Select(i => (float)(0.3 * Math.Sin(Math.Tau * carrierHz * i / TestSignal.Rate))).ToArray();
+        var audio = TestSignal.WithNoise(TestSignal.Mix(carrier, new RttyModulator(RttyFormat.Standard, TestSignal.Rate, 1170, 0.5).Modulate(Text + Text + Text)), 0.5, 10, seed: 7);
+        var finder = new RttyChannelFinder(RttyFormat.Standard, TestSignal.Rate);
+        finder.Process(audio.AsSpan(0, TestSignal.Rate * 6));
+        finder.Signals().Should().ContainSingle().Which.Should().BeApproximately(1170, 5);
+    }
+
+    [Fact]
+    public void Signals_ThreeStationsOneShiftAndAHalfApart_NoStationBetween()
+    {
+        // The mark of one and the space of the next are one shift apart: not a station.
+        var audio = TestSignal.WithNoise(TestSignal.Mix(
+            new RttyModulator(RttyFormat.Standard, TestSignal.Rate, 1000, 0.5).Modulate(Text + Text),
+            new RttyModulator(RttyFormat.Standard, TestSignal.Rate, 1340, 0.5).Modulate(Text + Text),
+            new RttyModulator(RttyFormat.Standard, TestSignal.Rate, 1680, 0.5).Modulate(Text + Text)), 0.5, 10, seed: 8);
+        var finder = new RttyChannelFinder(RttyFormat.Standard, TestSignal.Rate);
+        finder.Process(audio.AsSpan(0, TestSignal.Rate * 6));
+        var found = finder.Signals();
+        found.Should().HaveCount(3);
+        found[0].Should().BeApproximately(1000, 5);
+        found[1].Should().BeApproximately(1340, 5);
+        found[2].Should().BeApproximately(1680, 5);
+    }
+
     [Fact]
     public void Signals_OtherShift_NotFound()
     {

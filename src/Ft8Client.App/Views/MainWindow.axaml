@@ -185,7 +185,7 @@
     </StackPanel>
 
     <Panel Grid.Row="3">
-      <v:OperateView DataContext="{Binding Operate}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}" />
+      <v:OperateView x:Name="OperatePage" DataContext="{Binding Operate}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}" />
       <v:RawDecodesView DataContext="{Binding Raw}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}" />
       <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
       <v:LogView DataContext="{Binding LogView}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}" />
@@ -254,7 +254,9 @@
                      Foreground="{DynamicResource AccentBrush}"
                      IsVisible="{Binding RemoteText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
-        <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+        <!-- Up to two lines, and the whole text as a tooltip, so a long fault ("... Settings > PSK and RTTY") is not cut short. -->
+        <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" MaxLines="2"
+                   ToolTip.Tip="{Binding StatusText}"
                    Foreground="{Binding StatusKind, Converter={x:Static v:Converters.KindBrush}}" AutomationProperties.LiveSetting="Polite" />
       </DockPanel>
       <v:WaterfallView x:Name="ReceiveWaterfall" Grid.Row="1" Cursor="Cross"

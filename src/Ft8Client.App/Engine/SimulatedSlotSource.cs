@@ -22,14 +22,21 @@ public sealed class SimulatedSlotSource : ISlotSource
     private int _next;
     private bool _active;
 
-    /// <summary>Creates a source over a folder (searched recursively) or a single file.</summary>
+    /// <summary>
+    /// Creates a source over a folder (searched recursively) or a single file. A folder of PSK or RTTY recordings only
+    /// (samples/psk31, say) gives silent FT8 and FT4 slots; the keyboard recordings are played by
+    /// <see cref="SimulatedKeyboardAudio"/>. Throws when the folder holds no WAV file at all.
+    /// </summary>
     public SimulatedSlotSource(string folder)
     {
-        _files = File.Exists(folder)
-            ? [folder]
-            : Directory.EnumerateFiles(folder, "*.wav", SearchOption.AllDirectories).Where(f => !SampleFile.IsKeyboardMode(f))
-                .Order(StringComparer.Ordinal).ToList();
-        if (_files.Count == 0) throw new FileNotFoundException("No WAV files to simulate with.", folder);
+        if (File.Exists(folder))
+        {
+            _files = [folder];
+            return;
+        }
+        var all = Directory.EnumerateFiles(folder, "*.wav", SearchOption.AllDirectories).Order(StringComparer.Ordinal).ToList();
+        if (all.Count == 0) throw new FileNotFoundException("No WAV files to simulate with.", folder);
+        _files = [.. all.Where(f => !SampleFile.IsKeyboardMode(f))];
     }
 
     /// <summary>Extra signals to mix into a slot (12 kHz samples), e.g. the simulated partner.</summary>

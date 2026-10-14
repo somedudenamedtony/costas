@@ -117,6 +117,8 @@ public sealed class PskReporterService : IAsyncDisposable
         }
         _session.SlotDecoded += OnSlotDecoded;
         _session.KeyboardHeard += OnKeyboardHeard;
+        // PSK31, PSK63 and RTTY have no slots to catch up on, so follow a band or mode change when it happens.
+        _session.BandChanged += FollowNeighbours;
         _ = Task.Run(() => UploadLoopAsync(_cts.Token));
     }
 
@@ -150,8 +152,9 @@ public sealed class PskReporterService : IAsyncDisposable
         if (_feed is null) return;
         var o = _settings.Current.PskReporter;
         var on = o.CompareNeighbours || o.BandActivity;
-        var snap = _session.Snapshot;
-        _feed.FollowNeighbours(on ? snap.Band : null, on ? ModeInfo.Name(snap.Mode) : null, on ? _feed.MyDxcc : null, o.BandActivity);
+        // The configuration, not the snapshot: on a band change the snapshot is published after BandChanged is raised.
+        var config = _session.Config;
+        _feed.FollowNeighbours(on ? config.Band : null, on ? ModeInfo.Name(config.Mode) : null, on ? _feed.MyDxcc : null, o.BandActivity);
         _session.SetBandActivityFeed(!o.BandActivity ? BandActivityFeed.Off
             : _feed.MyDxcc is null ? BandActivityFeed.WaitingForMySpot
             : _feed.NeighboursStopped ? BandActivityFeed.Stopped
@@ -303,6 +306,7 @@ public sealed class PskReporterService : IAsyncDisposable
     {
         _session.SlotDecoded -= OnSlotDecoded;
         _session.KeyboardHeard -= OnKeyboardHeard;
+        _session.BandChanged -= FollowNeighbours;
         await _cts.CancelAsync().ConfigureAwait(false);
         if (_feed is not null) await _feed.DisposeAsync().ConfigureAwait(false);
         _udp?.Dispose();

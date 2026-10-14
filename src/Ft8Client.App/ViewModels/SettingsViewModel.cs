@@ -141,8 +141,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Raised when the window should close.</summary>
     public event Action? Close;
 
-    /// <summary>Index of the Who to call page.</summary>
-    public const int WhoToCallPage = 2;
+    /// <summary>Index of the PSK and RTTY page.</summary>
+    public const int KeyboardPage = 2;
+
+    /// <summary>Index of the Who to call page (after PSK and RTTY).</summary>
+    public const int WhoToCallPage = 3;
 
     /// <summary>The page shown when the window opens (Who to call when opened from "Change").</summary>
     [ObservableProperty]
@@ -480,6 +483,61 @@ public sealed partial class SettingsViewModel : ObservableObject
     private void AddMacro()
     {
         if (Macros.Count < 12) Macros.Add(new MacroEditViewModel(Macros.Count + 1, string.Empty, string.Empty));
+    }
+
+    /// <summary>
+    /// Removes a key's macro: the last row above F5 goes, any other row is emptied (a key with no text has no macro once
+    /// saved).
+    /// </summary>
+    [RelayCommand]
+    private void RemoveMacro(MacroEditViewModel? row)
+    {
+        if (row is null) return;
+        if (row.Key > 5 && ReferenceEquals(row, Macros[^1]))
+        {
+            Macros.Remove(row);
+            return;
+        }
+        row.Label = string.Empty;
+        row.Text = string.Empty;
+    }
+
+    // The last warning about the macros, which a second Save accepts.
+    private string? _macroWarning;
+
+    /// <summary>
+    /// A problem with the macros as typed, or null. Blocking problems stop the save: a name in braces that is not a
+    /// field, or a character neither PSK nor RTTY can send. Warnings stop only the first Save: a character RTTY cannot
+    /// send (that key is then refused in RTTY), and every macro empty (the defaults come back).
+    /// </summary>
+    internal static (string Text, bool Blocking)? MacroCheck(IEnumerable<MacroEditViewModel> rows)
+    {
+        var used = rows.Where(m => !string.IsNullOrWhiteSpace(m.Text)).ToList();
+        if (used.Count == 0)
+            return ("Every macro is empty, so the default macros will come back. Press Save again to use the defaults, or type at least one macro.", false);
+        var all = Core.Keyboard.MacroText.Fields.ToDictionary(f => f, _ => (string?)"X", StringComparer.Ordinal);
+        static string Name(MacroEditViewModel m) => string.IsNullOrWhiteSpace(m.Label) ? m.KeyName : $"{m.KeyName} {m.Label.Trim()}";
+        foreach (var m in used)
+        {
+            var text = Core.Keyboard.MacroText.Expand(m.Text, all, out var unknown);
+            if (unknown.Count > 0)
+            {
+                return ($"{Name(m)}: {string.Join(" ", unknown.Select(u => "{" + u + "}"))} {(unknown.Count == 1 ? "is not a field" : "are not fields")}. "
+                    + $"A macro can hold {string.Join(" ", all.Keys.Select(f => "{" + f + "}"))}.", true);
+            }
+            var never = KeyboardCharacters.Unsendable(false, text);
+            if (never.Count > 0) return ($"{Name(m)}: PSK and RTTY cannot send {KeyboardCharacters.Show(never)}. Remove {(never.Count == 1 ? "it" : "them")}.", true);
+        }
+        foreach (var m in used)
+        {
+            var rtty = KeyboardCharacters.Unsendable(true, Core.Keyboard.MacroText.Expand(m.Text, all, out _));
+            if (rtty.Count > 0)
+            {
+                return ($"{Name(m)}: RTTY cannot send {KeyboardCharacters.Show(rtty)}, so in RTTY that key will be refused. "
+                    + $"Press Save again to keep it, or remove {(rtty.Count == 1 ? "it" : "them")}.", false);
+            }
+        }
+        return null;
     }
 
     /// <summary>Parities.</summary>
@@ -1018,6 +1076,13 @@ public sealed partial class SettingsViewModel : ObservableObject
             Message = Profiles.Count > 1 ? $"Enter a valid callsign for the {bad.Name} profile (Station page)." : "Enter a valid callsign (Station page).";
             SelectedProfile = bad;
             SelectedPage = 0;
+            return;
+        }
+        if (MacroCheck(Macros) is { } check && (check.Blocking || check.Text != _macroWarning))
+        {
+            Message = check.Text;
+            _macroWarning = check.Blocking ? null : check.Text;
+            SelectedPage = KeyboardPage;
             return;
         }
         var activeId = (SelectedProfile ?? Profiles[0]).Id;

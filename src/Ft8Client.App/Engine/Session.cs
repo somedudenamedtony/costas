@@ -100,7 +100,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         _log = log;
         _tracker = new StationTracker(config.MyCall, config.MyGrid, countries, config.Mode);
         _pileups = new PileupTracker(config.Mode);
-        _hearsMe = new HearsMe(config.Band, available: false);
+        _hearsMe = new HearsMe(config.Band, available: false, ModeInfo.Name(config.Mode));
         _myEntity = countries.Lookup(config.MyCall);
         _dialHz = frequencies.Find(config.Band, config.Mode)?.DialHz ?? 14_074_000;
         _txOffset = config.FixedTxOffsetHz ?? 1500;
@@ -438,7 +438,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
 
             _slotCounts.Add((slot, result.Decodes.Count));
             _slotCounts.RemoveAll(x => now - x.Slot > TimeSpan.FromHours(1));
-            var modeKey = ModeInfo.Name(_config.Mode);
+            var modeKey = LogModeKey.Of(_config.Mode);
             var needed = _tracker.Stations.Where(st => st.LastHeardUtc == slot)
                 .Count(st => _logIndex.Need(st.Call, st.EntityKey, st.Grid, _config.Band, modeKey, _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly).Tag != NeedTag.Worked);
             _activity.Add(new SlotActivity(slot, result.Decodes.Count, needed));
@@ -463,15 +463,18 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
 
     /// <summary>
     /// Applies what <see cref="KeyboardSession"/> read since its last call: text from stations it has named, and finished
-    /// lines for Raw decodes. Keyboard stations are aged at the same time. Ignored unless the session is in that mode.
+    /// lines for Raw decodes. Keyboard stations are aged at the same time. <paramref name="unnamed"/> are the offsets of
+    /// signals with text but no callsign yet. Ignored unless the session is in that mode.
     /// </summary>
-    public void ApplyText(Mode mode, IReadOnlyList<TextHeard> heard, IReadOnlyList<KeyboardLine> lines, DateTime utc)
+    public void ApplyText(Mode mode, IReadOnlyList<TextHeard> heard, IReadOnlyList<KeyboardLine> lines, DateTime utc, IReadOnlyList<int>? unnamed = null)
     {
         lock (_gate)
         {
             if (mode != _config.Mode) return;
+            if (unnamed is not null) _unnamedSignals = unnamed;
             foreach (var h in heard) _tracker.ApplyText(h);
             _tracker.AgeText(utc);
+            KeyboardActivity(utc);
             foreach (var l in lines)
             {
                 ApplyKeyboardLine(l);
@@ -637,14 +640,14 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             // A caller can skip the grid exchange. Persist the same known grid that we index.
             entry = entry with { Grid = entry.Grid ?? s?.Grid ?? lk?.Grid };
             var entity = s?.Entity ?? _countries.Lookup(entry.Call);
-            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid, _config.Band, ModeInfo.Name(_config.Mode),
+            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid, _config.Band, LogModeKey.Of(_config.Mode),
                 _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
             ctx = new LogContext(_config.Band, _config.Mode, frequencyHz, _config.MyCall, _config.MyGrid, _config.PowerWatts, need,
                 entity?.Entity.Key, entity?.Entity.Name, name ?? lk?.Name, lk?.State, entity?.Continent, qth ?? lk?.City);
             if (entry.TimeOffUtc - _lastContactUtc > TimeSpan.FromHours(2)) _tonight.Clear();
             _lastContactUtc = entry.TimeOffUtc;
-            _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag));
-            _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
+            _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag, LogModeKey.Of(_config.Mode)));
+            _logIndex.Add(new LogContact(entry.Call, _config.Band, LogModeKey.Of(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
             if (ModeInfo.IsSlotted(_config.Mode)) _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
         }
@@ -773,6 +776,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         }
         _keys.Clear();
         await _tx.HaltAsync().ConfigureAwait(false);
+        _keys.EndIfNotOnAir();
         Publish();
     }
 
@@ -791,6 +795,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         }
         _keys.Clear();
         await _tx.HaltAsync().ConfigureAwait(false);
+        _keys.EndIfNotOnAir();
         Publish();
     }
 
@@ -823,10 +828,12 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         int offset;
         lock (_gate)
         {
-            if (_engine.CallingCq || _engine.InContact || _tx.Transmitting || _rigTuningUntil > _clock.UtcNow)
+            if (_engine.CallingCq || _engine.InContact || _kbd.CallingCq || _kbd.InContact || _keys.Active || _tx.Transmitting
+                || _rigTuningUntil > _clock.UtcNow)
                 return "Tune is only available while nothing else is being sent.";
             offset = _txOffset;
-            guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
+            // PSK and RTTY have no slots, so the clock check does not apply to them (docs/09-keyboard-modes.md section 9).
+            guard = new TxGuardInput(_config.Band, _dialHz, KeyboardMode ? null : _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         }
         if (await _tx.StartRigTunerAsync(offset, guard).ConfigureAwait(false))
@@ -886,7 +893,9 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _kbd.Abandon();
             _conversation.Clear();
             _blockedMacro = null;
-            _hearsMe = new HearsMe(band, _hearsMe.Available);
+            // A refusal or fault from the old band or mode no longer applies.
+            _fault = null;
+            _hearsMe = new HearsMe(band, _hearsMe.Available, ModeInfo.Name(mode));
             // Reports of nearby stations cover every band (for the band menu); only a mode change makes them irrelevant.
             if (mode != oldMode)
             {
@@ -896,11 +905,17 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _recentOffsets.Clear();
             _slotCounts.Clear();
             _activity.Clear();
+            _kbdActivityFrom = default;
+            _unnamedSignals = [];
             _txMeters = null; // SWR belongs to the antenna on the old band
+            _rigTuningUntil = null;
         }
-        // A PSK or RTTY over does not follow the radio to another band or mode.
+        // Nothing on the air follows the radio to another band or mode: an FT8 message, a Tune tone or a PSK or RTTY
+        // over is stopped, and anything prepared for the old band is dropped.
         _keys.Clear();
-        if (_keys.Active) _ = _tx.HaltAsync();
+        _tx.CancelPending();
+        if (_keys.Active || _tx.Transmitting) _ = _tx.HaltAsync();
+        _keys.EndIfNotOnAir();
         BandChanged?.Invoke();
         Publish();
     }
@@ -908,7 +923,14 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Records the dial frequency read from the radio.</summary>
     public void SetDial(long hz)
     {
-        lock (_gate) _dialHz = hz;
+        string? outside = null;
+        lock (_gate)
+        {
+            // The dial moved while something is on the air: check it still fits inside the band.
+            if (hz != _dialHz) outside = _tx.OnAirOutsideBand(_config.Band, hz);
+            _dialHz = hz;
+        }
+        if (outside is not null) _ = HaltAsync($"Transmission stopped: the dial moved. {outside}");
         Publish();
     }
 
@@ -1092,8 +1114,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             var keyboard = !ModeInfo.IsSlotted(_config.Mode);
             var stations = _tracker.Stations.ToList();
             var rank = Ranker.Rank(new RankInput(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity,
-                _config.Band, ModeInfo.Name(_config.Mode), now, _countries, Lotw: _lotwUsers));
-            var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, ModeInfo.Name(_config.Mode), now, _slotCounts, _tonight,
+                _config.Band, LogModeKey.Of(_config.Mode), now, _countries, Lotw: _lotwUsers));
+            var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, LogModeKey.Of(_config.Mode), now, _slotCounts, _tonight,
                 _config.Ranking);
             snap = new SessionSnapshot
             {
@@ -1118,7 +1140,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 BandOpenings = Openings(now),
                 BandActivityFeed = _bandFeed,
                 Services = new Dictionary<string, ServiceStatus>(_services),
-                Contact = keyboard ? _kbd.View() : _engine.View,
+                Contact = keyboard ? KeyboardContactView() : _engine.View,
                 Transmitting = _tx.Transmitting,
                 TransmittingMessage = _tx.CurrentMessage,
                 CallingCq = keyboard ? _kbd.CallingCq : _engine.CallingCq,
@@ -1136,8 +1158,11 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 Conversation = keyboard ? _conversation.ToList() : [],
                 NextMacro = keyboard ? _kbd.NextMacro : null,
                 Macros = _config.Macros,
+                MacroPreviews = keyboard ? MacroPreviews() : new Dictionary<int, string>(),
                 RadioNote = keyboard ? _radioNote : null,
                 BlockedMacro = BlockedMacro(),
+                Received = keyboard && _kbd.Partner is not null ? _kbd.Received : null,
+                UnnamedSignals = keyboard ? _unnamedSignals : [],
             };
             _snapshot = snap;
         }

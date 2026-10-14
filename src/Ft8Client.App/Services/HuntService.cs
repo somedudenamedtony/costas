@@ -129,7 +129,7 @@ public sealed class HuntService
         {
             if (_watcher.Targets.Count == 0) return;
             var log = _session.LogIndex;
-            var mode = ModeInfo.Name(s.Mode);
+            var mode = LogModeKey.Of(s.Mode);
             foreach (var st in s.Stations)
             {
                 if (st.Call.StartsWith('<') || (_checked.TryGetValue(st.Call, out var seen) && seen >= st.LastHeardUtc)) continue;
@@ -142,11 +142,11 @@ public sealed class HuntService
         foreach (var a in alerts) Alert?.Invoke(a);
     }
 
-    // PSK Reporter: a hunted station heard by a receiver near me, in FT8 or FT4.
+    // PSK Reporter: a hunted station heard by a receiver near me, in a mode Costas operates (FT8, FT4, PSK31, PSK63, RTTY).
     private void OnSpot(HuntSpot spot)
     {
         var r = spot.Report;
-        if (r.Mode is not ("FT8" or "FT4")) return;
+        if (LogModeKey.OfReport(r.Mode) is not { } modeKey) return;
         var now = _clock.UtcNow;
         if (now - r.TimeUtc > HuntWatcher.RecentFor) return;
         IReadOnlyList<HuntSighting> alerts;
@@ -156,7 +156,7 @@ public sealed class HuntService
             var km = GreatCircle.DistanceKm(me, rx);
             if (km > _nearbyKm) return;
             var entity = spot.SenderDxcc is { } d && _keyByAdif.TryGetValue(d, out var k) ? k : _countries.Lookup(spot.SenderCall)?.Entity.Key;
-            var c = new HuntCandidate(Callsign.Normalize(spot.SenderCall), entity, null, spot.SenderGrid, r.Band.ToLowerInvariant(), r.Mode, r.Snr, r.TimeUtc,
+            var c = new HuntCandidate(Callsign.Normalize(spot.SenderCall), entity, null, spot.SenderGrid, r.Band.ToLowerInvariant(), modeKey, r.Snr, r.TimeUtc,
                 r.ReceiverCall, km);
             alerts = _watcher.Check(c, _session.LogIndex, now);
         }

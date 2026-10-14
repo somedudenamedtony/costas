@@ -73,13 +73,21 @@ public sealed class PskDemodulator : IKeyboardReceiver
     private bool _heard;
 
     // Characters wait this many symbols before they are passed on, and are dropped if quality falls to DropLevel
-    // meanwhile: quality takes about 36 symbols to fall that far after a signal ends, and the noise decoded in that time
-    // is not shown. A weak signal's dips below the squelch do not lose what was already read, and a clean one (quality
-    // 0.8 or more) is shown without waiting.
-    private const int HoldSymbols = 48;
+    // meanwhile. After a signal ends quality takes about 22 to 36 symbols to fall that far, so the wait is shorter than
+    // that: the last characters of a weak over are shown before the fall, not dropped with it. The noise read as the
+    // signal ends is kept out by the magnitude test below instead. A weak signal's dips below the squelch do not lose
+    // what was already read, and a clean one (quality 0.8 or more) is shown without waiting.
+    private const int HoldSymbols = 24;
     private const double DropLevel = 0.1;
     private readonly Queue<(char Char, long Symbol)> _held = new();
     private long _symbols;
+    // The signal's symbol magnitude, followed while the squelch is open, and the mean magnitude of the character being
+    // read. A character much weaker than the signal is noise read just after a strong signal ended, while quality
+    // was still falling (the stray "e" or "n" after an over), and is not read.
+    private double _level;
+    private double _charLevel;
+    private int _charSymbols;
+    private const double WeakCharacter = 0.55;
 
     /// <summary>The frequency it is on now (moves with AFC).</summary>
     public double FrequencyHz { get; private set; }
@@ -180,6 +188,9 @@ public sealed class PskDemodulator : IKeyboardReceiver
             FrequencyHz = Math.Clamp(FrequencyHz + hz * gain, StartFrequencyHz - AfcRangeHz, StartFrequencyHz + AfcRangeHz);
         }
         _symbols++;
+        if (SquelchOpen) _level += (z.Magnitude - _level) / 32;
+        _charLevel += z.Magnitude;
+        _charSymbols++;
         if (Quality < DropLevel) _held.Clear();
         // A clean signal (quality near 1) releases its characters at once; noise never gets there.
         while (_held.Count > 0 && (_symbols - _held.Peek().Symbol >= HoldSymbols || Quality >= 0.8)) Emit(_held.Dequeue().Char);
@@ -201,8 +212,11 @@ public sealed class PskDemodulator : IKeyboardReceiver
             return;
         }
         if (++_zeros != 2) return;
-        if (_code > 0 && SquelchOpen && Varicode.TryDecode(_code, out var c)) _held.Enqueue((c, _symbols));
+        var strong = _charLevel >= WeakCharacter * _level * _charSymbols;
+        if (_code > 0 && SquelchOpen && strong && Varicode.TryDecode(_code, out var c)) _held.Enqueue((c, _symbols));
         _code = 0;
+        _charLevel = 0;
+        _charSymbols = 0;
     }
 
     private void Emit(char c)

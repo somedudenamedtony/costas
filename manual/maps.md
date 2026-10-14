@@ -30,7 +30,8 @@ Press **Reach** in the top bar (++ctrl+3++), or **Open reach view** under *Your 
 
 ![Reach view, before any reports](images/reach-empty.png)
 
-- **Band** and **Window** (15 minutes, 1 hour, 24 hours) choose which reports to show.
+- **Band** and **Window** (15 minutes, 1 hour, 24 hours) choose which reports to show. Only reports in the mode you are
+  in are shown.
 - **Headline**: heard by how many stations, in how many countries, the farthest and the best report.
 - **Plot**: you are at the centre, north is up, with rings every 2,000 miles (or 3,000 km). Each dot is a station
   that reported you, at its bearing and distance. Bigger, darker dots are stronger reports: strong (-10 dB or

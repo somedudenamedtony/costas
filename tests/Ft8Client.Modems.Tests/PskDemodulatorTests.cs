@@ -67,6 +67,42 @@ public class PskDemodulatorTests
         rx!.FrequencyHz.Should().Be(1000);
     }
 
+    private static float[] Over(Mode mode, string text, bool stop, double snrDb, int seed)
+    {
+        var tx = new PskModulator(mode, TestSignal.Rate, 1000, Peak);
+        var audio = new List<float>(new float[TestSignal.Rate]);
+        audio.AddRange(tx.Start());
+        foreach (var c in text) audio.AddRange(tx.Send(c));
+        if (stop) audio.AddRange(tx.Stop());
+        audio.AddRange(new float[TestSignal.Rate * 5]);
+        return TestSignal.WithNoise([.. audio], Peak, snrDb, seed);
+    }
+
+    [Theory]
+    [InlineData(Mode.Psk31)]
+    [InlineData(Mode.Psk63)]
+    public void Process_StrongOverEnds_NoStrayCharacterAfterIt(Mode mode)
+    {
+        // The noise read in the few symbols after a strong signal ends, before quality has fallen, is not shown.
+        const string text = "W1AW DE K9ABC KN ";
+        for (var seed = 1; seed <= 15; seed++)
+        {
+            Receive(mode, Over(mode, text, stop: true, 10, seed), 1000).Should().Be(text, $"seed {seed}");
+            Receive(mode, Over(mode, text, stop: false, 10, seed), 1000).Should().Be(text, $"seed {seed}, no postamble");
+        }
+    }
+
+    [Fact]
+    public void Process_WeakOverEndsWithoutPostamble_LastWordKept()
+    {
+        // At -10 dB the characters of a weak over wait before they are shown; the end of the over must not be dropped
+        // with the noise that follows it. Before the fix 1 over in 30 kept its last word here.
+        const string text = "W1AW DE K9ABC K9ABC UR 599 599 NAME BOB BOB HW? W1AW DE K9ABC KN ";
+        var kept = Enumerable.Range(1, 20).Count(seed =>
+            Receive(Mode.Psk31, Over(Mode.Psk31, text, stop: false, -10, seed), 1000).TrimEnd().EndsWith("K9ABC KN", StringComparison.Ordinal));
+        kept.Should().BeGreaterThanOrEqualTo(6);
+    }
+
     [Fact]
     public void Process_NoiseOnly_SquelchPrintsNothing()
     {
@@ -96,6 +132,32 @@ public class PskDemodulatorTests
         audio.AddRange(tx.Stop());
         Receive(mode, [.. audio], 1000).Should().Be("CQ CQ DE W7LIT W7LIT K\n");
     }
+
+    [Theory]
+    [InlineData(Mode.Psk31, 44100)]
+    [InlineData(Mode.Psk63, 44100)]
+    [InlineData(Mode.Psk31, 22050)]
+    public void Modulate_OddSampleRate_KeepsSymbolRateAndDecodes(Mode mode, int rate)
+    {
+        var mod = new PskModulator(mode, rate, 1000, Peak);
+        var start = mod.Start();
+        start.Length.Should().Be((int)Math.Floor(mod.IdleSymbols * rate / PskMode.Baud(mode)));
+
+        // Down to the decoder's 12 kHz by linear interpolation, as a sound card loopback would.
+        var audio = new PskModulator(mode, rate, 1000, Peak).Modulate(Text);
+        var resampled = new float[(int)((long)audio.Length * TestSignal.Rate / rate) - 1];
+        for (var i = 0; i < resampled.Length; i++)
+        {
+            var t = (double)i * rate / TestSignal.Rate;
+            var k = (int)t;
+            resampled[i] = (float)(audio[k] + (audio[k + 1] - audio[k]) * (t - k));
+        }
+        Receive(mode, resampled, 1000).Should().Be(Text);
+    }
+
+    [Fact]
+    public void Modulate_Psk63_IdleIsOneSecond() =>
+        new PskModulator(Mode.Psk63, TestSignal.Rate, 1000).Start().Length.Should().Be(63 * TestSignal.Rate / 62.5 is var n ? (int)n : 0);
 
     [Fact]
     public void Send_CharacterOutsideVaricode_Throws()

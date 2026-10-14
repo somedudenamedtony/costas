@@ -30,13 +30,25 @@ public sealed class TxLevelController
     private readonly object _gate = new();
     private readonly Dictionary<string, TxLevelState> _states = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TxLevelChange> _lastChange = new(StringComparer.Ordinal);
+    private (string Band, string Mode)? _onAir;
 
     /// <summary>Drives <paramref name="tx"/>'s level from <paramref name="settings"/>, applying it now.</summary>
     public TxLevelController(Transmitter tx, AppSettingsAccessor settings)
     {
         _tx = tx;
         _settings = settings;
+        // The meters are reported after a transmission ends, perhaps after a band or mode change cut it short: they
+        // belong to the band and mode it was sent on, taken when it started.
+        tx.Started += (_, _) => OnAir();
+        tx.ToneStarted += _ => OnAir();
+        tx.StreamStarted += OnAir;
         Apply();
+    }
+
+    private void OnAir()
+    {
+        var s = _settings.Current;
+        lock (_gate) _onAir = (s.Operating.Band, s.Operating.Mode);
     }
 
     /// <summary>
@@ -71,9 +83,11 @@ public sealed class TxLevelController
         var s = _settings.Current;
         var audio = s.Profile.Audio;
         if (!audio.AutoTxLevel || result.Alc is not { } alc) return result;
-        var band = LevelKey(s.Operating.Band, s.Operating.Mode);
-        var psk = IsPsk(s.Operating.Mode);
-        var gain = LevelFor(audio, s.Operating.Band, s.Operating.Mode);
+        (string Band, string Mode) sent;
+        lock (_gate) sent = _onAir ?? (s.Operating.Band, s.Operating.Mode);
+        var band = LevelKey(sent.Band, sent.Mode);
+        var psk = IsPsk(sent.Mode);
+        var gain = LevelFor(audio, sent.Band, sent.Mode);
         TxLevelStep step;
         TxLevelChange? previous;
         lock (_gate)

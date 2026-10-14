@@ -27,8 +27,8 @@ public static class AdifMapper
         if (off is not null && off < on && r["qso_date_off"] is null) off = off.Value.AddDays(1);
 
         var mode = (r["mode"] ?? string.Empty).Trim().ToUpperInvariant();
-        // LoTW reports FT4 as mode MFSK with the mode it was uploaded as in APP_LoTW_MODE.
-        var submode = (r["submode"] ?? (mode == "MFSK" ? r["app_lotw_mode"] : null))?.Trim().ToUpperInvariant();
+        // LoTW reports FT4 as mode MFSK, and PSK31 and PSK63 as mode PSK, with the mode it was uploaded as in APP_LoTW_MODE.
+        var submode = (r["submode"] ?? (mode is "MFSK" or "PSK" ? r["app_lotw_mode"] : null))?.Trim().ToUpperInvariant();
         var match = countries?.Lookup(call);
         long? freq = double.TryParse(r["freq"], NumberStyles.Float, CultureInfo.InvariantCulture, out var mhz) ? (long)Math.Round(mhz * 1_000_000) : null;
 

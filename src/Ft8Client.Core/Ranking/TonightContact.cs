@@ -15,4 +15,5 @@ namespace Ft8Client.Core.Ranking;
 /// <param name="Band">Band.</param>
 /// <param name="TimeUtc">When it was logged.</param>
 /// <param name="Need">Need tag at the time of the contact.</param>
-public sealed record TonightContact(string Call, string Band, DateTime TimeUtc, NeedTag Need);
+/// <param name="ModeKey">The mode, as <see cref="LogModeKey"/> names it (<c>FT8</c>, <c>PSK31</c>, ...).</param>
+public sealed record TonightContact(string Call, string Band, DateTime TimeUtc, NeedTag Need, string ModeKey);

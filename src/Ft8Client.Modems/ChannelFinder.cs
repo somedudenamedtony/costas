@@ -15,9 +15,9 @@ namespace Ft8Client.Modems;
 /// <summary>
 /// Finds narrow signals in the passband (docs/09-keyboard-modes.md section 5): PSK carriers, or the tones of an RTTY
 /// signal for <see cref="Rtty.RttyChannelFinder"/>. The power spectrum (4,096-point FFT, about 3 Hz per bin at 12 kHz)
-/// is averaged over the last few seconds and smoothed over one signal's width; a peak standing
-/// <see cref="ThresholdDb"/> above the median of the band is a signal, and its frequency is the power-weighted centre
-/// of the peak.
+/// is averaged over the last few seconds and smoothed over half a signal's width; a peak standing
+/// <see cref="ThresholdDb"/> above the noise floor (a low percentile of the band, so a crowded band still has one) is
+/// a signal, and its frequency is the power-weighted centre of the peaks within 0.6 of a signal's width of it.
 /// </summary>
 public sealed class ChannelFinder : IChannelFinder
 {
@@ -52,7 +52,7 @@ public sealed class ChannelFinder : IChannelFinder
     /// <summary>Highest audio frequency searched.</summary>
     public double HighHz { get; init; } = 2900;
 
-    /// <summary>How far above the band's median a signal must stand, in dB.</summary>
+    /// <summary>How far above the band's noise floor a signal must stand, in dB.</summary>
     public double ThresholdDb { get; init; } = 6;
 
     /// <summary>Feeds audio. Every 4,096 samples (half overlapped) the averaged spectrum is updated.</summary>
@@ -75,7 +75,8 @@ public sealed class ChannelFinder : IChannelFinder
         var binHz = (double)_sampleRate / Size;
         var lo = (int)(LowHz / binHz);
         var hi = Math.Min((int)(HighHz / binHz), _average.Length - 1);
-        var half = Math.Max(1, (int)(_widthHz / 2 / binHz));
+        // Smoothed over half a signal's width, so two signals a little more than half a width apart stay two peaks.
+        var half = Math.Max(1, (int)(_widthHz / 4 / binHz));
 
         var smooth = new double[_average.Length];
         for (var i = lo; i <= hi; i++)
@@ -84,29 +85,76 @@ public sealed class ChannelFinder : IChannelFinder
             for (var k = -half; k <= half; k++) sum += _average[Math.Clamp(i + k, 0, _average.Length - 1)];
             smooth[i] = sum / (2 * half + 1);
         }
-        var floor = smooth[lo..(hi + 1)].Order().ElementAt((hi - lo + 1) / 2);
+        var floor = Floor(smooth, lo, hi);
         // Digital silence has no floor to stand above.
         if (floor <= 0) return [];
         var limit = floor * Math.Pow(10, ThresholdDb / 10);
 
+        // Peaks closer than Spacing are one signal (PSK idle reversals are two lines one baud apart): each group's
+        // centre is the power-weighted centre over the group and a little either side.
+        var spacing = Spacing * _widthHz;
+        var reach = (int)Math.Ceiling(_widthHz * 0.4 / binHz);
         var found = new List<double>();
+        int first = -1, last = -1;
         for (var i = lo + 1; i < hi; i++)
         {
             if (smooth[i] < limit || smooth[i] < smooth[i - 1] || smooth[i] < smooth[i + 1]) continue;
-            double weight = 0, moment = 0;
-            for (var k = -2 * half; k <= 2 * half; k++)
+            if (first >= 0 && (i - last) * binHz < spacing)
             {
-                var j = i + k;
-                if (j < 0 || j >= _average.Length) continue;
-                var p = Math.Max(0, _average[j] - floor);
-                weight += p;
-                moment += p * j * binHz;
+                last = i;
+                continue;
             }
-            var centre = weight > 0 ? moment / weight : i * binHz;
-            if (found.Count > 0 && centre - found[^1] < _widthHz) continue;
-            found.Add(centre);
+            if (first >= 0) found.Add(Centre(first - reach, last + reach, floor, binHz));
+            first = last = i;
         }
+        if (first >= 0) found.Add(Centre(first - reach, last + reach, floor, binHz));
         return found;
+    }
+
+    /// <summary>Peaks closer than this share of a signal's width are taken as one signal.</summary>
+    private const double Spacing = 0.6;
+
+    /// <summary>
+    /// The share of the band taken as noise: its power is this low percentile of the smoothed spectrum, not the median,
+    /// so a crowded band (more than half of it under signals) still has a floor.
+    /// </summary>
+    private const double FloorPercentile = 0.2;
+
+    private static double Floor(double[] spectrum, int lo, int hi) =>
+        spectrum[lo..(hi + 1)].Order().ElementAt((int)((hi - lo + 1) * FloorPercentile));
+
+    private double Centre(int from, int to, double floor, double binHz)
+    {
+        double weight = 0, moment = 0;
+        for (var j = Math.Max(0, from); j <= Math.Min(_average.Length - 1, to); j++)
+        {
+            var p = Math.Max(0, _average[j] - floor);
+            weight += p;
+            moment += p * j * binHz;
+        }
+        return weight > 0 ? moment / weight : (from + to) / 2.0 * binHz;
+    }
+
+    /// <summary>
+    /// The averaged power spectrum smoothed over <paramref name="smoothHz"/>, with its bin width and noise floor (see
+    /// <see cref="FloorPercentile"/>); null before any spectrum or in digital silence.
+    /// </summary>
+    internal (double[] Power, double BinHz, double Floor, int Lo, int Hi)? Smoothed(double smoothHz)
+    {
+        if (_frames == 0) return null;
+        var binHz = (double)_sampleRate / Size;
+        var lo = (int)(LowHz / binHz);
+        var hi = Math.Min((int)(HighHz / binHz), _average.Length - 1);
+        var half = Math.Max(0, (int)(smoothHz / 2 / binHz));
+        var smooth = new double[_average.Length];
+        for (var i = 0; i < smooth.Length; i++)
+        {
+            double sum = 0;
+            for (var k = -half; k <= half; k++) sum += _average[Math.Clamp(i + k, 0, _average.Length - 1)];
+            smooth[i] = sum / (2 * half + 1);
+        }
+        var floor = Floor(smooth, lo, hi);
+        return floor <= 0 ? null : (smooth, binHz, floor, lo, hi);
     }
 
     /// <summary>

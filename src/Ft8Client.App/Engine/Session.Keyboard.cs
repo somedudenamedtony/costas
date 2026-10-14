@@ -9,9 +9,12 @@
 
 using System.Globalization;
 using Ft8Client.Core;
+using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Keyboard;
+using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Services;
+using Ft8Client.Core.Stations;
 using Ft8Client.Core.Transmit;
 using Ft8Client.Modems;
 using Ft8Client.Modems.Psk;
@@ -32,7 +35,11 @@ public sealed partial class Session
     private readonly List<ConversationLine> _conversation = [];
     private readonly Dictionary<int, string> _macroTexts = [];
     private string? _radioNote;
+    private string? _keyboardHold;
     private int? _blockedMacro;
+    private Mode _kbdContactMode;
+    private DateTime _kbdActivityFrom;
+    private IReadOnlyList<int> _unnamedSignals = [];
 
     /// <summary>The keyboard transmitter, so tests can render its audio on a manual clock.</summary>
     internal KeyboardTransmitter Keys => _keys;
@@ -71,7 +78,7 @@ public sealed partial class Session
         lock (_gate)
         {
             if (!KeyboardMode || text.Length == 0) return null;
-            why = Queue(text, null, returnToReceive: false, TxOffset(cq: false));
+            why = QueueAt(text, null, returnToReceive: false, cq: false);
             _fault = why;
         }
         Publish();
@@ -80,13 +87,17 @@ public sealed partial class Session
 
     /// <summary>
     /// Enter. On the air: a new line, or on an empty line the return to receive. Receiving: sends what is typed, or the
-    /// next step's macro when nothing is.
+    /// next step's macro when nothing is. <paramref name="onAir"/> is what the operator's screen showed when the key was
+    /// pressed: if it showed an over that has just ended, Enter (a new line, or the return to receive) has nothing left
+    /// to do and must not send the next macro. Returns null, or why nothing was sent.
     /// </summary>
-    public string? KeyEnter(string typed)
+    public string? KeyEnter(string typed, bool onAir = false)
     {
         ArgumentNullException.ThrowIfNull(typed);
         if (_keys.Active)
         {
+            // Text typed into the line just before the over started joins the over rather than being lost.
+            if (typed.Length > 0) return SendText(typed);
             var v = _keys.View;
             var line = (v.Sent + v.Waiting).Split('\n')[^1];
             if (string.IsNullOrWhiteSpace(line) && typed.Length == 0) _keys.ReturnToReceive();
@@ -95,6 +106,7 @@ public sealed partial class Session
             return null;
         }
         if (typed.Length > 0) return SendText(typed);
+        if (onAir) return null;
         int? next;
         lock (_gate) next = KeyboardMode ? _kbd.NextMacro : null;
         return next is { } k ? SendMacro(k) : null;
@@ -117,13 +129,36 @@ public sealed partial class Session
         Publish();
     }
 
-    /// <summary>Sets part of the exchange (or the partner's call) from a word the operator clicked.</summary>
+    /// <summary>
+    /// Holds PSK and RTTY transmit back, with the reason given to the operator, while the radio is being set up for the
+    /// mode (the RTTY power cap goes on before the first over can key the radio). Null lets transmit go again.
+    /// </summary>
+    public void HoldKeyboardTransmit(string? reason)
+    {
+        lock (_gate) _keyboardHold = reason;
+    }
+
+    /// <summary>
+    /// Sets part of the exchange (or the partner's call) from a word the operator clicked. A word that cannot be that
+    /// part is refused, with the reason in the bottom bar.
+    /// </summary>
     public void CaptureWord(ExchangeField field, string word)
     {
+        ArgumentNullException.ThrowIfNull(word);
         lock (_gate)
         {
             if (!KeyboardMode) return;
-            _kbd.Capture(field, word);
+            if (!_kbd.Capture(field, word))
+            {
+                var what = field switch
+                {
+                    ExchangeField.Rst => "report (such as 599 or 5NN)",
+                    ExchangeField.Grid => "grid (such as FN31)",
+                    ExchangeField.Call => "callsign",
+                    _ => "value for that",
+                };
+                _fault = $"\"{word.Trim()}\" is not a {what}: nothing was changed.";
+            }
         }
         Publish();
     }
@@ -164,6 +199,8 @@ public sealed partial class Session
     private string? QueueMacro(int key)
     {
         if (_config.Macros.FirstOrDefault(m => m.Key == key) is not { } macro) return $"F{key} has no macro. Set one in Settings > PSK and RTTY.";
+        // A second press (or a key held down) must not queue the same macro again behind itself.
+        if (_keys.MacroWaiting(key)) return $"{macro.Label} is already waiting to go out.";
         if (key != Macro.CqKey && _kbd.Partner is null && macro.Text.Contains("{CALL}", StringComparison.OrdinalIgnoreCase))
             return $"{macro.Label} needs a station: click Call on one first.";
         var text = MacroText.Expand(macro.Text, MacroValues(), out var missing);
@@ -173,7 +210,7 @@ public sealed partial class Session
             return MissingFields(macro, missing);
         }
         var cq = key == Macro.CqKey;
-        var why = Queue(text + " ", key, returnToReceive: true, TxOffset(cq));
+        var why = QueueAt(text + " ", key, returnToReceive: true, cq);
         if (why is not null) return why;
         _macroTexts[key] = text;
         if (cq)
@@ -215,8 +252,21 @@ public sealed partial class Session
         return null;
     }
 
+    // Under _gate. Each macro as it would go out now, for its button's tooltip.
+    private Dictionary<int, string> MacroPreviews()
+    {
+        var values = MacroValues();
+        var previews = new Dictionary<int, string>();
+        foreach (var m in _config.Macros) previews.TryAdd(m.Key, MacroText.Expand(m.Text, values, out _));
+        return previews;
+    }
+
     private static string MissingFields(Macro macro, IReadOnlyList<string> missing)
     {
+        var unknown = missing.Where(f => !MacroText.IsField(f)).ToList();
+        if (unknown.Count > 0)
+            return $"{macro.Label} not sent: {MacroText.Describe(unknown)} {(unknown.Count == 1 ? "is not a field" : "are not fields")}. " +
+                   $"Fix the macro under Settings > PSK and RTTY; the fields are {MacroText.Describe(MacroText.Fields)}.";
         var theirs = missing.Where(f => f is "CALL" or "NAME" or "QTH").ToList();
         var where = theirs.Count == missing.Count
             ? "Click the word in the conversation to set it, or remove it from the macro."
@@ -227,6 +277,7 @@ public sealed partial class Session
     // Under _gate. Starts or adds to an over.
     private string? Queue(string text, int? key, bool returnToReceive, int offset)
     {
+        if (_keyboardHold is { } hold) return hold;
         var mode = _config.Mode;
         // Reverse is for reading a station on the other sideband; Costas itself always sends the standard way round
         // (mark the higher tone in USB), so every other station reads it.
@@ -234,39 +285,84 @@ public sealed partial class Session
         var guard = new TxGuardInput(_config.Band, _dialHz, null, _config.ClockBlockSeconds,
             _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         var lead = _config.PttLead;
+        int? width = mode == Mode.Rtty ? ModeInfo.RttyBandwidthHz(rtty.ShiftHz, rtty.Baud) : null;
         var why = _keys.Send(text, key, returnToReceive,
             () => mode == Mode.Rtty
                 ? new RttyModulator(rtty, _tx.OutputSampleRate, offset)
                 : new PskModulator(mode, _tx.OutputSampleRate, offset),
-            s => _tx.StartStream(s, mode, offset, guard, lead));
+            s => _tx.StartStream(s, mode, offset, guard, lead, width));
         if (why is null) _blockedMacro = null;
         return why;
     }
 
-    // Under _gate. In a contact, the partner's offset; a CQ goes on the offset last clicked, else a clear spot.
-    private int TxOffset(bool cq)
+    // Under _gate. Queues text on the offset TxOffset picks. A clear spot picked for a new over becomes the Tx offset
+    // only once the over has started: a refused send leaves the offset where it was.
+    private string? QueueAt(string text, int? key, bool returnToReceive, bool cq)
     {
-        if (!cq && _kbd.InContact) return _kbd.PartnerOffsetHz;
-        if (_config.FixedTxOffsetHz is { } f) return f;
+        var starting = !_keys.Active;
+        var (offset, clear) = TxOffset(cq);
+        var why = Queue(text, key, returnToReceive, offset);
+        if (why is null && starting && clear is { } c)
+        {
+            _txOffset = offset;
+            _txOffsetClear = c;
+        }
+        return why;
+    }
+
+    // Under _gate. In a contact, the partner's offset; a CQ goes on the offset last clicked, else a clear spot (with
+    // whether it is clear, which the caller keeps once the over starts).
+    private (int Hz, bool? Clear) TxOffset(bool cq)
+    {
+        if (!cq && _kbd.InContact) return (_kbd.PartnerOffsetHz, null);
+        if (_config.FixedTxOffsetHz is { } f) return (f, null);
         var half = ModeInfo.OccupiedBandwidthHz(_config.Mode) / 2;
         IReadOnlyList<int> busy = [.. _tracker.Stations.Select(s => s.OffsetHz - half)];
         var c = TxOffsetPicker.Choose([busy], _config.Mode, _txOffset - half);
-        _txOffset = c.OffsetHz + half;
-        _txOffsetClear = c.Clear;
-        return _txOffset;
+        return (c.OffsetHz + half, c.Clear);
     }
 
     // Under _gate. Partner text into the strip and the conversation box; while calling CQ, an answer starts a contact.
     private void ApplyKeyboardLine(KeyboardLine l)
     {
         var before = _kbd.Partner;
-        _kbd.Heard(l.Text, l.Sender, l.OffsetHz, l.Utc);
+        var fromPartner = _kbd.Heard(l.Text, l.Sender, l.OffsetHz, l.Utc, l.To);
         if (_kbd.Partner is not { } partner) return;
         if (before is not null && !Callsign.EqualsCall(before, partner)) _conversation.Clear();
-        var fromPartner = l.Sender is not null
-            ? Callsign.EqualsCall(l.Sender, partner)
-            : Math.Abs(l.OffsetHz - _kbd.PartnerOffsetHz) <= 50;
-        if (fromPartner) AddConversation(partner, l.Text, mine: false);
+        // An abandoned contact stays on the card, but its conversation box stops collecting their text.
+        if (fromPartner && _kbd.View() is not { Outcome: ContactOutcome.Abandoned }) AddConversation(partner, l.Text, mine: false);
+    }
+
+    /// <summary>PSK and RTTY have no slots: band activity counts the stations read in each period of this length.</summary>
+    public static readonly TimeSpan KeyboardActivityPeriod = TimeSpan.FromMinutes(3);
+
+    // Under _gate. Band activity in PSK and RTTY (docs/09-keyboard-modes.md section 10): every three minutes, the stations
+    // read in those minutes and how many of them I need, kept for an hour like the FT8 slots.
+    private void KeyboardActivity(DateTime utc)
+    {
+        if (_kbdActivityFrom == default || utc < _kbdActivityFrom)
+        {
+            _kbdActivityFrom = utc;
+            return;
+        }
+        if (utc - _kbdActivityFrom < KeyboardActivityPeriod) return;
+        var from = _kbdActivityFrom;
+        var modeKey = ModeInfo.Name(_config.Mode);
+        var read = _tracker.Stations.Where(st => st.LastHeardUtc >= from).ToList();
+        var needed = read.Count(st => _logIndex.Need(st.Call, st.EntityKey, st.Grid, _config.Band, modeKey, _config.Ranking.TierOrder,
+            _config.Ranking.ConfirmedOnly).Tag != NeedTag.Worked);
+        _activity.Add(new SlotActivity(from, read.Count, needed));
+        _activity.RemoveAll(x => utc - x.SlotStartUtc > TimeSpan.FromHours(1));
+        _kbdActivityFrom = utc;
+    }
+
+    // Under _gate. The keyboard contact, with the mode it was made in, so an ended contact keeps its own mode label
+    // after a switch between PSK and RTTY.
+    private ContactView? KeyboardContactView()
+    {
+        if (_kbd.View() is not { } v) return null;
+        if (v.Outcome == ContactOutcome.InProgress) _kbdContactMode = _config.Mode;
+        return v with { Mode = _kbdContactMode };
     }
 
     private void AddConversation(string who, string text, bool mine)
@@ -286,10 +382,15 @@ public sealed partial class Session
             foreach (var key in over.Macros.Where(k => k != Macro.CqKey))
                 _kbd.Sent(key, _macroTexts.GetValueOrDefault(key) ?? string.Empty, now);
             _macroTexts.Clear();
-            if (over.Watchdog)
+            if (over.Watchdog && over.Idle)
+            {
+                // A typed over left with nothing to send just returns to receive; the contact goes on.
+                _fault = "Back to receive: nothing was sent for 20 seconds.";
+            }
+            else if (over.Watchdog)
             {
                 _kbd.Watchdog();
-                _fault = "Stopped by watchdog: an over is limited to 3 minutes, and closes after 20 seconds with nothing to send.";
+                _fault = "Stopped by watchdog: an over is limited to 3 minutes.";
             }
         }
         Publish();
