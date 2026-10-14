@@ -190,6 +190,7 @@ public class KeyboardTransmitterTests
 
         var over = s.Overs.Should().ContainSingle().Subject;
         over.Watchdog.Should().BeTrue();
+        over.IdleTimeout.Should().BeTrue();
         over.Completed.Should().BeFalse();
         s.Radio.PttLog.Last().On.Should().BeFalse();
     }
@@ -207,18 +208,18 @@ public class KeyboardTransmitterTests
 
         var over = s.Overs.Should().ContainSingle().Subject;
         over.Watchdog.Should().BeTrue();
+        over.IdleTimeout.Should().BeFalse();
         s.Radio.PttLog.Select(p => p.On).Should().Equal(true, false);
         (s.Radio.PttLog[1].TimeUtc - s.Radio.PttLog[0].TimeUtc).Should().BeCloseTo(KeyboardTransmitter.MaxOver, TimeSpan.FromSeconds(2));
     }
 
     [Fact]
-    public void Pump_AudioDeviceStopsTakingSamples_HaltedAfterGrace()
+    public void Pump_AudioDeviceStopsTakingSamples_PttReleasedAfterAudioStall()
     {
         var s = new Station();
         s.Send("TEST ", returnToReceive: false);
-        var limit = KeyboardTransmitter.MaxOver + KeyboardTransmitter.StallGrace;
-        // Nothing reads the stream: the over can never play out by itself.
-        while (s.Radio.PttLog.Count < 2 && s.Clock.UtcNow - s.Radio.PttLog[0].TimeUtc < limit + TimeSpan.FromSeconds(1))
+        // Nothing reads the stream: the device has stalled. A short over must not hold the radio keyed for minutes.
+        while (s.Radio.PttLog.Count < 2 && s.Clock.UtcNow - s.Radio.PttLog[0].TimeUtc < KeyboardTransmitter.MaxOver)
         {
             s.Clock.Advance(TimeSpan.FromMilliseconds(100));
             s.Tx.Poll();
@@ -226,10 +227,78 @@ public class KeyboardTransmitterTests
         }
 
         s.Radio.PttLog.Select(p => p.On).Should().Equal(true, false);
-        (s.Radio.PttLog[1].TimeUtc - s.Radio.PttLog[0].TimeUtc).Should().BeCloseTo(limit, TimeSpan.FromMilliseconds(200));
+        (s.Radio.PttLog[1].TimeUtc - s.Radio.PttLog[0].TimeUtc).Should().BeCloseTo(KeyboardTransmitter.AudioStall, TimeSpan.FromMilliseconds(200));
+        s.Faults.Should().ContainSingle().Which.Should().Be(KeyboardTransmitter.AudioStallFault);
         var over = s.Overs.Should().ContainSingle().Subject;
-        over.Watchdog.Should().BeTrue();
+        over.Completed.Should().BeFalse();
+        over.Watchdog.Should().BeFalse();
         s.Keys.Active.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Pump_AudioDeviceStopsPartWayThrough_PttReleasedAfterAudioStall()
+    {
+        var s = new Station();
+        s.Send("THIS IS A LONG OVER THAT WILL NOT FINISH ", returnToReceive: false);
+        s.Run(TimeSpan.FromSeconds(3));
+        var stalledAt = s.Clock.UtcNow;
+        while (s.Overs.Count == 0 && s.Clock.UtcNow - stalledAt < TimeSpan.FromSeconds(30))
+        {
+            s.Clock.Advance(TimeSpan.FromMilliseconds(100));
+            s.Tx.Poll();
+            s.Keys.Pump();
+        }
+
+        (s.Clock.UtcNow - stalledAt).Should().BeCloseTo(KeyboardTransmitter.AudioStall, TimeSpan.FromMilliseconds(300));
+        s.Radio.Ptt.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Send_PttFailsAtStart_RefusedWithReasonAndKeyboardFree()
+    {
+        var s = new Station();
+        s.Radio.FailNext = "CAT timeout";
+
+        var why = s.Send("CQ CQ DE TEST K ", macro: 1);
+
+        why.Should().Contain("PTT could not be asserted").And.Contain("CAT timeout");
+        s.Keys.Active.Should().BeFalse();
+        s.Keys.View.Should().Be(KeyboardTxView.Idle);
+        s.Tx.Transmitting.Should().BeFalse();
+        s.Radio.Ptt.Should().BeFalse();
+        s.Overs.Should().BeEmpty();
+        s.Faults.Should().Contain(f => f.StartsWith("PTT could not be asserted", StringComparison.Ordinal));
+
+        // The radio answers again: the next over goes as usual.
+        s.Send("CQ CQ DE TEST K ", macro: 1).Should().BeNull();
+        s.RunUntilEnded(TimeSpan.FromSeconds(30));
+        s.Overs.Should().ContainSingle().Which.Completed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HaltAsync_MacroRenderedButNotYetPlayed_NotCountedSent()
+    {
+        var s = new Station();
+        s.Send("TU ", macro: 3);
+        // Run until the reader has rendered the whole macro: its tail is still in the buffer, not yet on the air.
+        while (s.Keys.View.Waiting.Length > 0) s.Run(TimeSpan.FromMilliseconds(10));
+
+        await s.Tx.HaltAsync();
+
+        s.Overs.Should().ContainSingle().Which.Macros.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void MacroWaiting_QueuedUntilSent_TrueThenFalse()
+    {
+        var s = new Station();
+        s.Send("CQ CQ DE TEST K ", macro: 1);
+        s.Keys.MacroWaiting(1).Should().BeTrue();
+        s.Keys.MacroWaiting(2).Should().BeFalse();
+
+        s.RunUntilEnded(TimeSpan.FromSeconds(30));
+
+        s.Keys.MacroWaiting(1).Should().BeFalse();
     }
 
     [Fact]
