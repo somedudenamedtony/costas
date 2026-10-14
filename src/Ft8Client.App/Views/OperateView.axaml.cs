@@ -77,7 +77,8 @@ public partial class OperateView : UserControl
             var run = new Run(s.Text);
             if (s.Missing)
             {
-                run.Foreground = this.FindResource("CriticalBrush") as IBrush;
+                // FindResource does not see the theme dictionaries, so it returned null and the field showed blank.
+                run.Foreground = Converters.Brush("CriticalBrush");
                 run.FontWeight = FontWeight.SemiBold;
             }
             inlines.Add(run);
