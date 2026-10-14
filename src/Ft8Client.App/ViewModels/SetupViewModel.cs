@@ -149,8 +149,15 @@ public sealed partial class SetupViewModel : ObservableObject
     public string PttPortChoice
     {
         get => string.IsNullOrEmpty(PttPort) ? SameAsCatPort : PttPort;
-        set => PttPort = value is null || value == SameAsCatPort ? string.Empty : value;
+        set
+        {
+            // Refilling the list clears the drop-down's selection, which writes null back: that is not a choice.
+            if (_refreshingPttPorts) return;
+            PttPort = value is null || value == SameAsCatPort ? string.Empty : value;
+        }
     }
+
+    private bool _refreshingPttPorts;
 
     /// <summary>The PTT port choice applies: keying by RTS or DTR.</summary>
     public bool UsesPttLine => Ptt is "rts" or "dtr";
@@ -174,10 +181,18 @@ public sealed partial class SetupViewModel : ObservableObject
     private void RefreshPttPortChoices()
     {
         var chosen = PttPortChoice;
-        PttPortChoices.Clear();
-        PttPortChoices.Add(SameAsCatPort);
-        foreach (var p in Ports) PttPortChoices.Add(p);
-        if (!PttPortChoices.Contains(chosen)) PttPortChoices.Add(chosen);
+        _refreshingPttPorts = true;
+        try
+        {
+            PttPortChoices.Clear();
+            PttPortChoices.Add(SameAsCatPort);
+            foreach (var p in Ports) PttPortChoices.Add(p);
+            if (!PttPortChoices.Contains(chosen)) PttPortChoices.Add(chosen);
+        }
+        finally
+        {
+            _refreshingPttPorts = false;
+        }
         OnPropertyChanged(nameof(PttPortChoice));
     }
 
@@ -349,6 +364,7 @@ public sealed partial class SetupViewModel : ObservableObject
         OnPropertyChanged(nameof(ServerLabel));
         Readback = string.Empty;
         RadioChecks.Clear();
+        _searchedOnNext = false; // a different radio gets its own search on Next
     }
 
     partial void OnInputChanged(AudioDevice? value)
@@ -388,6 +404,7 @@ public sealed partial class SetupViewModel : ObservableObject
     [RelayCommand]
     private async Task NextAsync()
     {
+        if (Busy) return; // a connection test is running; Stop it first
         if (!Validate(out var why))
         {
             Message = why;
@@ -425,6 +442,7 @@ public sealed partial class SetupViewModel : ObservableObject
     [RelayCommand]
     private void Back()
     {
+        if (Busy) return;
         if (Step > 0) Step--;
     }
 
@@ -432,6 +450,7 @@ public sealed partial class SetupViewModel : ObservableObject
     [RelayCommand]
     private async Task SkipAsync()
     {
+        if (Busy) return;
         if (Step == 5) await FinishAsync();
         else Step++;
     }
@@ -445,6 +464,7 @@ public sealed partial class SetupViewModel : ObservableObject
     [RelayCommand]
     private async Task ScanAsync()
     {
+        if (Busy) return; // one test at a time: two would fight over the same serial ports
         if (Model is null)
         {
             Message = "Choose your radio first.";
@@ -471,8 +491,9 @@ public sealed partial class SetupViewModel : ObservableObject
         Check(true, "Found rigctld (Hamlib).");
         Busy = true;
         Readback = string.Empty;
-        _scan = new CancellationTokenSource();
-        var ct = _scan.Token;
+        var scan = new CancellationTokenSource();
+        _scan = scan;
+        var ct = scan.Token;
         try
         {
             if (IsNetwork)
@@ -500,6 +521,12 @@ public sealed partial class SetupViewModel : ObservableObject
             {
                 await _host.ReleaseRigAsync(); // the open radio would hold its serial port
                 int[] bauds = int.TryParse(Baud, out var b) ? [b] : [115200, 38400, 19200, 9600, 4800];
+                if (string.IsNullOrEmpty(Port))
+                {
+                    // A radio switched on after Setup opened (its USB port appears only then) must be searched too.
+                    foreach (var p in RigctldRig.SerialPorts().Where(p => !Ports.Contains(p))) Ports.Add(p);
+                    RefreshPttPortChoices();
+                }
                 var ports = string.IsNullOrEmpty(Port) ? Ports.ToList() : [Port];
                 // Searching every port: one another program holds (WSJT-X, flrig, the radio maker's software) cannot
                 // answer, so say so instead of "no answer from the radio", and don't spend a rigctld start on it.
@@ -553,8 +580,8 @@ public sealed partial class SetupViewModel : ObservableObject
         }
         finally
         {
-            _scan.Dispose();
-            _scan = null;
+            if (ReferenceEquals(_scan, scan)) _scan = null;
+            scan.Dispose();
             Busy = false;
         }
     }

@@ -136,7 +136,7 @@
         <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource AccentTextBrush}" />
       </StackPanel>
     </ScrollViewer>
-    <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="24,12">
+    <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="24,12" IsEnabled="{Binding !Busy}">
       <Button Content="Skip" Command="{Binding SkipCommand}" IsVisible="{Binding CanSkip}" />
       <Button Content="Back" Command="{Binding BackCommand}" IsEnabled="{Binding CanBack}" />
       <Button Content="{Binding NextText}" Command="{Binding NextCommand}" Classes="accent" MinWidth="90" />
