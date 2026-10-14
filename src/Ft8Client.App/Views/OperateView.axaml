@@ -191,10 +191,10 @@
                   </ItemsControl>
                 </ScrollViewer>
               </Border>
-              <!-- On the air: what has gone (dimmed) and what is still to go. -->
+              <!-- On the air: what has gone (dimmed) and what is still to go. The two runs sit on one line with nothing
+                   between them: whitespace there would show a space that is not sent. -->
               <TextBlock IsVisible="{Binding OnAir}" TextWrapping="Wrap" Classes="message" FontSize="13" AutomationProperties.Name="Sending">
-                <Run Text="{Binding SentPart}" Foreground="{DynamicResource TextSecondaryBrush}" />
-                <Run Text="{Binding WaitingPart}" FontWeight="SemiBold" />
+                <Run Text="{Binding SentPart}" Foreground="{DynamicResource TextSecondaryBrush}" /><Run Text="{Binding WaitingPart}" FontWeight="SemiBold" />
               </TextBlock>
               <!-- A macro refused for a field with no value: the field in red until it is filled. -->
               <Border IsVisible="{Binding HasBlockedMacro}" BorderBrush="{DynamicResource CriticalBrush}" BorderThickness="1" CornerRadius="4" Padding="8,4">
