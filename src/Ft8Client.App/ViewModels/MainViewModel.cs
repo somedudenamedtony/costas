@@ -446,6 +446,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (value == 2)
         {
             Reach.Band = _host.Session.Config.Band;
+            Reach.Mode = ModeInfo.Name(_host.Session.Config.Mode);
             Reach.Refresh();
         }
         if (value == 3) LogView.Refresh();

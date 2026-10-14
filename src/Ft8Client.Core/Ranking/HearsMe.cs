@@ -13,7 +13,7 @@ using Ft8Client.Core.Stations;
 namespace Ft8Client.Core.Ranking;
 
 /// <summary>
-/// Reception reports of my call on the current band for the last 60 minutes, and the "hears you" rule.
+/// Reception reports of my call on the current band (and mode, when given) for the last 60 minutes, and the "hears you" rule.
 /// See docs/04-domain-logic.md, section 5.
 /// </summary>
 public sealed class HearsMe
@@ -26,15 +26,22 @@ public sealed class HearsMe
 
     private readonly List<ReceptionReport> _reports = [];
 
-    /// <summary>Creates an empty set for a band.</summary>
-    public HearsMe(string band, bool available = true)
+    /// <summary>
+    /// Creates an empty set for a band and, when <paramref name="mode"/> is given (<c>FT8</c>, <c>PSK31</c>, ...), a mode:
+    /// a report of my FT8 signal says nothing about my PSK31 signal.
+    /// </summary>
+    public HearsMe(string band, bool available = true, string? mode = null)
     {
         Band = band.ToLowerInvariant();
+        Mode = mode;
         Available = available;
     }
 
     /// <summary>The band these reports are for.</summary>
     public string Band { get; }
+
+    /// <summary>The mode these reports are for, or null for any mode.</summary>
+    public string? Mode { get; }
 
     /// <summary>False when PSK Reporter is down; chance then uses SNR only.</summary>
     public bool Available { get; set; }
@@ -42,10 +49,11 @@ public sealed class HearsMe
     /// <summary>All reports kept, oldest first.</summary>
     public IReadOnlyList<ReceptionReport> Reports => _reports;
 
-    /// <summary>Adds a report if it is for this band.</summary>
+    /// <summary>Adds a report if it is for this band and mode.</summary>
     public void Add(ReceptionReport r)
     {
         if (!string.Equals(r.Band, Band, StringComparison.OrdinalIgnoreCase)) return;
+        if (Mode is not null && !string.Equals(r.Mode?.Trim(), Mode, StringComparison.OrdinalIgnoreCase)) return;
         _reports.Add(r);
     }
 

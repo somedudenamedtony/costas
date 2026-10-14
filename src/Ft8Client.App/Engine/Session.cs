@@ -100,7 +100,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         _log = log;
         _tracker = new StationTracker(config.MyCall, config.MyGrid, countries, config.Mode);
         _pileups = new PileupTracker(config.Mode);
-        _hearsMe = new HearsMe(config.Band, available: false);
+        _hearsMe = new HearsMe(config.Band, available: false, ModeInfo.Name(config.Mode));
         _myEntity = countries.Lookup(config.MyCall);
         _dialHz = frequencies.Find(config.Band, config.Mode)?.DialHz ?? 14_074_000;
         _txOffset = config.FixedTxOffsetHz ?? 1500;
@@ -886,7 +886,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _kbd.Abandon();
             _conversation.Clear();
             _blockedMacro = null;
-            _hearsMe = new HearsMe(band, _hearsMe.Available);
+            _hearsMe = new HearsMe(band, _hearsMe.Available, ModeInfo.Name(mode));
             // Reports of nearby stations cover every band (for the band menu); only a mode change makes them irrelevant.
             if (mode != oldMode)
             {
