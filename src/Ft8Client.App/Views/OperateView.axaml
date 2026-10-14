@@ -197,7 +197,7 @@
                 <Run Text="{Binding WaitingPart}" FontWeight="SemiBold" />
               </TextBlock>
               <TextBox x:Name="TypeAhead" Text="{Binding Typed}" FontFamily="{StaticResource MessageFont}" AutomationProperties.Name="Type ahead"
-                       Watermark="Type here. Enter sends; while transmitting, keys go out as you type." />
+                       PlaceholderText="Type here. Enter sends; while transmitting, keys go out as you type." />
               <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsRtty}">
                   <ToggleSwitch IsChecked="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).RttyReverse}" OnContent="Reverse" OffContent="Reverse"
