@@ -688,7 +688,10 @@ function renderTune(s) {
 // The slot countdown runs on the phone between states, from the station's position in the slot.
 let slotAt = 0;
 function renderSlot() {
-  const s = state; if (!s || !s.slotLengthMs) return;
+  const s = state; if (!s) return;
+  // PSK and RTTY have no slots: the station sends a zero length, and the bar is hidden rather than left frozen.
+  $("slot").classList.toggle("hidden", !s.slotLengthMs);
+  if (!s.slotLengthMs) return;
   const into = Math.min(s.slotLengthMs, s.slotIntoMs + (Date.now() - slotAt));
   $("slot").classList.toggle("tx", s.transmitting);
   $("slotLabel").textContent = s.slotLabel;

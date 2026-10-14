@@ -382,9 +382,7 @@ public sealed partial class OperateViewModel : ObservableObject
         RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {band} is on the air right now.";
 
         Summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty);
-        Contact = s.Contact is null ? null
-            : ModeInfo.IsSlotted(s.Mode) ? ContactPanelViewModel.From(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall))
-            : ContactPanelViewModel.FromKeyboard(s.Contact, s, Units, QrzName?.Invoke(s.Contact.DxCall));
+        Contact = s.Contact is null ? null : ContactPanelViewModel.For(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall));
         OnPropertyChanged(nameof(InContact));
         OnPropertyChanged(nameof(Panel));
         Calling = s.Contact is null ? null : DetailsFor(s.Contact.DxCall, s, now);
