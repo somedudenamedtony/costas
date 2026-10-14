@@ -15,11 +15,12 @@ namespace Ft8Client.Core.Messages;
 public static class LogComment
 {
     /// <summary>
-    /// Builds the comment from the mode and the reports. The received part is left out when no report was received.
+    /// Builds the comment from the mode and the reports. Each part is left out when that report was not exchanged.
     /// </summary>
-    public static string Format(Mode mode, int reportSent, int? reportReceived)
+    public static string Format(Mode mode, int? reportSent, int? reportReceived)
     {
-        var s = $"{ModeInfo.Name(mode)} Sent: {Rst(mode, reportSent)}";
+        var s = ModeInfo.Name(mode);
+        if (reportSent is { } sent) s = $"{s} Sent: {Rst(mode, sent)}";
         return reportReceived is { } r ? $"{s} Rcvd: {Rst(mode, r)}" : s;
     }
 

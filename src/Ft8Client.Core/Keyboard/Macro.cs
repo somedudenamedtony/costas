@@ -18,7 +18,7 @@ public sealed record Macro(int Key, string Label, string Text)
     [
         new(1, "CQ", "CQ CQ CQ DE {MYCALL} {MYCALL} {MYCALL} {MYGRID} K"),
         new(2, "Answer", "{CALL} DE {MYCALL} {MYCALL} K"),
-        new(3, "Exchange", "{CALL} DE {MYCALL} GE {NAME} UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN"),
+        new(3, "Exchange", "{CALL} DE {MYCALL} [GE {NAME}] UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN"),
         new(4, "73", "TNX {NAME} 73 {CALL} DE {MYCALL} SK"),
         new(5, "Rig and antenna", "RIG {MYRIG} ANT {MYANT}"),
     ];

@@ -102,7 +102,7 @@ Text in a channel is scanned for callsigns using the existing `Callsign` rules. 
 | `<a> DE <b>` | `<b>` is sending, to `<a>` |
 | `<call> <call> K` or `KN` at the end of an over | `<call>` is the sender |
 
-A channel keeps its station until a different sender is seen, or until it has been quiet for 60 s. A channel with no callsign yet appears only as "a signal without a callsign yet, at N Hz" under Next in line.
+A channel keeps its station until a different sender is seen, or until it has been quiet for 60 s. As built: also until the station signs off with SK, so the next station on that frequency is not credited with its own first words. Whom an over is sent to (`<a> DE <b>`) holds for that over only. An over counts as a CQ only when CQ is followed by CQ, DE or a call (or one short word and then one of those, as in `CQ DX DE`), and not after MY, UR, FER and the like; QRZ counts only as `QRZ?` or `QRZ DE`, never `QRZ.COM`. `BTU N0XYZ N0XYZ K` names the station sent to, not the sender. A channel with no callsign yet appears only as "a signal without a callsign yet, at N Hz" under Next in line.
 
 The `HeardMessage` events from text carry the channel offset and time, and no slot. `StationTracker` treats them like any decode: tiers, worked-before, rarity, LoTW, Hunt list and POTA all apply. `Station.Parity` is empty for these stations.
 
@@ -122,24 +122,34 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
 | 4. Their exchange | 4. My exchange (mine) |
 | 5. 73 (mine) | 5. Their 73 |
 
-- **Exchange fields.** RST, name, QTH and grid are found in the partner's text by the patterns `UR 599`, `RST 599`, `NAME <word>`, `OP <word>`, `QTH <words up to .>` and `LOC <grid>`.
+- **Exchange fields.** RST, name, QTH and grid are found in the partner's text by the patterns `UR 599`, `RST 599`, `NAME <word>`, `OP <word>`, `QTH <words up to .>` and `LOC <grid>`. As built: a filler between the keyword and the value is skipped (`NAME IS JOSE`, `QTH HR SAN JUAN`, `UR RST IS 599`, `NAME: BOB`, `LOC = FN31`); a report they thank me for (`TNX FER RST 579`) is the one I sent and is not read as theirs; a QTH sent twice for copy counts once, and a two-letter last word (a state, `DENVER CO`) stays in capitals.
 - **Capture by click.** The operator can click any word in the conversation and choose Call, Name, QTH, RST or Grid. A clicked value always beats a found one.
 - **Moving the strip on.** A step moves to Done when its macro is sent (my steps), or when the partner's over contains what the step needs (their steps). The next step of mine is highlighted, and Enter sends its macro.
 - **Logging.** It happens on the step marked Logged, or on Log now, and takes the RST, name and QTH shown in the card. The frequency logged is the dial plus the partner's audio offset, rounded to 1 Hz. This differs from FT8, which logs the dial.
 - **Abandon (Esc).** Clears the contact, as for FT8.
 - As built (M12): `KeyboardContactEngine` in Core, beside the FT8 `ContactEngine`; the session picks one by mode. A CQ counts as sent as soon as it is queued, so a quick answer is never missed; my other steps are done when their macro has gone out whole. While their step is pending, Enter still offers my next macro, so the operator can move on without waiting. A clicked word is offered from a menu: their name, QTH, report, grid or call.
+- As built (contact fixes, 2026-10-14):
+  - An answer to my CQ counts when the over is to me, even if my call and theirs arrive on different lines (the channel's "sent to" for the over is used). A station that calls me within 2 minutes of a logged contact (a tail-ender) starts a new contact the same way; the station just logged does not.
+  - The partner's text is read as one piece from my last over on, so an exchange split across lines is found. Their text to another station (`N0XYZ DE <partner>`) is shown but not taken as their exchange. Text with no sender counts as the partner's only when it is on their offset and names me. A call with a portable suffix (`W7LIT/P`) is the same station.
+  - Their 73 step needs 73 or SK; TU alone no longer closes and logs the contact.
+  - After answering a CQ, my F4 73 logs the contact once both exchanges are done.
+  - F1 CQ during an unfinished contact ends that contact without logging (Log now keeps it) and listens for answers.
+  - Log now does nothing after Abandon. The report sent is logged only once my exchange (F3) went out; otherwise the log has no sent report.
+  - A clicked report must be an RST (5NN is read as 599) and a clicked grid a grid; anything else is refused with a note in the bottom bar.
 
 ## 8. Transmit
 
 - **Type-ahead.** Typed text is queued and goes out as the transmitter reaches it. The part already sent is dimmed. Backspace removes characters not yet sent.
 - **Macros.** F1 to F12, edited in Settings > Transmitting > Macros. They can contain these fields: `{CALL}` `{NAME}` `{RST}` `{QTH}` `{MYCALL}` `{MYNAME}` `{MYQTH}` `{MYGRID}` `{MYRIG}` `{MYANT}`. A field with no value is shown in red in the type-ahead line, and nothing is sent until it is filled or removed.
+  - As built (owner decision 2026-10-14, finding H1): a part of a macro in square brackets is optional. It goes out, without the brackets, when every field in it has a value, and is left out whole (with the space before it) when one of its fields has none; it is never sent with a blank or guessed value. The default F3 marks `[GE {NAME}]` optional, so a station that answers with only its call ("W7LIT DE KP4JRS K") can be sent the exchange; with a name known, F3 goes out exactly as before. A stored F3 that is still the old default is read as the new one. Fields outside brackets still refuse as above. Each macro button's tooltip shows the text as it would go out now. Brackets with no field inside are plain text.
+  - Anything in braces is a field name. A name that is not one of the fields (`{MY_CALL}`, say) refuses the macro, and the bottom bar names it and lists the fields; it is never sent as written.
 - **Defaults** (US-style, editable):
 
 | Key | Macro | Text |
 | --- | --- | --- |
 | F1 | CQ | `CQ CQ CQ DE {MYCALL} {MYCALL} {MYCALL} {MYGRID} K` |
 | F2 | Answer | `{CALL} DE {MYCALL} {MYCALL} K` |
-| F3 | Exchange | `{CALL} DE {MYCALL} GE {NAME} UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN` |
+| F3 | Exchange | `{CALL} DE {MYCALL} [GE {NAME}] UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN` |
 | F4 | 73 | `TNX {NAME} 73 {CALL} DE {MYCALL} SK` |
 | F5 | Rig and antenna | `RIG {MYRIG} ANT {MYANT}` |
 
@@ -175,6 +185,7 @@ There is a watchdog for the keyboard modes:
 - Transmit stops after **3 minutes** of continuous transmitting. This matches the remote-control cap in D14.
 - It also stops after **20 seconds** of idle with nothing left to send.
 - Either stop is shown on the strip as "Stopped by watchdog".
+- As built (finding H3, 2026-10-14): the 20-second idle close only returns a typed over to receive. The contact goes on, and the bottom bar says "Back to receive: nothing was sent for 20 seconds." Only the 3-minute limit ends the contact as "Stopped by watchdog". `KeyboardOver.Idle` tells the two apart.
 - As built (M12): if an over has still not ended 10 s past the 3-minute limit (the audio device stopped taking samples, so the over cannot play out), Halt drops PTT at once.
 
 ## 10. Screen (see `02-ui-spec.md` for the FT8 layout)

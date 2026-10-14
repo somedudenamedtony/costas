@@ -12,7 +12,7 @@ namespace Ft8Client.App.ViewModels;
 /// <summary>A function-key macro button under the conversation box.</summary>
 /// <param name="Key">The function key, 1 for F1.</param>
 /// <param name="Label">The macro's name.</param>
-/// <param name="Text">The macro's text, for the tooltip.</param>
+/// <param name="Text">The macro's text as it would go out now, for the tooltip.</param>
 /// <param name="IsNext">True for the next step's macro (Enter sends it), shown in the accent colour.</param>
 public sealed record MacroButtonViewModel(int Key, string Label, string Text, bool IsNext)
 {

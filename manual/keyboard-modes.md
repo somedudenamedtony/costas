@@ -64,7 +64,10 @@ A macro goes back to receive when it has gone out, unless you keep typing. Typed
 sending idle between words, until you press Enter on an empty line.
 
 **Logging.** The contact is logged with the report, name and QTH shown on the card, and the frequency of the
-station's signal (the dial plus its audio frequency). Reports are RST, such as 599. **Log now** logs it at any time.
+station's signal (the dial plus its audio frequency). Reports are RST, such as 599. **Log now** logs it at any time
+until you abandon the contact; if your exchange has not gone out yet, no sent report is logged. Calling CQ (F1) in the
+middle of a contact ends it without logging, so log it first if you want to keep it. A station that calls you within two
+minutes of a logged contact starts the next contact.
 
 ## Macros
 
@@ -74,7 +77,7 @@ The macro keys and your details are in **Settings › PSK and RTTY**. The defaul
 | --- | --- | --- |
 | F1 | CQ | `CQ CQ CQ DE {MYCALL} {MYCALL} {MYCALL} {MYGRID} K` |
 | F2 | Answer | `{CALL} DE {MYCALL} {MYCALL} K` |
-| F3 | Exchange | `{CALL} DE {MYCALL} GE {NAME} UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN` |
+| F3 | Exchange | `{CALL} DE {MYCALL} [GE {NAME}] UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN` |
 | F4 | 73 | `TNX {NAME} 73 {CALL} DE {MYCALL} SK` |
 | F5 | Rig and antenna | `RIG {MYRIG} ANT {MYANT}` |
 
@@ -82,6 +85,11 @@ Fill in **Your name**, **Your QTH** and your radio and antenna there first. A ma
 sent: it appears above the typing line as it would go out, with the empty field in red, and the bottom bar says where
 to fill it. Click the right word in the conversation (for their name or QTH) or fill in Settings, then press the key
 again. Your report to them is 599.
+
+A part in square brackets is optional: in F3, `[GE {NAME}]` goes out as "GE Jose" once you have their name, and is
+left out when you do not, so a station that sends only its call can still be given your exchange. Hover over a macro
+key to see exactly what it will send. A name in braces that is not one of the fields (a typo such as `{MY_CALL}`)
+stops the macro from going out until you correct it.
 
 ## Away from the desk
 
@@ -107,8 +115,8 @@ again. Your report to them is 599.
 ## Safety
 
 - Costas will not send outside the band's limits, and it drops PTT on any radio or audio error.
-- A single over stops after 3 minutes, and an over with nothing to send stops after 20 seconds. The strip then says
-  "Stopped by watchdog".
+- A single over stops after 3 minutes; the strip then says "Stopped by watchdog". An over you typed that has had
+  nothing to send for 20 seconds simply goes back to receive, and the contact carries on.
 - RTTY keeps the transmitter at full output for the whole over. When you pick RTTY, Costas turns the radio's power down
   to half of what you set, and puts it back when you leave RTTY or close Costas (unless you turned the power yourself
   meanwhile). Change the share under **RTTY power** in Settings; 100 % leaves the power alone.

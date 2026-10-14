@@ -41,7 +41,7 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
             FreqHz = c.FrequencyHz,
             Mode = mode,
             Submode = submode,
-            RstSent = LogComment.Rst(c.Mode, e.ReportSent),
+            RstSent = e.ReportSent is { } rs ? LogComment.Rst(c.Mode, rs) : null,
             RstRcvd = e.ReportReceived is { } r ? LogComment.Rst(c.Mode, r) : null,
             Gridsquare = e.Grid,
             Name = c.Name,

@@ -27,7 +27,7 @@ public static partial class OverReader
         // Text arrives a character at a time: a word still being received (no space after it yet) is not read, so
         // "DE KP4J" is not taken for a call and "K" is not taken for the end of the over before "KP4JRS" is complete.
         if (words.Length > 0 && upper.Length > 0 && !Words().IsMatch(upper[^1..])) words = words[..^1];
-        var cq = words.Any(w => w is "CQ" or "QRZ");
+        var cq = IsCq(words) || Qrz().IsMatch(upper);
         var ended = words.Length > 0 && EndWords.Contains(words[^1]);
 
         string? sender = null, to = null;
@@ -49,9 +49,29 @@ public static partial class OverReader
         {
             var j = words.Length - 1;
             while (j >= 0 && (EndWords.Contains(words[j]) || words[j] is "PSE" or "AR")) j--;
-            if (j > 0 && j > at && IsCall(words[j]) && words[j - 1] == words[j]) (sender, to) = (words[j], null);
+            if (j > 0 && j > at && IsCall(words[j]) && words[j - 1] == words[j])
+            {
+                // "BTU N0XYZ N0XYZ K" hands back to N0XYZ: it is the station sent to, not the sender.
+                if (j > 1 && words[j - 2] is "BTU" or "TO") to = words[j];
+                else (sender, to) = (words[j], null);
+            }
         }
-        return new OverSummary(sender, to, cq, ended);
+        return new OverSummary(sender, to, cq, ended) { SignedOff = ended && words[^1] == "SK" };
+    }
+
+    // A call for anyone: CQ followed by CQ, DE or a call, or by one short word that is ("CQ DX DE", "CQ TEST W7LIT").
+    // "MY CQ", "UR CQ" and the like talk about a CQ and are not one.
+    private static bool IsCq(string[] words)
+    {
+        for (var i = 0; i + 1 < words.Length; i++)
+        {
+            if (words[i] != "CQ" || (i > 0 && NotCalling.Contains(words[i - 1]))) continue;
+            if (Follows(words[i + 1])) return true;
+            if (words[i + 1].Length <= 4 && !words[i + 1].Any(char.IsDigit) && i + 2 < words.Length && Follows(words[i + 2])) return true;
+        }
+        return false;
+
+        static bool Follows(string w) => w is "CQ" or "DE" || IsCall(w);
     }
 
     /// <summary>
@@ -60,6 +80,12 @@ public static partial class OverReader
     /// keeps out words that <see cref="Callsign.IsValid"/> allows but text is full of, such as 5NN and 73S.
     /// </summary>
     public static bool IsCall(string word) => Callsign.IsValid(word) && BaseShape().IsMatch(Callsign.BaseCall(word));
+
+    private static readonly HashSet<string> NotCalling = new(StringComparer.Ordinal) { "MY", "UR", "YR", "FER", "FOR", "TO", "ON", "ANS" };
+
+    // QRZ as a question ("QRZ?") or a call ("QRZ DE"), not the web site ("QRZ.COM").
+    [GeneratedRegex(@"\bQRZ(?:\s*\?|\s+DE\b)")]
+    private static partial Regex Qrz();
 
     [GeneratedRegex("[^A-Z0-9/]+")]
     private static partial Regex Words();

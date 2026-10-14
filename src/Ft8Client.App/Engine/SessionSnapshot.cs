@@ -138,6 +138,12 @@ public sealed record SessionSnapshot
     public IReadOnlyList<Macro> Macros { get; init; } = Macro.Defaults;
 
     /// <summary>
+    /// PSK and RTTY: each macro's text as it would go out now, by key (fields filled, optional parts kept or left out,
+    /// fields with no value as written), for its button's tooltip.
+    /// </summary>
+    public IReadOnlyDictionary<int, string> MacroPreviews { get; init; } = new Dictionary<int, string>();
+
+    /// <summary>
     /// PSK and RTTY: the macro last refused because a field has no value, in pieces with those fields marked (shown in
     /// red in the type-ahead line), or null.
     /// </summary>

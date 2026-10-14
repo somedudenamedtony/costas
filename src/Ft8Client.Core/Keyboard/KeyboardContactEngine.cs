@@ -37,6 +37,14 @@ public sealed partial class KeyboardContactEngine
     private DateTime? _timeOn;
     private bool _logged;
     private bool _reportSent;
+    private bool _heardToMe;
+    private DateTime? _tailEndersUntil;
+
+    // Their text kept since my last over, read as a whole so an exchange split across lines is found.
+    private const int MaxHeard = 2000;
+
+    /// <summary>How long after a logged contact a station calling me (a tail-ender) starts a new contact.</summary>
+    public static readonly TimeSpan TailEnderWindow = TimeSpan.FromMinutes(2);
 
     /// <summary>Creates an engine for my call.</summary>
     public KeyboardContactEngine(string myCall) => _myCall = Callsign.Normalize(myCall);
@@ -84,11 +92,15 @@ public sealed partial class KeyboardContactEngine
     /// <summary>Changes my call (after settings change).</summary>
     public void Configure(string myCall) => _myCall = Callsign.Normalize(myCall);
 
-    /// <summary>A CQ went out (the CQ macro was sent): wait for a station to answer.</summary>
+    /// <summary>
+    /// A CQ went out (the CQ macro was sent): wait for a station to answer. An unfinished contact ends without being
+    /// logged (Log now keeps it), so the stations that answer the CQ are heard.
+    /// </summary>
     public void CqSent(DateTime utc)
     {
-        if (InContact) return;
+        if (InContact) _outcome = ContactOutcome.Abandoned;
         CallingCq = true;
+        _tailEndersUntil = null;
         _timeOn = utc;
     }
 
@@ -125,80 +137,112 @@ public sealed partial class KeyboardContactEngine
         if (!InContact) return;
         _timeOn ??= utc;
         _heardSinceMine.Clear();
-        var i = Array.FindIndex(_steps, s => s.Mine && s.State != StepState.Done && s.Key == macroKey);
-        if (i < 0) return;
-        _steps[i] = _steps[i] with { State = StepState.Done, Message = text.Trim(), TimeUtc = utc, Count = 1 };
+        _heardToMe = false;
         if (macroKey == Macro.ExchangeKey) _reportSent = true;
-        Advance();
-        var done = _steps.All(s => s.State == StepState.Done);
-        // I close the contact with my 73: after my CQ that is the last step; after answering their CQ, both exchanges
-        // are done and their 73 is only a courtesy.
-        if (macroKey == Macro.SignOffKey && (done || ExchangesDone())) Log(utc);
+        var i = Array.FindIndex(_steps, s => s.Mine && s.State != StepState.Done && s.Key == macroKey);
+        if (i >= 0)
+        {
+            _steps[i] = _steps[i] with { State = StepState.Done, Message = text.Trim(), TimeUtc = utc, Count = 1 };
+            Advance();
+        }
+        // I close the contact with my 73: after my CQ that is the last step; after answering their CQ (where 73 is not
+        // one of my steps), both exchanges are done and their 73 is only a courtesy.
+        if (macroKey == Macro.SignOffKey && (_steps.All(s => s.State == StepState.Done) || ExchangesDone())) Log(utc);
     }
 
     /// <summary>
-    /// Text read from a channel. While calling CQ, text with my call from another station starts a contact with it.
-    /// In a contact, only the partner's text counts (its <paramref name="sender"/>, or text on its offset).
+    /// Text read from a channel. While calling CQ, or for a short while after a contact is logged (a tail-ender), text
+    /// with my call from another station starts a contact with it. In a contact, only the partner's text counts: its
+    /// <paramref name="sender"/>, or with no sender known, text on its offset that names me. Their text to another
+    /// station (<paramref name="to"/>, the station the over is sent to, or an <c>A DE B</c> in the text) is not
+    /// their part of this contact. Returns true when the text is the partner's, for the conversation box.
     /// </summary>
-    public void Heard(string text, string? sender, int offsetHz, DateTime utc)
+    public bool Heard(string text, string? sender, int offsetHz, DateTime utc, string? to = null)
     {
         ArgumentNullException.ThrowIfNull(text);
         var upper = text.ToUpperInvariant();
-        var toMe = Words().Split(upper).Contains(_myCall, StringComparer.Ordinal);
+        var toMe = Words().Split(upper).Any(IsMe) || (to is not null && IsMe(to));
+        var addressee = to ?? OverReader.Read(upper + " ").To;
         if (_partner is null || _outcome != ContactOutcome.InProgress)
         {
-            if (!CallingCq || !toMe || sender is null || Callsign.EqualsCall(sender, _myCall)) return;
-            Begin(sender, offsetHz, ContactFlow.CalledCq);
-            _steps[0] = new Step(true, "CQ", "CQ", StepState.Done, _timeOn ?? utc, Macro.CqKey);
-            _steps[1] = new Step(false, "Their call", upper.Trim(), StepState.Done, utc, 0);
-            _steps[2] = new Step(true, "Exchange", "Exchange", StepState.Now, null, Macro.ExchangeKey);
-            _steps[3] = new Step(false, "Their exchange", "Their exchange", StepState.Upcoming, null, 0);
-            _steps[4] = new Step(true, "73", "73", StepState.Upcoming, null, Macro.SignOffKey);
-            CallingCq = false;
-            _received = ExchangeReader.Read(upper).Over(_received);
-            return;
+            if (CanStart(sender, toMe, addressee, utc))
+            {
+                var cq = CallingCq;
+                var timeOn = cq ? _timeOn ?? utc : utc;
+                Begin(sender!, offsetHz, ContactFlow.CalledCq);
+                _timeOn = timeOn;
+                _steps[0] = new Step(true, "CQ", cq ? "CQ" : "Tail-ender", StepState.Done, timeOn, Macro.CqKey);
+                _steps[1] = new Step(false, "Their call", upper.Trim(), StepState.Done, utc, 0);
+                _steps[2] = new Step(true, "Exchange", "Exchange", StepState.Now, null, Macro.ExchangeKey);
+                _steps[3] = new Step(false, "Their exchange", "Their exchange", StepState.Upcoming, null, 0);
+                _steps[4] = new Step(true, "73", "73", StepState.Upcoming, null, Macro.SignOffKey);
+                CallingCq = false;
+                Append(upper);
+                _heardToMe = true;
+                _received = ExchangeReader.Read(_heardSinceMine.ToString());
+                return true;
+            }
+            return _partner is not null && FromPartner(sender, toMe, offsetHz);
         }
-        if (sender is not null ? !Callsign.EqualsCall(sender, _partner) : Math.Abs(offsetHz - _partnerOffset) > 50) return;
+        if (!FromPartner(sender, toMe, offsetHz)) return false;
         _partnerOffset = offsetHz;
-        _received = ExchangeReader.Read(upper).Over(_received);
-        _heardSinceMine.Append(upper).Append(' ');
+        if (addressee is not null && !IsMe(addressee)) return true;
+        Append(upper);
+        _heardToMe |= toMe;
         var since = _heardSinceMine.ToString();
+        _received = ExchangeReader.Read(since).Over(_received);
         var i = Array.FindIndex(_steps, s => s.State != StepState.Done);
-        if (i < 0 || _steps[i].Mine) return;
+        if (i < 0 || _steps[i].Mine) return true;
         var step = _steps[i];
         var sinceWords = Words().Split(since);
         var complete = step.Label switch
         {
             "Their exchange" => ExchangeReader.Read(since).Rst is not null
-                                || (toMe && sinceWords.Any(w => w is "K" or "KN" or "BK")),
-            "73" => sinceWords.Any(w => w is "73" or "SK" or "TU"),
+                                || (_heardToMe && sinceWords.Any(w => w is "K" or "KN" or "BK")),
+            // TU alone is often "thank you" in passing; only 73 or SK closes the contact.
+            "73" => sinceWords.Any(w => w is "73" or "SK"),
             _ => false,
         };
-        if (!complete) return;
+        if (!complete) return true;
         _steps[i] = step with { State = StepState.Done, Message = Shorten(since), TimeUtc = utc, Count = 1 };
         Advance();
         if (step.Label == "73" && _flow == ContactFlow.AnswerCq) Log(utc);
+        return true;
     }
 
-    /// <summary>Sets a part of the exchange from a word the operator clicked. It beats anything read from the text.</summary>
-    public void Capture(ExchangeField field, string value)
+    /// <summary>
+    /// Sets a part of the exchange from a word the operator clicked. It beats anything read from the text. Returns
+    /// false, changing nothing, when the word cannot be that part: a report that is not an RST (5NN counts as 599), a
+    /// grid that is not one, or a call that is not one.
+    /// </summary>
+    public bool Capture(ExchangeField field, string value)
     {
         ArgumentNullException.ThrowIfNull(value);
         value = value.Trim().ToUpperInvariant();
-        if (value.Length == 0) return;
-        if (field == ExchangeField.Call)
+        if (value.Length == 0) return false;
+        switch (field)
         {
-            if (!OverReader.IsCall(value)) return;
-            if (_partner is not null) _partner = value;
-            return;
+            case ExchangeField.Call:
+                if (!OverReader.IsCall(value)) return false;
+                if (_partner is not null) _partner = value;
+                return true;
+            case ExchangeField.Rst:
+                value = value.Replace('N', '9');
+                if (!RstWord().IsMatch(value)) return false;
+                break;
+            case ExchangeField.Grid:
+                if (!Grid.IsGrid4Or6(value)) return false;
+                value = value.Length > 4 ? value[..4] + value[4..].ToLowerInvariant() : value;
+                break;
         }
         _captured[field] = field is ExchangeField.Name or ExchangeField.Qth ? Capitalise(value) : value;
+        return true;
     }
 
-    /// <summary>Logs the contact now.</summary>
+    /// <summary>Logs the contact now. An abandoned contact is not logged.</summary>
     public void LogNow(DateTime utc)
     {
-        if (_partner is null || _logged) return;
+        if (_partner is null || _logged || _outcome == ContactOutcome.Abandoned) return;
         Log(utc);
     }
 
@@ -206,6 +250,7 @@ public sealed partial class KeyboardContactEngine
     public void Abandon()
     {
         CallingCq = false;
+        _tailEndersUntil = null;
         if (InContact) _outcome = ContactOutcome.Abandoned;
     }
 
@@ -229,10 +274,32 @@ public sealed partial class KeyboardContactEngine
             _ => NextMacro is { } k ? $"In contact with {_partner}. Enter sends {Label(k)}." : $"Waiting for {_partner}.",
         };
         return new ContactView(_partner, rx.Grid, _flow, _outcome, _reportSent ? ReportToSend : null, rx.Rst, [.. _steps.Select(s => s.ToView())],
-            _logged, !_logged && rx.Rst is not null, status);
+            _logged, !_logged && _outcome != ContactOutcome.Abandoned && rx.Rst is not null, status);
     }
 
     private static string Label(int key) => Macro.Defaults.FirstOrDefault(m => m.Key == key)?.Label ?? $"F{key}";
+
+    // A word is my call, also with a portable suffix or prefix (W7LIT/P).
+    private bool IsMe(string word) => SameStation(word, _myCall);
+
+    private static bool SameStation(string? a, string? b) =>
+        Callsign.EqualsCall(a, b) || (a is { Length: > 0 } && b is { Length: > 0 } && Callsign.IsValid(Callsign.Normalize(a))
+                                      && string.Equals(Callsign.BaseCall(a), Callsign.BaseCall(b), StringComparison.Ordinal));
+
+    // Text with a sender is the partner's when the sender is the partner; text with none only when it is on the
+    // partner's offset and names me, so a nearby station's text is not taken for theirs.
+    private bool FromPartner(string? sender, bool toMe, int offsetHz) =>
+        sender is not null ? SameStation(sender, _partner) : toMe && Math.Abs(offsetHz - _partnerOffset) <= 50;
+
+    private bool CanStart(string? sender, bool toMe, string? addressee, DateTime utc) =>
+        sender is not null && toMe && !IsMe(sender) && (addressee is null || IsMe(addressee))
+        && (CallingCq || (_tailEndersUntil is { } until && utc <= until && !SameStation(sender, _partner)));
+
+    private void Append(string upper)
+    {
+        _heardSinceMine.Append(upper).Append(' ');
+        if (_heardSinceMine.Length > MaxHeard) _heardSinceMine.Remove(0, _heardSinceMine.Length - MaxHeard);
+    }
 
     private bool ExchangesDone() => _steps.Where(s => s.Label is "Exchange" or "Their exchange").All(s => s.State == StepState.Done);
 
@@ -247,6 +314,8 @@ public sealed partial class KeyboardContactEngine
         _heardSinceMine.Clear();
         _logged = false;
         _reportSent = false;
+        _heardToMe = false;
+        _tailEndersUntil = null;
         if (flow == ContactFlow.AnswerCq) _timeOn = null;
     }
 
@@ -267,8 +336,11 @@ public sealed partial class KeyboardContactEngine
         if (_logged || _partner is null) return;
         _logged = true;
         _outcome = ContactOutcome.Logged;
+        _tailEndersUntil = utc + TailEnderWindow;
         var rx = Received;
-        Logged?.Invoke(new KeyboardLogEntry(new ContactLogEntry(_partner, rx.Grid, ReportToSend, rx.Rst, _timeOn ?? utc, utc), rx.Name, rx.Qth, _partnerOffset));
+        // The report is logged as sent only once it went out.
+        Logged?.Invoke(new KeyboardLogEntry(new ContactLogEntry(_partner, rx.Grid, _reportSent ? ReportToSend : null, rx.Rst, _timeOn ?? utc, utc),
+            rx.Name, rx.Qth, _partnerOffset));
     }
 
     private static string Shorten(string text)
@@ -282,6 +354,9 @@ public sealed partial class KeyboardContactEngine
 
     [GeneratedRegex(@"[^A-Z0-9/?]+")]
     private static partial Regex Words();
+
+    [GeneratedRegex("^[1-5][1-9][1-9]$")]
+    private static partial Regex RstWord();
 
     private sealed record Step(bool Mine, string Label, string Message, StepState State, DateTime? TimeUtc, int Key, int Count = 0)
     {

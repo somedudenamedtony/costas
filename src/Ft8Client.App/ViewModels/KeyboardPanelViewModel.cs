@@ -116,7 +116,7 @@ public sealed partial class KeyboardPanelViewModel : ObservableObject
         OnAir = s.KeyboardTx.Active;
         SentPart = s.KeyboardTx.Sent;
         WaitingPart = s.KeyboardTx.Waiting;
-        var macros = s.Macros.Select(m => new MacroButtonViewModel(m.Key, m.Label, m.Text, m.Key == s.NextMacro)).ToList();
+        var macros = s.Macros.Select(m => new MacroButtonViewModel(m.Key, m.Label, s.MacroPreviews.GetValueOrDefault(m.Key) ?? m.Text, m.Key == s.NextMacro)).ToList();
         if (!macros.SequenceEqual(Macros))
         {
             Macros.Clear();

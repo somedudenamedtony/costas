@@ -11,7 +11,9 @@ namespace Ft8Client.Core.Keyboard;
 
 /// <summary>
 /// Follows the text of one keyboard-mode channel and works out whose it is (docs/09-keyboard-modes.md section 6). The
-/// channel keeps its station until a different sender is seen or it has been quiet for <see cref="QuietAfter"/>.
+/// channel keeps its station until a different sender is seen, it has been quiet for <see cref="QuietAfter"/>, or
+/// the station signed off with SK (the frequency may then pass to another station). The station sent to is that of
+/// the current over only.
 /// </summary>
 public sealed class TextChannel
 {
@@ -28,6 +30,8 @@ public sealed class TextChannel
     private string _recent = string.Empty;
     private DateTime _lastUtc;
     private string? _to;
+    private bool _overEnded;
+    private bool _signedOff;
 
     /// <summary>The station this channel's text belongs to, once named.</summary>
     public string? Call { get; private set; }
@@ -43,6 +47,13 @@ public sealed class TextChannel
     public TextHeard? Add(string text, DateTime utc, int offsetHz, int snr)
     {
         if (Call is not null && utc - _lastUtc > QuietAfter) (Call, _to) = (null, null);
+        // A new over: whom the last one was sent to no longer applies, and after SK the next text may be another station's.
+        if (_overEnded)
+        {
+            _to = null;
+            if (_signedOff) Call = null;
+            (_overEnded, _signedOff) = (false, false);
+        }
         _lastUtc = utc;
         _over.Append(text);
         if (_over.Length > OverLength) _over.Remove(0, _over.Length - OverLength);
@@ -56,7 +67,11 @@ public sealed class TextChannel
             Call = sender;
             _to = over.To ?? _to;
         }
-        if (over.Ended) _over.Clear();
+        if (over.Ended)
+        {
+            _over.Clear();
+            (_overEnded, _signedOff) = (true, over.SignedOff);
+        }
         return Call is null ? null : new TextHeard(Call, _to, over.Cq, over.Ended, _recent, utc, offsetHz, snr);
     }
 }

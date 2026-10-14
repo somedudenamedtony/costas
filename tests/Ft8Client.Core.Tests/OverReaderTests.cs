@@ -52,6 +52,32 @@ public class OverReaderTests
         OverReader.Read(text).Sender.Should().BeNull();
     }
 
+    [Theory]
+    [InlineData("MY QRZ.COM PAGE IS UP TO DATE ")]
+    [InlineData("TNX FER ANS MY CQ. UR RST 599 ")]
+    [InlineData("W7LIT DE EA8TL QRZ COM ")]
+    public void Read_CqOrQrzMentioned_NotACall(string text) => OverReader.Read(text).Cq.Should().BeFalse();
+
+    [Theory]
+    [InlineData("CQ TEST W7LIT W7LIT ")]
+    [InlineData("QRZ DE W7LIT ")]
+    public void Read_CqForms_Cq(string text) => OverReader.Read(text).Cq.Should().BeTrue();
+
+    [Fact]
+    public void Read_BackToYouAndCallTwice_CallIsAddressee()
+    {
+        var o = OverReader.Read("TNX FER INFO BTU N0XYZ N0XYZ K ");
+        o.Sender.Should().BeNull();
+        o.To.Should().Be("N0XYZ");
+    }
+
+    [Fact]
+    public void Read_EndsWithSk_SignedOff()
+    {
+        OverReader.Read("73 W7LIT DE EA8TL SK ").SignedOff.Should().BeTrue();
+        OverReader.Read("W7LIT DE EA8TL KN ").SignedOff.Should().BeFalse();
+    }
+
     [Fact]
     public void Read_CallNotInPattern_NotSender()
     {
