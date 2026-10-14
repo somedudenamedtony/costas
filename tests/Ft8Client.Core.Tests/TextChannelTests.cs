@@ -39,8 +39,26 @@ public class TextChannelTests
         ch.Add("W7LIT DE EA8TL KN ", T0, 1000, -5);
         var h = ch.Add("GE TONY TNX FER CALL ", T0.AddSeconds(5), 1000, -5);
         h!.Call.Should().Be("EA8TL");
-        h.To.Should().Be("W7LIT");
         h.Cq.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Add_NextOver_ForgetsWhoTheLastWasSentTo()
+    {
+        var ch = new TextChannel();
+        ch.Add("W7LIT DE EA8TL KN ", T0, 1000, -5)!.To.Should().Be("W7LIT");
+        var h = ch.Add("CQ CQ DE EA8TL EA8TL K ", T0.AddSeconds(30), 1000, -5);
+        h!.To.Should().BeNull();
+        h.Cq.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Add_AfterSignOff_TextNotCreditedToOldStation()
+    {
+        var ch = new TextChannel();
+        ch.Add("TNX QSO 73 W7LIT DE EA8TL SK ", T0, 1000, -5)!.Call.Should().Be("EA8TL");
+        ch.Add("UR 599 599 NAME BOB ", T0.AddSeconds(10), 1000, -5).Should().BeNull();
+        ch.Add("W7LIT DE N0XYZ K ", T0.AddSeconds(12), 1000, -5)!.Call.Should().Be("N0XYZ");
     }
 
     [Fact]

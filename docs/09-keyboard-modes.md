@@ -102,7 +102,7 @@ Text in a channel is scanned for callsigns using the existing `Callsign` rules. 
 | `<a> DE <b>` | `<b>` is sending, to `<a>` |
 | `<call> <call> K` or `KN` at the end of an over | `<call>` is the sender |
 
-A channel keeps its station until a different sender is seen, or until it has been quiet for 60 s. A channel with no callsign yet appears only as "a signal without a callsign yet, at N Hz" under Next in line.
+A channel keeps its station until a different sender is seen, or until it has been quiet for 60 s. As built: also until the station signs off with SK, so the next station on that frequency is not credited with its own first words. Whom an over is sent to (`<a> DE <b>`) holds for that over only. An over counts as a CQ only when CQ is followed by CQ, DE or a call (or one short word and then one of those, as in `CQ DX DE`), and not after MY, UR, FER and the like; QRZ counts only as `QRZ?` or `QRZ DE`, never `QRZ.COM`. `BTU N0XYZ N0XYZ K` names the station sent to, not the sender. A channel with no callsign yet appears only as "a signal without a callsign yet, at N Hz" under Next in line.
 
 The `HeardMessage` events from text carry the channel offset and time, and no slot. `StationTracker` treats them like any decode: tiers, worked-before, rarity, LoTW, Hunt list and POTA all apply. `Station.Parity` is empty for these stations.
 

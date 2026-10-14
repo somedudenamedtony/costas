@@ -10,6 +10,10 @@ namespace Ft8Client.Core.Keyboard;
 /// <summary>What the text of one over (or the part read so far) says about who is sending.</summary>
 /// <param name="Sender">The sending station, when a pattern named it.</param>
 /// <param name="To">The station it is sending to, when <c>&lt;a&gt; DE &lt;b&gt;</c> named one.</param>
-/// <param name="Cq">True when the over contains CQ or QRZ.</param>
+/// <param name="Cq">True when the over calls CQ (CQ followed by CQ, DE or a call) or asks QRZ?.</param>
 /// <param name="Ended">True when the over ends with K, KN, BK or SK.</param>
-public sealed record OverSummary(string? Sender, string? To, bool Cq, bool Ended);
+public sealed record OverSummary(string? Sender, string? To, bool Cq, bool Ended)
+{
+    /// <summary>True when the over ends with SK: the station has finished, and the frequency may pass to another.</summary>
+    public bool SignedOff { get; init; }
+}
