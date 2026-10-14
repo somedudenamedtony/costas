@@ -129,7 +129,7 @@ public sealed class HuntService
         {
             if (_watcher.Targets.Count == 0) return;
             var log = _session.LogIndex;
-            var mode = ModeInfo.Name(s.Mode);
+            var mode = LogModeKey.Of(s.Mode);
             foreach (var st in s.Stations)
             {
                 if (st.Call.StartsWith('<') || (_checked.TryGetValue(st.Call, out var seen) && seen >= st.LastHeardUtc)) continue;

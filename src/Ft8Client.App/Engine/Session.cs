@@ -438,7 +438,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
 
             _slotCounts.Add((slot, result.Decodes.Count));
             _slotCounts.RemoveAll(x => now - x.Slot > TimeSpan.FromHours(1));
-            var modeKey = ModeInfo.Name(_config.Mode);
+            var modeKey = LogModeKey.Of(_config.Mode);
             var needed = _tracker.Stations.Where(st => st.LastHeardUtc == slot)
                 .Count(st => _logIndex.Need(st.Call, st.EntityKey, st.Grid, _config.Band, modeKey, _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly).Tag != NeedTag.Worked);
             _activity.Add(new SlotActivity(slot, result.Decodes.Count, needed));
@@ -637,14 +637,14 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             // A caller can skip the grid exchange. Persist the same known grid that we index.
             entry = entry with { Grid = entry.Grid ?? s?.Grid ?? lk?.Grid };
             var entity = s?.Entity ?? _countries.Lookup(entry.Call);
-            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid, _config.Band, ModeInfo.Name(_config.Mode),
+            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid, _config.Band, LogModeKey.Of(_config.Mode),
                 _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
             ctx = new LogContext(_config.Band, _config.Mode, frequencyHz, _config.MyCall, _config.MyGrid, _config.PowerWatts, need,
                 entity?.Entity.Key, entity?.Entity.Name, name ?? lk?.Name, lk?.State, entity?.Continent, qth ?? lk?.City);
             if (entry.TimeOffUtc - _lastContactUtc > TimeSpan.FromHours(2)) _tonight.Clear();
             _lastContactUtc = entry.TimeOffUtc;
             _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag));
-            _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
+            _logIndex.Add(new LogContact(entry.Call, _config.Band, LogModeKey.Of(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
             if (ModeInfo.IsSlotted(_config.Mode)) _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
         }
@@ -1092,8 +1092,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             var keyboard = !ModeInfo.IsSlotted(_config.Mode);
             var stations = _tracker.Stations.ToList();
             var rank = Ranker.Rank(new RankInput(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity,
-                _config.Band, ModeInfo.Name(_config.Mode), now, _countries, Lotw: _lotwUsers));
-            var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, ModeInfo.Name(_config.Mode), now, _slotCounts, _tonight,
+                _config.Band, LogModeKey.Of(_config.Mode), now, _countries, Lotw: _lotwUsers));
+            var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, LogModeKey.Of(_config.Mode), now, _slotCounts, _tonight,
                 _config.Ranking);
             snap = new SessionSnapshot
             {

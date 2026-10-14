@@ -95,7 +95,7 @@ public sealed class LogIndex
     /// <param name="entityKey">Its entity key, if known.</param>
     /// <param name="grid">Its grid, if known.</param>
     /// <param name="band">Current band.</param>
-    /// <param name="modeKey"><c>FT8</c> or <c>FT4</c>.</param>
+    /// <param name="modeKey">The mode key from <see cref="LogModeKey"/> (<c>FT8</c>, <c>PSK31</c>, ...).</param>
     /// <param name="tierOrder">Order of the four need tags; <see cref="DefaultTierOrder"/> if null.</param>
     /// <param name="confirmedOnly">Count only confirmed contacts for country, band and grid.</param>
     public NeedResult Need(string call, string? entityKey, string? grid, string band, string modeKey,
