@@ -161,4 +161,19 @@ public sealed class KeyboardEnterSessionTests : IDisposable
 
         _session.Snapshot.Activity.Should().ContainSingle().Which.Decodes.Should().Be(1);
     }
+
+    [Fact]
+    public void Drain_TextWithNoCallsign_ReportedAsUnnamedSignal()
+    {
+        Hear("THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG\n", 1180);
+
+        _session.Snapshot.UnnamedSignals.Should().ContainSingle().Which.Should().BeCloseTo(1180, 10);
+    }
+
+    [Theory]
+    [InlineData(new int[0], "")]
+    [InlineData(new[] { 1240 }, "A signal without a callsign yet, at 1240 Hz.")]
+    [InlineData(new[] { 1240, 1500, 1890 }, "3 signals without a callsign yet, at 1240, 1500 and 1890 Hz.")]
+    public void UnnamedSignalsText_Offsets_Described(int[] offsets, string expected) =>
+        ViewModels.OperateViewModel.UnnamedSignalsText(offsets).Should().Be(expected);
 }

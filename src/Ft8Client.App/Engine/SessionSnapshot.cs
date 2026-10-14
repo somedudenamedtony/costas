@@ -149,6 +149,9 @@ public sealed record SessionSnapshot
     /// </summary>
     public Exchange? Received { get; init; }
 
+    /// <summary>PSK and RTTY: the audio offsets of signals with text but no callsign yet, lowest first.</summary>
+    public IReadOnlyList<int> UnnamedSignals { get; init; } = [];
+
     /// <summary>PSK and RTTY: a note about the radio's settings for the mode (power cap, speech processor), or null.</summary>
     public string? RadioNote { get; init; }
 }

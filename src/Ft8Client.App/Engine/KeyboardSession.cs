@@ -27,6 +27,9 @@ public sealed class KeyboardSession : IDisposable
     private static readonly TimeSpan LinePause = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan AgeEvery = TimeSpan.FromSeconds(1);
 
+    // A channel with no callsign counts as a signal while it has had text this recently (a station keeps its channel 60 s).
+    private static readonly TimeSpan UnnamedFor = TimeSpan.FromSeconds(60);
+
     // Shown when the spectrum has no measure of a signal yet (the floor of the dB scale used for FT8).
     private const int NoSnr = -24;
 
@@ -141,6 +144,7 @@ public sealed class KeyboardSession : IDisposable
         var heard = new List<TextHeard>();
         var lines = new List<KeyboardLine>();
         Mode mode;
+        IReadOnlyList<int> unnamed;
         lock (_gate)
         {
             mode = _mode;
@@ -161,8 +165,14 @@ public sealed class KeyboardSession : IDisposable
             }
             if (heard.Count == 0 && lines.Count == 0 && now - _agedUtc < AgeEvery) return;
             _agedUtc = now;
+            // Signals with text but no callsign yet: shown under Next in line and tagged "?" on the waterfall.
+            unnamed = [.. _channels.Where(kv => kv.Value.Channel.Call is null && now - kv.Value.LastUtc <= UnnamedFor)
+                .Select(kv => _bank.Channels.FirstOrDefault(x => x.Id == kv.Key))
+                .OfType<ReceiveChannel>()
+                .Select(c => (int)Math.Round(c.Receiver.FrequencyHz))
+                .Order()];
         }
-        _session.ApplyText(mode, heard, lines, _clock.UtcNow);
+        _session.ApplyText(mode, heard, lines, _clock.UtcNow, unnamed);
     }
 
     private void Read(ChannelBank bank, ReadOnlySpan<float> samples, List<TextHeard> heard, List<KeyboardLine> lines)

@@ -375,6 +375,8 @@
                 </ListBox.ItemTemplate>
               </ListBox>
               <TextBlock Text="Nobody you need is calling CQ right now." Classes="secondary" Margin="14,10" IsVisible="{Binding LineEmpty}" />
+              <TextBlock Text="{Binding UnnamedText}" Classes="secondary" Margin="14,6,14,0" TextWrapping="Wrap"
+                         IsVisible="{Binding UnnamedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <TextBlock Text="{Binding MoreText}" Classes="secondary" Margin="14,6,14,10" IsVisible="{Binding MoreText, Converter={x:Static v:Converters.NotEmpty}}" />
             </StackPanel>
 

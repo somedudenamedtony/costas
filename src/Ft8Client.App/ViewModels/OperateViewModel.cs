@@ -193,6 +193,19 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial bool LineEmpty { get; set; } = true;
 
+    /// <summary>PSK and RTTY: the signals with no callsign yet, under Next in line; empty when none.</summary>
+    [ObservableProperty]
+    public partial string UnnamedText { get; set; } = string.Empty;
+
+    /// <summary>"A signal without a callsign yet, at 1240 Hz", or "3 signals ... at 1240, 1500 and 1890 Hz"; empty for none.</summary>
+    internal static string UnnamedSignalsText(IReadOnlyList<int> offsets)
+    {
+        if (offsets.Count == 0) return string.Empty;
+        var hz = offsets.Select(o => o.ToString(CultureInfo.InvariantCulture)).ToList();
+        var at = hz.Count == 1 ? hz[0] : string.Join(", ", hz.Take(hz.Count - 1)) + " and " + hz[^1];
+        return hz.Count == 1 ? $"A signal without a callsign yet, at {at} Hz." : $"{hz.Count} signals without a callsign yet, at {at} Hz.";
+    }
+
     /// <summary>"List updated" pill.</summary>
     [ObservableProperty]
     public partial bool ListUpdated { get; set; }
@@ -381,6 +394,7 @@ public sealed partial class OperateViewModel : ObservableObject
         RepeatsSubtitle = $"Heard now and already in your log on {band} {ModeInfo.Name(s.Mode)}.";
         RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {band} is on the air right now.";
 
+        UnnamedText = ModeInfo.IsSlotted(s.Mode) ? string.Empty : UnnamedSignalsText(s.UnnamedSignals);
         Summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty, ModeInfo.IsSlotted(s.Mode) ? null : s.Activity);
         Contact = s.Contact is null ? null : ContactPanelViewModel.For(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall));
         OnPropertyChanged(nameof(InContact));

@@ -38,6 +38,7 @@ public sealed partial class Session
     private int? _blockedMacro;
     private Mode _kbdContactMode;
     private DateTime _kbdActivityFrom;
+    private IReadOnlyList<int> _unnamedSignals = [];
 
     /// <summary>The keyboard transmitter, so tests can render its audio on a manual clock.</summary>
     internal KeyboardTransmitter Keys => _keys;

@@ -78,12 +78,20 @@ public partial class MainWindow : Window
             }
             var row = pump?.Spectrum.TakeLatest();
             ReceiveWaterfall.Update(snapshot.Transmitting ? null : row, snapshot.TxOffsetHz);
-            ReceiveWaterfall.SetTags(Core.ModeInfo.IsSlotted(snapshot.Mode)
-                ? []
-                : [.. snapshot.Stations.Where(st => st.Parity is null && st.HeardInLastOwnSlot).Select(st => (st.OffsetHz, st.Call))]);
+            ReceiveWaterfall.SetTags(Core.ModeInfo.IsSlotted(snapshot.Mode) ? [] : Tags(snapshot));
         };
         _timer.Start();
         if (!vm.Host.Settings.Current.SetupComplete) Dispatcher.UIThread.Post(() => OpenDialog("setup"));
+    }
+
+    // Keyboard modes: a tag over each station being read, "?" over a signal with no callsign yet, the one in contact red.
+    private static List<(int Hz, string Label, bool InContact)> Tags(Engine.SessionSnapshot s)
+    {
+        var partner = s.Contact is { Outcome: Core.Contacts.ContactOutcome.InProgress } c ? c.DxCall : null;
+        var tags = s.Stations.Where(st => st.Parity is null && st.HeardInLastOwnSlot)
+            .Select(st => (st.OffsetHz, st.Call, partner is not null && Core.Messages.Callsign.EqualsCall(st.Call, partner))).ToList();
+        tags.AddRange(s.UnnamedSignals.Where(hz => tags.All(t => Math.Abs(t.Item1 - hz) > 20)).Select(hz => (hz, "?", false)));
+        return tags;
     }
 
     /// <inheritdoc />

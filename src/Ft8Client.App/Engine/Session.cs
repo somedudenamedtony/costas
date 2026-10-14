@@ -463,13 +463,15 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
 
     /// <summary>
     /// Applies what <see cref="KeyboardSession"/> read since its last call: text from stations it has named, and finished
-    /// lines for Raw decodes. Keyboard stations are aged at the same time. Ignored unless the session is in that mode.
+    /// lines for Raw decodes. Keyboard stations are aged at the same time. <paramref name="unnamed"/> are the offsets of
+    /// signals with text but no callsign yet. Ignored unless the session is in that mode.
     /// </summary>
-    public void ApplyText(Mode mode, IReadOnlyList<TextHeard> heard, IReadOnlyList<KeyboardLine> lines, DateTime utc)
+    public void ApplyText(Mode mode, IReadOnlyList<TextHeard> heard, IReadOnlyList<KeyboardLine> lines, DateTime utc, IReadOnlyList<int>? unnamed = null)
     {
         lock (_gate)
         {
             if (mode != _config.Mode) return;
+            if (unnamed is not null) _unnamedSignals = unnamed;
             foreach (var h in heard) _tracker.ApplyText(h);
             _tracker.AgeText(utc);
             KeyboardActivity(utc);
@@ -898,6 +900,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _slotCounts.Clear();
             _activity.Clear();
             _kbdActivityFrom = default;
+            _unnamedSignals = [];
             _txMeters = null; // SWR belongs to the antenna on the old band
         }
         // A PSK or RTTY over does not follow the radio to another band or mode.
@@ -1141,6 +1144,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 RadioNote = keyboard ? _radioNote : null,
                 BlockedMacro = BlockedMacro(),
                 Received = keyboard && _kbd.Partner is not null ? _kbd.Received : null,
+                UnnamedSignals = keyboard ? _unnamedSignals : [],
             };
             _snapshot = snap;
         }

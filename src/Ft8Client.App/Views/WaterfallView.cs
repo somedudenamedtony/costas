@@ -26,13 +26,16 @@ public sealed class WaterfallView : Control
             (byte)(220 * Math.Clamp(t * 1.6, 0, 1)),
             (byte)(25 + 180 * Math.Sin(t * Math.PI))));
     }).ToArray();
+    private static readonly IBrush TagBackground = new SolidColorBrush(Color.FromArgb(170, 7, 18, 30));
+    private static readonly IBrush ContactTag = new SolidColorBrush(Color.FromRgb(196, 43, 28));
     private int _offset = 1500;
-    private IReadOnlyList<(int Hz, string Label)> _tags = [];
+    private IReadOnlyList<(int Hz, string Label, bool InContact)> _tags = [];
 
     /// <summary>
-    /// Callsign tags drawn above the signals they belong to (keyboard modes, docs/09-keyboard-modes.md section 10).
+    /// Callsign tags drawn above the signals they belong to (keyboard modes, docs/09-keyboard-modes.md section 10): "?"
+    /// for a signal with no callsign yet, and the station in contact in red.
     /// </summary>
-    public void SetTags(IReadOnlyList<(int Hz, string Label)> tags)
+    public void SetTags(IReadOnlyList<(int Hz, string Label, bool InContact)> tags)
     {
         if (tags.SequenceEqual(_tags)) return;
         _tags = tags;
@@ -83,7 +86,7 @@ public sealed class WaterfallView : Control
             context.DrawText(text, new Point(Math.Clamp(hz / 3000.0 * width - text.Width / 2, 2, Math.Max(2, width - text.Width - 2)), 1));
         }
         var lastRight = double.MinValue;
-        foreach (var (hz, label) in _tags.OrderBy(t => t.Hz))
+        foreach (var (hz, label, inContact) in _tags.OrderBy(t => t.Hz))
         {
             var text = new FormattedText(label, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Inter", FontStyle.Normal, FontWeight.SemiBold),
                 11, Brushes.White);
@@ -91,7 +94,7 @@ public sealed class WaterfallView : Control
             // Neighbours too close to label side by side take turns in two rows.
             var ty = tx < lastRight + 4 ? 34 : 20;
             if (ty == 20) lastRight = tx + text.Width;
-            context.FillRectangle(new SolidColorBrush(Color.FromArgb(170, 7, 18, 30)), new Rect(tx - 2, ty - 1, text.Width + 4, text.Height + 2));
+            context.FillRectangle(inContact ? ContactTag : TagBackground, new Rect(tx - 2, ty - 1, text.Width + 4, text.Height + 2));
             context.DrawText(text, new Point(tx, ty));
         }
         var x = _offset / 3000.0 * width;
