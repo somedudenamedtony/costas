@@ -38,10 +38,15 @@ public partial class MainWindow : Window
             if (!Core.ModeInfo.IsSlotted(vm.Host.Session.Config.Mode)) vm.Host.Keyboard.Listen(hz);
         };
         AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, (_, e) => _held.Release(e.Key), RoutingStrategies.Tunnel);
+        Deactivated += (_, _) => _held.Reset();
         AddHandler(PointerPressedEvent, (_, _) => Vm?.Activity(), RoutingStrategies.Tunnel);
     }
 
     private MainViewModel? Vm => DataContext as MainViewModel;
+
+    // A held function key repeats: its macro goes once per press.
+    private readonly KeyRepeatFilter _held = new();
 
     /// <inheritdoc />
     protected override void OnOpened(EventArgs e)
@@ -153,6 +158,7 @@ public partial class MainWindow : Window
 
     private void OnKey(object? sender, KeyEventArgs e)
     {
+        var fresh = _held.Press(e.Key);
         if (Vm is not { } vm) return;
         vm.Activity();
         var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
@@ -185,7 +191,7 @@ public partial class MainWindow : Window
                 break;
             // PSK and RTTY: the function keys send their macros.
             case >= Key.F1 and <= Key.F12 when vm.Operate.Keyboard.Visible:
-                vm.Operate.Keyboard.SendMacro(e.Key - Key.F1 + 1);
+                if (fresh) vm.Operate.Keyboard.SendMacro(e.Key - Key.F1 + 1);
                 e.Handled = true;
                 break;
             case Key.F1:

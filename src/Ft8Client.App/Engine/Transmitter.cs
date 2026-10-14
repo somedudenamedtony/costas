@@ -46,6 +46,9 @@ public sealed class Transmitter
     private AudioStream? _stream;
     private DateTime? _streamAudioDueUtc;
     private bool _streamPlaying;
+    private Mode _streamMode;
+    private int _streamOffsetHz;
+    private int? _streamWidthHz;
 
     /// <summary>Creates a transmitter.</summary>
     public Transmitter(IRig rig, IAudioOutput? output, IClock clock, FrequencyTable frequencies)
@@ -100,27 +103,72 @@ public sealed class Transmitter
     /// <summary>
     /// Starts a keyboard-mode over (docs/09-keyboard-modes.md section 9): PTT now, the stream's audio after the PTT lead,
     /// and PTT off a tail after the stream finishes. Returns null once started, or why it was refused: transmitting is
-    /// disabled, no audio output, a radio fault, outside the band, or already transmitting. The clock check does not
-    /// apply, since these modes have no slots. Rig and audio faults, and Halt, end it like any transmission.
+    /// disabled, no audio output, a radio fault, outside the band, already transmitting, or PTT could not be asserted.
+    /// The clock check does not apply, since these modes have no slots. Rig and audio faults, and Halt, end it like any
+    /// transmission. <paramref name="widthHz"/> is the signal's width for the band-edge check (an RTTY shift wider than
+    /// the standard), or null for the mode's usual width.
     /// </summary>
-    public string? StartStream(AudioStream stream, Mode mode, int offsetHz, TxGuardInput guard, TimeSpan pttLead)
+    public string? StartStream(AudioStream stream, Mode mode, int offsetHz, TxGuardInput guard, TimeSpan pttLead, int? widthHz = null)
     {
         ArgumentNullException.ThrowIfNull(stream);
         ArgumentNullException.ThrowIfNull(guard);
         if (DisabledReason is not null) return DisabledReason;
         if (!guard.AudioReady || _output is null) return "No audio output device is open; transmitting is disabled.";
         if (guard.RigFault is not null) return $"Radio fault: {guard.RigFault}";
-        if (!_frequencies.TransmitAllowed(guard.Band, mode, guard.DialHz, offsetHz, out var bandWhy)) return bandWhy;
+        if (!_frequencies.TransmitAllowed(guard.Band, mode, guard.DialHz, offsetHz, widthHz, out var bandWhy)) return bandWhy;
         lock (_gate)
         {
             if (_ptt || _current is not null || _next is not null || _stream is not null) return "Already transmitting.";
             _stream = stream;
             _streamPlaying = false;
+            _streamMode = mode;
+            _streamOffsetHz = offsetHz;
+            _streamWidthHz = widthHz;
             _ptt = true;
             _streamAudioDueUtc = _clock.UtcNow + pttLead;
         }
-        _ = SetPttSafe(true);
+        var ptt = SetPttSafe(true);
+        // A radio that refuses PTT at once has already halted the over: say why instead of reporting it started.
+        if (ptt.IsCompletedSuccessfully && ptt.Result is { } failed) return failed;
+        lock (_gate)
+        {
+            if (!ReferenceEquals(_stream, stream)) return "The over was stopped before it started.";
+        }
         return null;
+    }
+
+    /// <summary>True while <paramref name="stream"/> is the keyboard over this transmitter is sending.</summary>
+    public bool IsStreaming(AudioStream stream)
+    {
+        lock (_gate) return _stream is not null && ReferenceEquals(_stream, stream);
+    }
+
+    /// <summary>
+    /// Checks what is on the air now against the band-edge limits at <paramref name="dialHz"/>. Returns null when
+    /// nothing is on the air or it still fits, otherwise why it must stop (the dial moved during a transmission).
+    /// </summary>
+    public string? OnAirOutsideBand(string band, long dialHz)
+    {
+        Mode mode;
+        int offset;
+        int? width;
+        lock (_gate)
+        {
+            if (_stream is not null)
+            {
+                (mode, offset, width) = (_streamMode, _streamOffsetHz, _streamWidthHz);
+            }
+            else if ((_current ?? (_ptt ? _next : null)) is { } tx)
+            {
+                // A Tune tone is checked as FT8 is when it starts.
+                (mode, offset, width) = (tx.Mode, tx.OffsetHz, null);
+            }
+            else
+            {
+                return null;
+            }
+        }
+        return _frequencies.TransmitAllowed(band, mode, dialHz, offset, width, out var why) ? null : why;
     }
 
     /// <summary>The message on the air now, or null.</summary>
@@ -490,7 +538,8 @@ public sealed class Transmitter
         if (Transmitting) _ = AbortAsync($"Audio output fault during transmission: {why}");
     }
 
-    private async Task AbortAsync(string message)
+    /// <summary>Stops the transmission like Halt, then reports <paramref name="message"/> as a fault.</summary>
+    public async Task AbortAsync(string message)
     {
         await HaltAsync().ConfigureAwait(false);
         Fault?.Invoke(message);

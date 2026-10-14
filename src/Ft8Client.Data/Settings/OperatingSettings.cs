@@ -83,6 +83,9 @@ public sealed class OperatingSettings
     /// </summary>
     public int RttyPowerPercent { get; set; } = 50;
 
+    /// <summary>The RTTY power cap on the radio now, kept until the operator's power is put back; null when none.</summary>
+    public RttyPowerCapOptions? RttyPowerCap { get; set; }
+
     /// <summary>The PSK and RTTY macros, F1 up. Empty means the defaults.</summary>
     public List<MacroOptions> Macros { get; set; } = [];
 
