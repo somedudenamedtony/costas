@@ -8,6 +8,7 @@
 
 using Ft8Client.Core;
 using Ft8Client.Core.Contacts;
+using Ft8Client.Core.Keyboard;
 using Ft8Client.Core.Pileups;
 using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
@@ -123,4 +124,19 @@ public sealed record SessionSnapshot
 
     /// <summary>Who is calling whom, by the station being called (stations with current callers or recent picks).</summary>
     public IReadOnlyDictionary<string, Pileup> Pileups { get; init; } = new Dictionary<string, Pileup>();
+
+    /// <summary>PSK and RTTY: what is being sent and what is typed ahead.</summary>
+    public KeyboardTxView KeyboardTx { get; init; } = KeyboardTxView.Idle;
+
+    /// <summary>PSK and RTTY: the overs exchanged with the station in contact, oldest first.</summary>
+    public IReadOnlyList<ConversationLine> Conversation { get; init; } = [];
+
+    /// <summary>PSK and RTTY: the function key of my next step (Enter sends it), or null.</summary>
+    public int? NextMacro { get; init; }
+
+    /// <summary>PSK and RTTY: the macros on the function keys.</summary>
+    public IReadOnlyList<Macro> Macros { get; init; } = Macro.Defaults;
+
+    /// <summary>PSK and RTTY: a note about the radio's settings for the mode (power cap, speech processor), or null.</summary>
+    public string? RadioNote { get; init; }
 }

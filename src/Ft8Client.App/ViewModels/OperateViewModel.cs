@@ -56,7 +56,37 @@ public sealed partial class OperateViewModel : ObservableObject
         _line.AppliedChanged += ApplyLine;
         _repeats = new LineStabilizer<IReadOnlyList<RankedStation>>(now);
         _repeats.AppliedChanged += ApplyRepeats;
+        Keyboard = new KeyboardPanelViewModel(commands);
     }
+
+    /// <summary>The PSK and RTTY conversation box, type-ahead line and macro keys.</summary>
+    public KeyboardPanelViewModel Keyboard { get; }
+
+    /// <summary>RTTY: mark and space swapped (the Reverse switch beside the macro keys). Saved as the setting.</summary>
+    [ObservableProperty]
+    public partial bool RttyReverse { get; set; }
+
+    /// <summary>Called when the operator flips Reverse.</summary>
+    public Action<bool>? RttyReverseChanged { get; set; }
+
+    private bool _applyingReverse;
+
+    partial void OnRttyReverseChanged(bool value)
+    {
+        if (!_applyingReverse) RttyReverseChanged?.Invoke(value);
+    }
+
+    /// <summary>Shows the stored Reverse setting without saving it again.</summary>
+    public void ShowRttyReverse(bool value)
+    {
+        _applyingReverse = true;
+        RttyReverse = value;
+        _applyingReverse = false;
+    }
+
+    /// <summary>The unit after the reports: dB in FT8 and FT4, none for an RST.</summary>
+    [ObservableProperty]
+    public partial string ReportUnit { get; set; } = "dB";
 
     /// <summary>Distance units.</summary>
     public DistanceUnit Units { get; set; } = DistanceUnit.Miles;
@@ -254,6 +284,10 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial string SlotLeft { get; set; } = string.Empty;
 
+    /// <summary>The word after the countdown: "left", or for PSK and RTTY "characters left" or "characters ready".</summary>
+    [ObservableProperty]
+    public partial string SlotUnit { get; set; } = "left";
+
     /// <summary>Slot progress 0 to 1.</summary>
     [ObservableProperty]
     public partial double SlotProgress { get; set; }
@@ -290,6 +324,8 @@ public sealed partial class OperateViewModel : ObservableObject
         var now = _now();
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
         Transmitting = s.Transmitting;
+        Keyboard.Apply(s);
+        ReportUnit = ModeInfo.IsSlotted(s.Mode) ? "dB" : string.Empty;
         UpdateSlot(now);
 
         // Re-rank only when a new slot has been decoded; a keyboard mode has no slots, so it re-ranks every few seconds.
@@ -326,7 +362,9 @@ public sealed partial class OperateViewModel : ObservableObject
         RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {band} is on the air right now.";
 
         Summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty);
-        Contact = s.Contact is null ? null : ContactPanelViewModel.From(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall));
+        Contact = s.Contact is null ? null
+            : ModeInfo.IsSlotted(s.Mode) ? ContactPanelViewModel.From(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall))
+            : ContactPanelViewModel.FromKeyboard(s.Contact, s, Units, QrzName?.Invoke(s.Contact.DxCall));
         OnPropertyChanged(nameof(InContact));
         OnPropertyChanged(nameof(Panel));
         Calling = s.Contact is null ? null : DetailsFor(s.Contact.DxCall, s, now);
@@ -381,12 +419,14 @@ public sealed partial class OperateViewModel : ObservableObject
         var mode = _snap?.Mode ?? Mode.Ft8;
         if (!ModeInfo.IsSlotted(mode))
         {
-            // Keyboard modes read continuously: no slot to count down.
-            SlotProgress = 0;
-            SlotLeft = string.Empty;
-            SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+            // Keyboard modes have no slot to count down: the readout counts what is typed ahead or still to send.
+            SlotProgress = Keyboard.ReadoutProgress;
+            SlotLeft = Keyboard.ReadoutCount;
+            SlotLabel = Keyboard.ReadoutLabel;
+            SlotUnit = Keyboard.ReadoutUnit;
             return;
         }
+        SlotUnit = "left";
         // While transmitting, count down to the end of the transmission (as the conversation strip does), not the slot.
         var len = Transmitting ? ModeInfo.TxEnd(mode) : ModeInfo.SlotLength(mode);
         var into = now - SlotMath.SlotStart(now, mode);

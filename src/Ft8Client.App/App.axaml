@@ -86,6 +86,10 @@
       <Setter Property="MinHeight" Value="32" />
       <Setter Property="CornerRadius" Value="4" />
     </Style>
+    <Style Selector="Button.macro.next">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
     <Style Selector="Button.critical">
       <Setter Property="Background" Value="{DynamicResource CriticalBrush}" />
       <Setter Property="Foreground" Value="White" />

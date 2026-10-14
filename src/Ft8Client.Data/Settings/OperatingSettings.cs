@@ -71,6 +71,15 @@ public sealed class OperatingSettings
     /// <summary>Return to letters after a space when reading RTTY, as most stations expect.</summary>
     public bool RttyUnshiftOnSpace { get; set; } = true;
 
+    /// <summary>
+    /// RTTY transmit power as a percentage of the power set on the radio (docs/09-keyboard-modes.md section 3). RTTY is
+    /// a full-duty mode, so it is capped at half by default; 100 leaves the power alone.
+    /// </summary>
+    public int RttyPowerPercent { get; set; } = 50;
+
+    /// <summary>The PSK and RTTY macros, F1 up. Empty means the defaults.</summary>
+    public List<MacroOptions> Macros { get; set; } = [];
+
     /// <summary>Clock offset above which transmit is blocked, in seconds.</summary>
     public double ClockBlockSeconds { get; set; } = 2.0;
 }

@@ -37,7 +37,8 @@ public sealed class FrequencyTable(IReadOnlyList<FrequencyEntry> entries)
             reason = $"No transmit limits are set for {band}.";
             return false;
         }
-        var low = dialHz + offsetHz;
+        // FT8 and FT4 tones sit above the offset; a PSK carrier or an RTTY signal's centre is the offset.
+        var low = dialHz + offsetHz - (ModeInfo.IsSlotted(mode) ? 0 : ModeInfo.OccupiedBandwidthHz(mode) / 2);
         var high = low + ModeInfo.OccupiedBandwidthHz(mode);
         if (low < e.LowHz || high > e.HighHz)
         {

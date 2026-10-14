@@ -8,6 +8,7 @@
 
 using Ft8Client.App.Engine;
 using Ft8Client.Core;
+using Ft8Client.Core.Keyboard;
 using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Ranking;
@@ -49,7 +50,22 @@ public static class SettingsMapper
             LateStartLimit = TimeSpan.FromMilliseconds(s.Operating.LateStartLimitMs),
             PttLead = TimeSpan.FromMilliseconds(s.Operating.PttLeadMs),
             PowerWatts = s.Profile.PowerWatts,
+            MyName = s.Profile.OperatorName.Trim(),
+            MyQth = s.Profile.Qth.Trim(),
+            MyRig = s.Profile.RigDescription.Trim(),
+            MyAntenna = s.Profile.Antenna.Trim(),
+            Macros = Macros(s.Operating),
+            Rtty = Rtty(s),
         };
+    }
+
+    /// <summary>The PSK and RTTY macros: the stored ones, or the defaults when none are stored.</summary>
+    public static IReadOnlyList<Macro> Macros(OperatingSettings o)
+    {
+        var stored = o.Macros.Where(m => m.Key is >= 1 and <= 12 && !string.IsNullOrWhiteSpace(m.Text))
+            .GroupBy(m => m.Key).Select(g => g.First()).OrderBy(m => m.Key)
+            .Select(m => new Macro(m.Key, string.IsNullOrWhiteSpace(m.Label) ? $"F{m.Key}" : m.Label.Trim(), m.Text.Trim())).ToList();
+        return stored.Count == 0 ? Macro.Defaults : stored;
     }
 
     /// <summary>Ranking settings from stored options.</summary>

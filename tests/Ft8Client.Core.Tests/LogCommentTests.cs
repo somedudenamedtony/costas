@@ -29,4 +29,16 @@ public class LogCommentTests
     {
         LogComment.Format(Mode.Ft8, -8, null).Should().Be("FT8 Sent: -08");
     }
+
+    [Fact]
+    public void Format_Rtty_PlainRst()
+    {
+        LogComment.Format(Mode.Rtty, 599, 579).Should().Be("RTTY Sent: 599 Rcvd: 579");
+    }
+
+    [Fact]
+    public void Rst_Psk31_PlainNumber()
+    {
+        LogComment.Rst(Mode.Psk31, 599).Should().Be("599");
+    }
 }

@@ -37,6 +37,18 @@ public sealed class StationProfile
     /// <summary>Transmit power in watts, for the log.</summary>
     public int PowerWatts { get; set; } = 25;
 
+    /// <summary>My first name, sent by PSK and RTTY macros as <c>{MYNAME}</c>.</summary>
+    public string OperatorName { get; set; } = string.Empty;
+
+    /// <summary>Where I am, in words, sent as <c>{MYQTH}</c>.</summary>
+    public string Qth { get; set; } = string.Empty;
+
+    /// <summary>My radio, sent as <c>{MYRIG}</c>.</summary>
+    public string RigDescription { get; set; } = string.Empty;
+
+    /// <summary>My antenna, sent as <c>{MYANT}</c>.</summary>
+    public string Antenna { get; set; } = string.Empty;
+
     /// <summary>A deep copy under a new id and name: same call, grid, power, radio and audio.</summary>
     public StationProfile CopyAs(string id, string name)
     {

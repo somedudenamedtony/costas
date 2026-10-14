@@ -18,7 +18,7 @@ namespace Ft8Client.App.Engine;
 /// <summary>
 /// Reads the keyboard modes (docs/09-keyboard-modes.md section 12 step 5) beside <see cref="Session"/>: it drains the
 /// continuous 12 kHz audio, reads every PSK signal in it, works out whose text each channel carries and hands the
-/// stations and finished lines to the session. Receive only for now; transmit comes with keyboard contacts (M12).
+/// stations and finished lines to the session. Audio captured while Costas is transmitting is dropped.
 /// </summary>
 public sealed class KeyboardSession : IDisposable
 {
@@ -133,9 +133,11 @@ public sealed class KeyboardSession : IDisposable
         {
             mode = _mode;
             int n;
+            // While transmitting, the receiver hears only my own signal (or nothing): it is dropped, not read.
+            var transmitting = _session.IsTransmitting;
             while ((n = Input.Read(_buffer)) > 0)
             {
-                if (_bank is null) continue;
+                if (_bank is null || transmitting) continue;
                 Read(_bank, _buffer.AsSpan(0, n), heard, lines);
             }
             if (_bank is null) return;

@@ -47,6 +47,7 @@ public sealed class AppHost : IAsyncDisposable
     private volatile ServiceStatus? _rigOpenStatus;
     private CapturePump? _pump;
     private SimulatedKeyboardAudio? _keyboardSim;
+    private readonly KeyboardRadio _keyboardRadio = new();
     private ChimePlayer? _chime;
     private SlotLoop? _loop;
     private IRig _rig;
@@ -399,6 +400,7 @@ public sealed class AppHost : IAsyncDisposable
         _ = Task.Run(ClockCheckLoopAsync);
         _ = Task.Run(RigPollLoopAsync);
         var confirmedBy = SettingsMapper.ConfirmationSource(s);
+        var rttyPower = s.Operating.RttyPowerPercent;
         Settings.Changed += _ =>
         {
             if (SettingsMapper.ConfirmationSource(Settings.Current) != confirmedBy)
@@ -410,6 +412,11 @@ public sealed class AppHost : IAsyncDisposable
             Pota.Wake();
             Session.Reconfigure(SettingsMapper.ToConfig(Settings.Current));
             Keyboard.SetRtty(SettingsMapper.Rtty(Settings.Current), Settings.Current.Operating.RttyUnshiftOnSpace);
+            if (Settings.Current.Operating.RttyPowerPercent != rttyPower)
+            {
+                rttyPower = Settings.Current.Operating.RttyPowerPercent;
+                Task.Run(ApplyKeyboardRadioAsync);
+            }
         };
     }
 
@@ -424,9 +431,24 @@ public sealed class AppHost : IAsyncDisposable
     private Core.Pota.WorkedParks WorkedParksFromLog() =>
         PotaAdif.Worked(Qsos.List().Where(q => string.Equals(q.StationCallsign, Settings.Current.Profile.Callsign, StringComparison.OrdinalIgnoreCase)));
 
+    // The radio settings of a keyboard mode (RTTY power cap, speech processor check), shown when something needs doing.
+    private async Task ApplyKeyboardRadioAsync()
+    {
+        try
+        {
+            var note = await _keyboardRadio.ApplyAsync(_rig, Session.Config.Mode, Settings.Current.Operating.RttyPowerPercent, _cts.Token)
+                .ConfigureAwait(false);
+            Session.SetRadioNote(note);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
     /// <summary>Changes band and mode: sets the dial through the radio.</summary>
     public async Task SetBandAsync(string band, Mode mode)
     {
+        var oldMode = Session.Config.Mode;
         Settings.Update(s =>
         {
             s.Operating.Band = band;
@@ -441,6 +463,7 @@ public sealed class AppHost : IAsyncDisposable
             await _rig.SetFrequencyAsync(e.DialHz, _cts.Token).ConfigureAwait(false);
             await _rig.SetModeAsync(RigMode.PktUsb, _cts.Token).ConfigureAwait(false);
             Session.SetDial(e.DialHz);
+            if (mode != oldMode) await ApplyKeyboardRadioAsync().ConfigureAwait(false);
         }
         catch (RigException ex)
         {
@@ -508,7 +531,7 @@ public sealed class AppHost : IAsyncDisposable
         }
         else
         {
-            Transmitter.SetOutput(Plan.MutesTransmitAudio(Settings.Current.Profile.Rig) ? _mutedOutput ??= new NullAudioOutput() : _output);
+            Transmitter.SetOutput(Plan.MutesTransmitAudio(Settings.Current.Profile.Rig) ? _mutedOutput ??= new NullAudioOutput { RealTime = true } : _output);
         }
         closed?.Dispose(); // after the transmitter has let go of it
         if (!Simulating && !string.Equals(a.InputId, _inputId, StringComparison.Ordinal))
@@ -638,7 +661,7 @@ public sealed class AppHost : IAsyncDisposable
         Transmitter?.SetRig(rig);
         if (Plan.MutesTransmitAudio(r))
         {
-            Transmitter?.SetOutput(_mutedOutput ??= new NullAudioOutput());
+            Transmitter?.SetOutput(_mutedOutput ??= new NullAudioOutput { RealTime = true });
             if (HamlibModels.IsTestModel(r.Model) && status.Health == ServiceHealth.Ok)
                 status = status with { Message = "Hamlib test radio (transmit audio muted)" };
         }
@@ -648,6 +671,7 @@ public sealed class AppHost : IAsyncDisposable
         }
         _rigOpenStatus = status.Health == ServiceHealth.Ok ? status : null;
         Session?.SetService(ServiceNames.Radio, status);
+        if (Session is not null && status.Health == ServiceHealth.Ok) _ = ApplyKeyboardRadioAsync();
         if (!ReferenceEquals(old, rig)) await old.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -715,6 +739,16 @@ public sealed class AppHost : IAsyncDisposable
         catch (Exception ex)
         {
             Log.Error(ex, "Halt on exit failed");
+        }
+        try
+        {
+            // The operator's own power comes back if RTTY capped it.
+            using var restore = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            await _keyboardRadio.RestoreAsync(_rig, restore.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Restoring the radio's power on exit failed");
         }
         _cts.Cancel();
         if (Remote is not null) await Remote.DisposeAsync().ConfigureAwait(false);

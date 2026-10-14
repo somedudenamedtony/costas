@@ -149,6 +149,8 @@ Accept:
 - Automated: contact-engine tests for both flows, using recorded partner text.
 - Manual: five PSK31 contacts and three RTTY contacts on the air, logged correctly and confirmed on LoTW.
 
+Status (2026-10-14, `feature/keyboard-modes`): built. Automated: modulator audio decodes through our demodulators (no fldigi harness is available here); the watchdog (3 min, 20 s idle, and a stalled audio device), PTT release on rig and audio faults, Halt and refused characters; both contact flows in the engine and a whole PSK31 contact through the session, logged with name, QTH, RST and the signal's frequency; the RTTY power cap and restore; the PSK zero-ALC level. Not yet done: the contacts on the air, the red marking of a missing field in the type-ahead line, and the AFC switch. `IContactEngine` was not extracted (see `09-keyboard-modes.md` section 12).
+
 ## M13 · Keyboard modes everywhere else
 
 Build: PSK Reporter spots (V23), WSJT-X UDP status (V24), Mini mode, the phone remote's strip and macros, Log and Awards mode filters, and manual pages.
