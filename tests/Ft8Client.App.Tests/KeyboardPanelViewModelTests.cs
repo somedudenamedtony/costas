@@ -203,4 +203,19 @@ public class KeyboardPanelViewModelTests
     [InlineData(new int[0], "")]
     public void KeysText_Keys_NamesEach(int[] keys, string expected) =>
         KeyboardPanelViewModel.KeysText(keys).Should().Be(expected);
+
+    [Fact]
+    public void Apply_NewOver_KeepsRowsAlreadyShown()
+    {
+        var (panel, _) = Build();
+        var t = new DateTime(2026, 10, 13, 18, 0, 0, DateTimeKind.Utc);
+        var first = new ConversationLine(t, "KP4JRS", "CQ CQ DE KP4JRS K", false);
+        panel.Apply(new SessionSnapshot { Mode = Mode.Psk31, Conversation = [first] });
+        var row = panel.Conversation[0];
+
+        panel.Apply(new SessionSnapshot { Mode = Mode.Psk31, Conversation = [first, new ConversationLine(t.AddSeconds(20), "W7LIT", "KP4JRS DE W7LIT K", true)] });
+
+        panel.Conversation.Should().HaveCount(2);
+        panel.Conversation[0].Should().BeSameAs(row);
+    }
 }

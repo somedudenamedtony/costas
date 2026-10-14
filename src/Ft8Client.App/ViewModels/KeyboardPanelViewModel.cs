@@ -149,8 +149,10 @@ public sealed partial class KeyboardPanelViewModel : ObservableObject
         if (!Visible) return;
         if (!ReferenceEquals(_shown, s.Conversation) && !_shown.SequenceEqual(s.Conversation))
         {
-            Conversation.Clear();
-            foreach (var l in s.Conversation)
+            // New overs are added at the end; the rows already shown stay, so a word being aimed at does not move.
+            var keep = s.Conversation.Count >= _shown.Count && Conversation.Count == _shown.Count && s.Conversation.Take(_shown.Count).SequenceEqual(_shown);
+            if (!keep) Conversation.Clear();
+            foreach (var l in s.Conversation.Skip(keep ? _shown.Count : 0))
                 Conversation.Add(new ConversationRowViewModel(l.Utc.ToString("HH:mm:ss", CultureInfo.InvariantCulture), l.Who, l.Text, l.Mine));
         }
         _shown = s.Conversation;

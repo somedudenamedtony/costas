@@ -43,7 +43,12 @@ public partial class OperateView : UserControl
         DataContextChanged += (_, _) =>
         {
             if (Vm is not { } vm) return;
-            vm.Keyboard.Conversation.CollectionChanged += (_, _) => Dispatcher.UIThread.Post(() => ConversationScroll.ScrollToEnd());
+            // Follow new text only while the operator is at the end; scrolled back to read, the box stays put.
+            vm.Keyboard.Conversation.CollectionChanged += (_, _) =>
+            {
+                var s = ConversationScroll;
+                if (s.Offset.Y >= s.Extent.Height - s.Viewport.Height - 4) Dispatcher.UIThread.Post(() => s.ScrollToEnd());
+            };
             vm.Keyboard.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(KeyboardPanelViewModel.BlockedMacro)) ShowBlocked(vm.Keyboard.BlockedMacro);

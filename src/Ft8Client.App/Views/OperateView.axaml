@@ -153,9 +153,13 @@
             <!-- PSK and RTTY: the conversation box, the type-ahead line, the macro keys and a line of hints (docs/09 section 10). -->
             <StackPanel DataContext="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard}" x:DataType="vm:KeyboardPanelViewModel"
                         IsVisible="{Binding Visible}" Spacing="6" Margin="0,8,0,0">
+              <!-- A fixed height, shown from the start, so text arriving never moves the type-ahead line and the macro keys. -->
               <Border BorderThickness="1" BorderBrush="{DynamicResource ControlBorderBrush}" CornerRadius="6" Padding="10,6"
-                      IsVisible="{Binding HasConversation}" AutomationProperties.Name="Conversation box">
-                <ScrollViewer x:Name="ConversationScroll" MaxHeight="160" VerticalScrollBarVisibility="Auto">
+                      AutomationProperties.Name="Conversation box">
+                <Panel>
+                <TextBlock Text="The conversation with the station in contact appears here." Classes="secondary" FontSize="12"
+                           IsVisible="{Binding !HasConversation}" />
+                <ScrollViewer x:Name="ConversationScroll" Height="120" VerticalScrollBarVisibility="Auto">
                   <ItemsControl ItemsSource="{Binding Conversation}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:ConversationRowViewModel">
@@ -193,6 +197,7 @@
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
                 </ScrollViewer>
+                </Panel>
               </Border>
               <!-- On the air: what has gone (dimmed) and what is still to go. The two runs sit on one line with nothing
                    between them: whitespace there would show a space that is not sent. -->
