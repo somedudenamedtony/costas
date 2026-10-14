@@ -164,7 +164,7 @@
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                               <DataTemplate x:DataType="x:String">
-                                <Button Classes="word" Padding="0,0,5,0" MinHeight="0" Background="Transparent" BorderThickness="0"
+                                <Button Classes="word" Focusable="False" Padding="0,0,5,0" MinHeight="0" Background="Transparent" BorderThickness="0"
                                         ToolTip.Tip="Use this word in the contact">
                                   <TextBlock Text="{Binding}" Classes="message" FontSize="13" />
                                   <Button.Flyout>
@@ -214,7 +214,7 @@
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:MacroButtonViewModel">
-                      <Button Content="{Binding Caption}" Classes="macro" Classes.next="{Binding IsNext}" ToolTip.Tip="{Binding Text}"
+                      <Button Content="{Binding Caption}" Classes="macro" Classes.next="{Binding IsNext}" Focusable="False" ToolTip.Tip="{Binding Text}"
                               Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.SendMacroCommand}" CommandParameter="{Binding Key}" />
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>

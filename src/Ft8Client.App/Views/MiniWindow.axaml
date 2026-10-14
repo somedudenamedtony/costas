@@ -67,7 +67,7 @@
         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:MacroButtonViewModel">
-            <Button Content="{Binding Caption}" Classes="macro" Classes.next="{Binding IsNext}" ToolTip.Tip="{Binding Text}" FontSize="12"
+            <Button Content="{Binding Caption}" Classes="macro" Classes.next="{Binding IsNext}" Focusable="False" ToolTip.Tip="{Binding Text}" FontSize="12"
                     Command="{Binding $parent[Window].((vm:MiniViewModel)DataContext).SendMacroCommand}" CommandParameter="{Binding Key}" />
           </DataTemplate>
         </ItemsControl.ItemTemplate>
