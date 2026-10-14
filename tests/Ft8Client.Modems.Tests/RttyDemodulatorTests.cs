@@ -124,7 +124,9 @@ public class RttyDemodulatorTests
             foreach (var c in text) audio.AddRange(tx.Send(c));
             audio.AddRange(new float[TestSignal.Rate * 5]);
             var received = Receive(Standard, TestSignal.WithNoise([.. audio], Peak, snrDb, seed), 1500);
-            received.Should().EndWith("K9ABC KN\n", $"seed {seed}");
+            // The closing new line (CR LF) is the very last thing sent; at low SNR losing it is allowed, but no word
+            // before it and nothing after it.
+            received.TrimEnd('\n').Should().EndWith("K9ABC KN", $"seed {seed}");
         }
     }
 
@@ -168,6 +170,29 @@ public class RttyDemodulatorTests
         var empty = new RttyModulator(Standard, TestSignal.Rate, 1500, Peak).Modulate("").Length;
         var plain = new RttyModulator(Standard, TestSignal.Rate, 1500, Peak).Modulate("CQ CQ DE W").Length;
         ((plain - empty) / character).Should().BeApproximately(10, 0.01);
+    }
+
+    [Theory]
+    [InlineData("K\n", 3)]
+    [InlineData("K\r\n", 3)]
+    public void Modulate_NewLine_SendsCarriageReturnAndLineFeed(string text, int characters)
+    {
+        // Enter goes out as CR LF, as fldigi sends it; a CR already in the text is not doubled.
+        var character = 7.5 * TestSignal.Rate / Standard.Baud;
+        var empty = new RttyModulator(Standard, TestSignal.Rate, 1500, Peak).Modulate("").Length;
+        var line = new RttyModulator(Standard, TestSignal.Rate, 1500, Peak).Modulate(text).Length;
+        ((line - empty) / character).Should().BeApproximately(characters, 0.01);
+    }
+
+    [Fact]
+    public void Send_NewLine_SendsCarriageReturnFirst()
+    {
+        var character = 7.5 * TestSignal.Rate / Standard.Baud;
+        var tx = new RttyModulator(Standard, TestSignal.Rate, 1500, Peak);
+        tx.Start();
+        (tx.Send('\n').Length / character).Should().BeApproximately(2, 0.01);
+        tx.Send('\r');
+        (tx.Send('\n').Length / character).Should().BeApproximately(1, 0.01);
     }
 
     [Fact]
