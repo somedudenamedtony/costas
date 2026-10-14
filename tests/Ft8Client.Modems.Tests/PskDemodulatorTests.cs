@@ -97,6 +97,32 @@ public class PskDemodulatorTests
         Receive(mode, [.. audio], 1000).Should().Be("CQ CQ DE W7LIT W7LIT K\n");
     }
 
+    [Theory]
+    [InlineData(Mode.Psk31, 44100)]
+    [InlineData(Mode.Psk63, 44100)]
+    [InlineData(Mode.Psk31, 22050)]
+    public void Modulate_OddSampleRate_KeepsSymbolRateAndDecodes(Mode mode, int rate)
+    {
+        var mod = new PskModulator(mode, rate, 1000, Peak);
+        var start = mod.Start();
+        start.Length.Should().Be((int)Math.Floor(mod.IdleSymbols * rate / PskMode.Baud(mode)));
+
+        // Down to the decoder's 12 kHz by linear interpolation, as a sound card loopback would.
+        var audio = new PskModulator(mode, rate, 1000, Peak).Modulate(Text);
+        var resampled = new float[(int)((long)audio.Length * TestSignal.Rate / rate) - 1];
+        for (var i = 0; i < resampled.Length; i++)
+        {
+            var t = (double)i * rate / TestSignal.Rate;
+            var k = (int)t;
+            resampled[i] = (float)(audio[k] + (audio[k + 1] - audio[k]) * (t - k));
+        }
+        Receive(mode, resampled, 1000).Should().Be(Text);
+    }
+
+    [Fact]
+    public void Modulate_Psk63_IdleIsOneSecond() =>
+        new PskModulator(Mode.Psk63, TestSignal.Rate, 1000).Start().Length.Should().Be(63 * TestSignal.Rate / 62.5 is var n ? (int)n : 0);
+
     [Fact]
     public void Send_CharacterOutsideVaricode_Throws()
     {

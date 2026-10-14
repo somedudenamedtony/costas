@@ -17,27 +17,35 @@ namespace Ft8Client.Modems.Psk;
 /// </summary>
 public sealed class PskModulator : IKeyboardModulator
 {
-    private readonly int _symbolSamples;
+    private readonly double _symbolSamples;
     private readonly double _step;
     private double _phase;
     private double _amplitude = 1;
+    private double _clock;
 
     /// <param name="mode">PSK31 or PSK63.</param>
-    /// <param name="sampleRate">Output sample rate.</param>
+    /// <param name="sampleRate">Output sample rate. Any rate works: at 44.1 kHz a symbol is 1,411.2 samples, so symbol
+    /// lengths alternate by one sample and the symbol rate stays exact.</param>
     /// <param name="frequencyHz">Audio frequency of the carrier.</param>
     /// <param name="level">Peak level, 0 to 1.</param>
     public PskModulator(Mode mode, int sampleRate, double frequencyHz, double level = 0.5)
     {
-        _symbolSamples = PskMode.SymbolSamples(mode, sampleRate);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sampleRate);
+        var baud = PskMode.Baud(mode);
+        _symbolSamples = sampleRate / baud;
         _step = 2 * Math.PI * frequencyHz / sampleRate;
         Level = level;
+        IdleSymbols = (int)Math.Ceiling(baud);
     }
 
     /// <summary>Peak output level.</summary>
     public double Level { get; }
 
-    /// <summary>Symbols of reversals before the text and of carrier after it (32 is one second of PSK31).</summary>
-    public int IdleSymbols { get; init; } = 32;
+    /// <summary>
+    /// Symbols of reversals before the text: one second by default (32 for PSK31, 63 for PSK63). An over ends with half as
+    /// many of steady carrier.
+    /// </summary>
+    public int IdleSymbols { get; init; }
 
     /// <summary>The bits for a text, each character followed by the "00" separator.</summary>
     public static string TextBits(string text)
@@ -50,17 +58,10 @@ public sealed class PskModulator : IKeyboardModulator
     /// <summary>A whole over: idle reversals, the text, carrier, and a fade.</summary>
     public float[] Modulate(string text)
     {
-        var bits = new string('0', IdleSymbols) + TextBits(text) + new string('1', IdleSymbols);
-        var output = new float[(bits.Length + 1) * _symbolSamples];
-        var n = 0;
-        foreach (var b in bits) n = Symbol(output, n, b == '0');
-        for (var i = 0; i < _symbolSamples; i++, n++)
-        {
-            var fade = 0.5 + 0.5 * Math.Cos(Math.PI * i / _symbolSamples);
-            output[n] = (float)(Level * _amplitude * fade * Math.Cos(_phase));
-            _phase += _step;
-        }
-        return output;
+        var output = new List<float>();
+        Bits(new string('0', IdleSymbols) + TextBits(text) + new string('1', IdleSymbols), output);
+        Fade(output);
+        return [.. output];
     }
 
     /// <inheritdoc />
@@ -79,17 +80,10 @@ public sealed class PskModulator : IKeyboardModulator
     /// <inheritdoc />
     public float[] Stop()
     {
-        var carrier = Bits(new string('1', IdleSymbols / 2));
-        var output = new float[carrier.Length + _symbolSamples];
-        carrier.CopyTo(output, 0);
-        var n = carrier.Length;
-        for (var i = 0; i < _symbolSamples; i++, n++)
-        {
-            var fade = 0.5 + 0.5 * Math.Cos(Math.PI * i / _symbolSamples);
-            output[n] = (float)(Level * _amplitude * fade * Math.Cos(_phase));
-            _phase += _step;
-        }
-        return output;
+        var output = new List<float>();
+        Bits(new string('1', IdleSymbols / 2), output);
+        Fade(output);
+        return [.. output];
     }
 
     /// <inheritdoc />
@@ -100,24 +94,53 @@ public sealed class PskModulator : IKeyboardModulator
 
     private float[] Bits(string bits)
     {
-        var output = new float[bits.Length * _symbolSamples];
-        var n = 0;
-        foreach (var b in bits) n = Symbol(output, n, b == '0');
-        return output;
+        var output = new List<float>();
+        Bits(bits, output);
+        return [.. output];
     }
 
-    private int Symbol(float[] output, int n, bool reverse)
+    private void Bits(string bits, List<float> output)
+    {
+        foreach (var b in bits) Symbol(output, b == '0');
+    }
+
+    // The next symbol's length in samples: whole samples that keep the running symbol clock exact.
+    private int NextLength()
+    {
+        var start = Math.Floor(_clock);
+        _clock += _symbolSamples;
+        return (int)(Math.Floor(_clock) - start);
+    }
+
+    private void Symbol(List<float> output, bool reverse)
     {
         var from = _amplitude;
         var to = reverse ? -from : from;
-        for (var i = 0; i < _symbolSamples; i++, n++)
+        var length = NextLength();
+        for (var i = 0; i < length; i++)
         {
-            var env = (from + to) / 2 + (from - to) / 2 * Math.Cos(Math.PI * i / _symbolSamples);
-            output[n] = (float)(Level * env * Math.Cos(_phase));
-            _phase += _step;
-            if (_phase > Math.Tau) _phase -= Math.Tau;
+            var env = (from + to) / 2 + (from - to) / 2 * Math.Cos(Math.PI * i / length);
+            output.Add((float)(Level * env * Math.Cos(_phase)));
+            Advance();
         }
         _amplitude = to;
-        return n;
+    }
+
+    // One symbol of raised-cosine fade to silence.
+    private void Fade(List<float> output)
+    {
+        var length = NextLength();
+        for (var i = 0; i < length; i++)
+        {
+            var fade = 0.5 + 0.5 * Math.Cos(Math.PI * i / length);
+            output.Add((float)(Level * _amplitude * fade * Math.Cos(_phase)));
+            Advance();
+        }
+    }
+
+    private void Advance()
+    {
+        _phase += _step;
+        if (_phase > Math.Tau) _phase -= Math.Tau;
     }
 }
