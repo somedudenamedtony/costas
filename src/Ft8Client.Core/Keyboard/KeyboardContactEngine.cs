@@ -101,6 +101,7 @@ public sealed partial class KeyboardContactEngine
     /// </summary>
     public void Answer(string call, string? grid, int offsetHz, string? theirText, DateTime utc)
     {
+        CallingCq = false;
         Begin(call, offsetHz, ContactFlow.AnswerCq);
         _steps[0] = new Step(false, "Their CQ", theirText ?? "CQ", StepState.Done, utc, 0);
         _steps[1] = new Step(true, "Answer", "Answer", StepState.Now, null, Macro.AnswerKey);

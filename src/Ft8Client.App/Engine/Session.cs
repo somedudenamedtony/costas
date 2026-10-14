@@ -889,6 +889,9 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _activity.Clear();
             _txMeters = null; // SWR belongs to the antenna on the old band
         }
+        // A PSK or RTTY over does not follow the radio to another band or mode.
+        _keys.Clear();
+        if (_keys.Active) _ = _tx.HaltAsync();
         BandChanged?.Invoke();
         Publish();
     }

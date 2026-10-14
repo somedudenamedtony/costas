@@ -125,4 +125,14 @@ public class KeyboardContactEngineTests
         _e.Watchdog();
         _e.View()!.Caption.Should().Be("Stopped by watchdog");
     }
+
+    [Fact]
+    public void Answer_WhileCallingCq_StopsCalling()
+    {
+        var e = new KeyboardContactEngine("W7LIT");
+        e.CqSent(At(0));
+        e.Answer("KP4JRS", null, 1180, "CQ DE KP4JRS K", At(5));
+        e.CallingCq.Should().BeFalse();
+        e.Partner.Should().Be("KP4JRS");
+    }
 }

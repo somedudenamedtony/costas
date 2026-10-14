@@ -106,7 +106,8 @@ sent: the bottom bar says which field is missing and where to fill it. Your repo
 ![RTTY on the Operate screen](images/rtty-operate.png)
 
 RTTY has a few settings, in **Settings › PSK and RTTY**. The status line shows the ones in use, for
-example "Reading RTTY 45.45 Bd, 170 Hz shift". **Reverse** is also beside the macro keys.
+example "Reading RTTY 45.45 Bd, 170 Hz shift". **Reverse** is also beside the macro keys. It changes only how
+Costas reads; what you send is always the right way round.
 
 | Setting | Default | What it does |
 | --- | --- | --- |

@@ -159,6 +159,8 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
   - The CQ offset: the waterfall click (which sets a fixed offset), else a clear spot between the stations being read.
   - Audio captured while transmitting is dropped, so Costas never reads its own signal.
   - The AFC switch is not built: AFC is always on, as in M10.
+  - Reverse changes only what Costas reads. It always sends with the mark as the higher tone, so every station reads it.
+  - Changing band or mode stops an over on the air.
 
 ## 9. Safety
 

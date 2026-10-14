@@ -207,7 +207,9 @@ public sealed partial class Session
     private string? Queue(string text, int? key, bool returnToReceive, int offset)
     {
         var mode = _config.Mode;
-        var rtty = _config.Rtty;
+        // Reverse is for reading a station on the other sideband; Costas itself always sends the standard way round
+        // (mark the higher tone in USB), so every other station reads it.
+        var rtty = _config.Rtty with { Reverse = false };
         var guard = new TxGuardInput(_config.Band, _dialHz, null, _config.ClockBlockSeconds,
             _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         var lead = _config.PttLead;
