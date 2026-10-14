@@ -196,12 +196,19 @@
                 <Run Text="{Binding SentPart}" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <Run Text="{Binding WaitingPart}" FontWeight="SemiBold" />
               </TextBlock>
+              <!-- A macro refused for a field with no value: the field in red until it is filled. -->
+              <Border IsVisible="{Binding HasBlockedMacro}" BorderBrush="{DynamicResource CriticalBrush}" BorderThickness="1" CornerRadius="4" Padding="8,4">
+                <TextBlock x:Name="BlockedLine" TextWrapping="Wrap" Classes="message" FontSize="13" AutomationProperties.Name="Macro not sent" />
+              </Border>
               <TextBox x:Name="TypeAhead" Text="{Binding Typed}" FontFamily="{StaticResource MessageFont}" AutomationProperties.Name="Type ahead"
                        PlaceholderText="Type here. Enter sends; while transmitting, keys go out as you type." />
               <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsRtty}">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
                   <ToggleSwitch IsChecked="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).RttyReverse}" OnContent="Reverse" OffContent="Reverse"
-                                ToolTip.Tip="Swap mark and space, for a station sending on the other sideband." />
+                                IsVisible="{Binding IsRtty}" ToolTip.Tip="Swap mark and space, for a station sending on the other sideband." />
+                  <ToggleSwitch IsChecked="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).KeyboardAfc}" OnContent="AFC" OffContent="AFC"
+                                AutomationProperties.Name="AFC"
+                                ToolTip.Tip="Follow a signal that drifts. Turn off on a crowded band if a channel wanders onto a stronger neighbour." />
                 </StackPanel>
                 <ItemsControl ItemsSource="{Binding Macros}">
                   <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>

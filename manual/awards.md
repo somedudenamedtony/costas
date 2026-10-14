@@ -8,6 +8,9 @@ online.
 
 ## Award progress
 
+The **Count** menu at the top picks which contacts count: **All digital** (the default: FT8, FT4, PSK, RTTY and other
+data modes, as ARRL's DXCC Digital award counts them), **All modes** (phone and CW too), or a single mode.
+
 The left side has a card for each award:
 
 | Card | What it counts |

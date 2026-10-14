@@ -11,6 +11,7 @@ using Ft8Client.App.Engine;
 using Ft8Client.Core;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Geo;
+using Ft8Client.Core.Keyboard;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
@@ -115,6 +116,7 @@ public sealed class PskReporterService : IAsyncDisposable
             _ = Task.Run(() => QueryLoopAsync(_cts.Token));
         }
         _session.SlotDecoded += OnSlotDecoded;
+        _session.KeyboardHeard += OnKeyboardHeard;
         _ = Task.Run(() => UploadLoopAsync(_cts.Token));
     }
 
@@ -241,11 +243,7 @@ public sealed class PskReporterService : IAsyncDisposable
     {
         // Band, mode and the setting can change at any time; catching up once a slot is soon enough.
         FollowNeighbours();
-        var s = _settings.Current;
-        if (!_uploadsAllowed || !s.PskReporter.UploadSpots || _myCall.Length == 0) return;
-        var dial = _session.Snapshot.DialHz;
-        if (dial <= 0) return;
-        _uploader.Receiver = new PskReceiver(_myCall, s.Profile.Grid, $"{AppInfo.ProductName} {AppInfo.Version}");
+        if (UploadDial() is not { } dial) return;
         foreach (var d in decodes)
         {
             if (d.LowConfidence) continue;
@@ -253,6 +251,25 @@ public sealed class PskReporterService : IAsyncDisposable
             if (m.SenderCall is not { } call) continue;
             _uploader.Add(new PskSpot(call, dial + d.OffsetHz, d.Snr, ModeInfo.Name(mode), m.Grid ?? string.Empty, slot));
         }
+    }
+
+    // PSK31, PSK63 and RTTY stations named from their text, spotted like fldigi does: the ADIF mode name and the dial plus
+    // the channel's audio frequency (V23). The uploader's once-per-call rule keeps a long over to one spot.
+    private void OnKeyboardHeard(Mode mode, IReadOnlyList<TextHeard> heard)
+    {
+        if (UploadDial() is not { } dial) return;
+        foreach (var h in heard) _uploader.Add(new PskSpot(h.Call, dial + h.OffsetHz, h.Snr, ModeInfo.Name(mode), string.Empty, h.Utc));
+    }
+
+    // The dial to spot against, with my station set on the uploader; null when spots are not to be uploaded.
+    private long? UploadDial()
+    {
+        var s = _settings.Current;
+        if (!_uploadsAllowed || !s.PskReporter.UploadSpots || _myCall.Length == 0) return null;
+        var dial = _session.Snapshot.DialHz;
+        if (dial <= 0) return null;
+        _uploader.Receiver = new PskReceiver(_myCall, s.Profile.Grid, $"{AppInfo.ProductName} {AppInfo.Version}");
+        return dial;
     }
 
     private async Task UploadLoopAsync(CancellationToken ct)
@@ -285,6 +302,7 @@ public sealed class PskReporterService : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _session.SlotDecoded -= OnSlotDecoded;
+        _session.KeyboardHeard -= OnKeyboardHeard;
         await _cts.CancelAsync().ConfigureAwait(false);
         if (_feed is not null) await _feed.DisposeAsync().ConfigureAwait(false);
         _udp?.Dispose();

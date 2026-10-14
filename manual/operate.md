@@ -196,6 +196,8 @@ During a contact the strip shows who you're working, a dot for each step of the 
 
 ![Mini mode, in a contact](images/mini-contact.png){ width="480" }
 
+In PSK and RTTY the dots give way to a row of macro keys, and F1 to F12 send them from the strip.
+
 When a station on your [Hunt list](hunt.md) is heard, the strip adds a line saying where, with ✕ to dismiss it.
 
 **Halt** is always there, and ++esc++ works in the strip too. Nothing is sent without a click.

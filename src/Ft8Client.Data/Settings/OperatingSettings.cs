@@ -68,6 +68,12 @@ public sealed class OperatingSettings
     /// <summary>Read RTTY with mark and space swapped, for stations sending upside down.</summary>
     public bool RttyReverse { get; set; }
 
+    /// <summary>
+    /// Let PSK and RTTY channels follow a drifting signal (the AFC switch beside the macro keys). Off holds each channel on
+    /// the frequency it started on.
+    /// </summary>
+    public bool KeyboardAfc { get; set; } = true;
+
     /// <summary>Return to letters after a space when reading RTTY, as most stations expect.</summary>
     public bool RttyUnshiftOnSpace { get; set; } = true;
 

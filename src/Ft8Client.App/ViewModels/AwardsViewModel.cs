@@ -49,6 +49,15 @@ public sealed partial class AwardsViewModel : ObservableObject
         _history.Changed += () => dispatch(FillNeeded);
     }
 
+    /// <summary>Mode choices: "All digital" (the default; PSK and RTTY count beside FT8 and FT4), "All modes", or one mode.</summary>
+    public IReadOnlyList<string> ModeChoices { get; } = ModeGroups.Choices;
+
+    /// <summary>The chosen mode; the cards and the needed list count only its contacts.</summary>
+    [ObservableProperty]
+    public partial string SelectedMode { get; set; } = ModeGroups.AllDigital;
+
+    partial void OnSelectedModeChanged(string value) => Refresh();
+
     /// <summary>DXCC, WAS, WAZ and VUCC cards.</summary>
     public ObservableCollection<AwardCardViewModel> Cards { get; } = [];
 
@@ -90,7 +99,8 @@ public sealed partial class AwardsViewModel : ObservableObject
     {
         var index = _log();
         LogEmpty = index.IsEmpty;
-        _summary = AwardBuilder.Build(Snapshot(index), _countries);
+        var mode = SelectedMode;
+        _summary = AwardBuilder.Build(Snapshot(index).Where(c => ModeGroups.Matches(mode, c.ModeKey)), _countries);
         var s = _summary;
 
         Cards.Clear();

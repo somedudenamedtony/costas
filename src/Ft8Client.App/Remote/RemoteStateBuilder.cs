@@ -32,6 +32,9 @@ public static class RemoteStateBuilder
     /// <summary>Most rows of Repeats and of Watching sent to the phone, as on the Operate view.</summary>
     public const int MaxRows = 8;
 
+    /// <summary>Conversation lines sent to the phone.</summary>
+    public const int MaxConversation = 6;
+
     /// <summary>Most band activity lines sent to the phone.</summary>
     public const int MaxDecodes = 60;
 
@@ -78,6 +81,9 @@ public static class RemoteStateBuilder
             Hunt = ctx.Hunt(),
             Control = control,
             Contact = s.Contact is null ? null : Contact(ContactPanelViewModel.From(s.Contact, s, nowUtc, units, ctx.QrzName(s.Contact.DxCall))),
+            Macros = slotted ? [] : [.. s.Macros.Select(m => new RemoteMacro(m.Key, $"F{m.Key} {m.Label}", m.Text, m.Key == s.NextMacro))],
+            Conversation = [.. s.Conversation.TakeLast(MaxConversation)
+                .Select(l => new RemoteLine(l.Utc.ToString("HH:mm:ss", CultureInfo.InvariantCulture), l.Who, l.Text, l.Mine))],
             Callers = [.. s.Waiting.Select(w => Caller(w, s, inContact))],
             Line = [.. s.Rank.Line.Take(MaxLine).Select(x => Row(new StationRowViewModel(x, 0, units, nowUtc, log?.LastContactWith(x.Station.Call))))],
             Band = s.Band,

@@ -32,6 +32,7 @@ public sealed partial class Session
     private readonly List<ConversationLine> _conversation = [];
     private readonly Dictionary<int, string> _macroTexts = [];
     private string? _radioNote;
+    private int? _blockedMacro;
 
     /// <summary>The keyboard transmitter, so tests can render its audio on a manual clock.</summary>
     internal KeyboardTransmitter Keys => _keys;
@@ -165,8 +166,30 @@ public sealed partial class Session
         if (_config.Macros.FirstOrDefault(m => m.Key == key) is not { } macro) return $"F{key} has no macro. Set one in Settings > PSK and RTTY.";
         if (key != Macro.CqKey && _kbd.Partner is null && macro.Text.Contains("{CALL}", StringComparison.OrdinalIgnoreCase))
             return $"{macro.Label} needs a station: click Call on one first.";
+        var text = MacroText.Expand(macro.Text, MacroValues(), out var missing);
+        if (missing.Count > 0)
+        {
+            _blockedMacro = key;
+            return MissingFields(macro, missing);
+        }
+        var cq = key == Macro.CqKey;
+        var why = Queue(text + " ", key, returnToReceive: true, TxOffset(cq));
+        if (why is not null) return why;
+        _macroTexts[key] = text;
+        if (cq)
+        {
+            // Listen for answers from the moment the CQ is queued: a quick reply must not be missed.
+            if (!_kbd.InContact) _conversation.Clear();
+            _kbd.CqSent(_clock.UtcNow);
+        }
+        return null;
+    }
+
+    // Under _gate. The value of each macro field now.
+    private Dictionary<string, string?> MacroValues()
+    {
         var rx = _kbd.Received;
-        var values = new Dictionary<string, string?>(StringComparer.Ordinal)
+        return new Dictionary<string, string?>(StringComparer.Ordinal)
         {
             ["CALL"] = _kbd.Partner,
             ["NAME"] = rx.Name,
@@ -179,18 +202,16 @@ public sealed partial class Session
             ["MYRIG"] = _config.MyRig,
             ["MYANT"] = _config.MyAntenna,
         };
-        var text = MacroText.Expand(macro.Text, values, out var missing);
-        if (missing.Count > 0) return MissingFields(macro, missing);
-        var cq = key == Macro.CqKey;
-        var why = Queue(text + " ", key, returnToReceive: true, TxOffset(cq));
-        if (why is not null) return why;
-        _macroTexts[key] = text;
-        if (cq)
-        {
-            // Listen for answers from the moment the CQ is queued: a quick reply must not be missed.
-            if (!_kbd.InContact) _conversation.Clear();
-            _kbd.CqSent(_clock.UtcNow);
-        }
+    }
+
+    // Under _gate. The macro last refused for a field with no value, in pieces for the type-ahead line, until every
+    // field has a value or something else is sent.
+    private IReadOnlyList<MacroSegment>? BlockedMacro()
+    {
+        if (!KeyboardMode || _blockedMacro is not { } key || _config.Macros.FirstOrDefault(m => m.Key == key) is not { } macro) return null;
+        var segments = MacroText.Segments(macro.Text, MacroValues());
+        if (segments.Any(x => x.Missing)) return segments;
+        _blockedMacro = null;
         return null;
     }
 
@@ -213,11 +234,13 @@ public sealed partial class Session
         var guard = new TxGuardInput(_config.Band, _dialHz, null, _config.ClockBlockSeconds,
             _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         var lead = _config.PttLead;
-        return _keys.Send(text, key, returnToReceive,
+        var why = _keys.Send(text, key, returnToReceive,
             () => mode == Mode.Rtty
                 ? new RttyModulator(rtty, _tx.OutputSampleRate, offset)
                 : new PskModulator(mode, _tx.OutputSampleRate, offset),
             s => _tx.StartStream(s, mode, offset, guard, lead));
+        if (why is null) _blockedMacro = null;
+        return why;
     }
 
     // Under _gate. In a contact, the partner's offset; a CQ goes on the offset last clicked, else a clear spot.

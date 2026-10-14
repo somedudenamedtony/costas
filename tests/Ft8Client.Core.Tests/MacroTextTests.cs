@@ -38,6 +38,23 @@ public class MacroTextTests
     }
 
     [Fact]
+    public void Segments_FieldWithoutValue_MarkedApart()
+    {
+        var s = MacroText.Segments("{CALL} DE {MYCALL} QTH {MYQTH} {FOO} K", Values);
+        s.Should().Equal(
+            new MacroSegment("EA8TL DE W7LIT QTH ", false),
+            new MacroSegment("{MYQTH}", true),
+            new MacroSegment(" ", false),
+            new MacroSegment("{FOO}", true),
+            new MacroSegment(" K", false));
+        string.Concat(s.Select(x => x.Text)).Should().Be(MacroText.Expand("{CALL} DE {MYCALL} QTH {MYQTH} {FOO} K", Values, out _));
+    }
+
+    [Fact]
+    public void Segments_AllFieldsKnown_OnePlainPiece() =>
+        MacroText.Segments("{CALL} DE {MYCALL}", Values).Should().Equal(new MacroSegment("EA8TL DE W7LIT", false));
+
+    [Fact]
     public void Describe_ThreeFields_ListsThem() => MacroText.Describe(["NAME", "QTH", "RIG"]).Should().Be("{NAME}, {QTH} and {RIG}");
 
     [Fact]

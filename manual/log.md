@@ -15,11 +15,11 @@ The row under the buttons narrows the list. The filters combine with each other 
 | Filter | Choices |
 | --- | --- |
 | Band | All bands, or any band you have a contact on |
-| Mode | All modes, FT8 or FT4 |
+| Mode | All digital (the default: everything but phone and CW), All modes, FT8, FT4, PSK (PSK31 and PSK63) or RTTY |
 | Date | All time, Today (UTC), Last 7 days, Last 30 days, This year. Days are UTC days, as the log shows them |
 | Confirmed | Confirmed or not, Confirmed (by QRZ, the ADIF you imported, or LoTW), Not confirmed |
 
-While a filter is set, the status line says *Showing 120 of 3,400 contacts* and **Clear filters** puts them all back.
+All digital is the starting point, so it does not count as a filter. While another filter is set, the status line says *Showing 120 of 3,400 contacts* and **Clear filters** puts them all back.
 The search text is kept. The list shows the newest 5,000 matching contacts; the totals always count all of them.
 
 | Button | What it does |
@@ -79,7 +79,8 @@ The Log view's **LoTW** column says *Confirmed* or *Uploaded*. Station details s
 
 ## Other loggers
 
-Costas sends the WSJT-X UDP messages (decodes, status, logged contact as ADIF) to `127.0.0.1` port 2237 by default,
+Costas sends the WSJT-X UDP messages (decodes, status, logged contact as ADIF) to `127.0.0.1` port 2237 by default
+(in PSK and RTTY only the status, naming the mode, and logged contacts),
 so GridTracker, JTAlert, N1MM+ and loggers that understand WSJT-X see your activity. Change the address in
 [Settings › Other programs](settings.md#other-programs).
 

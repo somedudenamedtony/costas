@@ -135,8 +135,12 @@ public class KeyboardContactSessionTests : IDisposable
         // My name and QTH are not set yet: nothing goes out.
         _session.SendMacro(Macro.ExchangeKey).Should().Contain("{MYNAME}").And.Contain("{MYQTH}");
         _rig.PttLog.Should().HaveCount(2);
+        var blocked = _session.Snapshot.BlockedMacro!;
+        blocked.Where(x => x.Missing).Select(x => x.Text).Should().Equal("{MYNAME}", "{MYNAME}", "{MYQTH}");
+        string.Concat(blocked.Select(x => x.Text)).Should().StartWith("KP4JRS DE W7LIT GE Jose");
 
         _session.Reconfigure(_config with { MyName = "Tony", MyQth = "Boise" });
+        _session.Snapshot.BlockedMacro.Should().BeNull();
         _session.KeyEnter(string.Empty).Should().BeNull();
         SendOver();
         Sent.Should().EndWith("KP4JRS DE W7LIT GE Jose UR 599 599 NAME Tony Tony QTH Boise HW? KP4JRS DE W7LIT KN|");
@@ -154,6 +158,19 @@ public class KeyboardContactSessionTests : IDisposable
         _session.Snapshot.Contact!.Outcome.Should().Be(ContactOutcome.Logged);
         var theirs = string.Join(' ', _session.Snapshot.Conversation.Where(l => !l.Mine).Select(l => l.Text));
         theirs.Should().StartWith("CQ CQ CQ DE KP4JRS").And.Contain("NAME JOSE").And.EndWith("SK");
+    }
+
+    [Fact]
+    public void ApplyText_StationNamed_RaisesKeyboardHeard()
+    {
+        var heard = new List<(Mode Mode, TextHeard Text)>();
+        _session.KeyboardHeard += (mode, list) => heard.AddRange(list.Select(h => (mode, h)));
+
+        Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n");
+
+        heard.Should().NotBeEmpty();
+        heard.Should().OnlyContain(x => x.Mode == Mode.Psk31 && x.Text.Call == Partner);
+        heard[0].Text.OffsetHz.Should().BeInRange(PartnerHz - 3, PartnerHz + 3);
     }
 
     [Fact]

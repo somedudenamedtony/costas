@@ -24,13 +24,20 @@ public partial class MiniWindow : Window
         AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
     }
 
-    /// <summary>Esc does here what it does in the main window.</summary>
+    /// <summary>Esc does here what it does in the main window; in PSK and RTTY, F1 to F12 send macros.</summary>
     public Action? Escape { get; init; }
 
     private void OnKey(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Escape) return;
-        Escape?.Invoke();
-        e.Handled = true;
+        if (e.Key == Key.Escape)
+        {
+            Escape?.Invoke();
+            e.Handled = true;
+        }
+        else if (e.Key is >= Key.F1 and <= Key.F12 && DataContext is MiniViewModel { IsKeyboard: true } vm)
+        {
+            vm.SendMacro(e.Key - Key.F1 + 1);
+            e.Handled = true;
+        }
     }
 }

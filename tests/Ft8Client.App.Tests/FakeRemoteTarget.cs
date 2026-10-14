@@ -44,6 +44,12 @@ internal sealed class FakeRemoteTarget : IRemoteTarget
 
     public void LogNow() => Calls.Add("logNow");
 
+    public string? SendMacro(int key)
+    {
+        Calls.Add("macro " + key);
+        return null;
+    }
+
     public void JumpTo(int step) => Calls.Add("jump " + step);
 
     public Task AbandonAsync()

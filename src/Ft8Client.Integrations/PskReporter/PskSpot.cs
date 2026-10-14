@@ -12,7 +12,7 @@ namespace Ft8Client.Integrations.PskReporter;
 /// <param name="Callsign">Sender call.</param>
 /// <param name="FrequencyHz">RF frequency (dial plus audio offset).</param>
 /// <param name="Snr">SNR.</param>
-/// <param name="Mode">FT8 or FT4.</param>
+/// <param name="Mode">The ADIF mode name: FT8, FT4, PSK31, PSK63 or RTTY.</param>
 /// <param name="Locator">Sender locator, if it sent one.</param>
 /// <param name="TimeUtc">When it was heard.</param>
 public sealed record PskSpot(string Callsign, long FrequencyHz, int Snr, string Mode, string Locator, DateTime TimeUtc);
