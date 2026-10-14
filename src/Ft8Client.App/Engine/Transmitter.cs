@@ -34,6 +34,7 @@ public sealed class Transmitter
     private readonly FrequencyTable _frequencies;
     private IRig _rig;
     private IAudioOutput? _output;
+    private volatile string? _outputFault;
     private PreparedTx? _next;
     private PreparedTx? _current;
     private DateTime _audioStartedUtc;
@@ -75,6 +76,9 @@ public sealed class Transmitter
     /// before PTT is touched.
     /// </summary>
     public string? DisabledReason { get; set; }
+
+    /// <summary>Why the audio output stopped working, or null. Cleared when a new output is set.</summary>
+    public string? OutputFault => _outputFault;
 
     /// <summary>A start later than this after its mark is skipped.</summary>
     public TimeSpan LateStartLimit { get; set; } = TimeSpan.FromSeconds(1);
@@ -122,6 +126,7 @@ public sealed class Transmitter
     {
         if (_output is not null) _output.Faulted -= OnAudioFault;
         _output = output;
+        _outputFault = null;
         if (_output is not null) _output.Faulted += OnAudioFault;
     }
 
@@ -138,6 +143,11 @@ public sealed class Transmitter
         if (!guard.AudioReady || _output is null)
         {
             refusal = "No audio output device is open; transmitting is disabled.";
+            return null;
+        }
+        if (_outputFault is { } dead)
+        {
+            refusal = OutputDeadText(dead);
             return null;
         }
         if (guard.RigFault is not null)
@@ -357,6 +367,7 @@ public sealed class Transmitter
     {
         if (DisabledReason is not null) return DisabledReason;
         if (!guard.AudioReady || _output is null) return "No audio output device is open.";
+        if (_outputFault is { } dead) return OutputDeadText(dead);
         if (guard.RigFault is not null) return $"Radio fault: {guard.RigFault}";
         if (!_frequencies.TransmitAllowed(guard.Band, Mode.Ft8, guard.DialHz, offsetHz, out var why)) return why;
         var n = (int)(seconds * _output.SampleRate);
@@ -389,8 +400,9 @@ public sealed class Transmitter
             await _rig.SetPttAsync(on, CancellationToken.None).ConfigureAwait(false);
             return null;
         }
-        catch (RigException ex)
+        catch (Exception ex)
         {
+            // Any failure, not only a rig error: a release that fails silently would leave the UI saying PTT is off.
             if (!on)
             {
                 Fault?.Invoke(ex.Message);
@@ -409,8 +421,14 @@ public sealed class Transmitter
 
     private void OnAudioFault(object? sender, string why)
     {
+        // The device's stream has stopped for good: every later transmission would key PTT and send silence.
+        _outputFault = why;
         if (Transmitting) _ = AbortAsync($"Audio output fault during transmission: {why}");
+        else Fault?.Invoke(OutputDeadText(why));
     }
+
+    private static string OutputDeadText(string why) =>
+        $"The audio output stopped ({why}). Run Station setup to open it again, or restart Costas.";
 
     private async Task AbortAsync(string message)
     {

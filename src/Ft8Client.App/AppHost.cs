@@ -419,6 +419,7 @@ public sealed class AppHost : IAsyncDisposable
         });
         SlotClock.SetMode(mode);
         Session.SetBand(band, mode);
+        await StopTransmitterForRetuneAsync().ConfigureAwait(false);
         var e = Frequencies.Find(band, mode);
         if (e is null) return;
         try
@@ -431,6 +432,14 @@ public sealed class AppHost : IAsyncDisposable
         {
             Session.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, ex.Message, Clock.UtcNow));
         }
+    }
+
+    // The radio must never change frequency with PTT keyed, and a transmission prepared for the old dial (checked
+    // against the old band edges) must not start after it.
+    private async Task StopTransmitterForRetuneAsync()
+    {
+        if (Transmitter.Transmitting) await Transmitter.HaltAsync().ConfigureAwait(false);
+        else Transmitter.CancelPending();
     }
 
     /// <summary>
@@ -448,6 +457,7 @@ public sealed class AppHost : IAsyncDisposable
             Settings.Update(s => s.Operating.Band = band);
             Session.SetBand(band, mode);
         }
+        await StopTransmitterForRetuneAsync().ConfigureAwait(false);
         try
         {
             await _rig.SetFrequencyAsync(hz, _cts.Token).ConfigureAwait(false);
@@ -471,7 +481,8 @@ public sealed class AppHost : IAsyncDisposable
     {
         var a = Settings.Current.Profile.Audio;
         IAudioOutput? closed = null;
-        if (!Simulating && AudioBackend is not NullAudioBackend && !string.Equals(a.OutputId, _outputId, StringComparison.Ordinal))
+        if (!Simulating && AudioBackend is not NullAudioBackend
+            && (!string.Equals(a.OutputId, _outputId, StringComparison.Ordinal) || Transmitter.OutputFault is not null))
         {
             if (Transmitter.Transmitting) await Transmitter.HaltAsync().ConfigureAwait(false);
             closed = _output;
@@ -602,6 +613,17 @@ public sealed class AppHost : IAsyncDisposable
             }
             else
             {
+                if (old is RigctldRig)
+                {
+                    // The old rigctld may hold the same serial port (a new baud rate or PTT setting): on Windows the new
+                    // one could not open it. Let go of the old radio first.
+                    if (Transmitter is { Transmitting: true }) await Transmitter.HaltAsync().ConfigureAwait(false);
+                    var placeholder = new VoxRig(dialHz);
+                    _rig = placeholder;
+                    Transmitter?.SetRig(placeholder);
+                    await old.DisposeAsync().ConfigureAwait(false);
+                    old = placeholder;
+                }
                 try
                 {
                     var port = RigctldRig.CleanSerialPort(r.Port, OperatingSystem.IsWindows());
@@ -612,13 +634,17 @@ public sealed class AppHost : IAsyncDisposable
                 }
                 catch (RigException ex)
                 {
-                    rig = new VoxRig(14_074_000);
+                    rig = new VoxRig(dialHz);
                     status = new ServiceStatus(ServiceHealth.Down, ex.Message, Clock.UtcNow);
                 }
             }
         }
         _rigKey = RigKey(r);
-        rig.Faulted += (_, f) => Session?.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, f.Message, f.TimeUtc));
+        rig.Faulted += (sender, f) =>
+        {
+            // A radio already replaced can still report a late fault while it shuts down; that is not this radio's state.
+            if (ReferenceEquals(sender, _rig)) Session?.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, f.Message, f.TimeUtc));
+        };
         _rig = rig;
         Transmitter?.SetRig(rig);
         if (Plan.MutesTransmitAudio(r))
@@ -651,8 +677,9 @@ public sealed class AppHost : IAsyncDisposable
                 if (_rigOpenStatus is { } ok && Session.Snapshot.Services[ServiceNames.Radio].Health != ServiceHealth.Ok)
                     Session.SetService(ServiceNames.Radio, ok with { SinceUtc = Clock.UtcNow });
             }
-            catch (RigException)
+            catch (Exception ex) when (ex is RigException or ObjectDisposedException)
             {
+                // ObjectDisposedException: the radio was replaced or restarted mid-poll. Keep polling the new one.
             }
             catch (OperationCanceledException)
             {

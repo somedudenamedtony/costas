@@ -929,6 +929,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v, min, max) : fallback;
         static double Dbl(string s, double min, double max, double fallback) =>
             double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v, min, max) : fallback;
+        var oldHamlibDir = _host.Settings.Current.Paths.HamlibDir;
 
         StoreFields();
         if (Profiles.FirstOrDefault(d => !Core.Messages.Callsign.IsValid(d.Callsign.Trim().ToUpperInvariant())) is { } bad)
@@ -1026,8 +1027,10 @@ public sealed partial class SettingsViewModel : ObservableObject
         Set(SecretNames.LotwPassword, LotwPassword);
         _host.TxLevel.Apply();
         _host.RebuildLogIndex();
-        // Another profile may use another radio or audio device.
-        if (activeId != _loadedProfile) _ = _host.ReopenDevicesAsync();
+        // Another profile may use another radio or audio device. A new Hamlib folder is where rigctld is found: Setup
+        // tells the operator to set it here when rigctld is missing, so it must take effect without a restart.
+        if (activeId != _loadedProfile || !string.Equals(oldHamlibDir, _host.Settings.Current.Paths.HamlibDir, StringComparison.Ordinal))
+            _ = _host.ReopenDevicesAsync();
         Close?.Invoke();
     }
 
