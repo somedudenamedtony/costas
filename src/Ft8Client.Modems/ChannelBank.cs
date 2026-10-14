@@ -23,6 +23,7 @@ public sealed class ChannelBank
     private readonly IChannelFinder _finder;
     private readonly Func<double, IKeyboardReceiver> _receiver;
     private readonly double _widthHz;
+    private readonly double _snapHz;
     private readonly List<ReceiveChannel> _channels = [];
     // The last few seconds of audio: a channel the finder opens reads them first, so the start of the over it found
     // (usually the caller's call) is not lost while the signal was still being noticed.
@@ -35,25 +36,35 @@ public sealed class ChannelBank
 
     /// <summary>A bank reading PSK31 or PSK63.</summary>
     public ChannelBank(Mode mode, int sampleRate)
-        : this(new ChannelFinder(mode, sampleRate), hz => new PskDemodulator(mode, sampleRate, hz), PskMode.Baud(mode), sampleRate)
+        : this(new ChannelFinder(mode, sampleRate), hz => new PskDemodulator(mode, sampleRate, hz), PskMode.Baud(mode), 2 * PskMode.Baud(mode), sampleRate)
     {
     }
 
-    /// <summary>A bank reading RTTY in one speed, shift and polarity.</summary>
-    public ChannelBank(RttyFormat format, int sampleRate)
-        : this(new RttyChannelFinder(format, sampleRate), hz => new RttyDemodulator(format, sampleRate, hz), Math.Max(format.Baud, format.ShiftHz / 4.0), sampleRate)
+    /// <summary>
+    /// A bank reading RTTY in one speed, shift and polarity. A click anywhere on a signal, either tone or between them,
+    /// reads it, so the operator need not find its centre.
+    /// </summary>
+    public ChannelBank(RttyFormat format, int sampleRate, bool unshiftOnSpace = true)
+        : this(
+            new RttyChannelFinder(format, sampleRate),
+            hz => new RttyDemodulator(format, sampleRate, hz) { UnshiftOnSpace = unshiftOnSpace },
+            Math.Max(format.Baud, format.ShiftHz / 4.0),
+            format.ShiftHz / 2.0 + 2 * format.Baud,
+            sampleRate)
     {
     }
 
     /// <param name="finder">Finds signals.</param>
     /// <param name="receiver">Makes a receiver tuned to a frequency.</param>
     /// <param name="widthHz">Two channels closer than this are on the same signal; a new one is not opened within twice it.</param>
+    /// <param name="snapHz">A frequency the operator picks this close to a signal reads that signal.</param>
     /// <param name="sampleRate">Input sample rate.</param>
-    public ChannelBank(IChannelFinder finder, Func<double, IKeyboardReceiver> receiver, double widthHz, int sampleRate)
+    public ChannelBank(IChannelFinder finder, Func<double, IKeyboardReceiver> receiver, double widthHz, double snapHz, int sampleRate)
     {
         _finder = finder;
         _receiver = receiver;
         _widthHz = widthHz;
+        _snapHz = snapHz;
         _sampleRate = sampleRate;
         _history = new float[HistorySeconds * sampleRate];
     }
@@ -76,7 +87,10 @@ public sealed class ChannelBank
     /// <summary>Starts reading a signal at a frequency the operator picked (or returns the channel already on it) and pins it.</summary>
     public ReceiveChannel Listen(double frequencyHz)
     {
-        var channel = Near(frequencyHz) ?? Add(frequencyHz);
+        var channel = _channels
+            .Where(c => Math.Abs(c.Receiver.FrequencyHz - frequencyHz) <= _snapHz)
+            .MinBy(c => Math.Abs(c.Receiver.FrequencyHz - frequencyHz))
+            ?? Add(Nearest(_finder.Signals(), frequencyHz) ?? frequencyHz);
         channel.Pinned = true;
         return channel;
     }
@@ -153,6 +167,16 @@ public sealed class ChannelBank
     }
 
     private float[] History() => _historyFull ? [.. _history[_historyPos..], .. _history[.._historyPos]] : _history[.._historyPos];
+
+    private double? Nearest(IReadOnlyList<double> frequencies, double hz)
+    {
+        double? best = null;
+        foreach (var f in frequencies)
+        {
+            if (Math.Abs(f - hz) <= _snapHz && (best is null || Math.Abs(f - hz) < Math.Abs(best.Value - hz))) best = f;
+        }
+        return best;
+    }
 
     private ReceiveChannel? Near(double hz) => _channels.Find(c => Math.Abs(c.Receiver.FrequencyHz - hz) < 2 * _widthHz);
 

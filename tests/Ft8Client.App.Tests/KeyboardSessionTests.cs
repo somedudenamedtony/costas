@@ -15,6 +15,7 @@ using Ft8Client.Core.Stations;
 using Ft8Client.Core.Time;
 using Ft8Client.Data.Reference;
 using Ft8Client.Modems.Psk;
+using Ft8Client.Modems.Rtty;
 using Ft8Client.Rig;
 
 namespace Ft8Client.App.Tests;
@@ -86,6 +87,38 @@ public class KeyboardSessionTests : IDisposable
         line.Station.OffsetHz.Should().BeInRange(1177, 1183);
         line.Station.RecentText.Should().Contain("CQ CQ CQ DE KP4JRS");
         snap.RawDecodes.Should().Contain(r => r.Decode.Text.Contains("DE KP4JRS", StringComparison.Ordinal));
+    }
+
+    private static float[] Rtty(RttyFormat format, double hz, string text)
+    {
+        var random = new Random(1);
+        var signal = new RttyModulator(format, ModeInfo.DecoderSampleRate, hz, 0.3).Modulate(text);
+        return [.. signal.Select(s => s + (float)((random.NextDouble() - 0.5) * 0.02))];
+    }
+
+    [Fact]
+    public void Drain_RttyCqHeard_StationListedAtItsCentre()
+    {
+        _session.SetBand("20m", Mode.Rtty);
+        Feed(Rtty(RttyFormat.Standard, 1500, "CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n"));
+
+        var line = _session.Snapshot.Rank.Line.Should().ContainSingle().Which;
+        line.Station.Call.Should().Be("KP4JRS");
+        line.Station.State.Should().Be(StationState.CallingCq);
+        line.Station.OffsetHz.Should().BeInRange(1495, 1505);
+    }
+
+    [Fact]
+    public void SetRtty_Reverse_ReadsAStationSendingUpsideDown()
+    {
+        var upsideDown = RttyFormat.Standard with { Reverse = true };
+        _session.SetBand("20m", Mode.Rtty);
+        Feed(Rtty(upsideDown, 1500, "CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n"));
+        _session.Snapshot.Stations.Should().BeEmpty();
+
+        _keyboard.SetRtty(upsideDown, unshiftOnSpace: true);
+        Feed(Rtty(upsideDown, 1500, "CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n"));
+        _session.Snapshot.Stations.Should().ContainSingle().Which.Call.Should().Be("KP4JRS");
     }
 
     [Fact]

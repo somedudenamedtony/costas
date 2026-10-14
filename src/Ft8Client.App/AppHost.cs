@@ -324,6 +324,7 @@ public sealed class AppHost : IAsyncDisposable
         await OpenRigAsync().ConfigureAwait(false);
 
         Keyboard = new KeyboardSession(Session, Clock);
+        Keyboard.SetRtty(SettingsMapper.Rtty(s), s.Operating.RttyUnshiftOnSpace);
         if (_pump is not null) _pump.Continuous = Keyboard.Input;
         Keyboard.Start();
         if (Plan.ReplayFolder is not null)
@@ -408,6 +409,7 @@ public sealed class AppHost : IAsyncDisposable
             TxLevel.Apply();
             Pota.Wake();
             Session.Reconfigure(SettingsMapper.ToConfig(Settings.Current));
+            Keyboard.SetRtty(SettingsMapper.Rtty(Settings.Current), Settings.Current.Operating.RttyUnshiftOnSpace);
         };
     }
 

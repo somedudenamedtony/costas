@@ -17,6 +17,7 @@ using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Data.Secrets;
 using Ft8Client.Data.Settings;
+using Ft8Client.Modems.Rtty;
 
 namespace Ft8Client.App.ViewModels;
 
@@ -62,6 +63,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         FreeTextAfter = s.Operating.FreeTextAfter;
         AutoLog = s.Operating.AutoLog;
         ChimeOnCaller = s.Operating.ChimeOnCaller;
+        var rtty = SettingsMapper.Rtty(s);
+        RttySpeed = rtty.Baud.ToString("0.##", CultureInfo.InvariantCulture);
+        RttyShift = rtty.ShiftHz.ToString(CultureInfo.InvariantCulture);
+        RttyReverse = rtty.Reverse;
+        RttyUnshiftOnSpace = s.Operating.RttyUnshiftOnSpace;
         CqParity = s.Operating.CqParity;
         ClockBlock = s.Operating.ClockBlockSeconds.ToString("0.0", CultureInfo.InvariantCulture);
         foreach (var t in SettingsMapper.ToRanking(s.Ranking).TierOrder) TierOrder.Add(new TierItem(t, StationText.Need(t)));
@@ -399,6 +405,28 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Chime when a new station calls me.</summary>
     [ObservableProperty]
     public partial bool ChimeOnCaller { get; set; }
+
+    /// <summary>RTTY speeds offered, in baud.</summary>
+    public IReadOnlyList<string> RttySpeeds { get; } = [.. RttyFormat.Speeds.Select(b => b.ToString("0.##", CultureInfo.InvariantCulture))];
+
+    /// <summary>RTTY speed.</summary>
+    [ObservableProperty]
+    public partial string RttySpeed { get; set; }
+
+    /// <summary>RTTY shifts offered, in hertz.</summary>
+    public IReadOnlyList<string> RttyShifts { get; } = [.. RttyFormat.Shifts.Select(h => h.ToString(CultureInfo.InvariantCulture))];
+
+    /// <summary>RTTY shift.</summary>
+    [ObservableProperty]
+    public partial string RttyShift { get; set; }
+
+    /// <summary>Read RTTY reversed.</summary>
+    [ObservableProperty]
+    public partial bool RttyReverse { get; set; }
+
+    /// <summary>RTTY unshift-on-space.</summary>
+    [ObservableProperty]
+    public partial bool RttyUnshiftOnSpace { get; set; }
 
     /// <summary>Parities.</summary>
     public IReadOnlyList<string> Parities { get; } = ["even", "odd"];
@@ -979,6 +1007,10 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.FreeTextAfter = FreeText();
             s.Operating.AutoLog = AutoLog;
             s.Operating.ChimeOnCaller = ChimeOnCaller;
+            s.Operating.RttyBaud = Dbl(RttySpeed, 45, 75, RttyFormat.Standard.Baud);
+            s.Operating.RttyShiftHz = Int(RttyShift, 170, 850, RttyFormat.Standard.ShiftHz);
+            s.Operating.RttyReverse = RttyReverse;
+            s.Operating.RttyUnshiftOnSpace = RttyUnshiftOnSpace;
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
             s.Qrz.LogbookEnabled = LogbookEnabled;

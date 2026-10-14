@@ -14,7 +14,7 @@ public sealed class OperatingSettings
     /// <summary>Current band.</summary>
     public string Band { get; set; } = "20m";
 
-    /// <summary>FT8 or FT4.</summary>
+    /// <summary>FT8, FT4, PSK31, PSK63 or RTTY.</summary>
     public string Mode { get; set; } = "FT8";
 
     /// <summary>Parity for calling CQ: <c>even</c> or <c>odd</c>.</summary>
@@ -58,6 +58,18 @@ public sealed class OperatingSettings
 
     /// <summary>Dial frequencies in hertz the operator saved from the frequency menu (DXpedition and other off-standard spots).</summary>
     public List<long> SavedFrequencies { get; set; } = [];
+
+    /// <summary>RTTY speed in baud: 45.45 (the amateur standard), 50 or 75.</summary>
+    public double RttyBaud { get; set; } = 45.45;
+
+    /// <summary>RTTY shift in hertz: 170 (the amateur standard), 200, 425 or 850.</summary>
+    public int RttyShiftHz { get; set; } = 170;
+
+    /// <summary>Read RTTY with mark and space swapped, for stations sending upside down.</summary>
+    public bool RttyReverse { get; set; }
+
+    /// <summary>Return to letters after a space when reading RTTY, as most stations expect.</summary>
+    public bool RttyUnshiftOnSpace { get; set; } = true;
 
     /// <summary>Clock offset above which transmit is blocked, in seconds.</summary>
     public double ClockBlockSeconds { get; set; } = 2.0;

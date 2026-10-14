@@ -104,4 +104,20 @@ public class ChannelBankTests
         var bank = new ChannelBank(RttyFormat.Standard, TestSignal.Rate);
         Run(bank, TestSignal.Noise(TestSignal.Rate * 30, seed: 4)).Values.Should().OnlyContain(t => t.Length == 0);
     }
+
+    [Theory]
+    [InlineData(1415)]
+    [InlineData(1500)]
+    [InlineData(1590)]
+    public void Listen_ClickOnEitherRttyTone_ReadsTheSignal(double clickHz)
+    {
+        var format = RttyFormat.Standard;
+        var signal = new RttyModulator(format, TestSignal.Rate, 1500, 0.5).Modulate("CQ CQ DE W7LIT W7LIT K\n");
+        var audio = TestSignal.WithNoise(signal, 0.5, 10, seed: 7);
+        var bank = new ChannelBank(format, TestSignal.Rate);
+        Run(bank, audio[..(TestSignal.Rate * 2)]);
+        var channel = bank.Listen(clickHz);
+        channel.Receiver.FrequencyHz.Should().BeApproximately(1500, 5);
+        bank.Channels.Should().ContainSingle();
+    }
 }

@@ -24,6 +24,7 @@ using Ft8Client.Core.Time;
 using Ft8Client.Core.Transmit;
 using Ft8Client.Data.Log;
 using Ft8Client.Data.Settings;
+using Ft8Client.Modems.Rtty;
 
 namespace Ft8Client.App.ViewModels;
 
@@ -346,7 +347,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
         UpdateTune(s);
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
-        (StatusText, StatusKind) = Status(s);
+        (StatusText, StatusKind) = Status(s, SettingsMapper.Rtty(_host.Settings.Current));
         (MeterText, MeterTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
         Indicators.Clear();
         Indicators.Add(Indicator("Radio", s, ServiceNames.Radio));
@@ -793,7 +794,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         return (list, rows.Count);
     }
 
-    internal static (string, TextKind) Status(SessionSnapshot s)
+    internal static (string, TextKind) Status(SessionSnapshot s, RttyFormat? rtty = null)
     {
         if (s.Fault is { } f) return (f, TextKind.Critical);
         if (s.RigTuningUntilUtc is not null) return ("The radio's antenna tuner is tuning.", TextKind.Critical);
@@ -811,9 +812,14 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (s.Contact is { Outcome: ContactOutcome.NoReply, Flow: ContactFlow.Hound } fox) return (fox.StatusText, TextKind.Caution);
         var top = s.Rank.Line.FirstOrDefault();
         if (!ModeInfo.IsSlotted(s.Mode))
-            return ($"Reading {ModeInfo.Name(s.Mode)}. This build receives only; calling and CQ come later.", TextKind.Normal);
+            return ($"Reading {KeyboardModeName(s.Mode, rtty ?? RttyFormat.Standard)}. This build receives only; calling and CQ come later.", TextKind.Normal);
         return (top is null ? "Not in a contact." : $"Not in a contact. Enter calls {top.Station.Call}, the top of the line.", TextKind.Normal);
     }
+
+    // "PSK31", or for RTTY its speed and shift: "RTTY 45.45 Bd, 170 Hz shift, reversed".
+    internal static string KeyboardModeName(Mode mode, RttyFormat rtty) => mode != Mode.Rtty
+        ? ModeInfo.Name(mode)
+        : $"RTTY {rtty.Baud.ToString("0.##", CultureInfo.InvariantCulture)} Bd, {rtty.ShiftHz} Hz shift{(rtty.Reverse ? ", reversed" : "")}";
 
     private static IndicatorViewModel Indicator(string label, SessionSnapshot s, string key)
     {
