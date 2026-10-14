@@ -331,7 +331,7 @@ public sealed class AppHost : IAsyncDisposable
         Keyboard.Start();
         if (Plan.ReplayFolder is not null)
         {
-            _keyboardSim = new SimulatedKeyboardAudio(FindSamples(), Keyboard, () => Session.Config.Mode, Clock);
+            _keyboardSim = new SimulatedKeyboardAudio(FindSamples(), Keyboard, () => Session.Config.Mode, Clock, Plan.ReplayFolder);
             _keyboardSim.Start();
         }
 
