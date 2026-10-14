@@ -32,7 +32,7 @@ shows. **HALT TX** is always at the bottom of the screen.
 
 | Tab | What it shows |
 |---|---|
-| **Operate** | The contact on the same five-step strip as the desk (tap one of your upcoming steps to send it next), with **Resend**, **Log now** and **Abandon**; **Call CQ** or **Stop CQ**; **Calling you**; and **Next in line** with the same columns as the desk: what each station is doing, where it is, its signal, whether it hears you, your chance, and when you last worked it |
+| **Operate** | The contact on the same five-step strip as the desk (tap one of your upcoming steps to send it next), with **Resend**, **Log now** and **Abandon**; **Call CQ** or **Stop CQ**; **Calling you**; and **Next in line** with the same columns as the desk: what each station is doing, where it is, its signal, your chance, and when you last worked it |
 | **Stations** | The band summary (stations heard, countries, calling CQ, you need), **Repeats** (stations already in your log on this band and mode) and **Watching** (needed, but not callable right now, and why) |
 | **Decodes** | Band activity, newest first. Messages to you are highlighted, CQs are blue and your own transmissions are grey |
 | **Signal** | Who hears you, from PSK Reporter: how many stations and countries in the last 15 minutes, the farthest and best reports, the latest reports, and the last hour of distinct receivers in five-minute intervals (the final interval is incomplete) |

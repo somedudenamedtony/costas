@@ -189,7 +189,7 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 "use strict";
 const KEY = "costas-remote-token";
 const $ = id => document.getElementById(id);
-let token = null, ws = null, state = null, pingAt = 0, lastMsg = 0, backoff = 1000, noteTimer = 0;
+let token = null, ws = null, state = null, pingAt = 0, lastMsg = 0, backoff = 1000, noteTimer = 0, retryTimer = null;
 
 function load() { try { return localStorage.getItem(KEY); } catch { return null; } }
 function save(t) { try { if (t) localStorage.setItem(KEY, t); else localStorage.removeItem(KEY); } catch { } }
@@ -239,40 +239,54 @@ function send(obj) {
 function cmd(type, extra) { send(Object.assign({ type }, extra || {})); }
 
 function connect() {
+  // One socket at a time: a pending retry or a socket still closing must not open a second one.
+  clearTimeout(retryTimer); retryTimer = null;
+  if (ws) { const old = ws; ws = null; old.onclose = null; try { old.close(); } catch { } }
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  ws = new WebSocket(proto + "//" + location.host + "/ws");
+  const sock = new WebSocket(proto + "//" + location.host + "/ws");
+  ws = sock;
+  lastMsg = Date.now();
   setLink("amb", "Connecting…");
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type: "hello", token }));
-    if (viewing) ws.send(JSON.stringify({ type: "show", call: viewing }));
+  sock.onopen = () => {
+    sock.send(JSON.stringify({ type: "hello", token }));
+    if (viewing) sock.send(JSON.stringify({ type: "show", call: viewing }));
   };
-  ws.onmessage = ev => {
+  sock.onmessage = ev => {
     lastMsg = Date.now();
     backoff = 1000;
     let m; try { m = JSON.parse(ev.data); } catch { return; }
     if (m.type === "pong") { setLink("grn", "Link " + (Date.now() - pingAt) + " ms"); return; }
+    if (m.type === "note") { if (m.note) note(m.note); return; }
     if (m.type === "state") {
-      state = m.state; render();
+      state = m.state; slotAt = Date.now(); render();
       if (m.note) note(m.note);
       if ($("link").textContent === "Connecting…" || $("link").textContent === "Reconnecting…") setLink("grn", "Connected");
     }
   };
-  ws.onclose = ev => {
+  sock.onclose = ev => {
+    if (ws !== sock) return;
     ws = null;
     if (ev.reason === "unpaired") { token = null; save(null); showPair("This phone is not paired any more. Pair it again."); return; }
     setLink("amb", "Reconnecting…");
-    setTimeout(connect, backoff);
+    retryTimer = setTimeout(connect, backoff);
     backoff = Math.min(backoff * 2, 5000);
   };
 }
 
+// After the phone sleeps, a dead socket can still read as open for minutes. The station sends
+// state every second, so a long silence means the link is gone: drop it and connect again.
+function stale() { return lastMsg && Date.now() - lastMsg > 8000; }
+
 // Heartbeat: the station stops transmitting when the phone in control is silent for 15 s.
 setInterval(() => {
+  if (!token) return;
+  if (ws && stale()) { connect(); return; }
   if (ws && ws.readyState === WebSocket.OPEN) { pingAt = Date.now(); ws.send(JSON.stringify({ type: "ping" })); }
   if (lastMsg && Date.now() - lastMsg > 4000 && ws) setLink("amb", "No answer from the station");
 }, 5000);
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && token && (!ws || ws.readyState > 1)) connect();
+  if (document.visibilityState !== "visible" || !token) return;
+  if (!ws || ws.readyState > 1 || stale()) connect();
 });
 
 function setLink(color, text) {
@@ -304,9 +318,9 @@ function render() {
   f.classList.toggle("hidden", !s.fault && s.radioOk);
   f.textContent = s.fault || (!s.radioOk ? "Radio: " + s.radio : "");
 
-  const h = $("hunt");
-  h.classList.toggle("hidden", !s.hunt);
-  h.textContent = s.hunt ? "Hunt list · " + s.hunt : "";
+  const hunt = $("hunt");
+  hunt.classList.toggle("hidden", !s.hunt);
+  hunt.textContent = s.hunt ? "Hunt list · " + s.hunt : "";
 
   const m = $("meter");
   m.classList.toggle("hidden", !s.meter);
@@ -315,7 +329,7 @@ function render() {
   $("services").classList.toggle("hidden", !s.services);
   $("services").textContent = s.services || "";
 
-  slotAt = Date.now(); renderSlot();
+  renderSlot();
   renderContact(s);
   renderCallers(s);
   renderLine(s);
@@ -650,7 +664,11 @@ function renderTune(s) {
   const row = el("div", "offset");
   const input = el("input"); input.type = "number"; input.inputMode = "numeric"; input.min = 200; input.max = 2900; input.step = 10;
   input.value = s.offsetHz; input.setAttribute("aria-label", "Tx offset in hertz");
-  row.append(input, button("Use", "", () => cmd("offset", { hz: parseInt(input.value, 10) })));
+  row.append(input, button("Use", "", () => {
+    const hz = parseInt(input.value, 10);
+    if (Number.isNaN(hz)) { note("Type an offset from 200 to 2900 Hz first."); return; }
+    cmd("offset", { hz });
+  }));
   box.append(row, button("Automatic (picks a clear spot)", s.offsetAuto ? "on" : "", () => cmd("offsetAuto")),
     el("div", "s", "Or type a fixed offset from 200 to 2900 Hz and press Use."));
 }

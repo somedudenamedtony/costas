@@ -78,7 +78,15 @@ public sealed class RemoteControl
     {
         if (!Pairing.TryRedeem(code, _clock.UtcNow)) return null;
         var token = Tokens.Issue();
-        _saveTokens(Tokens.Serialize());
+        try
+        {
+            _saveTokens(Tokens.Serialize());
+        }
+        catch (Exception ex)
+        {
+            // The phone is paired until Costas restarts; it will have to pair again after that.
+            Serilog.Log.Warning(ex, "Could not save the paired phones");
+        }
         Changed?.Invoke();
         return token;
     }
@@ -134,6 +142,9 @@ public sealed class RemoteControl
             else _viewing[deviceId] = shown;
             return null;
         }
+        var call = cmd.Call?.Trim().ToUpperInvariant() ?? string.Empty;
+        // A message the station cannot act on changes nothing: it must not take control or reset the Tx watchdog.
+        if (!Understood(cmd, call)) return "The station did not understand that.";
         bool changed;
         lock (_gate)
         {
@@ -142,7 +153,6 @@ public sealed class RemoteControl
         }
         _target.SetWatchdogCap(ControlLease.WatchdogCapMinutes);
         if (changed) Changed?.Invoke();
-        var call = cmd.Call?.Trim().ToUpperInvariant() ?? string.Empty;
         switch (cmd.Type)
         {
             case "halt":
@@ -190,6 +200,15 @@ public sealed class RemoteControl
                 return "The station did not understand that.";
         }
     }
+
+    private static bool Understood(RemoteCommand cmd, string call) => cmd.Type switch
+    {
+        "halt" or "abandon" or "cq" or "resend" or "logNow" or "band" or "offsetAuto" => true,
+        "call" or "answer" or "answerAfter" => call.Length > 0,
+        "jump" => cmd.Step is not null,
+        "offset" => cmd.Hz is not null,
+        _ => false,
+    };
 
     // As the band menu on the desk: not while transmitting, and only to a band in the frequency table.
     private async Task<string?> BandAsync(RemoteCommand cmd)

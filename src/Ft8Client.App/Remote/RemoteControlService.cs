@@ -129,7 +129,11 @@ public sealed class RemoteControlService : IAsyncDisposable
             }
             _running = (o.Enabled, o.Port);
             Problem = null;
-            if (o.Enabled)
+            if (o.Enabled && o.Port is < 1024 or > 65535)
+            {
+                Problem = $"Port {o.Port} cannot be used. Choose a port from 1024 to 65535.";
+            }
+            else if (o.Enabled)
             {
                 var server = new RemoteServer(Control, StateFor);
                 try
