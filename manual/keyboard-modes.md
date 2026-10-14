@@ -35,6 +35,8 @@ The slot countdown is hidden in these modes, since there are no slots.
 
 ## RTTY settings
 
+![RTTY on the Operate screen](images/rtty-operate.png)
+
 RTTY has a few settings, in **Settings › PSK and RTTY**. The status line shows the ones in use, for
 example "Reading RTTY 45.45 Bd, 170 Hz shift".
 
