@@ -71,7 +71,7 @@ public sealed partial class Session
         lock (_gate)
         {
             if (!KeyboardMode || text.Length == 0) return null;
-            why = Queue(text, null, returnToReceive: false, TxOffset(cq: false));
+            why = QueueAt(text, null, returnToReceive: false, cq: false);
             _fault = why;
         }
         Publish();
@@ -80,13 +80,17 @@ public sealed partial class Session
 
     /// <summary>
     /// Enter. On the air: a new line, or on an empty line the return to receive. Receiving: sends what is typed, or the
-    /// next step's macro when nothing is.
+    /// next step's macro when nothing is. <paramref name="onAir"/> is what the operator's screen showed when the key was
+    /// pressed: if it showed an over that has just ended, Enter (a new line, or the return to receive) has nothing left
+    /// to do and must not send the next macro. Returns null, or why nothing was sent.
     /// </summary>
-    public string? KeyEnter(string typed)
+    public string? KeyEnter(string typed, bool onAir = false)
     {
         ArgumentNullException.ThrowIfNull(typed);
         if (_keys.Active)
         {
+            // Text typed into the line just before the over started joins the over rather than being lost.
+            if (typed.Length > 0) return SendText(typed);
             var v = _keys.View;
             var line = (v.Sent + v.Waiting).Split('\n')[^1];
             if (string.IsNullOrWhiteSpace(line) && typed.Length == 0) _keys.ReturnToReceive();
@@ -95,6 +99,7 @@ public sealed partial class Session
             return null;
         }
         if (typed.Length > 0) return SendText(typed);
+        if (onAir) return null;
         int? next;
         lock (_gate) next = KeyboardMode ? _kbd.NextMacro : null;
         return next is { } k ? SendMacro(k) : null;
@@ -173,7 +178,7 @@ public sealed partial class Session
             return MissingFields(macro, missing);
         }
         var cq = key == Macro.CqKey;
-        var why = Queue(text + " ", key, returnToReceive: true, TxOffset(cq));
+        var why = QueueAt(text + " ", key, returnToReceive: true, cq);
         if (why is not null) return why;
         _macroTexts[key] = text;
         if (cq)
@@ -243,17 +248,31 @@ public sealed partial class Session
         return why;
     }
 
-    // Under _gate. In a contact, the partner's offset; a CQ goes on the offset last clicked, else a clear spot.
-    private int TxOffset(bool cq)
+    // Under _gate. Queues text on the offset TxOffset picks. A clear spot picked for a new over becomes the Tx offset
+    // only once the over has started: a refused send leaves the offset where it was.
+    private string? QueueAt(string text, int? key, bool returnToReceive, bool cq)
     {
-        if (!cq && _kbd.InContact) return _kbd.PartnerOffsetHz;
-        if (_config.FixedTxOffsetHz is { } f) return f;
+        var starting = !_keys.Active;
+        var (offset, clear) = TxOffset(cq);
+        var why = Queue(text, key, returnToReceive, offset);
+        if (why is null && starting && clear is { } c)
+        {
+            _txOffset = offset;
+            _txOffsetClear = c;
+        }
+        return why;
+    }
+
+    // Under _gate. In a contact, the partner's offset; a CQ goes on the offset last clicked, else a clear spot (with
+    // whether it is clear, which the caller keeps once the over starts).
+    private (int Hz, bool? Clear) TxOffset(bool cq)
+    {
+        if (!cq && _kbd.InContact) return (_kbd.PartnerOffsetHz, null);
+        if (_config.FixedTxOffsetHz is { } f) return (f, null);
         var half = ModeInfo.OccupiedBandwidthHz(_config.Mode) / 2;
         IReadOnlyList<int> busy = [.. _tracker.Stations.Select(s => s.OffsetHz - half)];
         var c = TxOffsetPicker.Choose([busy], _config.Mode, _txOffset - half);
-        _txOffset = c.OffsetHz + half;
-        _txOffsetClear = c.Clear;
-        return _txOffset;
+        return (c.OffsetHz + half, c.Clear);
     }
 
     // Under _gate. Partner text into the strip and the conversation box; while calling CQ, an answer starts a contact.

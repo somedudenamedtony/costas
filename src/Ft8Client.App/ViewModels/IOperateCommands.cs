@@ -71,10 +71,11 @@ public interface IOperateCommands
     {
     }
 
-    /// <summary>PSK and RTTY: Enter, with what is typed while receiving.</summary>
-    void KeyboardEnter(string typed)
-    {
-    }
+    /// <summary>
+    /// PSK and RTTY: Enter, with what is typed while receiving. <paramref name="onAir"/> is whether the screen showed an
+    /// over on the air. Returns null, or why nothing was sent (the typed line is then kept).
+    /// </summary>
+    string? KeyboardEnter(string typed, bool onAir) => null;
 
     /// <summary>PSK and RTTY: a key typed while an over is on the air. False when it cannot be sent.</summary>
     bool KeyboardType(char c) => false;

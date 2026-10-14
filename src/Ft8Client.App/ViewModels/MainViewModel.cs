@@ -627,10 +627,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     }
 
     /// <inheritdoc />
-    public void KeyboardEnter(string typed)
+    public string? KeyboardEnter(string typed, bool onAir)
     {
         Activity();
-        _host.Session.KeyEnter(typed);
+        return _host.Session.KeyEnter(typed, onAir);
     }
 
     /// <inheritdoc />
