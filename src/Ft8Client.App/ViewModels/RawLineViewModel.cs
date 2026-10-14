@@ -26,7 +26,8 @@ public sealed class RawLineViewModel
     /// <param name="l">The decode line.</param>
     /// <param name="localZone">Zone for the Local column; the machine's zone when null.</param>
     /// <param name="highlight">Colours another program asked for this line's callsign, if any.</param>
-    public RawLineViewModel(RawDecodeLine l, TimeZoneInfo? localZone = null, WsjtxHighlight? highlight = null)
+    /// <param name="keyboard">A PSK or RTTY line, which has no time offset (DT is left empty).</param>
+    public RawLineViewModel(RawDecodeLine l, TimeZoneInfo? localZone = null, WsjtxHighlight? highlight = null, bool keyboard = false)
     {
         Background = highlight?.Background;
         Foreground = highlight?.Foreground;
@@ -35,7 +36,7 @@ public sealed class RawLineViewModel
         Utc = utc.ToString("HHmmss", CultureInfo.InvariantCulture);
         Local = TimeZoneInfo.ConvertTimeFromUtc(utc, localZone ?? TimeZoneInfo.Local).ToString("HHmmss", CultureInfo.InvariantCulture);
         Db = l.Transmitted ? "Tx" : d.Snr.ToString("+0;-0;0", CultureInfo.InvariantCulture);
-        Dt = l.Transmitted ? string.Empty : d.Dt.ToString("0.0", CultureInfo.InvariantCulture);
+        Dt = l.Transmitted || keyboard ? string.Empty : d.Dt.ToString("0.0", CultureInfo.InvariantCulture);
         Hz = d.OffsetHz.ToString(CultureInfo.InvariantCulture);
         Message = d.Text + (d.LowConfidence ? " ?" : string.Empty) + (d.APriori > 0 ? $" a{d.APriori}" : string.Empty);
         Country = l.Country ?? string.Empty;

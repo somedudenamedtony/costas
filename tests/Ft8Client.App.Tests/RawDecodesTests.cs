@@ -37,4 +37,14 @@ public class RawDecodesTests
         vm.Lines.Select(l => l.IsBlank ? "-" : l.Message).Should().Equal(
             "CQ N0CALL EM12", "CQ G4AAA IO91", "-", "CQ K1ABC FN42", "CQ W9XYZ EN52");
     }
+
+    [Fact]
+    public void Apply_KeyboardLines_LeavesDtEmpty()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+
+        vm.Apply([Line(new DateTime(2026, 10, 13, 18, 0, 0, DateTimeKind.Utc), "CQ CQ DE KP4JRS KP4JRS K")], keyboard: true);
+
+        vm.Lines.Should().ContainSingle().Which.Dt.Should().BeEmpty();
+    }
 }

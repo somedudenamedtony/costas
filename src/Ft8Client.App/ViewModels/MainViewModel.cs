@@ -344,7 +344,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         ApplyBandOpenings(s);
         RefreshHuntGo();
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
-        Raw.Apply(s.RawDecodes);
+        Raw.Apply(s.RawDecodes, !ModeInfo.IsSlotted(s.Mode));
         Frequency = FormatFrequency(s.DialHz);
         FollowBand(s.Band);
         Transmitting = s.Transmitting;

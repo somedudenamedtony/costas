@@ -38,10 +38,13 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
     /// <summary>Raised when the view should scroll to the newest line, at the top.</summary>
     public event Action? ScrollToNewest;
 
-    /// <summary>Applies new decodes.</summary>
-    public void Apply(IReadOnlyList<RawDecodeLine> lines)
+    private bool _keyboard;
+
+    /// <summary>Applies new decodes; <paramref name="keyboard"/> for PSK and RTTY lines, which have no DT.</summary>
+    public void Apply(IReadOnlyList<RawDecodeLine> lines, bool keyboard = false)
     {
-        if (lines.Count == _all.Count && (lines.Count == 0 || ReferenceEquals(lines[^1], _all[^1]))) return;
+        if (keyboard == _keyboard && lines.Count == _all.Count && (lines.Count == 0 || ReferenceEquals(lines[^1], _all[^1]))) return;
+        _keyboard = keyboard;
         _all = lines;
         Rebuild();
     }
@@ -111,7 +114,7 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
             if (f.Length > 0 && !l.Decode.Text.Contains(f, StringComparison.OrdinalIgnoreCase)) continue;
             if (slot is not null && slot != l.Decode.SlotStartUtc) Lines.Add(RawLineViewModel.Blank);
             slot = l.Decode.SlotStartUtc;
-            Lines.Add(new RawLineViewModel(l, highlight: HighlightOf(l, newest)));
+            Lines.Add(new RawLineViewModel(l, highlight: HighlightOf(l, newest), keyboard: _keyboard));
         }
         if (!ScrolledAway) ScrollToNewest?.Invoke();
     }
