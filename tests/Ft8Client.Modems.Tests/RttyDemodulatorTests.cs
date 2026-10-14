@@ -109,6 +109,25 @@ public class RttyDemodulatorTests
         Receive(Standard, TestSignal.Noise(TestSignal.Rate * 120, seed: 5), 1000).Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData(10)]
+    [InlineData(3)]
+    public void Process_OverEndsWithoutIdle_LastWordAndNothingAfter(double snrDb)
+    {
+        // An over cut off after its last character: the noise framed while quality falls used to add a character
+        // or two after it, or the last word was dropped with them.
+        const string text = "W1AW DE K9ABC K9ABC UR 599 599 HW? W1AW DE K9ABC KN\n";
+        for (var seed = 1; seed <= 12; seed++)
+        {
+            var tx = new RttyModulator(Standard, TestSignal.Rate, 1500, Peak);
+            var audio = new List<float>(tx.Start());
+            foreach (var c in text) audio.AddRange(tx.Send(c));
+            audio.AddRange(new float[TestSignal.Rate * 5]);
+            var received = Receive(Standard, TestSignal.WithNoise([.. audio], Peak, snrDb, seed), 1500);
+            received.Should().EndWith("K9ABC KN\n", $"seed {seed}");
+        }
+    }
+
     [Fact]
     public void Process_FiguresThenSpace_ReturnsToLetters()
     {

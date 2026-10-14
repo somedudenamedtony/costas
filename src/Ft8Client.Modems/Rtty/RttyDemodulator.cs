@@ -22,9 +22,11 @@ public sealed class RttyDemodulator : IKeyboardReceiver
 {
     private const int SamplesPerBit = 16;
     // Characters are held this many bits before they are shown, and dropped if quality falls to DropLevel meanwhile,
-    // so the burst of noise read as the squelch notices that a signal has ended is not shown. A clean signal (quality
-    // at HighQuality or more) shows its characters at once.
-    private const int HoldBits = 22;
+    // so the burst of noise read as the squelch notices that a signal has ended is not shown. Quality takes about 18
+    // to 23 bits to fall that far, so the hold is shorter (it once was 22 bits, and an over's last character was
+    // dropped with the noise after it); noise framed after a strong signal is kept out by WeakCharacter instead.
+    // A clean signal (quality at HighQuality or more) shows its characters at once.
+    private const int HoldBits = 12;
     private const double DropLevel = 0.3;
     private const int QualityBits = 8;
     // ATC: each tone's peak decays over about 8 bits, so it follows a fade; its floor rises over about 64 bits, slowly
@@ -61,6 +63,13 @@ public sealed class RttyDemodulator : IKeyboardReceiver
     private int _idle;
     private readonly double[] _bitSums = new double[7];
     private bool _figures;
+    // The signal's level (the stronger tone at the middle of each bit, followed while the squelch is open) and the
+    // mean level of the character being framed. A character much weaker than the signal is noise framed just after a
+    // signal ended, while quality was still falling, and is not read.
+    private double _level;
+    private double _charLevel;
+    private int _charBits;
+    private const double WeakCharacter = 0.4;
     private long _samplesOut;
 
     /// <param name="format">Speed, shift and polarity.</param>
@@ -182,7 +191,7 @@ public sealed class RttyDemodulator : IKeyboardReceiver
         _previousMark = zm;
         _previousSpace = zs;
 
-        Frame(bit, d, contrast);
+        Frame(bit, d, contrast, Math.Max(m, s));
         _lastBit = bit;
         if (Quality < DropLevel) _held.Clear();
         var now = (long)(_samplesOut / _bitLength);
@@ -208,7 +217,7 @@ public sealed class RttyDemodulator : IKeyboardReceiver
     // Quality is the contrast between the tones, |m - s| / (m + s), taken once a bit at the middle of the bit and
     // averaged over about eight bits: near 1 for a keyed signal, low for noise. (Taken anywhere else it would count the
     // moments where the tones cross, when even a clean signal has no contrast.)
-    private void Frame(bool bit, double d, double contrast)
+    private void Frame(bool bit, double d, double contrast, double strength)
     {
         if (!_inCharacter)
         {
@@ -220,6 +229,8 @@ public sealed class RttyDemodulator : IKeyboardReceiver
             if (_lastBit && !bit)
             {
                 _inCharacter = true;
+                _charLevel = 0;
+                _charBits = 0;
                 _position = 0;
                 _idle = 0;
                 Array.Clear(_bitSums);
@@ -229,13 +240,20 @@ public sealed class RttyDemodulator : IKeyboardReceiver
         _position += 1;
         var index = (int)(_position / _bitLength);
         var within = _position / _bitLength - index;
-        if (index < 7 && within >= 0.5 && within - 1 / _bitLength < 0.5) Quality += (contrast - Quality) / QualityBits;
+        if (index < 7 && within >= 0.5 && within - 1 / _bitLength < 0.5)
+        {
+            Quality += (contrast - Quality) / QualityBits;
+            _charLevel += strength;
+            _charBits++;
+            if (SquelchOpen) _level += (strength - _level) / (2 * QualityBits);
+        }
         if (index < 7 && within is >= 0.25 and <= 0.75) _bitSums[index] += d;
         if (_position < 6.75 * _bitLength) return;
         _inCharacter = false;
         if (_bitSums[0] >= 0 || _bitSums[6] <= 0) return;
         var code = 0;
         for (var b = 0; b < 5; b++) if (_bitSums[b + 1] > 0) code |= 1 << b;
+        if (_charLevel < WeakCharacter * _level * _charBits) return;
         Character(code);
     }
 
