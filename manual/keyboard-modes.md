@@ -78,7 +78,7 @@ The macro keys and your details are in **Settings › PSK and RTTY**. The defaul
 | F1 | CQ | `CQ CQ CQ DE {MYCALL} {MYCALL} {MYCALL} {MYGRID} K` |
 | F2 | Answer | `{CALL} DE {MYCALL} {MYCALL} K` |
 | F3 | Exchange | `{CALL} DE {MYCALL} [GE {NAME}] UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN` |
-| F4 | 73 | `TNX {NAME} 73 {CALL} DE {MYCALL} SK` |
+| F4 | 73 | `[TNX {NAME}] 73 {CALL} DE {MYCALL} SK` |
 | F5 | Rig and antenna | `RIG {MYRIG} ANT {MYANT}` |
 
 Fill in **Your name**, **Your QTH** and your radio and antenna there first. A macro whose field has no value is not

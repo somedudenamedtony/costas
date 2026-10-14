@@ -33,4 +33,20 @@ public class SettingsMapperMacroTests
         o.Macros.Add(new MacroOptions { Key = 3, Label = "Exchange", Text = "{CALL} DE {MYCALL} GE {NAME} UR {RST} K" });
         SettingsMapper.Macros(o).Single().Text.Should().Be("{CALL} DE {MYCALL} GE {NAME} UR {RST} K");
     }
+
+    [Fact]
+    public void Macros_StoredOldDefault73_ReadAsNewDefault()
+    {
+        var o = new OperatingSettings();
+        o.Macros.Add(new MacroOptions { Key = 4, Label = "73", Text = "TNX {NAME} 73 {CALL} DE {MYCALL} SK" });
+        SettingsMapper.Macros(o).Single().Text.Should().Be("[TNX {NAME}] 73 {CALL} DE {MYCALL} SK");
+    }
+
+    [Fact]
+    public void Macros_OldDefault73OnAnotherKey_KeptAsWritten()
+    {
+        var o = new OperatingSettings();
+        o.Macros.Add(new MacroOptions { Key = 6, Label = "Thanks", Text = "TNX {NAME} 73 {CALL} DE {MYCALL} SK" });
+        SettingsMapper.Macros(o).Single().Text.Should().Be("TNX {NAME} 73 {CALL} DE {MYCALL} SK");
+    }
 }

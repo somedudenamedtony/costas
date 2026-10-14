@@ -150,7 +150,7 @@ A keyboard-mode contact shows on the same conversation strip as FT8. These are t
 | F1 | CQ | `CQ CQ CQ DE {MYCALL} {MYCALL} {MYCALL} {MYGRID} K` |
 | F2 | Answer | `{CALL} DE {MYCALL} {MYCALL} K` |
 | F3 | Exchange | `{CALL} DE {MYCALL} [GE {NAME}] UR {RST} {RST} NAME {MYNAME} {MYNAME} QTH {MYQTH} HW? {CALL} DE {MYCALL} KN` |
-| F4 | 73 | `TNX {NAME} 73 {CALL} DE {MYCALL} SK` |
+| F4 | 73 | `[TNX {NAME}] 73 {CALL} DE {MYCALL} SK` |
 | F5 | Rig and antenna | `RIG {MYRIG} ANT {MYANT}` |
 
 - **Return to receive.** Every macro ends with a return to receive, unless more text is waiting. Typed text alone keeps transmitting until Enter on an empty line, or Esc.
