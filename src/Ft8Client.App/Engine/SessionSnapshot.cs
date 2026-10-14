@@ -136,4 +136,7 @@ public sealed record SessionSnapshot
 
     /// <summary>PSK and RTTY: the macros on the function keys.</summary>
     public IReadOnlyList<Macro> Macros { get; init; } = Macro.Defaults;
+
+    /// <summary>PSK and RTTY: a note about the radio's settings for the mode (power cap, speech processor), or null.</summary>
+    public string? RadioNote { get; init; }
 }

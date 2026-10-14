@@ -98,6 +98,32 @@ public sealed class SimulatedRig(IClock clock, long frequencyHz = 14_074_000) : 
     /// <inheritdoc />
     public Task<int?> ReadPowerWattsAsync(CancellationToken ct) => Task.FromResult(PowerWatts);
 
+    /// <summary>The power setting as a fraction of the maximum, or null for a radio that cannot report it.</summary>
+    public double? PowerLevel { get; set; } = 1.0;
+
+    /// <summary>The speech processor's state, or null for a radio that cannot report it.</summary>
+    public bool? SpeechProcessor { get; set; } = false;
+
+    /// <inheritdoc />
+    public Task<double?> ReadPowerLevelAsync(CancellationToken ct)
+    {
+        lock (_gate) return Task.FromResult(PowerLevel);
+    }
+
+    /// <inheritdoc />
+    public Task<bool> SetPowerLevelAsync(double level, CancellationToken ct)
+    {
+        lock (_gate)
+        {
+            if (PowerLevel is null) return Task.FromResult(false);
+            PowerLevel = level;
+            return Task.FromResult(true);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<bool?> ReadSpeechProcessorAsync(CancellationToken ct) => Task.FromResult(SpeechProcessor);
+
     /// <summary>True to act as a radio with its own antenna tuner. Off by default.</summary>
     public bool HasTuner { get; set; }
 

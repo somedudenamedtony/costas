@@ -264,6 +264,60 @@ public sealed class RigctldRig : IRig
     }
 
     /// <inheritdoc />
+    public async Task<double?> ReadPowerLevelAsync(CancellationToken ct)
+    {
+        var c = _client;
+        if (c is null || !ProcessRunning) return null;
+        try
+        {
+            var level = await c.GetLevelAsync("RFPOWER", ct).ConfigureAwait(false);
+            return level is >= 0 and <= 1 ? level : null;
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> SetPowerLevelAsync(double level, CancellationToken ct)
+    {
+        var c = _client;
+        if (c is null || !ProcessRunning || level is < 0 or > 1) return false;
+        try
+        {
+            var command = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"L RFPOWER {level:0.###}");
+            return (await c.SendAsync(command, ct).ConfigureAwait(false)).Ok;
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool?> ReadSpeechProcessorAsync(CancellationToken ct)
+    {
+        var c = _client;
+        if (c is null || !ProcessRunning) return null;
+        try
+        {
+            var r = await c.SendAsync("u COMP", ct).ConfigureAwait(false);
+            if (!r.Ok || r.BareValues.Count == 0) return null;
+            return r.BareValues[0] switch
+            {
+                "1" => true,
+                "0" => false,
+                _ => null,
+            };
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<bool> StartTunerAsync(CancellationToken ct)
     {
         var c = _client;

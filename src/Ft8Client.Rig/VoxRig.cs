@@ -54,6 +54,15 @@ public sealed class VoxRig(long frequencyHz) : IRig
     public Task<bool> StartTunerAsync(CancellationToken ct) => Task.FromResult(false);
 
     /// <inheritdoc />
+    public Task<double?> ReadPowerLevelAsync(CancellationToken ct) => Task.FromResult<double?>(null);
+
+    /// <inheritdoc />
+    public Task<bool> SetPowerLevelAsync(double level, CancellationToken ct) => Task.FromResult(false);
+
+    /// <inheritdoc />
+    public Task<bool?> ReadSpeechProcessorAsync(CancellationToken ct) => Task.FromResult<bool?>(null);
+
+    /// <inheritdoc />
     public Task SetSplitAsync(bool on, long txHz, CancellationToken ct) => Task.CompletedTask;
 
     /// <inheritdoc />

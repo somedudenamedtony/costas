@@ -31,6 +31,7 @@ public sealed partial class Session
     private readonly KeyboardTransmitter _keys;
     private readonly List<ConversationLine> _conversation = [];
     private readonly Dictionary<int, string> _macroTexts = [];
+    private string? _radioNote;
 
     /// <summary>The keyboard transmitter, so tests can render its audio on a manual clock.</summary>
     internal KeyboardTransmitter Keys => _keys;
@@ -103,6 +104,17 @@ public sealed partial class Session
 
     /// <summary>Backspace while an over is on the air: takes back the last character not yet sent.</summary>
     public bool BackspaceKey() => _keys.Backspace();
+
+    /// <summary>A note about the radio's settings for this mode (the RTTY power cap, the speech processor), or null.</summary>
+    public void SetRadioNote(string? note)
+    {
+        lock (_gate)
+        {
+            if (_radioNote == note) return;
+            _radioNote = note;
+        }
+        Publish();
+    }
 
     /// <summary>Sets part of the exchange (or the partner's call) from a word the operator clicked.</summary>
     public void CaptureWord(ExchangeField field, string word)

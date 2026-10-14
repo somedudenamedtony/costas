@@ -51,7 +51,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         (Callsign, Grid, Power, LogbookKey) = (active.Callsign, active.Grid, active.Power, active.LogbookKey);
         _shownProfile = active;
         SelectedProfile = active;
-        TxGain = _loadedTxGain = TxLevelController.LevelFor(s.Profile.Audio, s.Operating.Band).ToString("0.0", CultureInfo.InvariantCulture);
+        TxGain = _loadedTxGain = TxLevelController.LevelFor(s.Profile.Audio, s.Operating.Band, s.Operating.Mode).ToString("0.0", CultureInfo.InvariantCulture);
         TxGainLabel = $"Audio level on {s.Operating.Band} (dB)";
         AutoTxLevel = s.Profile.Audio.AutoTxLevel;
         Watchdog = s.Operating.WatchdogMinutes.ToString(CultureInfo.InvariantCulture);
@@ -995,7 +995,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             {
                 var gain = Dbl(TxGain, -40, 0, s.Profile.Audio.TxGainDb);
                 s.Profile.Audio.TxGainDb = gain;
-                s.Profile.Audio.TxGainByBand[s.Operating.Band] = gain;
+                s.Profile.Audio.TxGainByBand[TxLevelController.LevelKey(s.Operating.Band, s.Operating.Mode)] = gain;
             }
             s.Profile.Audio.AutoTxLevel = AutoTxLevel;
             s.Operating.WatchdogMinutes = Int(Watchdog, 1, 60, 6);

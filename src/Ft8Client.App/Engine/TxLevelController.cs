@@ -8,6 +8,7 @@
 
 using System.Globalization;
 using Ft8Client.App.Services;
+using Ft8Client.Core;
 using Ft8Client.Core.Transmit;
 using Ft8Client.Data.Settings;
 using Serilog;
@@ -38,18 +39,26 @@ public sealed class TxLevelController
         Apply();
     }
 
-    /// <summary>The transmit level for <paramref name="band"/>: its own if it has one, else the level in Settings.</summary>
-    public static double LevelFor(AudioSettings audio, string band)
+    /// <summary>
+    /// The transmit level for <paramref name="band"/> in <paramref name="mode"/>: its own if it has one, else the band's,
+    /// else the level in Settings. PSK keeps a level of its own on each band, since it aims for no ALC at all.
+    /// </summary>
+    public static double LevelFor(AudioSettings audio, string band, string? mode = null)
     {
         ArgumentNullException.ThrowIfNull(audio);
-        return audio.TxGainByBand.TryGetValue(band, out var g) ? g : audio.TxGainDb;
+        return audio.TxGainByBand.TryGetValue(LevelKey(band, mode), out var g) || audio.TxGainByBand.TryGetValue(band, out g) ? g : audio.TxGainDb;
     }
+
+    /// <summary>Where a band's level is kept: the band (FT8, FT4, RTTY), or "20m PSK" for PSK31 and PSK63.</summary>
+    public static string LevelKey(string band, string? mode) => IsPsk(mode) ? band + " PSK" : band;
+
+    private static bool IsPsk(string? mode) => ModeInfo.TryParse(mode ?? string.Empty, out var m) && m is Mode.Psk31 or Mode.Psk63;
 
     /// <summary>Sets the transmitter to the current band's level (after a band or settings change).</summary>
     public void Apply()
     {
         var s = _settings.Current;
-        _tx.GainDb = LevelFor(s.Profile.Audio, s.Operating.Band);
+        _tx.GainDb = LevelFor(s.Profile.Audio, s.Operating.Band, s.Operating.Mode);
     }
 
     /// <summary>
@@ -62,8 +71,9 @@ public sealed class TxLevelController
         var s = _settings.Current;
         var audio = s.Profile.Audio;
         if (!audio.AutoTxLevel || result.Alc is not { } alc) return result;
-        var band = s.Operating.Band;
-        var gain = LevelFor(audio, band);
+        var band = LevelKey(s.Operating.Band, s.Operating.Mode);
+        var psk = IsPsk(s.Operating.Mode);
+        var gain = LevelFor(audio, s.Operating.Band, s.Operating.Mode);
         TxLevelStep step;
         TxLevelChange? previous;
         lock (_gate)
@@ -71,7 +81,7 @@ public sealed class TxLevelController
             // A level changed by hand since the last transmission starts afresh.
             var known = _states.TryGetValue(band, out var st) && st.GainDb == gain;
             previous = known ? _lastChange.GetValueOrDefault(band) : null;
-            step = TxLevelTuner.Next(known ? st! : new TxLevelState(gain), alc, audio.TxGainDb + AutoHeadroomDb);
+            step = TxLevelTuner.Next(known ? st! : new TxLevelState(gain), alc, audio.TxGainDb + AutoHeadroomDb, zeroAlc: psk);
             _states[band] = step.State;
             _lastChange[band] = step.Change;
         }

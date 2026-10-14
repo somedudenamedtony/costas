@@ -95,4 +95,28 @@ public class TxLevelTunerTests
         levels.TakeLast(TxLevelTuner.RelaxAfter - 1).Should().AllBeEquivalentTo(levels[^1]);
         Alc(levels[^1]).Should().BeInRange(TxLevelTuner.Quiet, TxLevelTuner.High);
     }
+
+    [Fact]
+    public void Next_ZeroAlcSmallReading_Lowers()
+    {
+        var step = TxLevelTuner.Next(new TxLevelState(-10), 1.0 / 64, 0, zeroAlc: true);
+        step.Change.Should().Be(TxLevelChange.Lowered);
+        step.State.GainDb.Should().Be(-11);
+    }
+
+    [Fact]
+    public void Next_ZeroAlcRadioWithAlcAtLowLevels_SettlesJustBelowAlc()
+    {
+        static double Alc(double g) => g > -9 ? 0.05 + (g + 9) * 0.1 : 0.0;
+        var state = new TxLevelState(-6);
+        var readings = new List<double>();
+        for (var i = 0; i < 40; i++)
+        {
+            readings.Add(Alc(state.GainDb));
+            state = TxLevelTuner.Next(state, readings[^1], 0, zeroAlc: true).State;
+        }
+        // After settling, only the occasional probe above the remembered ceiling touches ALC.
+        readings.TakeLast(20).Count(a => a > 0).Should().BeLessThanOrEqualTo(2);
+        state.GainDb.Should().BeInRange(-10.5, -9);
+    }
 }
