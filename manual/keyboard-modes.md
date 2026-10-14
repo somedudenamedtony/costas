@@ -91,8 +91,18 @@ again. Your report to them is 599.
   few lines of the conversation. You cannot type from the phone yet.
 - **PSK Reporter.** With spot uploading on, stations Costas reads are reported as PSK31, PSK63 or RTTY, at the
   frequency of their signal.
-- **GridTracker and loggers** see the mode in the status Costas sends, and logged contacts as usual. Costas sends them
-  no PSK or RTTY text, so calling a station from GridTracker works only in FT8 and FT4.
+- **GridTracker and loggers** see the mode in the status Costas sends (with the report as RST, for example 599), and
+  logged contacts as usual. Costas sends them no PSK or RTTY text, so calling a station from GridTracker works only in
+  FT8 and FT4.
+
+## Your log in PSK and RTTY
+
+- PSK31 and PSK63 count as different modes for worked before: a station worked in PSK31 is still *New call* in PSK63
+  on the same band. A PSK31 and a PSK63 contact with the same station minutes apart are two contacts, not one.
+- Contacts in older logs that wrote `PSK31` or `PSK63` as the mode count the same as the ADIF 3 form (`PSK` with a
+  submode), so importing an older log does not add the same contact twice.
+- *Your signal*, **Reach** and *Who heard you* on the Heard here map show only reports of your signal in the mode you
+  are in. **Worked tonight** names the mode of each contact.
 
 ## Safety
 

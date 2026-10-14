@@ -109,7 +109,7 @@ public sealed class UdpInteropService : IDisposable
         var status = new WsjtxStatus
         {
             DialHz = s.DialHz, Mode = ModeInfo.Name(s.Mode), DxCall = c?.DxCall ?? string.Empty,
-            Report = c?.ReportSent is { } rs ? Report.Format(rs) : string.Empty, TxEnabled = c is not null || s.CallingCq,
+            Report = StatusReport(s.Mode, c?.ReportSent), TxEnabled = c is not null || s.CallingCq,
             Transmitting = s.Transmitting, RxDf = s.TxOffsetHz, TxDf = s.TxOffsetHz, DeCall = s.MyCall, DeGrid = s.MyGrid,
             DxGrid = c?.DxGrid ?? string.Empty, TrPeriodSeconds = ModeInfo.IsSlotted(s.Mode) ? (int)ModeInfo.SlotLength(s.Mode).TotalSeconds : 0,
             ConfigurationName = _settings.Current.Profile.Name, TxMessage = s.TransmittingMessage ?? string.Empty,
@@ -121,6 +121,12 @@ public sealed class UdpInteropService : IDisposable
         }
         Send(WsjtxMessages.Status(ClientId, status));
     }
+
+    /// <summary>
+    /// The report in a Status message as the logger would write it: <c>-07</c> in FT8 and FT4, RST (<c>599</c>) in PSK and
+    /// RTTY; empty before a report is sent.
+    /// </summary>
+    internal static string StatusReport(Mode mode, int? reportSent) => reportSent is { } rs ? LogComment.Rst(mode, rs) : string.Empty;
 
     private void OnSlotDecoded(DateTime slot, Mode mode, IReadOnlyList<Decode> decodes)
     {

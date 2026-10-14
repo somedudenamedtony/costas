@@ -14,7 +14,7 @@ namespace Ft8Client.Core.Ranking;
 /// <param name="ReceiverEntityKey">Its entity key from the country file, if known.</param>
 /// <param name="ReceiverRegion">Its US state or Canadian province, if known.</param>
 /// <param name="Band">ADIF band.</param>
-/// <param name="Mode"><c>FT8</c> or <c>FT4</c>.</param>
+/// <param name="Mode">The mode as reported: <c>FT8</c>, <c>FT4</c>, <c>PSK31</c>, <c>PSK63</c>, <c>RTTY</c> or another.</param>
 /// <param name="Snr">The SNR it reported.</param>
 /// <param name="TimeUtc">When it heard me.</param>
 /// <param name="FrequencyHz">RF frequency, if given.</param>

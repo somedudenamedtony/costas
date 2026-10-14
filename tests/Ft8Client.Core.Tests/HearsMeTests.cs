@@ -123,4 +123,25 @@ public class HearsMeTests
         h.Prune(Now);
         h.Reports.Should().HaveCount(1);
     }
+
+    [Fact]
+    public void Add_ReportInAnotherMode_Ignored()
+    {
+        // A receiver that heard my FT8 says nothing about my PSK31.
+        var h = new HearsMe("20m", mode: "PSK31");
+        h.Add(R("ZL2RPA", -5, 1));
+        h.Add(R("VK2XYZ", -12, 1) with { Mode = "PSK31" });
+
+        h.Reports.Should().ContainSingle().Which.ReceiverCall.Should().Be("VK2XYZ");
+        h.For(St("ZL2RPA"), Now).Kind.Should().NotBe(HearsYouKind.Direct);
+    }
+
+    [Fact]
+    public void Add_NoModeGiven_KeepsEveryMode()
+    {
+        var h = new HearsMe("20m");
+        h.Add(R("ZL2RPA", -5, 1));
+        h.Add(R("VK2XYZ", -12, 1) with { Mode = "RTTY" });
+        h.Reports.Should().HaveCount(2);
+    }
 }

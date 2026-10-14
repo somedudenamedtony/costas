@@ -31,7 +31,7 @@ public class BandSummaryAndSlotTests
             St("K1ABC", StationState.InContact), St("W6DTR", StationState.CallingCq), St("OLD1X", StationState.Quiet, 6),
         ];
         var log = LogIndex.Build([new LogContact("W6DTR", "20m", "FT8", "CM97", "K", "CA", true, Now.AddDays(-5))]);
-        var tonight = new List<TonightContact> { new("ZL1AA", "20m", Now, NeedTag.NewCountry), new("JA1AA", "20m", Now, NeedTag.NewBand), new("K1AA", "20m", Now, NeedTag.NewCall) };
+        var tonight = new List<TonightContact> { new("ZL1AA", "20m", Now, NeedTag.NewCountry, "FT8"), new("JA1AA", "20m", Now, NeedTag.NewBand, "FT8"), new("K1AA", "20m", Now, NeedTag.NewCall, "FT8") };
         var slots = new List<(DateTime, int)> { (Now.AddSeconds(-15), 23), (Now.AddSeconds(-30), 15), (Now.AddHours(-2), 99) };
 
         var s = BandSummaryCalculator.Compute(stations, log, "20m", "FT8", Now, slots, tonight);

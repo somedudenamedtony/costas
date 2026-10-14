@@ -446,6 +446,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (value == 2)
         {
             Reach.Band = _host.Session.Config.Band;
+            Reach.Mode = ModeInfo.Name(_host.Session.Config.Mode);
             Reach.Refresh();
         }
         if (value == 3) LogView.Refresh();
@@ -839,10 +840,13 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             };
             var where = StationText.Place(_host.Countries.Lookup(q.Call), q.State);
             return new TonightRowViewModel($"{q.Call} · {where}", upload, kind, StationText.Need(tag), StationRowViewModel.KindOf(tag),
-                OperateViewModel.Hm(q.QsoDateOff ?? q.QsoDateOn), q.Id);
+                TonightTime(q), q.Id);
         }).ToList();
         return (list, rows.Count);
     }
+
+    /// <summary>A Worked tonight row's mode and time: "PSK31 · 02:49 UTC".</summary>
+    internal static string TonightTime(QsoRecord q) => $"{Core.Logbook.LogModeKey.Of(q.Mode, q.Submode)} · {OperateViewModel.Hm(q.QsoDateOff ?? q.QsoDateOn)}";
 
     internal static (string, TextKind) Status(SessionSnapshot s, RttyFormat? rtty = null)
     {
