@@ -13,9 +13,9 @@ namespace Ft8Client.Modems.Psk;
 /// <summary>
 /// BPSK31/63 transmit audio: Varicode bits, where 0 is a phase reversal and 1 is no change, each reversal shaped with
 /// a cosine across the whole symbol so the signal stays narrow. An over starts with reversals (the idle) and ends with
-/// steady carrier, then a short fade.
+/// steady carrier, then a short fade (docs/09-keyboard-modes.md section 8: 1 s of reversals, 0.5 s of carrier).
 /// </summary>
-public sealed class PskModulator
+public sealed class PskModulator : IKeyboardModulator
 {
     private readonly int _symbolSamples;
     private readonly double _step;
@@ -60,6 +60,49 @@ public sealed class PskModulator
             output[n] = (float)(Level * _amplitude * fade * Math.Cos(_phase));
             _phase += _step;
         }
+        return output;
+    }
+
+    /// <inheritdoc />
+    public float[] Start() => Bits(new string('0', IdleSymbols));
+
+    /// <inheritdoc />
+    public float[] Send(char c)
+    {
+        if (!CanSend(c)) throw new ArgumentException($"PSK cannot send '{c}'.", nameof(c));
+        return Bits(Varicode.Bits(c) + "00");
+    }
+
+    /// <inheritdoc />
+    public float[] Idle() => Bits("00");
+
+    /// <inheritdoc />
+    public float[] Stop()
+    {
+        var carrier = Bits(new string('1', IdleSymbols / 2));
+        var output = new float[carrier.Length + _symbolSamples];
+        carrier.CopyTo(output, 0);
+        var n = carrier.Length;
+        for (var i = 0; i < _symbolSamples; i++, n++)
+        {
+            var fade = 0.5 + 0.5 * Math.Cos(Math.PI * i / _symbolSamples);
+            output[n] = (float)(Level * _amplitude * fade * Math.Cos(_phase));
+            _phase += _step;
+        }
+        return output;
+    }
+
+    /// <inheritdoc />
+    public bool CanSend(char c) => Varicode.CanSend(c);
+
+    /// <inheritdoc />
+    public char Normalize(char c) => c;
+
+    private float[] Bits(string bits)
+    {
+        var output = new float[bits.Length * _symbolSamples];
+        var n = 0;
+        foreach (var b in bits) n = Symbol(output, n, b == '0');
         return output;
     }
 

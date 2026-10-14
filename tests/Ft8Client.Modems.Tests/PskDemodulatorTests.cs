@@ -82,4 +82,27 @@ public class PskDemodulatorTests
         var text = Receive(Mode.Psk31, TestSignal.Mix(wanted, other), 1000);
         TestSignal.ErrorRate(Text, text).Should().BeLessThan(0.02);
     }
+
+    [Theory]
+    [InlineData(Mode.Psk31)]
+    [InlineData(Mode.Psk63)]
+    public void Process_PiecewiseOverWithIdleBetweenWords_ReceivesText(Mode mode)
+    {
+        var tx = new PskModulator(mode, TestSignal.Rate, 1000, Peak);
+        var audio = new List<float>(tx.Start());
+        foreach (var c in "CQ CQ DE W7LIT") audio.AddRange(tx.Send(c));
+        for (var i = 0; i < 20; i++) audio.AddRange(tx.Idle());
+        foreach (var c in " W7LIT K\n") audio.AddRange(tx.Send(c));
+        audio.AddRange(tx.Stop());
+        Receive(mode, [.. audio], 1000).Should().Be("CQ CQ DE W7LIT W7LIT K\n");
+    }
+
+    [Fact]
+    public void Send_CharacterOutsideVaricode_Throws()
+    {
+        var tx = new PskModulator(Mode.Psk31, TestSignal.Rate, 1000);
+        tx.CanSend('é').Should().BeFalse();
+        var act = () => tx.Send('é');
+        act.Should().Throw<ArgumentException>();
+    }
 }

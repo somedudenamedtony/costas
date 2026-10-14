@@ -12,7 +12,7 @@ namespace Ft8Client.Modems.Rtty;
 /// (mark), the tones switched without a phase jump. An over opens with mark carrier, a few LTRS and CR LF, and the
 /// figures shift is sent again after each space, since receivers with unshift-on-space drop back to letters there.
 /// </summary>
-public sealed class RttyModulator
+public sealed class RttyModulator : IKeyboardModulator
 {
     private readonly int _sampleRate;
     private readonly double _markStep;
@@ -21,6 +21,7 @@ public sealed class RttyModulator
     private readonly List<float> _out = [];
     private double _phase;
     private double _owed;
+    private bool _figures;
 
     /// <param name="format">Speed, shift and polarity.</param>
     /// <param name="sampleRate">Output sample rate.</param>
@@ -68,6 +69,62 @@ public sealed class RttyModulator
         for (var i = 0; i < IdleCharacters; i++) Character(Ita2.Letters);
         return [.. _out];
     }
+
+    /// <inheritdoc />
+    public float[] Start()
+    {
+        _out.Clear();
+        _figures = false;
+        Tone(true, 0.25 * _sampleRate);
+        Character(Ita2.Letters);
+        Character(Ita2.Letters);
+        Character(0x08);
+        Character(0x02);
+        return [.. _out];
+    }
+
+    /// <inheritdoc />
+    public float[] Send(char c)
+    {
+        if (!Ita2.TryEncode(c, out var code, out var caseOf)) throw new ArgumentException($"RTTY cannot send '{c}'.", nameof(c));
+        _out.Clear();
+        if (caseOf is { } f && f != _figures)
+        {
+            Character(f ? Ita2.Figures : Ita2.Letters);
+            _figures = f;
+        }
+        Character(code);
+        if (code == Ita2.Space) _figures = false;
+        return [.. _out];
+    }
+
+    /// <inheritdoc />
+    public float[] Idle()
+    {
+        _out.Clear();
+        Character(Ita2.Letters);
+        _figures = false;
+        return [.. _out];
+    }
+
+    /// <inheritdoc />
+    public float[] Stop()
+    {
+        _out.Clear();
+        Character(Ita2.Letters);
+        Character(Ita2.Letters);
+        // A short fade on the last mark so the carrier does not end with a click.
+        var start = _out.Count;
+        Tone(true, 0.02 * _sampleRate);
+        for (var i = start; i < _out.Count; i++) _out[i] *= (float)(0.5 + 0.5 * Math.Cos(Math.PI * (i - start) / (_out.Count - start)));
+        return [.. _out];
+    }
+
+    /// <inheritdoc />
+    public bool CanSend(char c) => Ita2.CanSend(c);
+
+    /// <inheritdoc />
+    public char Normalize(char c) => char.ToUpperInvariant(c);
 
     private void Character(int code)
     {

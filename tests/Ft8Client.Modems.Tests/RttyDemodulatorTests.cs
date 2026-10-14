@@ -115,6 +115,18 @@ public class RttyDemodulatorTests
         text.Should().Be("12 A\n");
     }
 
+    [Fact]
+    public void Process_PiecewiseOverWithIdleBetweenWords_ReceivesText()
+    {
+        var tx = new RttyModulator(Standard, TestSignal.Rate, 1500, Peak);
+        var audio = new List<float>(tx.Start());
+        foreach (var c in "cq de w7lit 73") audio.AddRange(tx.Send(tx.Normalize(c)));
+        for (var i = 0; i < 6; i++) audio.AddRange(tx.Idle());
+        foreach (var c in " 599 K\n") audio.AddRange(tx.Send(c));
+        audio.AddRange(tx.Stop());
+        Receive(Standard, [.. audio], 1500).Should().Be("CQ DE W7LIT 73 599 K\n");
+    }
+
     private static RttyFormat Standard => RttyFormat.Standard;
 
     private static float[] Scale(float[] audio, double gain) => [.. audio.Select(s => (float)(s * gain))];
