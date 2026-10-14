@@ -118,7 +118,7 @@ public sealed class RttyModulator : IKeyboardModulator
     public bool CanSend(char c) => Ita2.CanSend(c);
 
     /// <inheritdoc />
-    public char Normalize(char c) => char.ToUpperInvariant(c);
+    public char Normalize(char c) => Ita2.Upper(c);
 
     // One character, after its shift when the receiver may be in the other case.
     private void Encode(int code, bool? caseOf)

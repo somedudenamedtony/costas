@@ -47,7 +47,7 @@ public static class Ita2
     /// </summary>
     public static bool TryEncode(char c, out int code, out bool? figures)
     {
-        c = char.ToUpperInvariant(c);
+        c = Upper(c);
         code = 0;
         figures = null;
         if (c is ' ' or '\n' or '\r')
@@ -69,6 +69,13 @@ public static class Ita2
         }
         return false;
     }
+
+    /// <summary>
+    /// The capital for an ASCII lower-case letter; any other character unchanged. Only a to z are mapped: a letter
+    /// such as the long s (ſ) or the dotless i (ı) has an ASCII capital, but sending that would change the text, so it
+    /// stays as it is and is refused (CLAUDE.md rule 4).
+    /// </summary>
+    public static char Upper(char c) => c is >= 'a' and <= 'z' ? (char)(c - 'a' + 'A') : c;
 
     /// <summary>True when the character can be sent in RTTY.</summary>
     public static bool CanSend(char c) => TryEncode(c, out _, out _);
