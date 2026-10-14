@@ -10,6 +10,7 @@ using Ft8Client.Audio.Dsp;
 using Ft8Client.Core;
 using Ft8Client.Core.Keyboard;
 using Ft8Client.Core.Time;
+using Ft8Client.Modems;
 using Ft8Client.Modems.Psk;
 
 namespace Ft8Client.App.Engine;
@@ -35,7 +36,7 @@ public sealed class KeyboardSession : IDisposable
     private readonly float[] _buffer = new float[ModeInfo.DecoderSampleRate];
     private readonly Dictionary<int, Reading> _channels = [];
     private Mode _mode = Mode.Ft8;
-    private PskChannelBank? _bank;
+    private ChannelBank? _bank;
     private int? _listening;
     private DateTime _agedUtc;
     private Thread? _thread;
@@ -61,7 +62,7 @@ public sealed class KeyboardSession : IDisposable
         lock (_gate)
         {
             _mode = mode;
-            _bank = mode is Mode.Psk31 or Mode.Psk63 ? new PskChannelBank(mode, ModeInfo.DecoderSampleRate) : null;
+            _bank = mode is Mode.Psk31 or Mode.Psk63 ? new ChannelBank(mode, ModeInfo.DecoderSampleRate) : null;
             _channels.Clear();
             _listening = null;
             Input.Clear();
@@ -125,7 +126,7 @@ public sealed class KeyboardSession : IDisposable
         _session.ApplyText(mode, heard, lines, _clock.UtcNow);
     }
 
-    private void Read(PskChannelBank bank, ReadOnlySpan<float> samples, List<TextHeard> heard, List<KeyboardLine> lines)
+    private void Read(ChannelBank bank, ReadOnlySpan<float> samples, List<TextHeard> heard, List<KeyboardLine> lines)
     {
         var now = _clock.UtcNow;
         foreach (var t in bank.Process(samples))

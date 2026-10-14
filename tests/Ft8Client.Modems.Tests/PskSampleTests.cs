@@ -45,7 +45,7 @@ public class PskSampleTests
         var (samples, rate) = WavFile.Read(path);
         rate.Should().Be(TestSignal.Rate);
 
-        var bank = new PskChannelBank(mode, rate);
+        var bank = new ChannelBank(mode, rate);
         var texts = new Dictionary<int, string>();
         var audio = samples.Select(s => s / 32768f).ToArray();
         for (var i = 0; i < audio.Length; i += 1200)
