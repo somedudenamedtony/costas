@@ -357,6 +357,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         UpdateTune(s);
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
         (StatusText, StatusKind) = Status(s, SettingsMapper.Rtty(_host.Settings.Current));
+        // After a first Esc the bar keeps saying that the next Esc abandons, until the contact ends.
+        if (s.Contact is not { Outcome: ContactOutcome.InProgress }) _escArmed = false;
+        else if (_escArmed && s.Fault is null && !s.Transmitting) (StatusText, StatusKind) = (EscapeText(s.Contact, true), TextKind.Critical);
         (MeterText, MeterTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
         Indicators.Clear();
         Indicators.Add(Indicator("Radio", s, ServiceNames.Radio));
@@ -623,6 +626,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public void SendMacro(int key)
     {
         Activity();
+        _escArmed = false;
         _host.Session.SendMacro(key);
     }
 
@@ -630,6 +634,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public string? KeyboardEnter(string typed, bool onAir)
     {
         Activity();
+        _escArmed = false;
         return _host.Session.KeyEnter(typed, onAir);
     }
 
@@ -726,26 +731,49 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>Esc: halt; in a contact, abandon (a second press confirms once both reports are exchanged).</summary>
     public void Escape()
     {
-        // PSK and RTTY: the first Esc stops the over on the air and keeps the contact; the next one abandons it.
-        if (_host.Session.Snapshot.KeyboardTx.Active)
+        var s = _host.Session.Snapshot;
+        var action = EscapeDecision(s, _escArmed);
+        if (action == EscapeAction.Abandon)
         {
-            _ = _host.Session.HaltAsync();
-            StatusText = "Transmitting stopped. Press Esc again to abandon the contact.";
-            StatusKind = TextKind.Critical;
+            _escArmed = false;
+            _ = _host.Session.AbandonAsync();
             return;
         }
-        var c = _host.Session.Snapshot.Contact;
-        if (c is { Outcome: ContactOutcome.InProgress } && c.ReportSent is not null && c.ReportReceived is not null && !_escArmed)
-        {
-            _escArmed = true;
-            _ = _host.Session.HaltAsync();
-            StatusText = "Transmitting stopped. Press Esc again to abandon the contact with " + c.DxCall + ".";
-            StatusKind = TextKind.Critical;
-            return;
-        }
-        _escArmed = false;
-        _ = _host.Session.AbandonAsync();
+        _escArmed = action == EscapeAction.HaltAndArm;
+        _ = _host.Session.HaltAsync();
+        (StatusText, StatusKind) = (EscapeText(s.Contact, _escArmed), TextKind.Critical);
     }
+
+    /// <summary>What Esc does.</summary>
+    internal enum EscapeAction
+    {
+        /// <summary>Stop transmitting; nothing else.</summary>
+        Halt,
+
+        /// <summary>Stop transmitting and keep the contact; the next Esc abandons it.</summary>
+        HaltAndArm,
+
+        /// <summary>Abandon the contact (which also stops transmitting).</summary>
+        Abandon,
+    }
+
+    /// <summary>
+    /// What Esc does now. PSK and RTTY: the first Esc stops the over on the air and keeps the contact; the second
+    /// abandons it. A contact with both reports exchanged also asks for a second Esc. Otherwise Esc abandons.
+    /// </summary>
+    internal static EscapeAction EscapeDecision(SessionSnapshot s, bool armed)
+    {
+        var inContact = s.Contact is { Outcome: ContactOutcome.InProgress };
+        if (s.KeyboardTx.Active) return inContact ? EscapeAction.HaltAndArm : EscapeAction.Halt;
+        if (armed && inContact) return EscapeAction.Abandon;
+        if (s.Contact is { Outcome: ContactOutcome.InProgress, ReportSent: not null, ReportReceived: not null }) return EscapeAction.HaltAndArm;
+        return EscapeAction.Abandon;
+    }
+
+    // The bottom bar after an Esc that did not abandon.
+    internal static string EscapeText(ContactView? contact, bool armed) => armed && contact is { } c
+        ? $"Transmitting stopped. Press Esc again to abandon the contact with {c.DxCall}."
+        : "Transmitting stopped.";
 
     /// <summary>Any key or click: resets the Tx watchdog, and makes the desk the control point again.</summary>
     public void Activity()
