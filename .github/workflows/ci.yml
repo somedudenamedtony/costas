@@ -25,6 +25,9 @@ jobs:
           echo "COSTAS_AUDIO_LOOPBACK=ALSA:pulse" >> "$GITHUB_ENV"
       - run: scripts/ci.sh
       - name: Build the Linux package
+        env:
+          # Only release builds carry the Aptabase key, so test and pull-request builds never send usage statistics.
+          APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.APTABASE_APP_KEY || '' }}
         run: scripts/build-linux.sh ${{ github.run_number }}
       - uses: actions/upload-artifact@v4
         with:
@@ -56,6 +59,9 @@ jobs:
           path: third_party/.download
           key: third-party-${{ hashFiles('third_party/fetch.ps1') }}
       - name: Build installer
+        env:
+          # Only release builds carry the Aptabase key, so test and pull-request builds never send usage statistics.
+          APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.APTABASE_APP_KEY || '' }}
         run: ./scripts/build-installer.ps1 -BuildNumber ${{ github.run_number }}
         shell: pwsh
       - name: Check jt9 stays running (shared memory)

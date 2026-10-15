@@ -575,6 +575,24 @@
       </TabItem>
 
       <!-- 8 Advanced -->
+      <!-- Privacy: anonymous usage statistics (opt-out) -->
+      <TabItem Header="Privacy">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Privacy" />
+            <TextBlock Classes="intro" Text="Costas can send anonymous usage counts to Aptabase so its developer can see how many people use it and which features matter. Nothing is sent while your computer is offline." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Usage statistics" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Send anonymous usage statistics" IsChecked="{Binding UsageEnabled}" />
+                <TextBlock Classes="help" Text="Sent: the Costas version, Windows or Linux, band and mode, the kind of radio connection and Hamlib model number, which views and features you use, and when a contact is logged. Never sent: your callsign, grid, name, frequencies, the stations you work, or anything from your log. No account or tracking id; each run of Costas is a separate anonymous session." />
+                <TextBlock Classes="help" Text="{Binding UsageBuildNote}" IsVisible="{Binding UsageBuildNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <TabItem Header="Advanced">
         <ScrollViewer>
           <StackPanel>

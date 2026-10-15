@@ -78,6 +78,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _ = heard.Refresh();
         Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
             () => Shutdown());
+        ShowUsageNoticeIfNew();
         Mini = new MiniViewModel(Operate, this, () => HaltCommand.Execute(null));
         Mini.HuntDismissed += () => HuntDismissCommand.Execute(null);
         Modes = ["FT8", "FT4"];
@@ -203,6 +204,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>Dial frequencies the operator saved, lowest first.</summary>
     public ObservableCollection<SavedDialViewModel> SavedDials { get; } = [];
+
+    /// <summary>Shown once: anonymous usage statistics are on, and how to turn them off.</summary>
+    [ObservableProperty]
+    public partial bool UsageNoticeVisible { get; set; }
 
     /// <summary>Selected view: 0 Operate, 1 Raw decodes, 2 Reach, 3 Log, 4 Awards.</summary>
     [ObservableProperty]
@@ -439,9 +444,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>False on the Operate view, whose contact card always has Call CQ and the countdown.</summary>
     public static bool ShowCqAndSlotInBar(int tab) => tab != 0;
 
+    private static readonly string[] TabNames = ["operate", "raw_decodes", "reach", "log", "awards"];
+
     partial void OnTabChanged(int value)
     {
         BarShowsCqAndSlot = ShowCqAndSlotInBar(value);
+        if (value >= 0 && value < TabNames.Length) _host.Usage.Track("view_opened", "view", TabNames[value]);
         if (value == 2)
         {
             Reach.Band = _host.Session.Config.Band;
@@ -457,6 +465,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public void Call(string call)
     {
         Activity();
+        _host.Usage.Track("station_called", "mode", SelectedMode);
         if (!_host.Session.CallStation(call)) StatusText = $"{call} is not in the station list.";
     }
 
@@ -464,6 +473,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public void Answer(string call)
     {
         Activity();
+        _host.Usage.Track("caller_answered", "mode", SelectedMode);
         _host.Session.AnswerCaller(call);
     }
 
@@ -541,6 +551,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             return;
         }
         _host.Settings.Update(s => s.Hunt.Targets.Add(HuntService.ToEntry(target)));
+        _host.Usage.Track("hunt_added");
         StatusText = $"Added {target.Describe(countries)} to your Hunt list. Change it in Settings, Hunt list.";
         StatusKind = TextKind.Normal;
     }
@@ -591,6 +602,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             _updatingBand = false;
         }
         _ = _host.SetBandAsync(h.Heard.Band, mode);
+        _host.Usage.Track("hunt_go");
         HuntCanGo = false;
     }
 
@@ -619,6 +631,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public void ToggleCq()
     {
         Activity();
+        if (!_host.Session.Snapshot.CallingCq) _host.Usage.Track("cq_started", "mode", SelectedMode);
         _host.Session.ToggleCq();
     }
 
@@ -647,6 +660,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             await _host.Session.HaltAsync();
             return;
         }
+        _host.Usage.Track("tune");
         await _host.Session.TuneAsync(TuneSeconds);
     }
 
@@ -690,6 +704,30 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>Opens a dialog by name.</summary>
     [RelayCommand]
     private void Open(string name) => OpenDialog?.Invoke(name);
+
+    /// <summary>Records a window being opened (Settings, Mini mode…) in the anonymous usage statistics.</summary>
+    public void TrackWindow(string name) => _host.Usage.Track("window_opened", "window", name);
+
+    // The first run of a build that can send statistics shows the notice; sending starts from then (opt-out).
+    private void ShowUsageNoticeIfNew()
+    {
+        if (!_host.Usage.Available || _host.Simulating || _host.Settings.Current.Usage.NoticeShown) return;
+        _host.Settings.Update(s => s.Usage.NoticeShown = true);
+        UsageNoticeVisible = true;
+        _host.TrackStarted();
+    }
+
+    /// <summary>Hides the usage notice, leaving statistics on.</summary>
+    [RelayCommand]
+    private void UsageNoticeOk() => UsageNoticeVisible = false;
+
+    /// <summary>Turns usage statistics off from the notice.</summary>
+    [RelayCommand]
+    private void UsageNoticeTurnOff()
+    {
+        _host.Settings.Update(s => s.Usage.Enabled = false);
+        UsageNoticeVisible = false;
+    }
 
     /// <summary>Switches view.</summary>
     [RelayCommand]
