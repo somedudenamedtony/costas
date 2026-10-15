@@ -167,6 +167,19 @@
         </DockPanel>
       </DockPanel>
     </Border>
+    <!-- Shown once, on the first run of a build that sends anonymous usage statistics (opt-out). -->
+    <Border IsVisible="{Binding UsageNoticeVisible}" Margin="16,0,16,8" Padding="12,8" CornerRadius="6"
+            Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+            AutomationProperties.Name="Usage statistics">
+      <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <Button Content="OK" Classes="accent" Command="{Binding UsageNoticeOkCommand}" />
+          <Button Content="Turn off" Command="{Binding UsageNoticeTurnOffCommand}" />
+        </StackPanel>
+        <TextBlock VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap"
+                   Text="Costas sends anonymous usage counts (version, band, mode, which features are used) to help decide what to improve. Never your callsign, grid or log. Change this any time in Settings, Privacy." />
+      </DockPanel>
+    </Border>
     <Border IsVisible="{Binding Update.Visible}" Margin="16,0,16,8" Padding="12,8" CornerRadius="6"
             Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
       <DockPanel LastChildFill="True">

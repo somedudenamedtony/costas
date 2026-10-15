@@ -26,7 +26,9 @@ using Ft8Client.Data.Reference;
 using Ft8Client.Data.Secrets;
 using Ft8Client.Data.Settings;
 using Ft8Client.Decoding;
+using Ft8Client.Integrations.Net;
 using Ft8Client.Integrations.Time;
+using Ft8Client.Integrations.Usage;
 using Ft8Client.Rig;
 using Serilog;
 
@@ -53,6 +55,7 @@ public sealed class AppHost : IAsyncDisposable
     private string? _inputId;
     private string? _outputId;
     private string? _audioProblem;
+    private DateTime _usageDay;
 
     private AppHost(CommandLine args, AppPaths paths, AppSettingsAccessor settings)
     {
@@ -169,6 +172,15 @@ public sealed class AppHost : IAsyncDisposable
 
     /// <summary>Update checks.</summary>
     public UpdateService Updates { get; private set; } = null!;
+
+    /// <summary>Anonymous usage statistics (Aptabase): off in simulation, when turned off, and until the notice was shown.</summary>
+    public UsageReporter Usage { get; private set; } = null!;
+
+    /// <summary>The Aptabase app key this build was made with (from CI), or null: then no statistics are sent.</summary>
+    public static string? UsageAppKey { get; } =
+        typeof(AppHost).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+            .OfType<System.Reflection.AssemblyMetadataAttribute>()
+            .FirstOrDefault(a => a.Key == "AptabaseAppKey")?.Value is { Length: > 0 } k && AptabaseClient.HostFor(k) is not null ? k.Trim() : null;
 
     /// <summary>WSJT-X UDP interop.</summary>
     public UdpInteropService Udp { get; private set; } = null!;
@@ -360,6 +372,8 @@ public sealed class AppHost : IAsyncDisposable
         Updates = new UpdateService(Settings, Path.Combine(Paths.Temp, "updates"), Paths.Logs);
         Updates.Start();
 
+        StartUsage(log);
+
         Udp = new UdpInteropService(Session, Settings, offAir: Simulating);
         log.Stored += Udp.OnLogged;
         Udp.Start();
@@ -399,6 +413,36 @@ public sealed class AppHost : IAsyncDisposable
         };
     }
 
+    // Anonymous statistics. The User-Agent leaves the callsign out on purpose: these requests must not identify the station.
+    private void StartUsage(DatabaseSessionLog log)
+    {
+        AptabaseClient? client = null;
+        // Never from a build server: CI starts the installed app to test it.
+        if (UsageAppKey is { } key && !string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            var http = HttpFactory.Create(string.Empty, timeout: TimeSpan.FromSeconds(10));
+            _disposables.Add(http);
+            client = new AptabaseClient(http, key);
+        }
+        Usage = new UsageReporter(client, () => !Simulating && Settings.Current.Usage is { Enabled: true, NoticeShown: true }, () => Clock.UtcNow);
+        Usage.Start();
+        _usageDay = Clock.UtcNow.Date;
+        TrackStarted();
+        log.Stored += q => Usage.Track("contact_logged", UsageEvents.BandMode(q.Band, q.Mode));
+    }
+
+    /// <summary>Records the start of this run (again, once the notice has been shown on a first run).</summary>
+    public void TrackStarted() => Usage.Track("app_started", UsageEvents.Started(Settings.Current, Jt9Path is not null));
+
+    // One "app_running" a day for runs left open across midnight UTC, so they still count as active that day.
+    private void TrackDay()
+    {
+        var today = Clock.UtcNow.Date;
+        if (today == _usageDay) return;
+        _usageDay = today;
+        Usage.Track("app_running", UsageEvents.BandMode(Settings.Current.Operating.Band, Settings.Current.Operating.Mode));
+    }
+
     /// <summary>Rebuilds the log index from the database (after sync, import or edit).</summary>
     public void RebuildLogIndex()
     {
@@ -420,6 +464,7 @@ public sealed class AppHost : IAsyncDisposable
         });
         SlotClock.SetMode(mode);
         Session.SetBand(band, mode);
+        Usage?.Track("band_changed", UsageEvents.BandMode(band, ModeInfo.Name(mode)));
         await StopTransmitterForRetuneAsync().ConfigureAwait(false);
         var e = Frequencies.Find(band, mode);
         if (e is null) return;
@@ -712,6 +757,7 @@ public sealed class AppHost : IAsyncDisposable
             {
                 Sntp = await new SntpClient().MeasureAsync(_cts.Token).ConfigureAwait(false);
                 if (Sntp is not null) Session.SetClockOffset(Sntp.Offset.TotalSeconds);
+                TrackDay();
                 await Task.Delay(TimeSpan.FromHours(1), _cts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -756,6 +802,7 @@ public sealed class AppHost : IAsyncDisposable
         if (Eqsl is not null) await Eqsl.DisposeAsync().ConfigureAwait(false);
         Udp?.Dispose();
         Updates?.Dispose();
+        if (Usage is not null) await Usage.DisposeAsync().ConfigureAwait(false);
         Pota?.Dispose();
         Recording?.Dispose();
         NeighbourHistory?.Flush();

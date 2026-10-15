@@ -28,6 +28,10 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Ft8Client.App.Tests" />
   </ItemGroup>
+  <ItemGroup Condition="'$(APTABASE_APP_KEY)' != ''">
+    <!-- Anonymous usage statistics: CI passes the Aptabase app key (set in .github/workflows/ci.yml) to release builds. Builds without it send nothing. -->
+    <AssemblyMetadata Include="AptabaseAppKey" Value="$(APTABASE_APP_KEY)" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.3" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />

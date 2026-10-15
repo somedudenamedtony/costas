@@ -65,6 +65,9 @@ public sealed class AppSettings
     /// <summary>Update checks.</summary>
     public UpdateOptions Updates { get; set; } = new();
 
+    /// <summary>Anonymous usage statistics.</summary>
+    public UsageOptions Usage { get; set; } = new();
+
     /// <summary>Developer mode (hidden).</summary>
     public DeveloperOptions Developer { get; set; } = new();
 

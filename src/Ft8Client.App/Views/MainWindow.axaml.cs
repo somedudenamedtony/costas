@@ -102,6 +102,7 @@ public partial class MainWindow : Window
     private void OpenDialog(string name)
     {
         if (Vm is not { } vm) return;
+        vm.TrackWindow(name);
         if (name == "mini")
         {
             OpenMini(vm);
