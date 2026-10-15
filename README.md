@@ -22,13 +22,23 @@ log, whether the station is free to call, and whether it can hear you.
   worked them, one click to call them again.
 - **Hears you and Chance**: from PSK Reporter, whether each station (or someone near it) hears your signal, and a
   Good / Fair / Long shot rating.
-- **One-click contacts**: click **Call** or press Enter. Costas runs the standard exchange, shows each step in a
-  five-box strip, and logs the contact when it completes.
+- **One-click contacts**: click **Call** or press Enter. Costas runs the standard exchange, shows each step on a
+  progress strip, and logs the contact when it completes. Clicking **Call** on a recognised DXpedition Fox works it
+  the Hound way automatically.
 - **Calling you bar**: anyone who calls you is pinned above the list with an **Answer** button, and a station that
   replies after you gave up can be picked up again with **Resume**.
-- **Logging and QRZ**: a local log with ADIF import and export, uploaded to your QRZ logbook and optionally eQSL as you go, with eQSL inbox and confirmation sync.
-- **Maps**: who you hear (Heard here) and who hears you (Reach), centred on your grid.
-- **Works with your other tools**: WSJT-X UDP for GridTracker, JTAlert and loggers.
+- **Hunt list**: the countries, calls, US states or grids you are after, with an alert when one is heard, on your
+  band or (through PSK Reporter) any other. Alerts never transmit.
+- **Logging and confirmations**: a local log with ADIF import and export, uploaded to your QRZ logbook, LoTW (through
+  TQSL) and eQSL as you go, with confirmations synced back.
+- **Awards**: DXCC, WAS, WAZ and VUCC progress from your own log, and when you usually hear each country you still
+  need.
+- **Maps**: who you hear (Heard here) and who hears you (Reach), centred on your grid, with band activity near you.
+- **A waterfall you can size**: drag it taller in the main window or pop it out into its own window.
+- **Mini mode and phone remote**: shrink Costas to a strip that stays on top, or operate from a phone or tablet on
+  your home network.
+- **Works with your other tools**: WSJT-X UDP for GridTracker, JTAlert and loggers; FLRig and network rigctld as
+  well as direct Hamlib control.
 - **Safe by design**: it never transmits on its own, never changes a message silently, and has a watchdog,
   band-edge check, clock check and PTT release on any fault.
 
@@ -40,6 +50,14 @@ log, whether the station is free to call, and whether it can hear you.
 <tr>
 <td align="center">A contact in progress</td>
 <td align="center">Someone calling you while you work another station</td>
+</tr>
+<tr>
+<td><img src="manual/images/awards.png" alt="The Awards view"></td>
+<td><img src="manual/images/log.png" alt="The Log view"></td>
+</tr>
+<tr>
+<td align="center">Award progress and the countries you still need</td>
+<td align="center">The log, with QRZ, LoTW and eQSL status</td>
 </tr>
 </table>
 
@@ -82,9 +100,23 @@ The [manual](https://somedudenamedtony.github.io/costas/) covers every screen an
 [making contacts](https://somedudenamedtony.github.io/costas/contacts/),
 [maps](https://somedudenamedtony.github.io/costas/maps/),
 [the log and QRZ](https://somedudenamedtony.github.io/costas/log/),
+[the Hunt list](https://somedudenamedtony.github.io/costas/hunt/),
+[awards](https://somedudenamedtony.github.io/costas/awards/),
+[operating from a phone](https://somedudenamedtony.github.io/costas/phone/),
 [settings](https://somedudenamedtony.github.io/costas/settings/) and
 [troubleshooting](https://somedudenamedtony.github.io/costas/troubleshooting/).
 Its source is in [`manual/`](manual/) if you prefer to read it here.
+
+## Privacy
+
+Costas sends anonymous usage statistics to [Aptabase](https://aptabase.com) so its developer can see how many people
+use it and which features matter. It sends the Costas version, Windows or Linux, the band and mode, the kind of radio
+connection and Hamlib model number, which optional features are on, and which views and actions you use. It never
+sends your callsign, grid, name, frequencies, the stations you hear or work, or anything from your log, and there is no
+account or tracking id. Nothing is sent while you are offline, in simulation, or from a build you make yourself.
+
+To turn it off, untick **Settings › Privacy › Send anonymous usage statistics**. The full list is in
+[the manual](https://somedudenamedtony.github.io/costas/settings/#privacy).
 
 ## Status
 
