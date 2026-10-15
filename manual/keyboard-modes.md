@@ -62,7 +62,7 @@ A contact you abandon stays on the card, marked Abandoned, but stops collecting 
 | Key | While receiving | While sending |
 | --- | --- | --- |
 | Typing | Goes into the line under the conversation | Goes out as you type |
-| Enter | Sends what you typed, or the next step's macro (its button is highlighted) | A new line; on an empty line, back to receive once everything has gone |
+| Enter | Sends what you typed, or the next step's macro (its button is highlighted) | A new line (in RTTY sent as carriage return and line feed, as fldigi does); on an empty line, back to receive once everything has gone |
 | Backspace | Edits the line | Takes back what has not gone out yet |
 | F1 to F12 | Send that macro | Add that macro to what is going out |
 | Esc | Abandons the contact | Stops sending at once; press again to abandon the contact |

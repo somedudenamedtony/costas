@@ -28,6 +28,7 @@ public sealed class RttyModulator : IKeyboardModulator
     private double _owed;
     // The receiver's case: false letters, true figures, null when it is in doubt (a space after figures).
     private bool? _figures = false;
+    private bool _afterCr;
 
     /// <param name="format">Speed, shift and polarity.</param>
     /// <param name="sampleRate">Output sample rate.</param>
@@ -60,9 +61,11 @@ public sealed class RttyModulator : IKeyboardModulator
         Character(0x08);
         Character(0x02);
         _figures = false;
+        _afterCr = false;
         foreach (var c in text)
         {
             if (!Ita2.TryEncode(c, out var code, out var caseOf)) throw new ArgumentException($"RTTY cannot send '{c}'.", nameof(text));
+            Line(c);
             Encode(code, caseOf);
         }
         for (var i = 0; i < IdleCharacters; i++) Character(Ita2.Letters);
@@ -75,6 +78,7 @@ public sealed class RttyModulator : IKeyboardModulator
     {
         _out.Clear();
         _figures = false;
+        _afterCr = false;
         Tone(true, 0.25 * _sampleRate);
         Character(Ita2.Letters);
         Character(Ita2.Letters);
@@ -88,6 +92,7 @@ public sealed class RttyModulator : IKeyboardModulator
     {
         if (!Ita2.TryEncode(c, out var code, out var caseOf)) throw new ArgumentException($"RTTY cannot send '{c}'.", nameof(c));
         _out.Clear();
+        Line(c);
         Encode(code, caseOf);
         return [.. _out];
     }
@@ -119,6 +124,14 @@ public sealed class RttyModulator : IKeyboardModulator
 
     /// <inheritdoc />
     public char Normalize(char c) => Ita2.Upper(c);
+
+    // A new line goes out as CR LF, as fldigi sends it, so a teleprinter or strict reader returns the carriage too
+    // (owner decision, 2026-10-14). A CR already sent just before is not doubled.
+    private void Line(char c)
+    {
+        if (c == '\n' && !_afterCr) Character(0x08);
+        _afterCr = c == '\r';
+    }
 
     // One character, after its shift when the receiver may be in the other case.
     private void Encode(int code, bool? caseOf)
