@@ -555,26 +555,41 @@ public sealed class AppHost : IAsyncDisposable
     private void OpenAudio(SlotRecorder recorder)
     {
         var a = Settings.Current.Profile.Audio;
-        try
+        // Each device on its own: an output that fails must not drop an input that is already capturing (the status
+        // then said "No input device configured" while receive worked), and the reason is shown, not only logged.
+        if (a.InputId is not null && AudioBackend is not NullAudioBackend)
         {
-            if (a.InputId is not null && AudioBackend is not NullAudioBackend)
+            IAudioInput? input = null;
+            try
             {
-                _input = AudioBackend.OpenInput(a.InputId, 48_000);
-                _pump = new CapturePump(_input, recorder);
-                _input.Stopped += (_, why) => Session?.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down, why, Clock.UtcNow));
-                _input.Start();
-                _pump.Start();
+                input = AudioBackend.OpenInput(a.InputId, 48_000);
+                var pump = new CapturePump(input, recorder);
+                input.Stopped += (_, why) => Session?.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down, why, Clock.UtcNow));
+                input.Start();
+                pump.Start();
+                (_input, _pump) = (input, pump);
             }
-            if (a.OutputId is not null && AudioBackend is not NullAudioBackend) _output = AudioBackend.OpenOutput(a.OutputId, 48_000);
-            _inputId = a.InputId;
-            _outputId = a.OutputId;
+            catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+            {
+                Log.Warning(ex, "Audio input could not be opened");
+                _audioProblem = $"The input device could not be opened: {ex.Message}";
+                input?.Dispose();
+            }
         }
-        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+        if (a.OutputId is not null && AudioBackend is not NullAudioBackend)
         {
-            Log.Warning(ex, "Audio device could not be opened");
-            _input = null;
-            _output = null;
+            try
+            {
+                _output = AudioBackend.OpenOutput(a.OutputId, 48_000);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+            {
+                Log.Warning(ex, "Audio output could not be opened");
+                _audioProblem ??= $"The output device could not be opened: {ex.Message}";
+            }
         }
+        _inputId = a.InputId;
+        _outputId = a.OutputId;
     }
 
     private async Task OpenRigAsync()

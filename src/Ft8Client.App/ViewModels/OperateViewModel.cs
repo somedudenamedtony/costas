@@ -42,6 +42,7 @@ public sealed partial class OperateViewModel : ObservableObject
     private readonly LineStabilizer<IReadOnlyList<RankedStation>> _line;
     private readonly LineStabilizer<IReadOnlyList<RankedStation>> _repeats;
     private DateTime? _lastRankedSlot;
+    private (string Band, Ft8Client.Core.Mode Mode) _lastRankedBand;
     private SessionSnapshot? _snap;
     private string? _inContact;
 
@@ -290,10 +291,13 @@ public sealed partial class OperateViewModel : ObservableObject
         Transmitting = s.Transmitting;
         UpdateSlot(now);
 
-        // Re-rank only when a new slot has been decoded.
-        if (_lastRankedSlot != s.LastDecodedSlot || _line.Applied is null)
+        // Re-rank only when a new slot has been decoded, or the band or mode changed (the old band's stations, with
+        // Call buttons that no longer work, stayed until the next decode).
+        var bandMode = (s.Band, s.Mode);
+        if (_lastRankedSlot != s.LastDecodedSlot || _line.Applied is null || _lastRankedBand != bandMode)
         {
             _lastRankedSlot = s.LastDecodedSlot;
+            _lastRankedBand = bandMode;
             _line.Offer(s.Rank.Line);
             var log = Log?.Invoke();
             var mode = ModeInfo.Name(s.Mode);

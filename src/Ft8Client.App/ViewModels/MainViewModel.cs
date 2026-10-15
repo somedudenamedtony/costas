@@ -235,6 +235,15 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial TextKind StatusKind { get; set; }
 
+    private static readonly TimeSpan NoteTime = TimeSpan.FromSeconds(8);
+    private DateTime _noteUntilUtc;
+    private bool _applyingStatus;
+
+    partial void OnStatusTextChanged(string value)
+    {
+        if (!_applyingStatus) _noteUntilUtc = DateTime.UtcNow + NoteTime;
+    }
+
     /// <summary>"Tx offset 1650 Hz · clear".</summary>
     [ObservableProperty]
     public partial string TxOffsetText { get; set; } = string.Empty;
@@ -346,7 +355,15 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
         UpdateTune(s);
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
-        (StatusText, StatusKind) = Status(s);
+        // A line set by an operator action ("Added to your Hunt list", "not in the station list") stays for a few seconds;
+        // the snapshot that the action itself publishes used to replace it before it could be read. A fault still shows.
+        var (statusText, statusKind) = Status(s);
+        if (DateTime.UtcNow >= _noteUntilUtc || statusKind == TextKind.Critical)
+        {
+            _applyingStatus = true;
+            (StatusText, StatusKind) = (statusText, statusKind);
+            _applyingStatus = false;
+        }
         (MeterText, MeterTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
         Indicators.Clear();
         Indicators.Add(Indicator("Radio", s, ServiceNames.Radio));
