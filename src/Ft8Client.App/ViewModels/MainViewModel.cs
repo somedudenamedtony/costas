@@ -413,12 +413,17 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _ = _host.SetBandAsync(band, mode);
     }
 
-    // The band menu shows the band the session is on, whoever changed it.
+    // The band menu shows the band the session is on, whoever changed it (the operator turning the radio's band knob too).
     private void FollowBand(string band)
     {
         var shown = BandPlan.Display(band);
         if (shown == SelectedBand) return;
         _updatingBand = true;
+        // A band the radio went to that has no FT8/FT4 frequency for this mode (2 m) still gets a row, so the menu says it;
+        // the row goes again once the radio leaves that band.
+        ModeInfo.TryParse(SelectedMode, out var mode);
+        if (!Bands.Select(b => b.Band).SequenceEqual(BandPlan.WithBand(_host.Frequencies.Bands(mode), band).Select(b => b.ToLowerInvariant())))
+            RefreshBands(mode, band);
         SelectedBand = shown;
         _updatingBand = false;
     }
@@ -796,12 +801,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         }
     }
 
-    private void RefreshBands(Mode mode)
+    private void RefreshBands(Mode mode, string? extraBand = null)
     {
         var keep = _updatingBand;
         _updatingBand = true;
         Bands.Clear();
-        foreach (var b in _host.Frequencies.Bands(mode)) Bands.Add(new BandChoiceViewModel(b));
+        foreach (var b in BandPlan.WithBand(_host.Frequencies.Bands(mode), extraBand)) Bands.Add(new BandChoiceViewModel(b));
         SelectedBandChoice = Bands.FirstOrDefault(b => b.Name == SelectedBand);
         _updatingBand = keep;
         ApplyBandOpenings(_host.Session.Snapshot);
@@ -833,6 +838,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         if (s.Fault is { } f) return (f, TextKind.Critical);
         if (s.RigTuningUntilUtc is not null) return ("The radio's antenna tuner is tuning.", TextKind.Critical);
+        // The band menu keeps the last band; the band-edge guard already refuses to transmit here.
+        if (s.DialHz > 0 && BandPlan.BandOf(s.DialHz) is null)
+            return ($"The radio is on {DialText.Mhz(s.DialHz)} MHz, outside the amateur bands. Costas will not transmit there.", TextKind.Caution);
         if (s.Contact is { Outcome: ContactOutcome.InProgress } c)
         {
             if (!s.Transmitting) return ($"Waiting for {c.DxCall}.", TextKind.Normal);

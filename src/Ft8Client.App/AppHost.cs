@@ -52,6 +52,10 @@ public sealed class AppHost : IAsyncDisposable
     private SlotLoop? _loop;
     private IRig _rig;
     private string? _rigKey;
+    // Costas's own retunes running, and how many have finished: a poll that read the radio before or during one of them
+    // must not take the old frequency for the operator changing band by hand.
+    private int _retunesRunning;
+    private int _retunesDone;
     private string? _inputId;
     private string? _outputId;
     private string? _audioProblem;
@@ -457,6 +461,20 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Changes band and mode: sets the dial through the radio.</summary>
     public async Task SetBandAsync(string band, Mode mode)
     {
+        Interlocked.Increment(ref _retunesRunning);
+        try
+        {
+            await SetBandCoreAsync(band, mode).ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.Increment(ref _retunesDone);
+            Interlocked.Decrement(ref _retunesRunning);
+        }
+    }
+
+    private async Task SetBandCoreAsync(string band, Mode mode)
+    {
         Settings.Update(s =>
         {
             s.Operating.Band = band;
@@ -493,6 +511,20 @@ public sealed class AppHost : IAsyncDisposable
     /// The band-edge guard still applies to every transmission. Returns why it could not, or null.
     /// </summary>
     public async Task<string?> TuneDialAsync(long hz)
+    {
+        Interlocked.Increment(ref _retunesRunning);
+        try
+        {
+            return await TuneDialCoreAsync(hz).ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.Increment(ref _retunesDone);
+            Interlocked.Decrement(ref _retunesRunning);
+        }
+    }
+
+    private async Task<string?> TuneDialCoreAsync(long hz)
     {
         var mode = Session.Config.Mode;
         if (BandPlan.BandOf(hz) is not { } band) return $"{DialText.Mhz(hz)} MHz is outside the amateur bands.";
@@ -731,8 +763,13 @@ public sealed class AppHost : IAsyncDisposable
             {
                 await Task.Delay(1000, _cts.Token).ConfigureAwait(false);
                 if (Transmitter.Transmitting) continue; // never poll during a transmission
+                var retunes = Volatile.Read(ref _retunesDone);
+                if (Volatile.Read(ref _retunesRunning) > 0) continue;
                 var st = await _rig.GetStateAsync(_cts.Token).ConfigureAwait(false);
-                if (st.FrequencyHz != Session.Snapshot.DialHz) Session.SetDial(st.FrequencyHz);
+                // Costas retuned while this poll was out: what it read may be the old frequency.
+                if (Volatile.Read(ref _retunesRunning) > 0 || Volatile.Read(ref _retunesDone) != retunes) continue;
+                if (BandPlan.BandChange(Session.Config.Band, st.FrequencyHz) is { } band) await FollowRadioBandAsync(band, st.FrequencyHz).ConfigureAwait(false);
+                else if (st.FrequencyHz != Session.Snapshot.DialHz) Session.SetDial(st.FrequencyHz);
                 // Recovery after a fault, only for a radio that opened properly: a placeholder for a missing or
                 // failed radio answers polls too, and must not turn the indicator green (that would allow transmit).
                 if (_rigOpenStatus is { } ok && Session.Snapshot.Services[ServiceNames.Radio].Health != ServiceHealth.Ok)
@@ -747,6 +784,18 @@ public sealed class AppHost : IAsyncDisposable
                 return;
             }
         }
+    }
+
+    // The operator changed band on the radio itself: the radio is right, so Costas moves to that band (menu, station list,
+    // per-band transmit level, saved band) without retuning it. A transmission prepared for the old band never starts.
+    private async Task FollowRadioBandAsync(string band, long dialHz)
+    {
+        var mode = Session.Config.Mode;
+        Log.Information("Radio changed band to {Band} ({Dial} Hz); following it", band, dialHz);
+        Settings.Update(s => s.Operating.Band = band);
+        Session.SetBand(band, mode, dialHz);
+        Usage?.Track("band_changed", UsageEvents.BandMode(band, ModeInfo.Name(mode)));
+        await StopTransmitterForRetuneAsync().ConfigureAwait(false);
     }
 
     private async Task ClockCheckLoopAsync()
