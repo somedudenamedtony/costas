@@ -71,6 +71,12 @@ public class LateDecodeTests
                     await Task.Delay(1);
                 }
                 Decoder.ReleaseDue(Clock.UtcNow);
+                // A released decode is applied on another thread: wait until it has been, so assertions never race it.
+                for (var i = 0; Session.DecodesApplied < Decoder.Released; i++)
+                {
+                    if (i > 2000) throw new InvalidOperationException("A decode was never applied.");
+                    await Task.Delay(1);
+                }
             }
         }
 
@@ -380,7 +386,7 @@ public class LateDecodeTests
     /// <summary>
     /// Returns scripted decodes for a slot a set time after its capture cut-off (13.6 s into the slot): the full decode
     /// after one delay, the session's quick decode (narrow band or shallow) after another. Unscripted runs return
-    /// nothing at the cut-off. Results are released from the test loop, so they are applied on the test thread.
+    /// nothing at the cut-off. Results are released from the test loop, which waits until the session has applied them.
     /// </summary>
     private sealed class ScriptedDecoder : IDecoder
     {
@@ -389,8 +395,14 @@ public class LateDecodeTests
         private readonly Dictionary<(DateTime Slot, bool Quick), (TimeSpan Delay, string[] Lines)> _script = [];
         private readonly List<(DateTime Due, DateTime Slot, string[] Lines, TaskCompletionSource<DecodeResult> Tcs)> _parked = [];
         private int _calls;
+        private int _released;
 
         public int QuickCalls { get; private set; }
+
+        public int Released
+        {
+            get { lock (_gate) return _released; }
+        }
 
         public int Calls
         {
@@ -423,7 +435,7 @@ public class LateDecodeTests
             }
         }
 
-        /// <summary>Completes the decodes that are due; the session applies them before this returns.</summary>
+        /// <summary>Completes the decodes that are due. The session applies them on the thread pool.</summary>
         public void ReleaseDue(DateTime now)
         {
             List<(DateTime Due, DateTime Slot, string[] Lines, TaskCompletionSource<DecodeResult> Tcs)> due;
@@ -431,6 +443,7 @@ public class LateDecodeTests
             {
                 due = _parked.Where(p => p.Due <= now).ToList();
                 _parked.RemoveAll(p => p.Due <= now);
+                _released += due.Count;
             }
             foreach (var p in due)
             {
