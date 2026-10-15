@@ -194,7 +194,7 @@
 
     <!-- Bottom bar -->
     <Border Grid.Row="4" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource CardBackgroundBrush}">
-      <Grid RowDefinitions="Auto,52" Margin="16,6">
+      <Grid x:Name="BottomGrid" RowDefinitions="Auto,Auto,52" Margin="16,6">
       <DockPanel Margin="0,0,0,4">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <TextBlock Text="{Binding MeterText}" FontWeight="SemiBold" VerticalAlignment="Center" ToolTip.Tip="{Binding MeterTip}"
@@ -257,9 +257,31 @@
         <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                    Foreground="{Binding StatusKind, Converter={x:Static v:Converters.KindBrush}}" AutomationProperties.LiveSetting="Polite" />
       </DockPanel>
-      <v:WaterfallView x:Name="ReceiveWaterfall" Grid.Row="1" Cursor="Cross"
-                       ToolTip.Tip="Click between 200 and 2900 Hz to select your transmit channel. Red line: selected offset."
-                       AutomationProperties.Name="Receive waterfall; click to select transmit channel" />
+      <!-- Drag the grip to make the waterfall taller; double-click it to go back to the compact strip. -->
+      <Thumb x:Name="WaterfallGrip" Grid.Row="1" Height="8" Cursor="SizeNorthSouth" Focusable="True"
+             ToolTip.Tip="Drag to resize the waterfall. Double-click to make it compact again."
+             AutomationProperties.Name="Waterfall size; up and down arrows resize, Home makes it compact">
+        <Thumb.Template>
+          <ControlTemplate>
+            <Border Background="Transparent">
+              <Border x:Name="Pill" Width="44" Height="4" CornerRadius="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                      Background="{DynamicResource ControlBorderBrush}" />
+            </Border>
+          </ControlTemplate>
+        </Thumb.Template>
+        <Thumb.Styles>
+          <Style Selector="Thumb:pointerover /template/ Border#Pill, Thumb:pressed /template/ Border#Pill, Thumb:focus-visible /template/ Border#Pill">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+          </Style>
+        </Thumb.Styles>
+      </Thumb>
+      <Grid x:Name="WaterfallStrip" Grid.Row="2">
+        <v:WaterfallView x:Name="ReceiveWaterfall" Cursor="Cross" LabelInset="64"
+                         ToolTip.Tip="Click between 200 and 2900 Hz to select your transmit channel. Red line: selected offset."
+                         AutomationProperties.Name="Receive waterfall; click to select transmit channel" />
+        <Button x:Name="PopOutButton" Classes="wfoverlay" Content="Pop out" HorizontalAlignment="Right" VerticalAlignment="Top"
+                ToolTip.Tip="Open the waterfall in its own window" AutomationProperties.Name="Pop out the waterfall" />
+      </Grid>
       </Grid>
     </Border>
   </Grid>

@@ -185,6 +185,24 @@ From top to bottom:
 The strip along the bottom is a waterfall of the passband with a line at your transmit offset: click it to move your
 offset there. **Auto-select** goes back to Automatic, which picks a clear spot in the passband for you each time.
 
+### A bigger waterfall
+
+The waterfall starts as a thin strip showing the last few seconds. To make it bigger:
+
+- **Drag the grip** (the short bar on the strip's top edge) upwards. The waterfall can grow to half the window; the
+  panels above it get shorter and scroll. Double-click the grip to go back to the thin strip. With the grip focused,
+  the up and down arrow keys resize it and ++home++ makes it thin again.
+- **Pop it out**: click **Pop out** at the right end of the strip to open the waterfall in its own window. Size it however you
+  like or drag it to a second monitor. While it is open the strip leaves the main window, so the waterfall is never
+  shown twice. Click **Pop in**, or close the window, to put it back.
+
+A taller waterfall shows more time rather than stretching the same few seconds: about 12 seconds per 100 pixels, up to
+80 seconds. Once it is taller than the strip, faint lines mark where each receive slot began. Clicking it picks your
+transmit offset at any size, and ++esc++ in the waterfall window halts transmit as it does in the main window. Costas
+remembers the strip's height, and whether the waterfall was popped out and where.
+
+![The waterfall in its own window](images/waterfall-window.png)
+
 ## Mini mode
 
 Want to browse, log or check email while you keep an eye on the band? Choose **Mini mode** from the **☰** menu, or press ++ctrl+m++. Costas shrinks to a small strip that stays on top of your other windows.
