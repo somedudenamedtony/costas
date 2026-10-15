@@ -276,8 +276,8 @@ Privacy. Owner decision 2026-10-15.
 - `POST https://{us|eu}.aptabase.com/api/v0/event`, header `App-Key: A-US-…` (the region comes from the key),
   JSON body `{ timestamp, sessionId, eventName, systemProps, props }` as the official SDKs send it. Aptabase refuses
   events older than a day; props are strings or numbers.
-- The app key is baked into release builds only: CI passes the repository variable `APTABASE_APP_KEY` to the
-  publish step of a manual run on `main` (`AssemblyMetadata` `AptabaseAppKey`). Other builds have no key and send
+- The app key (`A-US-6947074211`; not a secret, it ships inside the app) is baked into release builds only: CI
+  sets `APTABASE_APP_KEY` for the publish steps of a manual run on `main` (`AssemblyMetadata` `AptabaseAppKey`). Other builds have no key and send
   nothing. Nothing is sent when the `CI` environment variable is `true` (the installer test starts the app).
 - User-Agent `Costas/<version>` without the callsign: these requests must not identify the station.
 - Nothing is sent before the main window has shown the one-time notice, in simulation, or while the operating system

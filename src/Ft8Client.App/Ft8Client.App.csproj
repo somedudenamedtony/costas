@@ -29,7 +29,7 @@
     <InternalsVisibleTo Include="Ft8Client.App.Tests" />
   </ItemGroup>
   <ItemGroup Condition="'$(APTABASE_APP_KEY)' != ''">
-    <!-- Anonymous usage statistics: CI passes the Aptabase app key (repository variable APTABASE_APP_KEY). Builds without it send nothing. -->
+    <!-- Anonymous usage statistics: CI passes the Aptabase app key (set in .github/workflows/ci.yml) to release builds. Builds without it send nothing. -->
     <AssemblyMetadata Include="AptabaseAppKey" Value="$(APTABASE_APP_KEY)" />
   </ItemGroup>
   <ItemGroup>

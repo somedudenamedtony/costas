@@ -26,8 +26,8 @@ jobs:
       - run: scripts/ci.sh
       - name: Build the Linux package
         env:
-          # Only release builds carry the Aptabase key, so test and pull-request builds never send usage statistics.
-          APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.APTABASE_APP_KEY || '' }}
+          # Only release builds carry the Aptabase app key (not a secret: it ships inside the app), so test and pull-request builds never send usage statistics.
+          APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && 'A-US-6947074211' || '' }}
         run: scripts/build-linux.sh ${{ github.run_number }}
       - uses: actions/upload-artifact@v4
         with:
@@ -60,8 +60,8 @@ jobs:
           key: third-party-${{ hashFiles('third_party/fetch.ps1') }}
       - name: Build installer
         env:
-          # Only release builds carry the Aptabase key, so test and pull-request builds never send usage statistics.
-          APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.APTABASE_APP_KEY || '' }}
+          # Only release builds carry the Aptabase app key (not a secret: it ships inside the app), so test and pull-request builds never send usage statistics.
+          APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && 'A-US-6947074211' || '' }}
         run: ./scripts/build-installer.ps1 -BuildNumber ${{ github.run_number }}
         shell: pwsh
       - name: Check jt9 stays running (shared memory)
