@@ -152,6 +152,31 @@ See [Operating from a phone](phone.md).
 
 **Check for a new build once a day** (on) and **Check now**. See [Install › Updates](install.md#updates).
 
+## Privacy
+
+**Send anonymous usage statistics** (on). Costas sends a few anonymous counts to [Aptabase](https://aptabase.com),
+an open-source analytics service built for privacy, so its developer can see how many people use it and which features
+matter. The first time a build that sends them starts, a bar at the top of the main window says so, with **OK** and
+**Turn off**. Nothing is sent before that bar has been shown.
+
+What is sent:
+
+- the Costas version and whether it is running on Windows or Linux;
+- the band and mode you are on, and whether your radio is connected through Hamlib, VOX or not at all, with the Hamlib
+  model number (the same number for every owner of that radio);
+- which optional features are switched on (QRZ logbook, LoTW, eQSL, PSK Reporter, POTA spots, other programs, the
+  phone remote) and how many entries your Hunt list has;
+- which views and windows you open, and when you call CQ, call or answer a station, use Tune or a Hunt list alert,
+  and log a contact (band and mode only).
+
+What is never sent: your callsign, grid, name, frequencies, serial ports or network addresses, the stations you hear or
+work, or anything from your log. There is no account and no tracking id; each run of Costas is a separate anonymous
+session.
+
+Nothing is sent while your computer is offline. Counts wait in memory (never on disk) and go out when the network is
+back; anything still waiting when you close Costas is dropped. Statistics are never sent in simulation, and builds you
+make yourself from the source send nothing at all.
+
 ## Advanced
 
 ![Settings: Advanced](images/settings-advanced.png)

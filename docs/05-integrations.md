@@ -268,6 +268,25 @@ GitHub Releases for `somedudenamedtony/costas` (public). CI publishes a release 
 - Install: download to the data folder's `tmp/updates`, verify, start the installer through a hidden `cmd` that runs it with `/SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /LOG=<logs>/update-<time>.log` (Inno Setup's progress window only), waits for it and then starts the app again, whether or not the upgrade succeeded, close the app normally (PTT released, child processes stopped). Refused while transmitting or in a contact. The installer upgrades in place.
 
 
+## 10a. Usage statistics (Aptabase)
+
+Anonymous usage counts go to Aptabase (https://aptabase.com). Opt-out: on by default, switched off in Settings,
+Privacy. Owner decision 2026-10-15.
+
+- `POST https://{us|eu}.aptabase.com/api/v0/event`, header `App-Key: A-US-…` (the region comes from the key),
+  JSON body `{ timestamp, sessionId, eventName, systemProps, props }` as the official SDKs send it. Aptabase refuses
+  events older than a day; props are strings or numbers.
+- The app key is baked into release builds only: CI passes the repository variable `APTABASE_APP_KEY` to the
+  publish step of a manual run on `main` (`AssemblyMetadata` `AptabaseAppKey`). Other builds have no key and send
+  nothing. Nothing is sent when the `CI` environment variable is `true` (the installer test starts the app).
+- User-Agent `Costas/<version>` without the callsign: these requests must not identify the station.
+- Nothing is sent before the main window has shown the one-time notice, in simulation, or while the operating system
+  reports no network. Events wait in memory (at most 500, under 23 hours old) and are sent once a minute; failures
+  back off up to 30 minutes; whatever is waiting at exit gets one 3-second attempt and is then dropped.
+- Events: `app_started` (settings snapshot, see `UsageEvents`), `app_running` (once a UTC day for long runs),
+  `band_changed`, `view_opened`, `window_opened`, `cq_started`, `station_called`, `caller_answered`, `tune`,
+  `hunt_go`, `hunt_added`, `contact_logged`. Never a callsign, grid, name, frequency, port, address or log content.
+
 ## 11. eQSL
 
 Optional uploads and incoming-card sync, configured per station profile. The account username and password
