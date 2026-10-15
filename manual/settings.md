@@ -76,6 +76,8 @@ line*.
 
 ## Hunt list
 
+![Settings: Hunt list](images/settings-hunt-list.png)
+
 What you are looking for, and how you are told. See [Hunt list and alerts](hunt.md).
 
 - **Looking for**: the entries, each with **Remove**.
@@ -99,6 +101,8 @@ QRZ has two services, each with its own sign-in. Both are optional.
 The key and password are kept in Windows Credential Manager.
 
 ## LoTW
+
+![Settings: LoTW](images/settings-lotw.png)
 
 Logbook of the World confirmations, uploads through TQSL, and the list of LoTW users. See [LoTW](log.md#lotw).
 
@@ -133,6 +137,8 @@ The password is kept in Windows Credential Manager.
 
 ## Mobile connection
 
+![Settings: Mobile connection](images/settings-mobile-connection.png)
+
 - **Let a paired phone on this network operate the station**: off by default. Takes effect at once and shows a
   **Pair a phone** card with the address and a large one-time code.
 - **Forget paired phones** unpairs them all. **Port**: `8073`, applied when you save.
@@ -153,6 +159,8 @@ See [Operating from a phone](phone.md).
 **Check for a new build once a day** (on) and **Check now**. See [Install › Updates](install.md#updates).
 
 ## Privacy
+
+![Settings: Privacy](images/settings-privacy.png)
 
 **Send anonymous usage statistics** (on). Costas sends a few anonymous counts to [Aptabase](https://aptabase.com),
 an open-source analytics service built for privacy, so its developer can see how many people use it and which features
@@ -192,6 +200,8 @@ calls), and Station setup lists Hamlib's test radio, *Hamlib Dummy*, which never
 testing Costas, not for operating.
 
 ## eQSL
+
+![Settings: eQSL](images/settings-eqsl.png)
 
 In **Settings › eQSL**, enter your eQSL.cc username and password, and copy the **QTH nickname** for the
 current callsign and location from your eQSL account. Credentials stay in the system credential store when
