@@ -173,7 +173,7 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Update checks.</summary>
     public UpdateService Updates { get; private set; } = null!;
 
-    /// <summary>Anonymous usage statistics (Aptabase): off in simulation, when turned off, and until the notice was shown.</summary>
+    /// <summary>Anonymous usage statistics (Aptabase): off in simulation and when turned off in Settings, Privacy.</summary>
     public UsageReporter Usage { get; private set; } = null!;
 
     /// <summary>The Aptabase app key this build was made with (from CI), or null: then no statistics are sent.</summary>
@@ -424,15 +424,15 @@ public sealed class AppHost : IAsyncDisposable
             _disposables.Add(http);
             client = new AptabaseClient(http, key);
         }
-        Usage = new UsageReporter(client, () => !Simulating && Settings.Current.Usage is { Enabled: true, NoticeShown: true }, () => Clock.UtcNow);
+        Usage = new UsageReporter(client, () => !Simulating && Settings.Current.Usage.Enabled, () => Clock.UtcNow);
         Usage.Start();
         _usageDay = Clock.UtcNow.Date;
         TrackStarted();
         log.Stored += q => Usage.Track("contact_logged", UsageEvents.BandMode(q.Band, q.Mode));
     }
 
-    /// <summary>Records the start of this run (again, once the notice has been shown on a first run).</summary>
-    public void TrackStarted() => Usage.Track("app_started", UsageEvents.Started(Settings.Current, Jt9Path is not null));
+    /// <summary>Records the start of this run.</summary>
+    private void TrackStarted() => Usage.Track("app_started", UsageEvents.Started(Settings.Current, Jt9Path is not null));
 
     // One "app_running" a day for runs left open across midnight UTC, so they still count as active that day.
     private void TrackDay()

@@ -156,8 +156,7 @@ See [Operating from a phone](phone.md).
 
 **Send anonymous usage statistics** (on). Costas sends a few anonymous counts to [Aptabase](https://aptabase.com),
 an open-source analytics service built for privacy, so its developer can see how many people use it and which features
-matter. The first time a build that sends them starts, a bar at the top of the main window says so, with **OK** and
-**Turn off**. Nothing is sent before that bar has been shown.
+matter. Untick the box to stop sending them.
 
 What is sent:
 

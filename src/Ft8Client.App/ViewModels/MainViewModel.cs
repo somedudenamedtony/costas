@@ -78,7 +78,6 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _ = heard.Refresh();
         Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
             () => Shutdown());
-        ShowUsageNoticeIfNew();
         Mini = new MiniViewModel(Operate, this, () => HaltCommand.Execute(null));
         Mini.HuntDismissed += () => HuntDismissCommand.Execute(null);
         Modes = ["FT8", "FT4"];
@@ -204,10 +203,6 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>Dial frequencies the operator saved, lowest first.</summary>
     public ObservableCollection<SavedDialViewModel> SavedDials { get; } = [];
-
-    /// <summary>Shown once: anonymous usage statistics are on, and how to turn them off.</summary>
-    [ObservableProperty]
-    public partial bool UsageNoticeVisible { get; set; }
 
     /// <summary>Selected view: 0 Operate, 1 Raw decodes, 2 Reach, 3 Log, 4 Awards.</summary>
     [ObservableProperty]
@@ -707,27 +702,6 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>Records a window being opened (Settings, Mini mode…) in the anonymous usage statistics.</summary>
     public void TrackWindow(string name) => _host.Usage.Track("window_opened", "window", name);
-
-    // The first run of a build that can send statistics shows the notice; sending starts from then (opt-out).
-    private void ShowUsageNoticeIfNew()
-    {
-        if (!_host.Usage.Available || _host.Simulating || _host.Settings.Current.Usage.NoticeShown) return;
-        _host.Settings.Update(s => s.Usage.NoticeShown = true);
-        UsageNoticeVisible = true;
-        _host.TrackStarted();
-    }
-
-    /// <summary>Hides the usage notice, leaving statistics on.</summary>
-    [RelayCommand]
-    private void UsageNoticeOk() => UsageNoticeVisible = false;
-
-    /// <summary>Turns usage statistics off from the notice.</summary>
-    [RelayCommand]
-    private void UsageNoticeTurnOff()
-    {
-        _host.Settings.Update(s => s.Usage.Enabled = false);
-        UsageNoticeVisible = false;
-    }
 
     /// <summary>Switches view.</summary>
     [RelayCommand]
