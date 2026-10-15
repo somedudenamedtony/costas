@@ -32,6 +32,7 @@ public sealed class RigctldRig : IRig
     private RigctldClient? _meters;
     private int _port;
     private int _restarts;
+    private int _backoff;
     private bool _modeFallback;
     private volatile bool _disposed;
     private volatile bool _pttMayBeOn;
@@ -337,7 +338,7 @@ public sealed class RigctldRig : IRig
             // A dead rigctld is a rig error (the transmitter must stop), not something to paper over by restarting quietly.
             if (_client is null || !ProcessRunning) throw new RigException("rigctld is not running; restarting it.");
             var result = await f(_client).ConfigureAwait(false);
-            _restarts = 0; // working again: the next fault starts the back-off from the shortest delay
+            _backoff = 0; // working again: the next fault starts the back-off from the shortest delay
             return result;
         }
         catch (RigException ex) when (!ex.Refused && !_disposed)
@@ -363,7 +364,8 @@ public sealed class RigctldRig : IRig
         try
         {
             if (_disposed) return;
-            var delay = RestartDelays[Math.Min(_restarts, RestartDelays.Length - 1)];
+            var delay = RestartDelays[Math.Min(_backoff, RestartDelays.Length - 1)];
+            _backoff++;
             _restarts++;
             await StopProcessAsync().ConfigureAwait(false);
             await Task.Delay(delay, ct).ConfigureAwait(false);
