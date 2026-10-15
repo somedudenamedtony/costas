@@ -23,6 +23,14 @@ public static class ClockEstimate
         return list.Count % 2 == 1 ? list[mid] : (list[mid - 1] + list[mid]) / 2;
     }
 
+    /// <summary>
+    /// The clock offset to act on. SNTP is the better measurement, but it is taken only at start and hourly; when the
+    /// decodes' median DT disagrees with it by more than a second, the clock has moved since (a step after sleep, or the
+    /// operator fixed it), and the live median DT is used instead.
+    /// </summary>
+    public static double? Offset(double? sntpSeconds, double? medianDtSeconds) =>
+        sntpSeconds is { } s && medianDtSeconds is { } m && Math.Abs(Math.Abs(s) - Math.Abs(m)) > 1.0 ? m : sntpSeconds ?? medianDtSeconds;
+
     /// <summary>True when transmitting is allowed with this offset.</summary>
     public static bool TransmitAllowed(double? offsetSeconds, double blockAboveSeconds, out string reason)
     {

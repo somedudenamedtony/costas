@@ -504,7 +504,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 return;
             }
             stopTune = _tx.CurrentMessage == TuneMessage;
-            if (pending is not null && pending.Plan.Message == plan.Message)
+            if (pending is not null && pending.Plan.Message == plan.Message && pending.OffsetHz == (plan.TxOffsetHz ?? _txOffset))
             {
                 // The decodes did not change the message: send it now instead of waiting out the hold.
                 if (held && _tx.Release() && now > pttDue) _tx.BeginLate(pending, _config.PttLead);
@@ -516,7 +516,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             if (!late && _quickSlot == slot - ModeInfo.SlotLength(mode) && (_engine.InContact || _engine.CallingCq))
                 hold = new TxHold(txStart + _config.LateStartLimit - _config.PttLead, _config.PttLead);
             offset = plan.TxOffsetHz ?? _txOffset;
-            guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
+            guard = new TxGuardInput(_config.Band, _dialHz, ClockEstimate.Offset(_sntpOffset, _medianDt), _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         }
         // A Tune tone still on the air gives way to the message the operator just asked for.
@@ -754,7 +754,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             if (_engine.CallingCq || _engine.InContact || _tx.Transmitting || _rigTuningUntil > _clock.UtcNow)
                 return "Tune is only available while nothing else is being sent.";
             offset = _txOffset;
-            guard = new TxGuardInput(_config.Band, _dialHz, _sntpOffset ?? _medianDt, _config.ClockBlockSeconds,
+            guard = new TxGuardInput(_config.Band, _dialHz, ClockEstimate.Offset(_sntpOffset, _medianDt), _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         }
         if (await _tx.StartRigTunerAsync(offset, guard).ConfigureAwait(false))
@@ -1030,7 +1030,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 TxOffsetClear = _txOffsetClear,
                 TxOffsetAuto = _config.FixedTxOffsetHz is null,
                 Fault = _fault ?? _engine.StopReason,
-                ClockOffsetSeconds = _sntpOffset ?? _medianDt,
+                ClockOffsetSeconds = ClockEstimate.Offset(_sntpOffset, _medianDt),
                 Waiting = _engine.Waiting.ToList(),
                 TxMeters = _txMeters,
                 Activity = _activity.ToList(),

@@ -55,6 +55,17 @@ public class TransmitLogicTests
         ClockEstimate.MedianDt(dts).Should().BeApproximately(expected, 1e-9);
     }
 
+    [Theory]
+    [InlineData(0.1, 0.2, 0.1)] // they agree: SNTP
+    [InlineData(0.1, 3.1, 3.1)] // the clock stepped after the SNTP check: the live DT
+    [InlineData(3.0, 0.1, 0.1)] // the operator fixed the clock: the live DT
+    [InlineData(null, 2.5, 2.5)]
+    [InlineData(0.3, null, 0.3)]
+    public void Offset_SntpAndLiveDt_UsesSntpUnlessTheClockMovedSince(double? sntp, double? dt, double? expected)
+    {
+        ClockEstimate.Offset(sntp, dt).Should().Be(expected);
+    }
+
     [Fact]
     public void TransmitAllowed_ThreeSecondsOff_Blocked()
     {

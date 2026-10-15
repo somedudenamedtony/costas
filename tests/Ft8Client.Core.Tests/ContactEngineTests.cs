@@ -334,6 +334,27 @@ public class ContactEngineTests
     }
 
     [Fact]
+    public void FlowB_WaitingListFull_NewCallerToCqStillAnswered()
+    {
+        var s = new Sim();
+        s.E.CallCq(SlotParity.Even, Sim.T0);
+        s.Step();
+        s.Step("W7LIT K1ABC FN42", "W7LIT K2AAA FN31", "W7LIT K3BBB FM19", "W7LIT K4CCC EM73", "W7LIT K5DDD EM12", "W7LIT K6EEE CM87");
+        s.E.Waiting.Should().HaveCount(ContactEngine.MaxWaiting);
+        s.Step();
+        s.Step("W7LIT K1ABC R-08");
+        s.Step().Should().Be("K1ABC W7LIT RR73");
+        s.Step("W7LIT K1ABC 73");
+        s.Step().Should().Be("CQ W7LIT DN40");
+
+        var act = () => s.Step("W7LIT K1GGG FN42");
+
+        act.Should().NotThrow();
+        s.E.DxCall.Should().Be("K1GGG");
+        s.Step().Should().Be("K1GGG W7LIT -12");
+    }
+
+    [Fact]
     public void FlowB_AnswerAfterThisContact_AnswersQueuedCaller()
     {
         var s = new Sim();
