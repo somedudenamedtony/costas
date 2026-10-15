@@ -74,6 +74,13 @@ Automatic level stops 6 dB above the level you typed in Settings. If ALC still r
 be reaching the radio: check the audio output device in Station setup, that the radio takes its transmit audio from
 USB in data mode, and the radio's USB audio input level. The app log notes when the level reaches its highest.
 
+### The radio keys but sends no audio (no power out)
+
+Look at **Settings › Transmitting › Audio level**. If it reads -40 dB or close to it, automatic level was walked down by a
+fault in versions before 0.1.0.336 that sometimes read the SWR meter as ALC. Later versions clear such levels when
+they start; you can also type your usual level (for example -6) there and press Save. If the level looks normal, check the
+audio output device in Station setup and that the radio takes its transmit audio from USB in data mode.
+
 ## Receiving
 
 ### No decodes

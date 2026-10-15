@@ -81,6 +81,20 @@ public class TxLevelTunerTests
     }
 
     [Fact]
+    public void Next_HighAlcAtLowestAllowed_StaysThere()
+    {
+        var s = TxLevelTuner.Next(new TxLevelState(-27), 1.0, 0, minDb: -30);
+        s.State.GainDb.Should().Be(-30);
+        TxLevelTuner.Next(s.State, 1.0, 0, minDb: -30).State.GainDb.Should().Be(-30);
+    }
+
+    [Fact]
+    public void Next_LowestBelowFloor_StillStopsAtFloor()
+    {
+        TxLevelTuner.Next(new TxLevelState(-39), 1.0, 0, minDb: -60).State.GainDb.Should().Be(TxLevelTuner.FloorDb);
+    }
+
+    [Fact]
     public void Next_RadioWhoseKneeIsAtMinusEight_SettlesWithoutSwinging()
     {
         // ALC acts above -8 dB: rises from -12 to the knee, overshoots once, then stays put.

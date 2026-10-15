@@ -253,9 +253,11 @@ On by default (Settings › Transmitting), owner request 2026-10-12. After each 
 | 0.02 to 0.25 | none |
 | 0.25 to 0.5 | down 1 dB |
 | 0.5 to 0.75 | down 3 dB |
-| 0.75 or more | down 6 dB, never below -40 dBFS |
+| 0.75 or more | down 6 dB |
 
-The lowest level that made ALC act is kept for the session per band, so the level does not swing back and forth; after 10 quiet transmissions held just below it (the radio's power may have been turned up) it is forgotten and the level probes upward again. The level is saved per band (`TxGainByBand` in the station profile); a band with no level of its own uses the level in Settings. Typing a level in Settings sets the current band's level and the base for the 6 dB cap. A radio that reports no ALC, or automatic level turned off, leaves the level alone. When it lowered the level, the ALC warning says so instead of telling the operator to lower it. **VERIFY** the 0.02 and 0.25 thresholds on the FT-710 and IC-7300 (where the radio's own ALC meter sits at each).
+The level never goes below the level the operator set less 20 dB, nor below -40 dBFS. A reading outside 0 to 1 is not an ALC reading (SWR read from a rigctld reply out of step is 1 or more) and leaves the level alone.
+
+The lowest level that made ALC act is kept for the session per band, so the level does not swing back and forth; after 10 quiet transmissions held just below it (the radio's power may have been turned up) it is forgotten and the level probes upward again. The level is saved per band (`TxGainByBand` in the station profile); a band with no level of its own uses the level in Settings. Typing a level in Settings sets the current band's level and the base for the 6 dB cap. A radio that reports no ALC, or automatic level turned off, leaves the level alone. When it lowered the level, the ALC warning says so instead of telling the operator to lower it; at the lowest level it keeps telling the operator. Settings schema 2 drops any saved band level more than 20 dB below the operator's: before 0.1.0.336 a reply out of step walked levels down to -40 dBFS, where the radio sends almost nothing. **VERIFY** the 0.02 and 0.25 thresholds on the FT-710 and IC-7300 (where the radio's own ALC meter sits at each).
 
 ## 12. Pileup (who else is calling)
 

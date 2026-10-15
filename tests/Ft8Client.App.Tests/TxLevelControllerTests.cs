@@ -91,4 +91,25 @@ public sealed class TxLevelControllerTests : IDisposable
         _level.OnMeasured(r).Should().Be(r);
         _tx.GainDb.Should().Be(-10);
     }
+
+    [Fact]
+    public void OnMeasured_AlcAboveOne_LeavesLevel()
+    {
+        // SWR read in ALC's place (a reply out of step) is 1 or more: not an ALC reading.
+        var r = Meters(1.6);
+        _level.OnMeasured(r).Should().Be(r);
+        _tx.GainDb.Should().Be(-10);
+        _settings.Current.Profile.Audio.TxGainByBand.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void OnMeasured_HighAlcEveryTime_StopsTwentyDecibelsBelowSettingsLevelAndKeepsAdvice()
+    {
+        for (var i = 0; i < 20; i++) _level.OnMeasured(Meters(1.0));
+        _tx.GainDb.Should().Be(-10 - AudioSettings.AutoLowestBelowDb);
+
+        var shown = _level.OnMeasured(Meters(1.0));
+        _tx.GainDb.Should().Be(-10 - AudioSettings.AutoLowestBelowDb);
+        shown.Warning.Should().Contain(TxMeterCheck.AlcAdvice);
+    }
 }

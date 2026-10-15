@@ -36,19 +36,20 @@ public static class TxLevelTuner
 
     /// <summary>
     /// The state for the next transmission after one that read <paramref name="alc"/>. The level never goes above
-    /// <paramref name="maxDb"/> (at most 0 dBFS) or below <see cref="FloorDb"/>.
+    /// <paramref name="maxDb"/> (at most 0 dBFS) or below <paramref name="minDb"/> (at least <see cref="FloorDb"/>).
     /// </summary>
-    public static TxLevelStep Next(TxLevelState state, double alc, double maxDb)
+    public static TxLevelStep Next(TxLevelState state, double alc, double maxDb, double minDb = FloorDb)
     {
         ArgumentNullException.ThrowIfNull(state);
         maxDb = Math.Min(maxDb, 0);
+        var floor = Math.Max(FloorDb, minDb);
         var g = state.GainDb;
 
         if (alc >= High)
         {
             var drop = alc >= 0.75 ? 6.0 : alc >= 0.5 ? 3.0 : 1.0;
             var ceiling = Math.Min(state.CeilingDb ?? g, g);
-            return new(new(Round(Math.Max(FloorDb, g - drop)), ceiling, 0), TxLevelChange.Lowered);
+            return new(new(Round(Math.Max(floor, g - drop)), ceiling, 0), TxLevelChange.Lowered);
         }
         if (alc >= Quiet) return new(state with { QuietAtCeiling = 0 }, TxLevelChange.Held);
 

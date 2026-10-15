@@ -91,6 +91,29 @@ public class DatabaseAndSettingsTests
     }
 
     [Fact]
+    public void SettingsStore_SchemaOne_DropsBandLevelsWalkedDownToSilence()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("ft8set").FullName, "settings.json");
+        File.WriteAllText(path, """
+            { "schema": 1, "profiles": [ { "id": "home", "audio": { "txGainDb": -8,
+              "txGainByBand": { "20m": -40, "40m": -12.5, "17m": -28.5 } } },
+              { "id": "away", "audio": { "txGainByBand": { "20m": -40 } } } ] }
+            """);
+        var s = new SettingsStore(path).Load();
+        s.Schema.Should().Be(AppSettings.CurrentSchema);
+        s.Profiles[0].Audio.TxGainByBand.Should().Equal(new Dictionary<string, double> { ["40m"] = -12.5 });
+        s.Profiles[1].Audio.TxGainByBand.Should().BeEmpty(); // no level of its own: measured from the default
+    }
+
+    [Fact]
+    public void SettingsStore_SchemaTwo_KeepsLowBandLevels()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("ft8set").FullName, "settings.json");
+        File.WriteAllText(path, """{ "schema": 2, "profiles": [ { "id": "home", "audio": { "txGainByBand": { "20m": -40 } } } ] }""");
+        new SettingsStore(path).Load().Profile.Audio.TxGainByBand.Should().ContainKey("20m");
+    }
+
+    [Fact]
     public void SettingsStore_Corrupt_ReturnsDefaultsAndKeepsCopy()
     {
         var path = Path.Combine(Directory.CreateTempSubdirectory("ft8set").FullName, "settings.json");
