@@ -839,12 +839,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     private async Task CheckNow()
     {
         UpdateStatus = "Checking…";
-        if (MessageProblem is { Length: > 0 } problem)
-        {
-            Message = problem;
-            SelectedPage = 1;
-            return;
-        }
         _host.Settings.Update(s =>
         {
             s.Updates.CheckEnabled = true;
@@ -929,6 +923,13 @@ public sealed partial class SettingsViewModel : ObservableObject
             int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v, min, max) : fallback;
         static double Dbl(string s, double min, double max, double fallback) =>
             double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v, min, max) : fallback;
+        // A message that cannot be sent exactly as shown is not saved: the operator is shown why on its page.
+        if (MessageProblem is { Length: > 0 } problem)
+        {
+            Message = problem;
+            SelectedPage = 1;
+            return;
+        }
         var oldHamlibDir = _host.Settings.Current.Paths.HamlibDir;
 
         StoreFields();

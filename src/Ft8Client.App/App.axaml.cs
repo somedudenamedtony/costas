@@ -32,20 +32,30 @@ public sealed class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && Host is { } host)
         {
-            RequestedThemeVariant = host.Settings.Current.Appearance.Theme switch
-            {
-                "light" => ThemeVariant.Light,
-                "dark" => ThemeVariant.Dark,
-                _ => ThemeVariant.Default,
-            };
+            ApplyTheme(host);
+            // A theme chosen in Settings takes effect at once, not at the next start.
+            host.Settings.Changed += _ => Dispatcher.UIThread.Post(() => ApplyTheme(host));
             MainViewModel.Dispatch = a => Dispatcher.UIThread.Post(a);
             MainViewModel.Shutdown = () => Dispatcher.UIThread.Post(() => desktop.Shutdown());
             var vm = new MainViewModel(host);
             desktop.MainWindow = new MainWindow { DataContext = vm };
             WatchForUnexpectedErrors(host, vm);
-            desktop.ShutdownRequested += (_, _) => host.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            // Exit, not ShutdownRequested: a shutdown for an update is forced and never raises ShutdownRequested, which
+            // skipped the final saves (neighbour history, logs) and the services' clean stop.
+            desktop.Exit += (_, _) => host.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void ApplyTheme(AppHost host)
+    {
+        var theme = host.Settings.Current.Appearance.Theme switch
+        {
+            "light" => ThemeVariant.Light,
+            "dark" => ThemeVariant.Dark,
+            _ => ThemeVariant.Default,
+        };
+        if (RequestedThemeVariant != theme) RequestedThemeVariant = theme;
     }
 
     // An error nothing caught (a command failing on a driver or system error) used to close the app without a word.

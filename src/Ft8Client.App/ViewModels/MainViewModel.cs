@@ -589,6 +589,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <inheritdoc />
     public void RetryUpload(long qsoId)
     {
+        // Only a failed or waiting upload: re-queuing one already in QRZ uploads a duplicate, and one never meant for
+        // QRZ (no logbook set up) would wait forever.
+        var state = _host.Qsos.Get(qsoId)?.UploadState;
+        if (state is not (Data.Log.UploadState.Failed or Data.Log.UploadState.Queued)) return;
         _host.Uploads.Enqueue(qsoId, "qrz", _host.Clock.UtcNow);
         _host.Qrz.RetryUploadsNow();
     }
@@ -711,8 +715,19 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Reach.MyCall = s.Profile.Callsign;
         Reach.MyGrid = s.Profile.Grid;
         Reach.Units = SettingsMapper.Units(s);
-        Reach.Bands.Clear();
-        foreach (var b in _host.Frequencies.Bands(mode)) Reach.Bands.Add(b);
+        var reachModeChanged = Reach.Mode != ModeInfo.Name(mode);
+        Reach.Mode = ModeInfo.Name(mode);
+        // Settings are written often (after every transmission with automatic Tx level): refill the band list only when
+        // it changes, and keep the band shown. Clearing it made the drop-down write a null band into the Reach view.
+        var bands = _host.Frequencies.Bands(mode);
+        if (!Reach.Bands.SequenceEqual(bands))
+        {
+            var shown = Reach.Band;
+            Reach.Bands.Clear();
+            foreach (var b in bands) Reach.Bands.Add(b);
+            Reach.Band = bands.Contains(shown) ? shown : bands.FirstOrDefault() ?? shown;
+        }
+        if (reachModeChanged) Reach.Refresh();
     }
 
     // The band menu's activity rows, from PSK Reporter reports of stations near me. A band whose reports are not being

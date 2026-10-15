@@ -147,10 +147,7 @@ public static class Converters
     public static readonly IValueConverter NotEmpty = new FuncValueConverter<string?, bool>(s => !string.IsNullOrEmpty(s));
 
     /// <summary>Caution brush when true, else the default foreground.</summary>
-    public static readonly IValueConverter CautionWhen = new FuncValueConverter<bool, IBrush?>(b => b ? Brush("CautionBrush") : null);
-
-    /// <summary>Transmitting colours the Halt button.</summary>
-    public static readonly IValueConverter CriticalWhen = new FuncValueConverter<bool, IBrush?>(b => b ? Brush("CriticalBrush") : null);
+    public static readonly IValueConverter CautionWhen = new FuncValueConverter<bool, object?>(b => b ? Brush("CautionBrush") : AvaloniaProperty.UnsetValue);
 
     /// <summary>Critical text while transmitting, primary otherwise.</summary>
     public static readonly IValueConverter TransmittingText = new FuncValueConverter<bool, IBrush?>(b => Brush(b ? "CriticalBrush" : "TextPrimaryBrush"));

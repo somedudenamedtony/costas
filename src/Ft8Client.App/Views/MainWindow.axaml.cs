@@ -6,10 +6,13 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Ft8Client.App.ViewModels;
 
 namespace Ft8Client.App.Views;
@@ -152,9 +155,15 @@ public partial class MainWindow : Window
         vm.Activity();
         var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
         var typing = e.Source is TextBox;
+        // A drop-down, menu or flyout is open: its keys are its own (Esc closes it; it must not abandon the contact).
+        var inPopup = InPopup(e.Source);
+        // Enter and the arrows belong to the control that has focus (a button, a drop-down); only on the station list or
+        // nothing in particular do they move through Next in line and call. Enter on Halt Tx must never call a station.
+        var listKeys = vm.Tab == 0 && !typing && !inPopup
+                       && e.Source is not (Button or ComboBox or ComboBoxItem or MenuItem or Slider or NumericUpDown);
         switch (e.Key)
         {
-            case Key.Escape:
+            case Key.Escape when !inPopup:
                 vm.Escape();
                 e.Handled = true;
                 break;
@@ -182,18 +191,28 @@ public partial class MainWindow : Window
                 OpenDialog("shortcuts");
                 e.Handled = true;
                 break;
-            case Key.Enter when vm.Tab == 0 && !typing:
+            case Key.Enter when listKeys:
                 vm.Operate.CallSelected();
                 e.Handled = true;
                 break;
-            case Key.Up when vm.Tab == 0 && !typing:
+            case Key.Up when listKeys:
                 vm.Operate.MoveSelection(-1);
                 e.Handled = true;
                 break;
-            case Key.Down when vm.Tab == 0 && !typing:
+            case Key.Down when listKeys:
                 vm.Operate.MoveSelection(1);
                 e.Handled = true;
                 break;
         }
+    }
+
+    private static bool InPopup(object? source)
+    {
+        if (source is ComboBox { IsDropDownOpen: true }) return true;
+        for (var v = source as Visual; v is not null; v = v.GetVisualParent())
+        {
+            if (v is PopupRoot or OverlayPopupHost) return true;
+        }
+        return false;
     }
 }
