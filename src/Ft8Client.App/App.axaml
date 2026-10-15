@@ -86,6 +86,19 @@
       <Setter Property="MinHeight" Value="32" />
       <Setter Property="CornerRadius" Value="4" />
     </Style>
+    <!-- Small buttons laid over the waterfall's frequency scale (pop out, pop in). The waterfall is always dark. -->
+    <Style Selector="Button.wfoverlay">
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="Padding" Value="5,0" />
+      <Setter Property="Margin" Value="0,1,2,0" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Background" Value="#BF07121E" />
+      <Setter Property="Foreground" Value="#D6DDE6" />
+      <Setter Property="BorderBrush" Value="#2C3C4F" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
     <Style Selector="Button.critical">
       <Setter Property="Background" Value="{DynamicResource CriticalBrush}" />
       <Setter Property="Foreground" Value="White" />
