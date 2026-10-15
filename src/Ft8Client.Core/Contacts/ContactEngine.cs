@@ -284,7 +284,8 @@ public sealed class ContactEngine
             var first = toMe.FirstOrDefault(x => x.M.Kind is MessageKind.GridReply or MessageKind.Report);
             if (first.M is not null)
             {
-                AddWaiting(first.H, first.M, parity, slotStartUtc);
+                // Past the cap too: a caller to my CQ is answered even when the waiting list is full.
+                AddWaiting(first.H, first.M, parity, slotStartUtc, ignoreCap: true);
                 var w = _waiting.First(x => Callsign.EqualsCall(x.Call, first.M.SenderCall));
                 StartFromCaller(w);
             }
@@ -607,6 +608,7 @@ public sealed class ContactEngine
         c.Outcome = ContactOutcome.InProgress;
         c.StepTxCount = 0;
         c.AwaitingReply = false;
+        _extraMessage = null; // a free text or extra 73 queued meanwhile belonged to another station
         _c = c;
         foreach (var (m, slot, heard) in s.Late)
         {
@@ -671,7 +673,7 @@ public sealed class ContactEngine
         c.Steps[index] = c.Steps[index] with { Count = c.Steps[index].Count + 1, TimeUtc = utc };
 
     // A station replying after I stopped its contact is always kept, whatever it sent, so the operator sees it.
-    private void AddWaiting(HeardMessage h, ParsedMessage m, SlotParity parity, DateTime slotUtc, bool afterStop = false)
+    private void AddWaiting(HeardMessage h, ParsedMessage m, SlotParity parity, DateTime slotUtc, bool afterStop = false, bool ignoreCap = false)
     {
         var call = m.SenderCall!;
         var i = _waiting.FindIndex(x => Callsign.EqualsCall(x.Call, call));
@@ -687,7 +689,7 @@ public sealed class ContactEngine
             };
             return;
         }
-        if (!afterStop && _waiting.Count >= MaxWaiting) return;
+        if (!afterStop && !ignoreCap && _waiting.Count >= MaxWaiting) return;
         if (!afterStop && m.Kind is not (MessageKind.GridReply or MessageKind.Report or MessageKind.RogerReport or MessageKind.Bare)) return;
         _waiting.Add(new WaitingCaller(call, m.Grid, h.Decode.Snr, m.Kind == MessageKind.RogerReport ? MessageKind.Report : m.Kind,
             m.Report, parity, h.Decode.OffsetHz, slotUtc, slotUtc, AfterStop: afterStop, LastMessage: m.Text));

@@ -197,7 +197,11 @@ public sealed partial class ReachViewModel : ObservableObject
     /// <summary>Mode.</summary>
     public string Mode { get; set; } = "FT8";
 
-    partial void OnBandChanged(string value) => Refresh();
+    partial void OnBandChanged(string value)
+    {
+        if (value is null) return; // a drop-down refilling its list clears its selection: not a band
+        Refresh();
+    }
 
     partial void OnWindowChanged(string value) => Refresh();
 

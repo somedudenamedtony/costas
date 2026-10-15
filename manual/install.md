@@ -67,7 +67,9 @@ PulseAudio holds it, pick **pulse** or **pipewire** and choose the radio's sound
 settings instead.
 
 Updates: the update bar works the same, but **Update** opens the release page; download the new tarball and unpack
-it over the old folder. Your log and settings live in `~/.local/share/Costas/` and are kept.
+it. It unpacks into a new folder named for its version: run `./Costas` from there and delete the old folder. If you
+added Costas to your desktop's menu, point `Exec=` in its `costas.desktop` at the new folder. Your log and settings live
+in `~/.local/share/Costas/` and are kept.
 
 ## Next
 

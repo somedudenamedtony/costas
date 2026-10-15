@@ -144,4 +144,19 @@ public class RemoteControlRulesTests
     {
         LocalNetwork.Contains(IPAddress.Parse(address)).Should().Be(expected);
     }
+
+    [Fact]
+    public void Issue_PastTheCap_ForgetsTheOldestAndStaysUnderTheCredentialLimit()
+    {
+        var tokens = new DeviceTokens();
+        var first = tokens.Issue();
+        var rest = Enumerable.Range(0, DeviceTokens.MaxDevices).Select(_ => tokens.Issue()).ToList();
+
+        tokens.Count.Should().Be(DeviceTokens.MaxDevices);
+        tokens.Verify(first).Should().BeFalse();
+        rest.Should().OnlyContain(t => tokens.Verify(t));
+        // Windows stores the list as UTF-16 and refuses more than 2,560 bytes.
+        (tokens.Serialize().Length * 2).Should().BeLessThan(2560);
+        DeviceTokens.Parse(tokens.Serialize() + "," + tokens.Serialize()).Count.Should().Be(DeviceTokens.MaxDevices);
+    }
 }

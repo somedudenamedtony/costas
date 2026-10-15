@@ -86,7 +86,7 @@ public class SessionSimulationTests
         var db = new SqliteDatabase(Path.Combine(Directory.CreateTempSubdirectory("ft8partner").FullName, "log.db"));
         var qsos = new QsoRepository(db);
         var queue = new UploadQueueRepository(db);
-        var log = new DatabaseSessionLog(qsos, queue, "home", () => true);
+        var log = new DatabaseSessionLog(qsos, queue, () => "home", () => true);
         var config = Config() with { Contact = new ContactSettings { WatchdogMinutes = 60 } };
         var d = new SimDriver(source, config, log);
         d.Session.Transmitting += partner.OnTransmitted;

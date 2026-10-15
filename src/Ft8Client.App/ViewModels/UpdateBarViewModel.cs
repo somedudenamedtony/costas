@@ -67,7 +67,7 @@ public sealed partial class UpdateBarViewModel : ObservableObject
         if (!OperatingSystem.IsWindows())
         {
             if (_updates.Available is { PageUrl: { Length: > 0 } page }) Browser.Open(page);
-            Detail = "Download the Linux build from the release page and unpack it over this one.";
+            Detail = "Download the Linux build from the release page and unpack it; it makes a new folder, so run Costas from there.";
             return;
         }
         if (_busyOnAir())

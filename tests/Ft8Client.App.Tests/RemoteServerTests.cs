@@ -113,6 +113,60 @@ public sealed class RemoteServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Socket_PhonesForgotten_ConnectedPhoneCutOff()
+    {
+        var token = await PairAsync();
+        using var ws = await ConnectAsync();
+        await SendAsync(ws, new { type = "hello", token });
+        await ReceiveAsync(ws);
+
+        _control.ForgetPhones();
+        await _server.BroadcastAsync();
+
+        var buf = new byte[4096];
+        var r = await ws.ReceiveAsync(buf, TestContext.Current.CancellationToken);
+        r.MessageType.Should().Be(WebSocketMessageType.Close);
+        ws.CloseStatusDescription.Should().Be("unpaired");
+        _target.Calls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Page_Script_Parses()
+    {
+        // A syntax error leaves phones on a blank page, and the server tests above never run the script.
+        var node = FindNode();
+        Assert.SkipWhen(node is null, "node is not installed.");
+        using var s = typeof(RemoteServer).Assembly.GetManifestResourceStream("Ft8Client.App.Remote.index.html")!;
+        var html = new StreamReader(s).ReadToEnd();
+        var start = html.LastIndexOf("<script>", StringComparison.Ordinal) + "<script>".Length;
+        var end = html.LastIndexOf("</script>", StringComparison.Ordinal);
+        var file = Path.Combine(Path.GetTempPath(), $"costas-remote-{Guid.NewGuid():N}.js");
+        File.WriteAllText(file, html[start..end]);
+        try
+        {
+            using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(node!, ["--check", file])
+            {
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            })!;
+            var err = p.StandardError.ReadToEnd();
+            p.WaitForExit(30_000).Should().BeTrue();
+            p.ExitCode.Should().Be(0, err);
+        }
+        finally
+        {
+            File.Delete(file);
+        }
+    }
+
+    private static string? FindNode()
+    {
+        var name = OperatingSystem.IsWindows() ? "node.exe" : "node";
+        return (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(Path.PathSeparator)
+            .Select(d => Path.Combine(d, name)).FirstOrDefault(File.Exists);
+    }
+
+    [Fact]
     public async Task Socket_OtherSiteOrigin_Refused()
     {
         using var ws = new ClientWebSocket();

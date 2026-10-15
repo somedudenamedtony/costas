@@ -41,7 +41,7 @@ public sealed class QrzLogbookClient(HttpClient http, Uri? endpoint = null)
     public async Task<IReadOnlyList<AdifRecord>> FetchPageAsync(string key, long afterLogId, DateTime? modifiedSince, CancellationToken ct)
     {
         var option = $"MAX:{PageSize},AFTERLOGID:{afterLogId.ToString(CultureInfo.InvariantCulture)}";
-        if (modifiedSince is { } since) option = $"MODSINCE:{since:yyyy-MM-dd}," + option;
+        if (modifiedSince is { } since) option = string.Create(CultureInfo.InvariantCulture, $"MODSINCE:{since:yyyy-MM-dd},") + option;
         var r = await SendAsync(key, "FETCH", [new("OPTION", option)], ct).ConfigureAwait(false);
         if (r.Result.Equals("FAIL", StringComparison.OrdinalIgnoreCase) && (r.Count ?? 0) == 0 && r.Reason is null) return [];
         ThrowIfFailed(r);

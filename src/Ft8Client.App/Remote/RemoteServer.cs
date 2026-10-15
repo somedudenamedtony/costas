@@ -100,6 +100,12 @@ public sealed class RemoteServer : IAsyncDisposable
     {
         foreach (var c in _clients.Values)
         {
+            // "Forget paired phones" must cut off a phone that is already connected, not only stop it signing in again.
+            if (_control.SignIn(c.Token) is null)
+            {
+                await CloseAsync(c, "unpaired").ConfigureAwait(false);
+                continue;
+            }
             await SendAsync(c, new { type = "state", state = _state(c.DeviceId) }).ConfigureAwait(false);
         }
     }
@@ -164,13 +170,14 @@ public sealed class RemoteServer : IAsyncDisposable
         using var helloCts = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted);
         helloCts.CancelAfter(HelloTimeout);
         var hello = await ReceiveAsync(socket, buffer, helloCts.Token).ConfigureAwait(false);
-        var deviceId = hello is null ? null : _control.SignIn(Parse<HelloMessage>(hello)?.Token);
+        var token = hello is null ? null : Parse<HelloMessage>(hello)?.Token;
+        var deviceId = _control.SignIn(token);
         if (deviceId is null)
         {
             await CloseAsync(socket, "unpaired").ConfigureAwait(false);
             return;
         }
-        var client = new Client(socket, deviceId);
+        var client = new Client(socket, deviceId, token!);
         var id = Guid.NewGuid();
         _clients[id] = client;
         try
@@ -183,18 +190,27 @@ public sealed class RemoteServer : IAsyncDisposable
                 if (text is null) break;
                 var cmd = Parse<RemoteCommand>(text);
                 if (cmd is null || string.IsNullOrEmpty(cmd.Type)) continue;
+                if (_control.SignIn(token) is null)
+                {
+                    await CloseAsync(client, "unpaired").ConfigureAwait(false);
+                    break;
+                }
                 string? note;
+                RemoteState? state = null;
                 try
                 {
                     note = await _control.HandleAsync(deviceId, cmd).ConfigureAwait(false);
+                    if (cmd.Type != "ping") state = _state(deviceId);
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
                 {
+                    // Also covers reading the log while a contact is being written: the next broadcast catches up.
                     Log.Warning(ex, "Remote command {Type} failed", cmd.Type);
                     note = "That did not work at the station.";
                 }
                 if (cmd.Type == "ping") await SendAsync(client, new { type = "pong" }).ConfigureAwait(false);
-                else await SendAsync(client, new { type = "state", state = _state(deviceId), note }).ConfigureAwait(false);
+                else if (state is not null) await SendAsync(client, new { type = "state", state, note }).ConfigureAwait(false);
+                else await SendAsync(client, new { type = "note", note }).ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is WebSocketException or OperationCanceledException or IOException)
@@ -267,6 +283,26 @@ public sealed class RemoteServer : IAsyncDisposable
         }
     }
 
+    private static async Task CloseAsync(Client c, string why)
+    {
+        // Only the closing frame is sent here: the phone's receive loop may be waiting on this socket and sees the reply.
+        await c.SendLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            if (c.Socket.State == WebSocketState.Open)
+                await c.Socket.CloseOutputAsync(WebSocketCloseStatus.PolicyViolation, why, cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is WebSocketException or OperationCanceledException or IOException or ObjectDisposedException)
+        {
+            c.Socket.Abort();
+        }
+        finally
+        {
+            c.SendLock.Release();
+        }
+    }
+
     private static async Task CloseAsync(WebSocket socket, string why)
     {
         try
@@ -283,11 +319,13 @@ public sealed class RemoteServer : IAsyncDisposable
 
     private sealed record HelloMessage(string? Type, string? Token);
 
-    private sealed class Client(WebSocket socket, string deviceId)
+    private sealed class Client(WebSocket socket, string deviceId, string token)
     {
         public WebSocket Socket { get; } = socket;
 
         public string DeviceId { get; } = deviceId;
+
+        public string Token { get; } = token;
 
         public SemaphoreSlim SendLock { get; } = new(1, 1);
     }

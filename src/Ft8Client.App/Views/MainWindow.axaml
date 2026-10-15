@@ -223,7 +223,7 @@
           <Button Content="{Binding TuneText}" Command="{Binding TuneCommand}" IsEnabled="{Binding CanTune}" MinWidth="70"
                   ToolTip.Tip="Starts the radio's own antenna tuner. A radio without one gets a steady tone at your transmit offset for up to 10 seconds instead. Click again to stop." />
           <Button Content="Halt Tx" Command="{Binding HaltCommand}" MinWidth="70" AutomationProperties.Name="Halt transmit"
-                  Background="{Binding Transmitting, Converter={x:Static v:Converters.CriticalWhen}}" />
+                  Classes.critical="{Binding Transmitting}" />
           <StackPanel Width="200" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding BarShowsCqAndSlot}">
             <DockPanel>
               <TextBlock DockPanel.Dock="Right" Text="{Binding SlotRemaining}" Classes="secondary num" />

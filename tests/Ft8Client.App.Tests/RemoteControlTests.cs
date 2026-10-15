@@ -60,6 +60,34 @@ public class RemoteControlTests
         _target.Calls.Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData("transmit")]
+    [InlineData("offset")] // An empty offset box sends no hertz.
+    [InlineData("call")] // No callsign.
+    public async Task HandleAsync_NotUnderstood_DoesNotTakeControlOrResetWatchdog(string type)
+    {
+        var rc = Make();
+        var note = await rc.HandleAsync("phone", new RemoteCommand(type));
+
+        note.Should().Be("The station did not understand that.");
+        rc.Lease.IsHeld.Should().BeFalse();
+        _target.ActivityCount.Should().Be(0);
+        _target.WatchdogCap.Should().BeNull();
+    }
+
+    [Fact]
+    public void Pair_SavingFails_StillPairsForThisRun()
+    {
+        var gate = new PairingGate(() => 314159);
+        var rc = new RemoteControl(_target, _clock, new DeviceTokens(), _ => throw new InvalidOperationException("credential store full"), gate);
+        gate.Open(_clock.UtcNow);
+
+        var token = rc.Pair("314159");
+
+        token.Should().NotBeNull();
+        rc.SignIn(token).Should().NotBeNull();
+    }
+
     [Fact]
     public async Task HandleAsync_LogNowWhenNotAllowed_Ignored()
     {

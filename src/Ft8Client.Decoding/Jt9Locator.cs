@@ -41,10 +41,7 @@ public static class Jt9Locator
                 UseShellExecute = false,
                 CreateNoWindow = true,
             };
-            using var p = System.Diagnostics.Process.Start(psi);
-            if (p is null) return false;
-            var text = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
-            p.WaitForExit(5000);
+            if (Run(psi) is not { } text) return false;
             return text.Contains("--multithread", StringComparison.Ordinal) ||
                    System.Text.RegularExpressions.Regex.IsMatch(text, @"(?m)^\s*-M\b");
         }
@@ -72,10 +69,7 @@ public static class Jt9Locator
                 UseShellExecute = false,
                 CreateNoWindow = true,
             };
-            using var p = System.Diagnostics.Process.Start(psi);
-            if (p is null) return null;
-            var text = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
-            if (!p.WaitForExit(5000)) p.Kill();
+            if (Run(psi) is not { } text) return null;
             var line = text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
             return string.IsNullOrEmpty(line) ? null : line;
         }
@@ -119,5 +113,27 @@ public static class Jt9Locator
         {
             yield return Path.Combine(p, ExecutableName);
         }
+    }
+
+    // Runs a probe for at most 5 s and returns what it printed. Reading to the end before waiting made the timeout
+    // useless: a probe that hung froze Costas's start-up.
+    private static string? Run(System.Diagnostics.ProcessStartInfo psi)
+    {
+        using var p = System.Diagnostics.Process.Start(psi);
+        if (p is null) return null;
+        var output = p.StandardOutput.ReadToEndAsync();
+        var error = p.StandardError.ReadToEndAsync();
+        if (!p.WaitForExit(5000))
+        {
+            try
+            {
+                p.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            return null;
+        }
+        return Task.WaitAll([output, error], 1000) ? output.Result + error.Result : null;
     }
 }

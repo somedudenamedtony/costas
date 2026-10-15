@@ -235,6 +235,15 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial TextKind StatusKind { get; set; }
 
+    private static readonly TimeSpan NoteTime = TimeSpan.FromSeconds(8);
+    private DateTime _noteUntilUtc;
+    private bool _applyingStatus;
+
+    partial void OnStatusTextChanged(string value)
+    {
+        if (!_applyingStatus) _noteUntilUtc = DateTime.UtcNow + NoteTime;
+    }
+
     /// <summary>"Tx offset 1650 Hz · clear".</summary>
     [ObservableProperty]
     public partial string TxOffsetText { get; set; } = string.Empty;
@@ -346,7 +355,15 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
         UpdateTune(s);
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
-        (StatusText, StatusKind) = Status(s);
+        // A line set by an operator action ("Added to your Hunt list", "not in the station list") stays for a few seconds;
+        // the snapshot that the action itself publishes used to replace it before it could be read. A fault still shows.
+        var (statusText, statusKind) = Status(s);
+        if (DateTime.UtcNow >= _noteUntilUtc || statusKind == TextKind.Critical)
+        {
+            _applyingStatus = true;
+            (StatusText, StatusKind) = (statusText, statusKind);
+            _applyingStatus = false;
+        }
         (MeterText, MeterTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
         Indicators.Clear();
         Indicators.Add(Indicator("Radio", s, ServiceNames.Radio));
@@ -589,6 +606,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <inheritdoc />
     public void RetryUpload(long qsoId)
     {
+        // Only a failed or waiting upload: re-queuing one already in QRZ uploads a duplicate, and one never meant for
+        // QRZ (no logbook set up) would wait forever.
+        var state = _host.Qsos.Get(qsoId)?.UploadState;
+        if (state is not (Data.Log.UploadState.Failed or Data.Log.UploadState.Queued)) return;
         _host.Uploads.Enqueue(qsoId, "qrz", _host.Clock.UtcNow);
         _host.Qrz.RetryUploadsNow();
     }
@@ -711,8 +732,19 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Reach.MyCall = s.Profile.Callsign;
         Reach.MyGrid = s.Profile.Grid;
         Reach.Units = SettingsMapper.Units(s);
-        Reach.Bands.Clear();
-        foreach (var b in _host.Frequencies.Bands(mode)) Reach.Bands.Add(b);
+        var reachModeChanged = Reach.Mode != ModeInfo.Name(mode);
+        Reach.Mode = ModeInfo.Name(mode);
+        // Settings are written often (after every transmission with automatic Tx level): refill the band list only when
+        // it changes, and keep the band shown. Clearing it made the drop-down write a null band into the Reach view.
+        var bands = _host.Frequencies.Bands(mode);
+        if (!Reach.Bands.SequenceEqual(bands))
+        {
+            var shown = Reach.Band;
+            Reach.Bands.Clear();
+            foreach (var b in bands) Reach.Bands.Add(b);
+            Reach.Band = bands.Contains(shown) ? shown : bands.FirstOrDefault() ?? shown;
+        }
+        if (reachModeChanged) Reach.Refresh();
     }
 
     // The band menu's activity rows, from PSK Reporter reports of stations near me. A band whose reports are not being

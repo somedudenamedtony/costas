@@ -20,5 +20,12 @@ public sealed class SystemClock : IClock
     public DateTime UtcNow => DateTime.UtcNow;
 
     /// <inheritdoc />
-    public long Ticks => Stopwatch.GetTimestamp() * TimeSpan.TicksPerSecond / Stopwatch.Frequency;
+    public long Ticks => ToTicks(Stopwatch.GetTimestamp(), Stopwatch.Frequency);
+
+    /// <summary>
+    /// Converts a stopwatch timestamp to 100 ns ticks without overflowing. Multiplying first overflowed a long after about
+    /// 15 minutes of uptime on Linux (1 GHz counter) and 25.6 hours on Windows (10 MHz), and the slot clock stopped.
+    /// </summary>
+    internal static long ToTicks(long timestamp, long frequency) =>
+        timestamp / frequency * TimeSpan.TicksPerSecond + timestamp % frequency * TimeSpan.TicksPerSecond / frequency;
 }

@@ -301,7 +301,8 @@ public sealed class AppHost : IAsyncDisposable
         // The Linux build is a receive-only preview until its transmit audio has been checked on a real radio.
         if (OperatingSystem.IsLinux() && !Simulating) Transmitter.DisabledReason = LinuxPreview.TransmitRefusal;
         TxLevel = new TxLevelController(Transmitter, Settings);
-        var log = new DatabaseSessionLog(Qsos, Uploads, s.Profile.Id, () => Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
+        var log = new DatabaseSessionLog(Qsos, Uploads, () => Settings.Current.Profile.Id,
+            () => !Simulating && Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
             () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band));
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
         TxMeters = new TxMeterMonitor(Transmitter, () => _rig);
@@ -419,6 +420,7 @@ public sealed class AppHost : IAsyncDisposable
         });
         SlotClock.SetMode(mode);
         Session.SetBand(band, mode);
+        await StopTransmitterForRetuneAsync().ConfigureAwait(false);
         var e = Frequencies.Find(band, mode);
         if (e is null) return;
         try
@@ -431,6 +433,14 @@ public sealed class AppHost : IAsyncDisposable
         {
             Session.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, ex.Message, Clock.UtcNow));
         }
+    }
+
+    // The radio must never change frequency with PTT keyed, and a transmission prepared for the old dial (checked
+    // against the old band edges) must not start after it.
+    private async Task StopTransmitterForRetuneAsync()
+    {
+        if (Transmitter.Transmitting) await Transmitter.HaltAsync().ConfigureAwait(false);
+        else Transmitter.CancelPending();
     }
 
     /// <summary>
@@ -448,6 +458,7 @@ public sealed class AppHost : IAsyncDisposable
             Settings.Update(s => s.Operating.Band = band);
             Session.SetBand(band, mode);
         }
+        await StopTransmitterForRetuneAsync().ConfigureAwait(false);
         try
         {
             await _rig.SetFrequencyAsync(hz, _cts.Token).ConfigureAwait(false);
@@ -471,7 +482,8 @@ public sealed class AppHost : IAsyncDisposable
     {
         var a = Settings.Current.Profile.Audio;
         IAudioOutput? closed = null;
-        if (!Simulating && AudioBackend is not NullAudioBackend && !string.Equals(a.OutputId, _outputId, StringComparison.Ordinal))
+        if (!Simulating && AudioBackend is not NullAudioBackend
+            && (!string.Equals(a.OutputId, _outputId, StringComparison.Ordinal) || Transmitter.OutputFault is not null))
         {
             if (Transmitter.Transmitting) await Transmitter.HaltAsync().ConfigureAwait(false);
             closed = _output;
@@ -543,26 +555,41 @@ public sealed class AppHost : IAsyncDisposable
     private void OpenAudio(SlotRecorder recorder)
     {
         var a = Settings.Current.Profile.Audio;
-        try
+        // Each device on its own: an output that fails must not drop an input that is already capturing (the status
+        // then said "No input device configured" while receive worked), and the reason is shown, not only logged.
+        if (a.InputId is not null && AudioBackend is not NullAudioBackend)
         {
-            if (a.InputId is not null && AudioBackend is not NullAudioBackend)
+            IAudioInput? input = null;
+            try
             {
-                _input = AudioBackend.OpenInput(a.InputId, 48_000);
-                _pump = new CapturePump(_input, recorder);
-                _input.Stopped += (_, why) => Session?.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down, why, Clock.UtcNow));
-                _input.Start();
-                _pump.Start();
+                input = AudioBackend.OpenInput(a.InputId, 48_000);
+                var pump = new CapturePump(input, recorder);
+                input.Stopped += (_, why) => Session?.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down, why, Clock.UtcNow));
+                input.Start();
+                pump.Start();
+                (_input, _pump) = (input, pump);
             }
-            if (a.OutputId is not null && AudioBackend is not NullAudioBackend) _output = AudioBackend.OpenOutput(a.OutputId, 48_000);
-            _inputId = a.InputId;
-            _outputId = a.OutputId;
+            catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+            {
+                Log.Warning(ex, "Audio input could not be opened");
+                _audioProblem = $"The input device could not be opened: {ex.Message}";
+                input?.Dispose();
+            }
         }
-        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+        if (a.OutputId is not null && AudioBackend is not NullAudioBackend)
         {
-            Log.Warning(ex, "Audio device could not be opened");
-            _input = null;
-            _output = null;
+            try
+            {
+                _output = AudioBackend.OpenOutput(a.OutputId, 48_000);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+            {
+                Log.Warning(ex, "Audio output could not be opened");
+                _audioProblem ??= $"The output device could not be opened: {ex.Message}";
+            }
         }
+        _inputId = a.InputId;
+        _outputId = a.OutputId;
     }
 
     private async Task OpenRigAsync()
@@ -602,6 +629,17 @@ public sealed class AppHost : IAsyncDisposable
             }
             else
             {
+                if (old is RigctldRig)
+                {
+                    // The old rigctld may hold the same serial port (a new baud rate or PTT setting): on Windows the new
+                    // one could not open it. Let go of the old radio first.
+                    if (Transmitter is { Transmitting: true }) await Transmitter.HaltAsync().ConfigureAwait(false);
+                    var placeholder = new VoxRig(dialHz);
+                    _rig = placeholder;
+                    Transmitter?.SetRig(placeholder);
+                    await old.DisposeAsync().ConfigureAwait(false);
+                    old = placeholder;
+                }
                 try
                 {
                     var port = RigctldRig.CleanSerialPort(r.Port, OperatingSystem.IsWindows());
@@ -612,13 +650,17 @@ public sealed class AppHost : IAsyncDisposable
                 }
                 catch (RigException ex)
                 {
-                    rig = new VoxRig(14_074_000);
+                    rig = new VoxRig(dialHz);
                     status = new ServiceStatus(ServiceHealth.Down, ex.Message, Clock.UtcNow);
                 }
             }
         }
         _rigKey = RigKey(r);
-        rig.Faulted += (_, f) => Session?.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, f.Message, f.TimeUtc));
+        rig.Faulted += (sender, f) =>
+        {
+            // A radio already replaced can still report a late fault while it shuts down; that is not this radio's state.
+            if (ReferenceEquals(sender, _rig)) Session?.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, f.Message, f.TimeUtc));
+        };
         _rig = rig;
         Transmitter?.SetRig(rig);
         if (Plan.MutesTransmitAudio(r))
@@ -651,8 +693,9 @@ public sealed class AppHost : IAsyncDisposable
                 if (_rigOpenStatus is { } ok && Session.Snapshot.Services[ServiceNames.Radio].Health != ServiceHealth.Ok)
                     Session.SetService(ServiceNames.Radio, ok with { SinceUtc = Clock.UtcNow });
             }
-            catch (RigException)
+            catch (Exception ex) when (ex is RigException or ObjectDisposedException)
             {
+                // ObjectDisposedException: the radio was replaced or restarted mid-poll. Keep polling the new one.
             }
             catch (OperationCanceledException)
             {

@@ -19,8 +19,9 @@ namespace Ft8Client.App.Services;
 /// Writes finished contacts to the local log first, then queues them for QRZ and eQSL upload when enabled. The power logged is
 /// what <paramref name="radioPowerWatts"/> reports from the radio, or the power in Settings when it reports nothing. When
 /// <paramref name="parkFor"/> (call, band) names a spotted POTA park, the contact gets ADIF SIG=POTA and SIG_INFO.
+/// <paramref name="profileId"/> is read for each contact, so a profile switched to while running gets its own contacts.
 /// </summary>
-public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository queue, string profileId, Func<bool> uploadEnabled,
+public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository queue, Func<string> profileId, Func<bool> uploadEnabled,
                                        Func<int?>? radioPowerWatts = null, Func<bool>? eqslUploadEnabled = null,
                                        Func<string, string, string?>? parkFor = null) : ISessionLog
 {
@@ -33,7 +34,7 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
         var (mode, submode) = ModeInfo.Adif(c.Mode);
         var q = new QsoRecord
         {
-            ProfileId = profileId,
+            ProfileId = profileId(),
             Call = e.Call,
             QsoDateOn = e.TimeOnUtc,
             QsoDateOff = e.TimeOffUtc,

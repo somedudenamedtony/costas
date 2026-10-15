@@ -178,11 +178,12 @@ From top to bottom:
 | **Halt Tx** | Always available. Drops PTT at once and stops sequencing. ++esc++ does the same |
 | Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar |
 | Meter warning | Appears only when the last transmission's SWR or ALC was high, for example *SWR 3.4 · ALC 70%* |
-| Indicators | **Radio**, **Audio**, **QRZ**, **PSK Reporter**, **POTA**: a dot and a word each. Click to open Diagnostics |
+| Indicators | **Radio**, **Audio**, **QRZ**, **eQSL**, **PSK Reporter**, **POTA**: a dot and a word each. Click to open Diagnostics |
 
 ![Transmit offset flyout](images/tx-offset.png)
 
-Costas has no waterfall. With the offset on Automatic it picks a clear spot in the passband for you each time.
+The strip along the bottom is a waterfall of the passband with a line at your transmit offset: click it to move your
+offset there. **Auto-select** goes back to Automatic, which picks a clear spot in the passband for you each time.
 
 ## Mini mode
 
