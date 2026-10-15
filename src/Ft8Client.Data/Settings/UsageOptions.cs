@@ -12,7 +12,4 @@ public sealed class UsageOptions
 {
     /// <summary>Send anonymous usage counts. On unless the operator turns it off (opt-out).</summary>
     public bool Enabled { get; set; } = true;
-
-    /// <summary>True once the main window has shown the notice that explains them. Nothing is sent before that.</summary>
-    public bool NoticeShown { get; set; }
 }

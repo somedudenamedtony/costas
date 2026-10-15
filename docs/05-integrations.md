@@ -280,7 +280,8 @@ Privacy. Owner decision 2026-10-15.
   sets `APTABASE_APP_KEY` for the publish steps of a manual run on `main` (`AssemblyMetadata` `AptabaseAppKey`). Other builds have no key and send
   nothing. Nothing is sent when the `CI` environment variable is `true` (the installer test starts the app).
 - User-Agent `Costas/<version>` without the callsign: these requests must not identify the station.
-- Nothing is sent before the main window has shown the one-time notice, in simulation, or while the operating system
+- No first-run notice (owner decision 2026-10-15): the switch lives only in Settings, Privacy. Nothing is sent when it
+  is off, in simulation, or while the operating system
   reports no network. Events wait in memory (at most 500, under 23 hours old) and are sent once a minute; failures
   back off up to 30 minutes; whatever is waiting at exit gets one 3-second attempt and is then dropped.
 - Events: `app_started` (settings snapshot, see `UsageEvents`), `app_running` (once a UTC day for long runs),
