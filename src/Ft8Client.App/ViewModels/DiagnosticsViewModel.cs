@@ -79,7 +79,7 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
     private void SaveBundle()
     {
         var path = Path.Combine(_host.Paths.Root, $"diagnostics-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip");
-        var secrets = new[] { SecretNames.QrzLogbookKey(_host.Settings.Current.Profile.Id), SecretNames.QrzUsername, SecretNames.QrzPassword }
+        var secrets = SecretNames.All(_host.Settings.Current.Profiles.Select(p => p.Id))
             .Select(_host.Secrets.Get).Where(v => v is not null).Select(v => v!).ToList();
         DiagnosticsBundle.Write(path, _host.Paths.Settings, _host.Paths.Logs, Rows.Select(r => (r.Key, r.Value)), secrets);
         Message = $"Saved {path}";

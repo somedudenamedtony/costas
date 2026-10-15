@@ -301,7 +301,8 @@ public sealed class AppHost : IAsyncDisposable
         // The Linux build is a receive-only preview until its transmit audio has been checked on a real radio.
         if (OperatingSystem.IsLinux() && !Simulating) Transmitter.DisabledReason = LinuxPreview.TransmitRefusal;
         TxLevel = new TxLevelController(Transmitter, Settings);
-        var log = new DatabaseSessionLog(Qsos, Uploads, s.Profile.Id, () => Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
+        var log = new DatabaseSessionLog(Qsos, Uploads, () => Settings.Current.Profile.Id,
+            () => !Simulating && Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
             () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band));
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
         TxMeters = new TxMeterMonitor(Transmitter, () => _rig);

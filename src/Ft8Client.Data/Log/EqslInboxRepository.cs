@@ -29,7 +29,9 @@ public sealed class EqslInboxRepository(SqliteDatabase db)
         card["eqsl_user"] = null;
         card["eqsl_pswd"] = null;
         card["eqsl_qth_nickname"] = null;
-        var key = $"{contact.Call}|{contact.Band.ToUpperInvariant()}|{DuplicateRule.ModeKey(contact.Mode, contact.Submode)}|{contact.QsoDateOn:yyyyMMddHHmm}";
+        // Invariant: under a Thai or Saudi Windows locale the year would be Buddhist or Hijri, and the same card a new key.
+        var key = string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"{contact.Call}|{contact.Band.ToUpperInvariant()}|{DuplicateRule.ModeKey(contact.Mode, contact.Submode)}|{contact.QsoDateOn:yyyyMMddHHmm}");
         using var c = db.Open();
         c.Execute("""
             INSERT INTO eqsl_inbox(profile_id,card_key,raw_adif,received_utc) VALUES(@profileId,@key,@adif,@now)

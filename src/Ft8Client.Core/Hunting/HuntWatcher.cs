@@ -72,7 +72,7 @@ public sealed class HuntWatcher
     {
         HuntTargetKind.Country => string.Equals(c.EntityKey, t.Value, StringComparison.Ordinal),
         HuntTargetKind.Call => Callsign.EqualsCall(c.Call, t.Value) || Callsign.EqualsCall(Callsign.BaseCall(c.Call), t.Value),
-        HuntTargetKind.State => c.EntityKey == Geo.Entity.UsaKey && UsStates.Normalize(c.Region) == t.Value,
+        HuntTargetKind.State => c.EntityKey is { } k && Awards.AwardBuilder.StateOf(k, c.Region) == t.Value,
         HuntTargetKind.Grid => Grid.Grid4(c.Grid) == t.Value,
         HuntTargetKind.NewCountry => c.EntityKey is { } e && !log.IsEmpty && !log.EntityWorked(e, confirmedOnly),
         _ => false,

@@ -68,7 +68,7 @@ public class SessionNeighbourTests
         var db = new SqliteDatabase(Path.Combine(Directory.CreateTempSubdirectory("ft8sessionlog").FullName, "log.db"));
         var qsos = new QsoRepository(db);
         var queue = new UploadQueueRepository(db);
-        var d = new Driver(new DatabaseSessionLog(qsos, queue, "home", () => true));
+        var d = new Driver(new DatabaseSessionLog(qsos, queue, () => "home", () => true));
         d.Session.SetLookups([new CallsignCacheEntry { Call = "K1ABC", Grid = lookupGrid, Found = true }]);
         // Exercise the engine's log event without transmitting or requiring a decoder binary.
         var engine = (ContactEngine)typeof(Session).GetField("_engine", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(d.Session)!;
