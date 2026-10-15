@@ -798,14 +798,17 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
-    /// <summary>Changes band (and dial frequency): clears the station list, which belongs to the old band.</summary>
-    public void SetBand(string band, Mode mode)
+    /// <summary>
+    /// Changes band (and dial frequency): clears the station list, which belongs to the old band. The dial is
+    /// <paramref name="dialHz"/> when the radio is already there (it was tuned by hand), else the band's FT8/FT4 frequency.
+    /// </summary>
+    public void SetBand(string band, Mode mode, long? dialHz = null)
     {
         lock (_gate)
         {
             var oldMode = _config.Mode;
             _config = _config with { Band = band, Mode = mode };
-            _dialHz = _frequencies.Find(band, mode)?.DialHz ?? _dialHz;
+            _dialHz = dialHz ?? _frequencies.Find(band, mode)?.DialHz ?? _dialHz;
             _tracker = new StationTracker(_config.MyCall, _config.MyGrid, _countries, mode);
             _pileups = new PileupTracker(mode);
             foreach (var (call, e) in _lookups) _tracker.SetLookup(call, e.Grid, e.State, e.City);

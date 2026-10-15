@@ -9,7 +9,7 @@ should not need Settings while operating.
 
 | Item | What it does |
 | --- | --- |
-| **Band** | The band you are on, filled in at start-up. Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
+| **Band** | The band you are on, filled in at start-up, and follows the radio when you change band on it ([below](#changing-band-on-the-radio)). Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
 | **Mode** | FT8 or FT4. Changes the slot length and dial frequency. Locked while transmitting |
 | Frequency | The dial frequency read from the radio, in MHz. Click it to type another frequency or use one you saved ([below](#typing-a-frequency)). Locked while transmitting |
 | **Operate**, **Raw decodes**, **Reach**, **Log**, **Awards** | The five views. ++ctrl+1++ to ++ctrl+5++ |
@@ -22,6 +22,17 @@ DXpeditions often sit off the standard frequency (14.090 instead of 14.074, for 
 type the new one (`14.090`, `14090` in kHz, or `14.090.000` all work) and press **Tune** or ++enter++. Costas moves the
 radio there, and to that band if it is a different one. The usual transmit limits still apply: Costas will not tune
 outside the amateur bands, or to a band it has no transmit limits for.
+
+### Changing band on the radio
+
+You can also change band with the radio's own band button or dial. Costas reads the radio's frequency every second and,
+when it lands on another band, follows it: the **Band** menu switches to the new band, the station list is cleared, your
+per-band transmit level is used, and the new band is remembered for next time. Costas does not move the radio back.
+Any contact or CQ in progress ends, and a transmission waiting for the next slot is cancelled. Tuning off the standard
+FT8/FT4 frequency within the same band only changes the frequency shown.
+
+If the radio goes outside the amateur bands (a broadcast station, say), Costas keeps the last band in the menu, says
+*The radio is on 15.000 MHz, outside the amateur bands* in the status line, and will not transmit until you tune back.
 
 **Save the current frequency** adds the frequency the radio is on to *Your frequencies* in the same menu, so the next
 time it is one click. **Remove** takes one off the list. The standard frequencies are not saved there; they are what the

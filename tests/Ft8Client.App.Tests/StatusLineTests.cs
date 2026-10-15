@@ -38,4 +38,18 @@ public class StatusLineTests
     {
         MainViewModel.Status(InContact(false, null)).Item1.Should().Be("Waiting for K1ABC.");
     }
+
+    [Fact]
+    public void Status_DialOutsideAmateurBands_SaysSoAsCaution()
+    {
+        var (text, kind) = MainViewModel.Status(new SessionSnapshot { DialHz = 15_000_000 });
+        text.Should().Be("The radio is on 15.000 MHz, outside the amateur bands. Costas will not transmit there.");
+        kind.Should().Be(TextKind.Caution);
+    }
+
+    [Fact]
+    public void Status_DialOffStandardFrequencyInBand_SaysNothingAboutIt()
+    {
+        MainViewModel.Status(new SessionSnapshot { DialHz = 14_090_000 }).Item1.Should().Be("Not in a contact.");
+    }
 }
