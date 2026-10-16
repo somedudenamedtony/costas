@@ -107,6 +107,7 @@ child processes. Rules for working on the code are in [`CLAUDE.md`](CLAUDE.md); 
 | [`docs/06-data-model.md`](docs/06-data-model.md) | SQLite schema, settings, files on disk, ADIF mapping |
 | [`docs/07-milestones.md`](docs/07-milestones.md) | Build order, M0 to M8, with acceptance tests |
 | [`docs/08-open-questions.md`](docs/08-open-questions.md) | Decisions assumed, facts not yet verified, known risks |
+| [`docs/09-next-up.md`](docs/09-next-up.md) | Proposed next features and fixes, for the owner to pick from |
 | [`mockups/`](mockups/) | The original approved screen designs |
 
 ### Build and run from source
