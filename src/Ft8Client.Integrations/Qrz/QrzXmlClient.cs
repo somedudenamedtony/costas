@@ -17,7 +17,7 @@ namespace Ft8Client.Integrations.Qrz;
 /// QRZ XML data client (https://www.qrz.com/XML/current_spec.html). Logs in once, caches the session key, and logs in
 /// again once when the session expires.
 /// </summary>
-public sealed class QrzXmlClient(HttpClient http, Func<(string User, string Password)?> credentials, Uri? endpoint = null)
+public sealed class QrzXmlClient(HttpClient http, Func<(string User, string Password)?> credentials, Uri? endpoint = null) : ICallbookClient
 {
     /// <summary>The production endpoint.</summary>
     public static readonly Uri DefaultEndpoint = new("https://xmldata.qrz.com/xml/current/");
@@ -33,7 +33,7 @@ public sealed class QrzXmlClient(HttpClient http, Func<(string User, string Pass
         return await LoginAsync(ct).ConfigureAwait(false) is not null;
     }
 
-    /// <summary>Looks up a call. Returns null when not found.</summary>
+    /// <inheritdoc />
     public async Task<QrzLookupResult?> LookupAsync(string call, CancellationToken ct)
     {
         await _lock.WaitAsync(ct).ConfigureAwait(false);

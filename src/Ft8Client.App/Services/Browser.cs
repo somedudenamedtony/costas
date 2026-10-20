@@ -16,6 +16,9 @@ public static class Browser
     /// <summary>The QRZ Logbook, where the logbook's API key is shown (its Settings).</summary>
     public const string QrzLogbook = "https://logbook.qrz.com/";
 
+    /// <summary>HamQTH's sign-up page (a free account is needed for its callbook lookups).</summary>
+    public const string HamQthRegister = "https://www.hamqth.com/register";
+
     /// <summary>Opens an https link; anything else is ignored.</summary>
     public static void Open(string url)
     {

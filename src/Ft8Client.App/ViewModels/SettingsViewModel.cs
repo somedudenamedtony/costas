@@ -94,6 +94,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         SyncMinutes = s.Qrz.SyncMinutes.ToString(CultureInfo.InvariantCulture);
         QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
         QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
+        HamQthUser = host.Secrets.Get(SecretNames.HamQthUsername) ?? string.Empty;
+        HamQthPassword = host.Secrets.Get(SecretNames.HamQthPassword) ?? string.Empty;
         ShowEqsl(active);
         RefreshEqslInbox();
         FeedEnabled = s.PskReporter.FeedEnabled;
@@ -172,6 +174,28 @@ public sealed partial class SettingsViewModel : ObservableObject
         var (_, msg) = await _host.Qrz.TestLookupAsync(QrzUser.Trim(), QrzPassword, CancellationToken.None);
         LookupStatus = msg;
     }
+
+    /// <summary>HamQTH login test result.</summary>
+    [ObservableProperty]
+    public partial string HamQthStatus { get; set; } = string.Empty;
+
+    /// <summary>Tests the HamQTH callsign and password used for callsign lookups.</summary>
+    [RelayCommand]
+    private async Task TestHamQth()
+    {
+        if (string.IsNullOrWhiteSpace(HamQthUser) || string.IsNullOrEmpty(HamQthPassword))
+        {
+            HamQthStatus = "Enter your HamQTH callsign and password first.";
+            return;
+        }
+        HamQthStatus = "Testing…";
+        var (_, msg) = await _host.Qrz.TestHamQthAsync(HamQthUser.Trim(), HamQthPassword, CancellationToken.None);
+        HamQthStatus = msg;
+    }
+
+    /// <summary>Opens HamQTH's sign-up page.</summary>
+    [RelayCommand]
+    private static void OpenHamQth() => Services.Browser.Open(Services.Browser.HamQthRegister);
 
     /// <summary>Opens the QRZ Logbook, where the API key is shown.</summary>
     [RelayCommand]
@@ -619,6 +643,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string QrzPassword { get; set; }
 
+    /// <summary>HamQTH callsign, for callsign lookups without QRZ.</summary>
+    [ObservableProperty]
+    public partial string HamQthUser { get; set; }
+
+    /// <summary>HamQTH password.</summary>
+    [ObservableProperty]
+    public partial string HamQthPassword { get; set; }
+
     /// <summary>Where secrets are kept.</summary>
     public string SecretsNote { get; }
 
@@ -995,6 +1027,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
             s.Qrz.LogbookEnabled = LogbookEnabled;
             s.Qrz.LookupEnabled = !string.IsNullOrWhiteSpace(QrzUser) && !string.IsNullOrEmpty(QrzPassword);
+            s.Qrz.HamQthEnabled = !string.IsNullOrWhiteSpace(HamQthUser) && !string.IsNullOrEmpty(HamQthPassword);
             s.Qrz.UploadOnComplete = UploadOnComplete;
             s.Qrz.SyncMinutes = Int(SyncMinutes, 5, 1440, 15);
             s.PskReporter.FeedEnabled = FeedEnabled;
@@ -1036,6 +1069,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         Set(SecretNames.QrzUsername, QrzUser.Trim());
         Set(SecretNames.QrzPassword, QrzPassword);
+        Set(SecretNames.HamQthUsername, HamQthUser.Trim());
+        Set(SecretNames.HamQthPassword, HamQthPassword);
         Set(SecretNames.LotwPassword, LotwPassword);
         _host.TxLevel.Apply();
         _host.RebuildLogIndex();

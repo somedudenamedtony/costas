@@ -97,6 +97,9 @@ QRZ has two services, each with its own sign-in. Both are optional.
   **Check for changes every** 15 minutes.
 - **Callsign lookups**: your QRZ username and password, for the name, city and state of other stations. **Test
   login** checks them. Leave both blank to turn lookups off.
+- **Or look up with HamQTH**: no QRZ subscription? [HamQTH](https://www.hamqth.com/register) is a free callbook.
+  Enter your HamQTH callsign and password and press **Test login**. Costas uses it only when the QRZ lookup fields are
+  blank. Callbook data provided by HamQTH.com.
 
 The key and password are kept in Windows Credential Manager.
 

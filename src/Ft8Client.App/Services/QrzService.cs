@@ -13,6 +13,7 @@ using Ft8Client.Core.Time;
 using Ft8Client.Data.Log;
 using Ft8Client.Data.Secrets;
 using Ft8Client.Data.Settings;
+using Ft8Client.Integrations.HamQth;
 using Ft8Client.Integrations.Net;
 using Ft8Client.Integrations.Qrz;
 using Serilog;
@@ -43,6 +44,8 @@ public sealed class QrzService : IDisposable
     private string _agentCall = string.Empty;
     private QrzXmlClient? _xml;
     private (string User, string Password, HttpClient Http)? _xmlFor;
+    private HamQthClient? _hamQth;
+    private (string User, string Password, HttpClient Http)? _hamQthFor;
 
     /// <summary>Creates the service. <paramref name="handler"/> replaces the network (the fake server in simulation).</summary>
     public QrzService(Session session, AppSettingsAccessor settings, ISecretStore secrets, QsoRepository qsos, UploadQueueRepository queue,
@@ -152,7 +155,7 @@ public sealed class QrzService : IDisposable
     /// </summary>
     public void RequestLookup(string call, bool urgent)
     {
-        if (!_settings.Current.Qrz.LookupEnabled) return;
+        if (!_settings.Current.Qrz.LookupEnabled && !_settings.Current.Qrz.HamQthEnabled) return;
         if (_lookups.Request(call, urgent, _clock.UtcNow) && _lookupWake.CurrentCount == 0) _lookupWake.Release();
     }
 
@@ -208,24 +211,22 @@ public sealed class QrzService : IDisposable
             if (cached.Found) _session.SetLookups([cached]);
             return false;
         }
-        var user = _secrets.Get(SecretNames.QrzUsername);
-        var pass = _secrets.Get(SecretNames.QrzPassword);
-        if (!_settings.Current.Qrz.LookupEnabled || user is null || pass is null)
+        if (Callbook() is not { } callbook)
         {
             _lookups.Failed(call, _clock.UtcNow + TimeSpan.FromMinutes(1));
             return false;
         }
         try
         {
-            var r = await new CallsignLookupService(XmlClient(user, pass), _cache, _clock).LookupAsync(call, ct).ConfigureAwait(false);
+            var r = await new CallsignLookupService(callbook.Client, _cache, _clock).LookupAsync(call, ct).ConfigureAwait(false);
             _lookups.Settle(call);
             if (r is not null) _session.SetLookups([r]);
         }
-        catch (QrzException ex)
+        catch (Exception ex) when (ex is QrzException or HamQthException)
         {
-            // Unreachable or refused: try this call again later, and give QRZ a rest before the next one.
+            // Unreachable or refused: try this call again later, and give the callbook a rest before the next one.
             _lookups.Failed(call, _clock.UtcNow + TimeSpan.FromMinutes(10));
-            Log.Information("QRZ lookup failed for {Call}: {Message}", call, ex.Message);
+            Log.Information("{Callbook} lookup failed for {Call}: {Message}", callbook.Name, call, ex.Message);
             await Task.Delay(TimeSpan.FromSeconds(30), ct).ConfigureAwait(false);
         }
         return true;
@@ -316,6 +317,42 @@ public sealed class QrzService : IDisposable
     private readonly object _clientGate = new();
 
     // One XML client per login, so its session key is reused rather than logging in for every lookup.
+    // QRZ when its lookups are set up; otherwise HamQTH, free with an account, for operators without a QRZ login.
+    private (string Name, ICallbookClient Client)? Callbook()
+    {
+        var q = _settings.Current.Qrz;
+        if (q.LookupEnabled && _secrets.Get(SecretNames.QrzUsername) is { } user && _secrets.Get(SecretNames.QrzPassword) is { } pass)
+            return ("QRZ", XmlClient(user, pass));
+        if (q.HamQthEnabled && _secrets.Get(SecretNames.HamQthUsername) is { } hqUser && _secrets.Get(SecretNames.HamQthPassword) is { } hqPass)
+            return ("HamQTH", HamQth(hqUser, hqPass));
+        return null;
+    }
+
+    private HamQthClient HamQth(string user, string password)
+    {
+        var http = Client();
+        if (_hamQth is null || _hamQthFor != (user, password, http))
+        {
+            _hamQth = new HamQthClient(http, () => (user, password));
+            _hamQthFor = (user, password, http);
+        }
+        return _hamQth;
+    }
+
+    /// <summary>Tests the HamQTH callsign and password used for callsign lookups.</summary>
+    public async Task<(bool Ok, string Message)> TestHamQthAsync(string user, string password, CancellationToken ct)
+    {
+        try
+        {
+            var ok = await new HamQthClient(Client(), () => (user, password)).TestAsync(ct).ConfigureAwait(false);
+            return ok ? (true, "Lookups work.") : (false, "HamQTH refused the callsign or password.");
+        }
+        catch (HamQthException ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
     private QrzXmlClient XmlClient(string user, string password)
     {
         var http = Client();

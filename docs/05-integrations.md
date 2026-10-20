@@ -158,6 +158,16 @@ Source: https://www.qrz.com/XML/current_spec.html (confirmed).
 
 Either can be left out. Without the API key there is no worked-before data or upload; without the login, names and locations stay blank and stations are placed by the country file alone. Lookups are on exactly when both a username and a password are stored.
 
+## 4a. HamQTH callbook lookup (no QRZ subscription)
+
+Source: https://www.hamqth.com/developers, API v2 (read 2026-10-20; v2 was published 3 October 2026 and v1 is now legacy). Free with a HamQTH account, no keys to buy. HamQTH asks applications that use its data to say so where users can see it ("Data provided by HamQTH.com"): Settings › QRZ and About do.
+
+- Log in: `POST https://www.hamqth.com/api/v2/login` with JSON `{"callsign": "<user>", "password": "<p>"}` → `{"token": "…", "expiresIn": 3600}`. The password goes only in the POST body, never in a URL. Keep the token for its hour; do not log in per lookup.
+- Look up: `GET https://www.hamqth.com/api/v2/callbook/{callsign}?appname=Costas` with `Authorization: Bearer <token>` → JSON with `callsign`, `nick`, `name`, `qth`, `dxcc`, `country`, `cq`, `itu`, `utcOffset`, `location {lat, lon, grid}`, `address {name, city, …}`, `region {usState, usCounty, …}`, `qsl {via, bureau, direct, lotw, eqsl}`, `picture`. A missing value is `null` (also what a station hides). A portable call finds the home record by itself.
+- Errors are HTTP status codes: 404 not found (a miss, cached as one), 401 no or expired token (log in again once and repeat), 429 too many wrong passwords (wait `Retry-After`), 503 down for a moment. Anything but 404 counts as a failed lookup and follows the QRZ back-off below.
+- No request limit is published. Lookups use the same queue, pacing (one at a time, at most one a second) and `callsign_cache` as QRZ.
+- Used only when QRZ lookups are not set up (no QRZ username and password), and only when a HamQTH callsign and password are stored (Settings › QRZ). They are kept in the secret store like the QRZ ones.
+
 ## 5. PSK Reporter: who hears me (live feed)
 
 Source: https://www.mqtt.pskreporter.info/ (confirmed). A best-effort community service run by M0LTE on top of PSK Reporter. Treat as optional.

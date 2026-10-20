@@ -17,7 +17,7 @@
       <TextBlock TextWrapping="Wrap" Text="Transmit encoder ported from ft8_lib by Kārlis Goba, MIT licence. https://github.com/kgoba/ft8_lib" />
       <TextBlock TextWrapping="Wrap" Text="Rig control by Hamlib (rigctld), LGPL. https://hamlib.github.io/" />
       <TextBlock TextWrapping="Wrap" Text="Country file cty.dat by Jim Reisert AD1C, https://www.country-files.com/" />
-      <TextBlock TextWrapping="Wrap" Text="Reports of your signal from PSK Reporter (Philip Gladstone, N1DQ) and its MQTT feed by M0LTE. Logbook and lookups by QRZ.com." />
+      <TextBlock TextWrapping="Wrap" Text="Reports of your signal from PSK Reporter (Philip Gladstone, N1DQ) and its MQTT feed by M0LTE. Logbook and lookups by QRZ.com. Callbook data provided by HamQTH.com." />
       <TextBlock TextWrapping="Wrap" Text="Built with .NET, Avalonia, CommunityToolkit.Mvvm, NAudio, MQTTnet, Microsoft.Data.Sqlite, Dapper and Serilog." />
     </StackPanel>
   </ScrollViewer>

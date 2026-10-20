@@ -17,6 +17,12 @@ public sealed class QrzOptions
     /// <summary>XML lookups.</summary>
     public bool LookupEnabled { get; set; } = true;
 
+    /// <summary>
+    /// Look calls up in HamQTH (free with a HamQTH account) when QRZ lookups are not set up. The HamQTH callsign and
+    /// password are in the secret store.
+    /// </summary>
+    public bool HamQthEnabled { get; set; }
+
     /// <summary>Minutes between syncs.</summary>
     public int SyncMinutes { get; set; } = 15;
 

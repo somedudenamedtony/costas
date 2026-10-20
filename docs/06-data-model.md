@@ -15,7 +15,7 @@ Root: `%LOCALAPPDATA%\Costas\` (builds before the rename used `Ft8Client\`; the 
 | `cache\cty.dat` | Updated country file, if newer than the bundled one |
 | `tmp\` | Per-run `jt9` scratch folders, cleaned at start |
 
-Secrets (QRZ logbook key per profile, QRZ username and password) are stored through an `ISecretStore`: Windows Credential Manager on Windows.
+Secrets (QRZ logbook key per profile, QRZ username and password, HamQTH callsign and password) are stored through an `ISecretStore`: Windows Credential Manager on Windows.
 
 ### neighbour-history.json
 
@@ -232,7 +232,7 @@ Plain text, one line per event, monthly files. Compatible in spirit with WSJT-X 
             "uploadOnComplete": false, "userList": true },
   "hunt": { "targets": [{ "kind": "country", "value": "KL", "band": "40m" }], "watchAllBands": true,
             "nearbyKm": 1000, "sound": true },
-  "qrz": { "logbookEnabled": true, "lookupEnabled": true, "syncMinutes": 15, "uploadOnComplete": true },
+  "qrz": { "logbookEnabled": true, "lookupEnabled": true, "hamQthEnabled": false, "syncMinutes": 15, "uploadOnComplete": true },
   "pskReporter": { "feedEnabled": true, "uploadSpots": false },
   "udp": { "enabled": true, "address": "127.0.0.1", "port": 2237 },
   "files": { "saveWav": "none", "retentionDays": 30 },

@@ -19,7 +19,8 @@ public static class SecretNames
 
     /// <summary>Every name the app uses for these station profiles.</summary>
     public static IEnumerable<string> All(IEnumerable<string> profileIds) =>
-        profileIds.SelectMany(id => new[] { QrzLogbookKey(id), EqslUsername(id), EqslPassword(id) }).Append(QrzUsername).Append(QrzPassword).Append(LotwPassword);
+        profileIds.SelectMany(id => new[] { QrzLogbookKey(id), EqslUsername(id), EqslPassword(id) }).Append(QrzUsername).Append(QrzPassword).Append(HamQthUsername).Append(HamQthPassword)
+            .Append(LotwPassword);
 
     /// <summary>QRZ logbook API key for a station profile (a logbook serves one callsign).</summary>
     public static string QrzLogbookKey(string profileId) => $"{Prefix}qrz-logbook-key:{profileId}";
@@ -35,6 +36,12 @@ public static class SecretNames
 
     /// <summary>QRZ XML password.</summary>
     public const string QrzPassword = Prefix + "qrz-password";
+
+    /// <summary>HamQTH callsign (its login name), for callsign lookups.</summary>
+    public const string HamQthUsername = Prefix + "hamqth-username";
+
+    /// <summary>HamQTH password.</summary>
+    public const string HamQthPassword = Prefix + "hamqth-password";
 
     /// <summary>LoTW website password (for downloading confirmations).</summary>
     public const string LotwPassword = Prefix + "lotw-password";

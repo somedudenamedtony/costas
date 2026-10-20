@@ -12,8 +12,8 @@ using Ft8Client.Data.Log;
 
 namespace Ft8Client.Integrations.Qrz;
 
-/// <summary>QRZ lookups through the 30-day cache. Strips portable suffixes when the full call is not found.</summary>
-public sealed class CallsignLookupService(QrzXmlClient client, CallsignCacheRepository cache, IClock clock)
+/// <summary>Callbook lookups (QRZ or HamQTH) through the 30-day cache. Strips portable suffixes when the full call is not found.</summary>
+public sealed class CallsignLookupService(ICallbookClient client, CallsignCacheRepository cache, IClock clock)
 {
     /// <summary>Looks up a call, from the cache when fresh. Returns null when not found or unavailable.</summary>
     public async Task<CallsignCacheEntry?> LookupAsync(string call, CancellationToken ct)

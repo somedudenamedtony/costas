@@ -363,6 +363,21 @@
                 <TextBlock Classes="help" Text="Shows the name, city and state of the station you select or are working, and fills them in on logged contacts. The logbook API key cannot do this: QRZ only answers lookups for a signed-in user. Full details need a QRZ XML subscription; without one QRZ returns fewer fields. Leave both blank to turn lookups off." />
               </StackPanel>
             </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Or look up with HamQTH" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <TextBox Text="{Binding HamQthUser}" Width="260" HorizontalAlignment="Left" PlaceholderText="HamQTH callsign" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBox Text="{Binding HamQthPassword}" Width="260" PasswordChar="•" PlaceholderText="HamQTH password" />
+                  <Button Content="Test login" Command="{Binding TestHamQthCommand}" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="{Binding HamQthStatus}" IsVisible="{Binding HamQthStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Classes="help" Text="No QRZ subscription? HamQTH looks up names, locations and grids for free with a HamQTH account. It is used only when QRZ lookups above are blank. Data provided by HamQTH.com." />
+                <Button Classes="link" Command="{Binding OpenHamQthCommand}" Padding="0">
+                  <TextBlock Text="Get a free HamQTH account" />
+                </Button>
+              </StackPanel>
+            </Grid>
             <TextBlock Classes="help" Text="{Binding SecretsNote}" />
           </StackPanel>
         </ScrollViewer>
