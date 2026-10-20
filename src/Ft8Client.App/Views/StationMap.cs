@@ -21,8 +21,9 @@ namespace Ft8Client.App.Views;
 
 /// <summary>
 /// The heard-here map: stations as dots over the world outline, either centred on my grid (azimuthal, rings like the
-/// reach plot) or as a rotating globe with the night side shaded. Labels that would overlap are dropped and shown on
-/// hover instead.
+/// reach plot) or as a rotating globe with the night side shaded. The globe starts facing my station; dragging turns it
+/// to any part of the world and stops the spin, and a double-click brings it back to me and spins again. Labels that
+/// would overlap are dropped and shown on hover instead.
 /// </summary>
 public sealed class StationMap : Control
 {
@@ -56,15 +57,21 @@ public sealed class StationMap : Control
 
     private readonly DispatcherTimer _spin;
     private double _longitude;
+    private double _latitude;
+    private bool _turned;
+    private Point? _dragFrom;
     private readonly List<(Point P, MapPoint M)> _placed = [];
 
-    /// <summary>Creates a map that spins while its globe is visible; hover pauses it.</summary>
+    /// <summary>Furthest the globe tilts towards a pole, so north stays roughly up.</summary>
+    internal const double MaxTilt = 80;
+
+    /// <summary>Creates a map that spins while its globe is visible; hover pauses it, dragging turns it by hand.</summary>
     public StationMap()
     {
         _spin = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         _spin.Tick += (_, _) =>
         {
-            if (!IsEffectivelyVisible || !World || IsPointerOver) return;
+            if (!IsEffectivelyVisible || !World || IsPointerOver || _turned) return;
             _longitude = (_longitude + 0.3) % 360;
             InvalidateVisual();
         };
@@ -89,6 +96,29 @@ public sealed class StationMap : Control
     static StationMap()
     {
         AffectsRender<StationMap>(PointsProperty, CentreProperty, WorldProperty, DayNightProperty, NowUtcProperty, UnitsProperty, ReportsProperty);
+        CentreProperty.Changed.AddClassHandler<StationMap>((map, _) =>
+        {
+            if (!map._turned) map.FaceMe();
+        });
+    }
+
+    /// <summary>Turns the globe so my station is in the middle (the equator when my grid is not set).</summary>
+    private void FaceMe()
+    {
+        _longitude = Centre?.Lon ?? 0;
+        _latitude = Math.Clamp(Centre?.Lat ?? 0, -MaxTilt, MaxTilt);
+    }
+
+    /// <summary>
+    /// The globe's facing after dragging by <paramref name="delta"/> pixels on a globe of <paramref name="radius"/>:
+    /// the surface follows the pointer, so dragging right brings the west into view and dragging down the north.
+    /// </summary>
+    internal static (double Longitude, double Latitude) Turn(double longitude, double latitude, Vector delta, double radius)
+    {
+        var degreesPerPixel = 180 / Math.PI / Math.Max(1, radius);
+        var lon = (longitude - delta.X * degreesPerPixel) % 360;
+        if (lon < 0) lon += 360;
+        return (lon, Math.Clamp(latitude + delta.Y * degreesPerPixel, -MaxTilt, MaxTilt));
     }
 
     /// <summary>Points.</summary>
@@ -163,22 +193,22 @@ public sealed class StationMap : Control
         using (ctx.PushGeometryClip(clip))
         {
             using (ctx.PushOpacity(0.45))
-                ctx.DrawGeometry(null, new Pen(MapGeometry.Brush("TextSecondaryBrush") ?? Brushes.Gray, 0.75), MapGeometry.GlobeLines(centre, radius, _longitude));
+                ctx.DrawGeometry(null, new Pen(MapGeometry.Brush("TextSecondaryBrush") ?? Brushes.Gray, 0.75), MapGeometry.GlobeLines(centre, radius, _longitude, _latitude));
             if (DayNight)
             {
                 using (ctx.PushOpacity(0.18))
                     ctx.DrawGeometry(MapGeometry.Brush("TextPrimaryBrush") ?? Brushes.Black, null,
-                        MapGeometry.GlobeNight(centre, radius, _longitude, NowUtc));
+                        MapGeometry.GlobeNight(centre, radius, _longitude, _latitude, NowUtc));
             }
 
             foreach (var point in pts)
             {
-                var p = MapGeometry.GlobePoint(point.Position, _longitude);
+                var p = MapGeometry.GlobePoint(point.Position, _longitude, _latitude);
                 if (p.Depth > 0) DrawDot(ctx, new Point(centre.X + p.X * radius, centre.Y - p.Y * radius), point);
             }
             if (Centre is { } me)
             {
-                var p = MapGeometry.GlobePoint(me, _longitude);
+                var p = MapGeometry.GlobePoint(me, _longitude, _latitude);
                 if (p.Depth > 0) DrawMe(ctx, new Point(centre.X + p.X * radius, centre.Y - p.Y * radius));
             }
         }
@@ -257,11 +287,61 @@ public sealed class StationMap : Control
         }
     }
 
+    private bool ShowsGlobe => World || Centre is null;
+
+    /// <inheritdoc />
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        base.OnPointerPressed(e);
+        if (!ShowsGlobe || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (e.ClickCount == 2)
+        {
+            _turned = false;
+            FaceMe();
+            InvalidateVisual();
+        }
+        else
+        {
+            _dragFrom = e.GetPosition(this);
+            e.Pointer.Capture(this);
+            Cursor = new Cursor(StandardCursorType.SizeAll);
+            ToolTip.SetTip(this, null);
+        }
+        e.Handled = true;
+    }
+
+    /// <inheritdoc />
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        if (_dragFrom is null) return;
+        _dragFrom = null;
+        e.Pointer.Capture(null);
+        Cursor = null;
+    }
+
+    /// <inheritdoc />
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+        _dragFrom = null;
+        Cursor = null;
+    }
+
     /// <inheritdoc />
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
         var at = e.GetPosition(this);
+        if (_dragFrom is { } from)
+        {
+            var radius = Math.Min(Bounds.Width, Bounds.Height) / 2 - 2;
+            (_longitude, _latitude) = Turn(_longitude, _latitude, at - from, radius);
+            _dragFrom = at;
+            _turned = true;
+            InvalidateVisual();
+            return;
+        }
         var hits = _placed.Where(p => Distance(p.P, at) < Math.Max(8, p.M.Size + 3)).OrderBy(p => Distance(p.P, at)).Select(p => p.M.Tip).Distinct().Take(3).ToList();
         ToolTip.SetTip(this, hits.Count == 0 ? null : string.Join("\n", hits));
     }
