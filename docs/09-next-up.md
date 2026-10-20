@@ -1,6 +1,6 @@
 # 09 · Next up
 
-Proposal list as of 2026-10-16, for the owner to choose from. Nothing here is approved or scheduled until the owner picks it. Living copy: https://claude.ai/code/artifact/47282a3b-f3bf-40f3-8ad8-756f15f6a2b7
+Proposal list as of 2026-10-16, for the owner to choose from. **Update 2026-10-20** (branch `claude/stop-losing-contacts`): done are T3, T4, T8 and the compound-call part of T7/T11 (in R1), U2, U3 and C3; also new, from the "why people would not switch" review: first-run import of WSJT-X's settings and log, and HamQTH lookups without a QRZ login. T5 and T9 are not done (their bug-hunt notes are not in the repository). C2 is blocked on Club Log's API documentation and key (see `08-open-questions.md`). Nothing here is approved or scheduled until the owner picks it. Living copy: https://claude.ai/code/artifact/47282a3b-f3bf-40f3-8ad8-756f15f6a2b7
 
 ## Top picks
 
