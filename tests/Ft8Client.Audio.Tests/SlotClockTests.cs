@@ -78,6 +78,29 @@ public class SlotClockTests
         c.NowUtc.Should().BeCloseTo(t.UtcNow, TimeSpan.FromMilliseconds(10), "re-anchored at the boundary");
     }
 
+    [Theory]
+    [InlineData(0.8)]
+    [InlineData(-0.8)]
+    public void Poll_ClockCorrectedMidSlot_FinishesSlotThenFollowsCorrection(double seconds)
+    {
+        var time = new ManualClock(T(2, 53, 14.9));
+        var corrected = new CorrectedClock(time);
+        var c = new SlotClock(corrected, Mode.Ft8);
+        var ev = new List<SlotEvent>();
+        c.Event += ev.Add;
+        c.Poll();
+        Run(c, time, TimeSpan.FromSeconds(3));
+        corrected.SetCorrection(TimeSpan.FromSeconds(seconds));
+        Run(c, time, TimeSpan.FromSeconds(45));
+        var starts = ev.Where(e => e.Mark == SlotMark.Start).Select(e => e.SlotStartUtc).ToList();
+        starts.Should().OnlyHaveUniqueItems().And.BeInAscendingOrder();
+        starts.Should().Contain([T(2, 53, 15), T(2, 53, 30), T(2, 53, 45)]);
+        ev.Count(e => e.Mark == SlotMark.CaptureCutoff && e.SlotStartUtc == T(2, 53, 15)).Should().Be(1, "the slot in progress is not cut short");
+        c.NowUtc.Should().BeCloseTo(time.UtcNow.AddSeconds(seconds), TimeSpan.FromMilliseconds(10), "slots follow the corrected time");
+        var last = ev.Last(e => e.Mark == SlotMark.Start);
+        (c.NowUtc - last.SlotStartUtc).Should().BeLessThan(TimeSpan.FromSeconds(15));
+    }
+
     [Fact]
     public void SetMode_Ft4_TakesEffectAtNextBoundary()
     {

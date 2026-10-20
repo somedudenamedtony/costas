@@ -25,4 +25,7 @@ public sealed record RankedStation(Station Station, NeedResult Need, HearsYou He
 
     /// <summary>True when the station uploaded to LoTW within the last year.</summary>
     public bool UsesLotw { get; init; }
+
+    /// <summary>True when a POTA spot puts the station at a park that is not in the log.</summary>
+    public bool NewPark { get; init; }
 }

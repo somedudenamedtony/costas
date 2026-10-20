@@ -52,4 +52,13 @@ public class StatusLineTests
     {
         MainViewModel.Status(new SessionSnapshot { DialHz = 14_090_000 }).Item1.Should().Be("Not in a contact.");
     }
+
+    [Fact]
+    public void ClockTipText_Corrected_SaysHowFarThePcClockIsOff()
+    {
+        MainViewModel.ClockTipText(0.02, TimeSpan.Zero).Should().Be("Clock offset +0.02 s.");
+        MainViewModel.ClockTipText(null, TimeSpan.Zero).Should().Be("Clock offset not measured yet.");
+        MainViewModel.ClockTipText(0.0, TimeSpan.FromSeconds(1.5)).Should().Be("Clock offset +0.00 s. Your PC clock is 1.50 s slow; Costas corrects for it from internet time.");
+        MainViewModel.ClockTipText(0.0, TimeSpan.FromSeconds(-0.8)).Should().EndWith("0.80 s fast; Costas corrects for it from internet time.");
+    }
 }
