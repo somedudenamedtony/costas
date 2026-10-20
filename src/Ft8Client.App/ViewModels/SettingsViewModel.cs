@@ -361,18 +361,20 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             var s = MessageSettings();
             var me = Callsign.Trim().ToUpperInvariant();
+            // The placeholder stands for a standard call; a compound call of mine changes the messages, as on the air.
+            var meStandard = me.Length == 0 || Core.Encoding.MessagePacker.IsStandardCall(me);
             if (me.Length == 0) me = "MYCALL";
             var grid = Core.Messages.Grid.Grid4(Grid.Trim().ToUpperInvariant()) ?? string.Empty;
-            const string dx = "THEIRCALL";
+            var calls = new CallPair("THEIRCALL", me, DxStandard: true, meStandard);
             var lines = new List<string>
             {
-                $"Calling CQ:        {OutgoingMessages.Cq(me, grid, s)}",
-                $"Report:            {dx} {me} -10",
-                $"Sign-off:          {dx} {me} {s.Signoff}",
+                $"Calling CQ:        {OutgoingMessages.Cq(me, grid, s, meStandard)}",
+                $"Report:            {OutgoingMessages.Report(calls, -10)}",
+                $"Sign-off:          {OutgoingMessages.Signoff(calls, s.Signoff)}",
                 string.Empty,
-                $"Answering a CQ:    {OutgoingMessages.Reply(dx, me, grid, s)}",
-                $"Roger and report:  {dx} {me} R-10",
-                $"Last message:      {OutgoingMessages.Final(dx, me, s)}",
+                $"Answering a CQ:    {OutgoingMessages.Reply(calls, grid, s)}",
+                $"Roger and report:  {OutgoingMessages.Report(calls, -10, roger: true)}",
+                $"Last message:      {OutgoingMessages.Final(calls, s)}",
             };
             if (OutgoingMessages.FreeTextAfter(s) is { } free) lines.Add($"Then:              {free}");
             return string.Join('\n', lines);

@@ -22,24 +22,53 @@ public static class OutgoingMessages
     /// <summary>Longest free text FT8 and FT4 can carry.</summary>
     public const int MaxFreeText = 13;
 
-    /// <summary>My CQ: <c>CQ [modifier] ME [GRID]</c>.</summary>
+    /// <summary>
+    /// My CQ: <c>CQ [modifier] ME [GRID]</c>. A nonstandard (compound) call of mine goes without the grid, which its
+    /// message has no room for.
+    /// </summary>
     /// <param name="me">My call.</param>
     /// <param name="grid">My 4-character grid, or empty.</param>
     /// <param name="s">The settings.</param>
-    public static string Cq(string me, string grid, ContactSettings s) => Join("CQ", Modifier(s.CqModifier), me, grid);
+    /// <param name="meStandard">Whether my call is standard; null checks it against the encoder.</param>
+    public static string Cq(string me, string grid, ContactSettings s, bool? meStandard = null) =>
+        Join("CQ", Modifier(s.CqModifier), me, meStandard ?? MessagePacker.IsStandardCall(me) ? grid : string.Empty);
 
-    /// <summary>My answer to a CQ: <c>DX ME [GRID]</c>.</summary>
-    /// <param name="dx">The DX call as it is sent (a nonstandard call in angle brackets).</param>
+    /// <summary>My answer to a CQ: <c>DX ME [GRID]</c>, with the calls as <see cref="CallPair.ForReply"/> gives them.</summary>
+    /// <param name="calls">The DX call and mine.</param>
+    /// <param name="grid">My 4-character grid, or empty.</param>
+    /// <param name="s">The settings.</param>
+    public static string Reply(CallPair calls, string grid, ContactSettings s) =>
+        Join(calls.ForReply, s.GridInReply && calls.GridFits ? grid : string.Empty);
+
+    /// <summary>My answer to a CQ, for two calls checked against the encoder.</summary>
+    /// <param name="dx">The DX call.</param>
     /// <param name="me">My call.</param>
     /// <param name="grid">My 4-character grid, or empty.</param>
     /// <param name="s">The settings.</param>
-    public static string Reply(string dx, string me, string grid, ContactSettings s) => Join(dx, me, s.GridInReply ? grid : string.Empty);
+    public static string Reply(string dx, string me, string grid, ContactSettings s) => Reply(CallPair.Of(dx, me), grid, s);
+
+    /// <summary>A report, <c>DX ME -10</c>, or with <paramref name="roger"/> an R-report, <c>DX ME R-10</c>.</summary>
+    /// <param name="calls">The DX call and mine.</param>
+    /// <param name="report">The report in dB.</param>
+    /// <param name="roger">True for an R-report.</param>
+    public static string Report(CallPair calls, int report, bool roger = false) =>
+        $"{calls.WithPayload} {(roger ? "R" : string.Empty)}{Messages.Report.Format(report)}";
+
+    /// <summary>A sign-off, <c>DX ME RR73</c> (or <c>RRR</c>, <c>73</c>), with the calls as <see cref="CallPair.ForSignoff"/> gives them.</summary>
+    /// <param name="calls">The DX call and mine.</param>
+    /// <param name="word"><c>RRR</c>, <c>RR73</c> or <c>73</c>.</param>
+    public static string Signoff(CallPair calls, string word) => $"{calls.ForSignoff} {word}";
 
     /// <summary>My last message when I answered a CQ: <c>DX ME 73</c> or <c>DX ME RR73</c>.</summary>
-    /// <param name="dx">The DX call as it is sent.</param>
+    /// <param name="calls">The DX call and mine.</param>
+    /// <param name="s">The settings.</param>
+    public static string Final(CallPair calls, ContactSettings s) => Signoff(calls, s.AnswerSignoff == "RR73" ? "RR73" : "73");
+
+    /// <summary>My last message when I answered a CQ, for two calls checked against the encoder.</summary>
+    /// <param name="dx">The DX call.</param>
     /// <param name="me">My call.</param>
     /// <param name="s">The settings.</param>
-    public static string Final(string dx, string me, ContactSettings s) => Join(dx, me, s.AnswerSignoff == "RR73" ? "RR73" : "73");
+    public static string Final(string dx, string me, ContactSettings s) => Final(CallPair.Of(dx, me), s);
 
     /// <summary>The free text sent after my last message, upper case and single-spaced; null for none.</summary>
     /// <param name="s">The settings.</param>

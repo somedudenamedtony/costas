@@ -782,4 +782,91 @@ public class ContactEngineTests
         s.Logs.Should().BeEmpty("only an answer to the last try picks the contact up by itself");
         s.E.Waiting.Should().ContainSingle(w => w.Call == "ZL2RPA" && w.AfterStop);
     }
+
+    [Fact]
+    public void NonstandardDx_FullContact_MatchesWsjtxForms()
+    {
+        var s = new Sim();
+        s.E.CallStation("PJ4/K1ABC", null, -10, SlotParity.Odd, 1500, Sim.T0);
+        s.Step().Should().Be("<PJ4/K1ABC> W7LIT DN40");
+        s.Step("W7LIT <PJ4/K1ABC> -12");
+        s.Step().Should().Be("<PJ4/K1ABC> W7LIT R-10");
+        s.Step("W7LIT <PJ4/K1ABC> RR73");
+        s.Step().Should().Be("PJ4/K1ABC <W7LIT> 73", "WSJT-X signs off to a compound call in full, in a type 4 message");
+        s.Logs.Should().ContainSingle().Which.Call.Should().Be("PJ4/K1ABC");
+        s.Sent.Should().OnlyContain(x => FtxEncoder.Encode(x.Message, Mode.Ft8).Ok);
+    }
+
+    [Fact]
+    public void NonstandardDx_CallsMyCq_ReportAndRr73MatchWsjtxForms()
+    {
+        var s = new Sim();
+        s.E.CallCq(SlotParity.Even, Sim.T0);
+        s.Step();
+        s.Step("<W7LIT> PJ4/K1ABC");
+        s.Step().Should().Be("<PJ4/K1ABC> W7LIT -12");
+        s.Step("W7LIT <PJ4/K1ABC> R-08");
+        s.Step().Should().Be("PJ4/K1ABC <W7LIT> RR73");
+        s.Logs.Should().ContainSingle().Which.Call.Should().Be("PJ4/K1ABC");
+    }
+
+    [Fact]
+    public void CompoundMyCall_AnswersCq_MatchesWsjtxForms()
+    {
+        var e = new ContactEngine("VE3/W7LIT", "DN40", new ContactSettings(), Sim.T0);
+        var logs = new List<ContactLogEntry>();
+        e.Logged += logs.Add;
+        var sent = new List<string>();
+        var slot = 0;
+        DateTime At(int n) => Sim.T0.AddSeconds(15 * n);
+        void Tx()
+        {
+            var p = e.PlanTransmission(At(slot), Mode.Ft8, At(slot));
+            p.Should().NotBeNull();
+            e.OnTransmitted(p!, At(slot).AddSeconds(0.5));
+            sent.Add(p!.Message);
+            slot++;
+        }
+        void Rx(string text)
+        {
+            e.OnDecodes(At(slot), Mode.Ft8, [HeardMessage.From(new Decode(At(slot), -12, 0.1, 1200, text, false))], At(slot).AddSeconds(14));
+            slot++;
+        }
+
+        e.CallStation("K1ABC", "FN42", -10, SlotParity.Odd, 1500, Sim.T0);
+        Tx();
+        Rx("<VE3/W7LIT> K1ABC -12");
+        Tx();
+        Rx("VE3/W7LIT <K1ABC> RR73");
+        Tx();
+
+        sent.Should().Equal("<K1ABC> VE3/W7LIT", "K1ABC <VE3/W7LIT> R-10", "<K1ABC> VE3/W7LIT 73");
+        sent.Should().OnlyContain(m => FtxEncoder.Encode(m, Mode.Ft8).Ok);
+        logs.Should().ContainSingle().Which.Call.Should().Be("K1ABC");
+    }
+
+    [Fact]
+    public void CompoundMyCall_CallsCq_MatchesWsjtxForms()
+    {
+        var e = new ContactEngine("VE3/W7LIT", "DN40", new ContactSettings(), Sim.T0);
+        var logs = new List<ContactLogEntry>();
+        e.Logged += logs.Add;
+        DateTime At(int n) => Sim.T0.AddSeconds(15 * n);
+        string? Tx(int n)
+        {
+            var p = e.PlanTransmission(At(n), Mode.Ft8, At(n));
+            if (p is not null) e.OnTransmitted(p, At(n).AddSeconds(0.5));
+            return p?.Message;
+        }
+        void Rx(int n, string text) =>
+            e.OnDecodes(At(n), Mode.Ft8, [HeardMessage.From(new Decode(At(n), -12, 0.1, 1200, text, false))], At(n).AddSeconds(14));
+
+        e.CallCq(SlotParity.Even, Sim.T0);
+        Tx(0).Should().Be("CQ VE3/W7LIT");
+        Rx(1, "<VE3/W7LIT> K1ABC FN42");
+        Tx(2).Should().Be("K1ABC <VE3/W7LIT> -12");
+        Rx(3, "<VE3/W7LIT> K1ABC R-08");
+        Tx(4).Should().Be("<K1ABC> VE3/W7LIT RR73");
+        logs.Should().ContainSingle().Which.Call.Should().Be("K1ABC");
+    }
 }

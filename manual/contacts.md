@@ -64,6 +64,15 @@ of Next in line (it is now worked on this band) and your tallies update:
 
 ![After logging](images/after-logging.png)
 
+### Compound and portable calls
+
+Costas works stations with a prefix or long suffix, such as **PJ4/K1ABC**, and you can use one as your own call
+(**VE3/W7LIT**) in **Settings › Station**. FT8 can carry such a call in full only in a short message, so Costas sends
+the same messages WSJT-X does: the compound call is shortened to a code (shown in angle brackets, `<PJ4/K1ABC>`) in
+messages with a grid or report, and sent in full in the sign-off. With a compound call of your own, your CQ and your
+answer to a CQ carry no grid, and a CQ modifier such as DX cannot be added (Settings says so). Two compound calls
+cannot work each other over FT8; Costas refuses to send rather than change a message.
+
 ## Calling CQ
 
 Click **Call CQ** (or press ++ctrl+q++). Costas calls CQ in the parity set in **Settings › Transmitting › Call CQ in**

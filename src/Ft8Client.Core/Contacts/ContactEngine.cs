@@ -281,7 +281,8 @@ public sealed class ContactEngine
         // Answer the first caller to my CQ.
         if (_c is null && _cqRunning && parity != _cqParity)
         {
-            var first = toMe.FirstOrDefault(x => x.M.Kind is MessageKind.GridReply or MessageKind.Report);
+            // A caller with a compound call answers with its calls only (a type 4 message has no room for a grid).
+            var first = toMe.FirstOrDefault(x => x.M.Kind is MessageKind.GridReply or MessageKind.Report or MessageKind.Bare);
             if (first.M is not null)
             {
                 // Past the cap too: a caller to my CQ is answered even when the waiting list is full.
@@ -472,7 +473,7 @@ public sealed class ContactEngine
                     c.TxOffset = heard.Decode.OffsetHz;
                     c.ReportSent = Report.Clamp(heard.Decode.Snr);
                 }
-                c.Steps[2] = c.Steps[2] with { Message = $"{Dx(c.DxCall)} {_myCall} R{Report.Format(c.ReportSent)}" };
+                c.Steps[2] = c.Steps[2] with { Message = OutgoingMessages.Report(Calls(c.DxCall), c.ReportSent, roger: true) };
                 if (c.Phase == 0)
                 {
                     MarkReceived(c, 1, m.Text, slotUtc);
@@ -602,7 +603,7 @@ public sealed class ContactEngine
             Resume(s, nowUtc);
             return true;
         }
-        if (w.Kind is not (MessageKind.GridReply or MessageKind.Report)) return false;
+        if (w.Kind is not (MessageKind.GridReply or MessageKind.Report or MessageKind.Bare)) return false;
         StartFromCaller(w);
         return true;
     }
@@ -649,7 +650,7 @@ public sealed class ContactEngine
         _stopped = null;
         var i = _waiting.FindIndex(x => x.AfterStop && Callsign.EqualsCall(x.Call, s.Contact.DxCall));
         if (i < 0) return;
-        if (_waiting[i].Kind is MessageKind.GridReply or MessageKind.Report) _waiting[i] = _waiting[i] with { AfterStop = false };
+        if (_waiting[i].Kind is MessageKind.GridReply or MessageKind.Report or MessageKind.Bare) _waiting[i] = _waiting[i] with { AfterStop = false };
         else _waiting.RemoveAt(i);
     }
 
@@ -723,38 +724,42 @@ public sealed class ContactEngine
 
     private string CqMessage() => OutgoingMessages.Cq(_myCall, _myGrid, _settings);
 
+    // A nonstandard DX call as the received-message placeholders show it.
     private static string Dx(string call) => MessagePacker.IsStandardCall(call) ? call : $"<{call}>";
 
-    private string Format(Contact c, int index) => c.Steps.Count > index ? c.Steps[index].Message : OutgoingMessages.Final(Dx(c.DxCall), _myCall, _settings);
+    private CallPair Calls(string dxCall) => CallPair.Of(dxCall, _myCall);
+
+    private string Format(Contact c, int index) => c.Steps.Count > index ? c.Steps[index].Message : OutgoingMessages.Final(Calls(c.DxCall), _settings);
 
     private List<ContactStep> StepsFor(Contact c)
     {
         var dx = Dx(c.DxCall);
         var me = _myCall;
-        var rpt = Report.Format(c.ReportSent);
+        var calls = Calls(c.DxCall);
         var cq = CqMessage();
-        var final = OutgoingMessages.Final(dx, me, _settings);
+        var final = OutgoingMessages.Final(calls, _settings);
         ContactStep Mine(string m) => new(true, m, StepState.Upcoming, 0, null);
         ContactStep Theirs(string m) => new(false, m, StepState.Upcoming, 0, null);
         return c.Flow switch
         {
             ContactFlow.AnswerCq =>
             [
-                Mine(OutgoingMessages.Reply(dx, me, _myGrid, _settings)), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"),
-                Mine(final),
+                Mine(OutgoingMessages.Reply(calls, _myGrid, _settings)), Theirs($"{me} {dx} ±NN"), Mine(OutgoingMessages.Report(calls, c.ReportSent, roger: true)),
+                Theirs($"{me} {dx} RR73"), Mine(final),
             ],
             ContactFlow.Hound =>
             [
-                Mine(OutgoingMessages.Reply(dx, me, _myGrid, _settings)), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"),
+                Mine(OutgoingMessages.Reply(calls, _myGrid, _settings)), Theirs($"{me} {dx} ±NN"), Mine(OutgoingMessages.Report(calls, c.ReportSent, roger: true)),
+                Theirs($"{me} {dx} RR73"),
             ],
             ContactFlow.CalledCq =>
             [
-                Mine(cq), Theirs($"{me} {dx} {c.DxGrid}".TrimEnd()), Mine($"{dx} {me} {rpt}"), Theirs($"{me} {dx} R±NN"),
-                Mine($"{dx} {me} {_settings.Signoff}"), Theirs($"{me} {dx} 73"),
+                Mine(cq), Theirs($"{me} {dx} {c.DxGrid}".TrimEnd()), Mine(OutgoingMessages.Report(calls, c.ReportSent)), Theirs($"{me} {dx} R±NN"),
+                Mine(OutgoingMessages.Signoff(calls, _settings.Signoff)), Theirs($"{me} {dx} 73"),
             ],
             _ =>
             [
-                Mine(cq), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"), Mine(final),
+                Mine(cq), Theirs($"{me} {dx} ±NN"), Mine(OutgoingMessages.Report(calls, c.ReportSent, roger: true)), Theirs($"{me} {dx} RR73"), Mine(final),
             ],
         };
     }
