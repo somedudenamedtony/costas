@@ -76,6 +76,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private TxMeterResult? _txMeters;
     private Task _decodeTask = Task.CompletedTask;
     private Task _earlyTask = Task.CompletedTask;
+    private Task _logTask = Task.CompletedTask;
     private (DateTime Slot, HashSet<string> Texts) _rawShown = (DateTime.MinValue, new HashSet<string>(StringComparer.Ordinal));
     private DateTime? _recordingSlot;
     private DateTime? _quickSlot;
@@ -135,10 +136,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         get { lock (_gate) return _snapshot; }
     }
 
-    /// <summary>Completes when the decode in flight (if any) has been applied.</summary>
+    /// <summary>Completes when the decode in flight (if any) has been applied and the contacts logged so far are written.</summary>
     public Task DecodeIdle
     {
-        get { lock (_gate) return Task.WhenAll(_decodeTask, _earlyTask); }
+        get { lock (_gate) return Task.WhenAll(_decodeTask, _earlyTask, _logTask); }
     }
 
     /// <summary>Decoder runs started so far (full, quick and early), so tests can wait for each to reach the decoder.</summary>
@@ -596,8 +597,27 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
             _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
+            // The engine logs from inside a decode or the slot thread's Tx start, with _gate held: the database write
+            // and its listeners (uploads, interop) run on a worker, in order, so they never delay PTT or the next slot.
+            if (_log is { } log) _logTask = _logTask.ContinueWith(_ => WriteLog(log, entry, ctx), TaskScheduler.Default);
         }
-        _log?.Write(entry, ctx);
+    }
+
+    private void WriteLog(ISessionLog log, ContactLogEntry entry, LogContext ctx)
+    {
+        bool stored;
+        try
+        {
+            stored = log.Write(entry, ctx);
+        }
+        catch (Exception ex)
+        {
+            stored = false;
+            Serilog.Log.Error(ex, "Could not store the contact with {Call}", entry.Call);
+        }
+        if (stored) return;
+        lock (_gate) _fault = $"Could not save the contact with {entry.Call} to the log";
+        Publish();
     }
 
     // ---------------------------------------------------------------- commands
@@ -614,13 +634,19 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             var now = _clock.UtcNow;
-            if (_engine.Waiting.Any(w => Callsign.EqualsCall(w.Call, call)))
+            var waiting = _engine.Waiting.FirstOrDefault(w => Callsign.EqualsCall(w.Call, call));
+            var heard = _tracker.Find(call);
+            // A caller heard since calling me in a message to someone else (back to CQ, or working another station) has
+            // moved on: answering its old call would send a report it is no longer waiting for, so it is called afresh.
+            var movedOn = waiting is not null && heard is not null && heard.LastHeardUtc > waiting.LastCalledUtc
+                && heard.LastMessage is { } last && !last.IsAddressedTo(_config.MyCall);
+            if (waiting is not null && !movedOn)
             {
                 _engine.AnswerCaller(call, now);
             }
             else
             {
-                var s = _tracker.Find(call);
+                var s = heard;
                 if (s is null) return false;
                 // A station heard working someone else (reports or grids exchanged, not signing off) will not hear me:
                 // the contact ends at once and says so rather than calling into its contact.

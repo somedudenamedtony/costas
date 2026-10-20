@@ -59,6 +59,27 @@ public class ContactEngineTests
         {
             for (var i = 0; i < n; i++) Step();
         }
+
+        /// <summary>
+        /// The start of my slot, when planning has ended the contact, and then the decodes of the slot before it, which
+        /// finished only after it began. Returns what is planned for my slot once they are applied.
+        /// </summary>
+        public string? MySlotThenLateDecode(params string[] heard)
+        {
+            // The retry limit ends the contact (calling CQ, a CQ is planned in its place until the decodes arrive).
+            E.PlanTransmission(Start(Slot), Mode.Ft8, Start(Slot).AddSeconds(-0.5));
+            E.InContact.Should().BeFalse();
+            var hm = heard.Select(t => HeardMessage.From(new Decode(Start(Slot - 1), -12, 0.1, 1200, t, false))).ToList();
+            E.OnDecodes(Start(Slot - 1), Mode.Ft8, hm, Start(Slot).AddSeconds(1));
+            var plan = E.PlanTransmission(Start(Slot), Mode.Ft8, Start(Slot).AddSeconds(1.2));
+            if (plan is not null)
+            {
+                E.OnTransmitted(plan, Start(Slot).AddSeconds(1.3));
+                Sent.Add((Slot, plan.Message));
+            }
+            Slot++;
+            return plan?.Message;
+        }
     }
 
     [Fact]
@@ -690,5 +711,75 @@ public class ContactEngineTests
         s.Step("W7LIT ZL2RPA RRR");
         s.Step().Should().Be("ZL2RPA W7LIT RR73", "a repeated RRR still gets one more");
         s.Logs.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void FlowA_Rr73ToLastTryDecodedAfterMySlotStarts_LoggedAnd73Sent()
+    {
+        var s = new Sim(new ContactSettings { RetryLimit = 1 });
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step().Should().Be("ZL2RPA W7LIT R-19");
+        s.Step();
+        s.Step().Should().Be("ZL2RPA W7LIT R-19", "the last try");
+        s.Slot++; // their slot: its decode is late
+
+        s.MySlotThenLateDecode("W7LIT ZL2RPA RR73").Should().Be("ZL2RPA W7LIT 73");
+
+        s.Logs.Should().ContainSingle().Which.Call.Should().Be("ZL2RPA");
+        s.E.View!.Outcome.Should().Be(ContactOutcome.Logged);
+        s.E.Waiting.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FlowB_RReportToLastTryDecodedAfterMySlotStarts_Rr73SentAndLogged()
+    {
+        var s = new Sim(new ContactSettings { RetryLimit = 1 });
+        s.E.CallCq(SlotParity.Even, Sim.T0);
+        s.Step().Should().Be("CQ W7LIT DN40");
+        s.Step("W7LIT K1ABC FN42");
+        s.Step().Should().Be("K1ABC W7LIT -12");
+        s.Step();
+        s.Step().Should().Be("K1ABC W7LIT -12", "the last try");
+        s.Slot++;
+
+        s.MySlotThenLateDecode("W7LIT K1ABC R-08").Should().Be("K1ABC W7LIT RR73");
+
+        s.Logs.Should().ContainSingle().Which.ReportReceived.Should().Be(-8);
+    }
+
+    [Fact]
+    public void FlowA_RepeatedReportToLastTryDecodedLate_NotResumed()
+    {
+        var s = new Sim(new ContactSettings { RetryLimit = 1 });
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step();
+        s.Step();
+        s.Step();
+        s.Slot++;
+
+        s.MySlotThenLateDecode("W7LIT ZL2RPA -22").Should().BeNull("a repeat would not have kept the contact going either");
+
+        s.Logs.Should().BeEmpty();
+        s.E.View!.Outcome.Should().Be(ContactOutcome.NoReply);
+        s.E.Waiting.Should().ContainSingle(w => w.Call == "ZL2RPA" && w.AfterStop);
+    }
+
+    [Fact]
+    public void FlowA_Rr73FromEarlierSlotAfterNoReply_OfferedNotResumed()
+    {
+        var s = new Sim(new ContactSettings { RetryLimit = 1 });
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Steps(5);
+        s.E.View!.Outcome.Should().Be(ContactOutcome.NoReply);
+        s.Step("W7LIT ZL2RPA RR73");
+
+        s.Logs.Should().BeEmpty("only an answer to the last try picks the contact up by itself");
+        s.E.Waiting.Should().ContainSingle(w => w.Call == "ZL2RPA" && w.AfterStop);
     }
 }

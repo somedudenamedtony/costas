@@ -63,7 +63,7 @@ public class SessionNeighbourTests
     [InlineData(null, "FN42ab", "FN42ab")]
     [InlineData("FN31", "FN42ab", "FN31")]
     [InlineData(null, null, null)]
-    public void LogNow_GridSkipped_PersistsKnownGridAndSurvivesIndexReload(string? contactGrid, string? lookupGrid, string? expectedGrid)
+    public async Task LogNow_GridSkipped_PersistsKnownGridAndSurvivesIndexReload(string? contactGrid, string? lookupGrid, string? expectedGrid)
     {
         var db = new SqliteDatabase(Path.Combine(Directory.CreateTempSubdirectory("ft8sessionlog").FullName, "log.db"));
         var qsos = new QsoRepository(db);
@@ -74,6 +74,7 @@ public class SessionNeighbourTests
         var engine = (ContactEngine)typeof(Session).GetField("_engine", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(d.Session)!;
         engine.CallStation("K1ABC", contactGrid, -10, SlotParity.Even, 1500, d.Clock.UtcNow);
         engine.LogNow(d.Clock.UtcNow);
+        await d.Session.DecodeIdle; // the database write runs beside the session
 
         var stored = qsos.List().Single();
         stored.Gridsquare.Should().Be(expectedGrid);

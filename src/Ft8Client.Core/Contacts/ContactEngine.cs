@@ -299,6 +299,13 @@ public sealed class ContactEngine
             if (_stopped is { } s && Callsign.EqualsCall(m.SenderCall, s.Contact.DxCall))
             {
                 s.Late.Add((m, slotStartUtc, h));
+                if (_c is null && AnsweredLastTry(s, m, slotStartUtc, mode))
+                {
+                    // Its answer to my last try was decoded only after my next slot began, when the retry limit had
+                    // already ended the contact. Had it been decoded in time the contact would have gone on: so it does.
+                    Resume(s, nowUtc);
+                    continue;
+                }
                 AddWaiting(h, m, parity, slotStartUtc, afterStop: true);
                 continue;
             }
@@ -334,7 +341,8 @@ public sealed class ContactEngine
             var isFinal = IsFinalCourtesy(_c, _c.Phase);
             if (!isFinal && _c.StepTxCount >= 1 + _settings.RetryLimit)
             {
-                End(ContactOutcome.NoReply, nowUtc);
+                // Ended as of this slot, so a late decode of the other station's last slot can still pick it up.
+                End(ContactOutcome.NoReply, slotStartUtc);
                 return _c is null ? PlanTransmission(slotStartUtc, mode, nowUtc) : null;
             }
             if (isFinal && _c.StepTxCount >= 1) return null;
@@ -494,7 +502,7 @@ public sealed class ContactEngine
             : c.ReportReceivedUtc is { } rpt && slotStartUtc - rpt >= HoundReportSlots * ModeInfo.SlotLength(mode);
         if (expired)
         {
-            End(ContactOutcome.NoReply, nowUtc, resume: false);
+            End(ContactOutcome.NoReply, slotStartUtc, resume: false);
             return null;
         }
         c.AwaitingReply = false;
@@ -616,6 +624,22 @@ public sealed class ContactEngine
             if (_c is null) break;
         }
         RemoveWaiting(c.DxCall);
+    }
+
+    // The contact ended for no reply at the start of my slot that follows this decoded slot, and the message moves it
+    // on (not a repeat, which would not have kept it going either).
+    private static bool AnsweredLastTry(Stopped s, ParsedMessage m, DateTime slotUtc, Mode mode)
+    {
+        var c = s.Contact;
+        if (c.Outcome != ContactOutcome.NoReply || slotUtc + ModeInfo.SlotLength(mode) != SlotMath.SlotStart(s.EndedUtc, mode)) return false;
+        return (c.Flow, c.Phase, m.Kind) switch
+        {
+            (ContactFlow.AnswerCq or ContactFlow.Hound, 0, MessageKind.Report) => true,
+            (ContactFlow.CalledCq, 2, MessageKind.RogerReport) => true,
+            (ContactFlow.Hound, 2, MessageKind.RogerBye) => true,
+            (ContactFlow.AnswerCq or ContactFlow.CalledCqSkippedGrid, 2, MessageKind.RogerBye or MessageKind.Roger or MessageKind.Bye) => true,
+            _ => false,
+        };
     }
 
     // A stopped contact can no longer be resumed: its late replies become ordinary callers, or go if they are sign-offs.

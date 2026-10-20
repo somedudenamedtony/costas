@@ -43,14 +43,14 @@ public class LateDecodeTests
         public readonly NullAudioOutput Output;
         public readonly List<(string Message, DateTime StartedUtc)> Sent = [];
 
-        public Rig()
+        public Rig(ContactSettings? contact = null, ISessionLog? log = null)
         {
             Radio = new SimulatedRig(Clock);
             Output = new NullAudioOutput { Now = () => Clock.UtcNow };
             var freqs = ReferenceData.LoadFrequencies();
             Tx = new Transmitter(Radio, Output, Clock, freqs);
-            var config = new SessionConfig { MyCall = "W7LIT", MyGrid = "DN40", FixedTxOffsetHz = 1080 };
-            Session = new Session(config, Decoder, new SilentSource(), Tx, Clock, ReferenceData.LoadCountries(), freqs);
+            var config = new SessionConfig { MyCall = "W7LIT", MyGrid = "DN40", FixedTxOffsetHz = 1080, Contact = contact ?? new ContactSettings() };
+            Session = new Session(config, Decoder, new SilentSource(), Tx, Clock, ReferenceData.LoadCountries(), freqs, log);
             Session.Transmitting += (tx, at) => Sent.Add((tx.Plan.Message, at));
             Slots = new SlotClock(Clock, Mode.Ft8);
             Slots.Event += Session.OnSlotEvent;
@@ -367,6 +367,89 @@ public class LateDecodeTests
         snap = r.Session.Snapshot;
         card = ContactPanelViewModel.From(snap.Contact!, snap, r.Clock.UtcNow, DistanceUnit.Miles, null);
         card.Steps[0].Status.Should().Be("Sending next slot");
+    }
+
+    [Fact]
+    public async Task Reply_Rr73ToMyLastTryDecodedAfterMySlotBegan_LoggedAnd73Sent()
+    {
+        var log = new RecordingLog();
+        var r = new Rig(new ContactSettings { RetryLimit = 1 }, log);
+        await r.CallN8wcrAsync();
+        r.Decoder.Script(ReportSlot, TimeSpan.FromSeconds(0.5), "W7LIT N8WCR -16");
+        await r.RunUntilAsync(MySecondSlot.AddSeconds(31)); // R-report, no answer, R-report again: the last try
+        r.Sent.Select(s => s.Message).Should().Equal("N8WCR W7LIT DN40", "N8WCR W7LIT R-09", "N8WCR W7LIT R-09");
+
+        var rr73Slot = MySecondSlot.AddSeconds(45);
+        r.Decoder.Script(rr73Slot, TimeSpan.FromSeconds(2.3), "W7LIT N8WCR RR73"); // done 0.9 s into my slot
+        await r.RunUntilAsync(rr73Slot.AddSeconds(18));
+        await r.Session.DecodeIdle;
+
+        r.Sent.Last().Message.Should().Be("N8WCR W7LIT 73", "the retry limit must not throw away an RR73 that arrived in time");
+        log.Calls.Should().Equal("N8WCR");
+        r.Session.Snapshot.Contact!.Outcome.Should().Be(ContactOutcome.Logged);
+    }
+
+    [Fact]
+    public async Task Call_CallerSinceBackToCq_CalledAfreshNotSentItsOldReport()
+    {
+        var r = new Rig();
+        r.Decoder.Script(CqSlot, TimeSpan.FromSeconds(0.5), "W7LIT N8WCR EN81");
+        r.Decoder.Script(ReportSlot, TimeSpan.FromSeconds(0.5), "CQ N8WCR EN81");
+        await r.RunUntilAsync(ReportSlot.AddSeconds(14.5));
+        r.Session.Snapshot.Waiting.Should().ContainSingle(w => w.Call == "N8WCR", "it called me first");
+
+        r.Session.CallStation("N8WCR").Should().BeTrue();
+        await r.RunUntilAsync(MySecondSlot.AddSeconds(14));
+
+        r.Sent.Should().ContainSingle().Which.Message.Should().Be("N8WCR W7LIT DN40", "N8WCR is calling CQ now, not waiting for my report");
+    }
+
+    [Fact]
+    public async Task Log_SlowDatabaseWrite_DoesNotDelayTheNextTransmission()
+    {
+        using var gate = new ManualResetEventSlim();
+        var log = new RecordingLog(gate);
+        var r = new Rig(log: log);
+        await r.CallN8wcrAsync();
+        r.Decoder.Script(ReportSlot, TimeSpan.FromSeconds(0.5), "W7LIT N8WCR -16");
+        await r.RunUntilAsync(MySecondSlot.AddSeconds(14));
+        var rr73Slot = MySecondSlot.AddSeconds(15);
+        r.Decoder.Script(rr73Slot, TimeSpan.FromSeconds(0.5), "W7LIT N8WCR RR73");
+
+        // The RR73 logs the contact while the database is stuck; the 73 still goes out on time.
+        await r.RunUntilAsync(rr73Slot.AddSeconds(30));
+
+        var (message, started) = r.Sent.Last();
+        message.Should().Be("N8WCR W7LIT 73");
+        started.Should().BeCloseTo(rr73Slot.AddSeconds(15.5), TimeSpan.FromMilliseconds(2));
+        r.Radio.PttLog.Last().On.Should().BeFalse("PTT is released after the audio, whatever the log is doing");
+        gate.Set();
+        await r.Session.DecodeIdle;
+        log.Calls.Should().Equal("N8WCR");
+        log.GaveUpWaiting.Should().BeFalse("the write ran beside the session, not in the way of the slot clock and decodes");
+    }
+
+    /// <summary>
+    /// Records the calls written. With a gate, each write waits up to 5 s for it (a slow or locked database); a write that
+    /// blocks the thread driving the session never sees the gate opened and gives up.
+    /// </summary>
+    private sealed class RecordingLog(ManualResetEventSlim? gate = null) : ISessionLog
+    {
+        private readonly List<string> _calls = [];
+
+        public bool GaveUpWaiting { get; private set; }
+
+        public IReadOnlyList<string> Calls
+        {
+            get { lock (_calls) return [.. _calls]; }
+        }
+
+        public bool Write(ContactLogEntry entry, LogContext context)
+        {
+            if (gate is not null && !gate.Wait(TimeSpan.FromSeconds(5))) GaveUpWaiting = true;
+            lock (_calls) _calls.Add(entry.Call);
+            return true;
+        }
     }
 
     /// <summary>Silent slot audio; the decoder below supplies the decodes.</summary>

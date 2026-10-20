@@ -839,6 +839,8 @@ public sealed class AppHost : IAsyncDisposable
         {
             Log.Error(ex, "Halt on exit failed");
         }
+        // A contact logged just before closing is written on a worker: let it finish before the database goes.
+        if (Session is not null) await Task.WhenAny(Session.DecodeIdle, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
         _cts.Cancel();
         if (Remote is not null) await Remote.DisposeAsync().ConfigureAwait(false);
         _loop?.Dispose();
