@@ -97,7 +97,8 @@ audio output device in Station setup and that the radio takes its transmit audio
 ### Everyone shows as "New call"
 
 Costas does not know your log yet. Add your QRZ logbook API key in [Settings › QRZ](settings.md#qrz) and press
-**Sync with QRZ now** in the Log view, or import an ADIF file from your previous logger.
+**Sync with QRZ now** in the Log view, or import an ADIF file from your previous logger. Coming from WSJT-X, its log
+is `wsjtx_log.adi` (Windows: `%LOCALAPPDATA%\WSJT-X`); Setup offers to import it the first time.
 
 ## Transmitting is refused
 
@@ -113,7 +114,7 @@ Costas does not know your log yet. Add your QRZ logbook API key in [Settings ›
 | Problem | Fix |
 | --- | --- |
 | *The QRZ logbook key was refused* | Copy the API key again from your QRZ Logbook's Settings. It belongs to one logbook; check it is the logbook for your current callsign |
-| Names and locations never appear | Lookups need your QRZ **username and password**, not the API key. Full details need a QRZ XML subscription |
+| Names and locations never appear | Lookups need your QRZ **username and password**, not the API key. Full details need a QRZ XML subscription. Without one, a free HamQTH account works instead (Settings › QRZ › Or look up with HamQTH) |
 | *Upload failed · Retry* | Click **Retry** in Worked tonight. *Waiting to upload · retrying* means Costas is still retrying by itself |
 | *QRZ refused the contact* | Diagnostics shows the reason QRZ gave. A contact already in your QRZ logbook is one common cause |
 

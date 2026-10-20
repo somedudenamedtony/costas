@@ -17,3 +17,6 @@ captured by `scripts/capture-golden.sh`; its `# args:` line holds the decode con
 Callsigns in the simulated files are examples, used only by tests.
 
 `clublog/mostwanted.json` is Club Log's most-wanted list as downloaded on 2026-10-12 from `https://clublog.org/mostwanted.php?api=1`, for the parser tests.
+
+`wsjtx/WSJT-X.ini` is a hand-written WSJT-X settings file in the shape WSJT-X 2.7 writes (`[Configuration]` keys from
+`Configuration.cpp`, enum settings inside Qt `@Variant(...)` values), for the import tests. It holds example values only.

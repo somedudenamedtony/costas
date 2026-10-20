@@ -20,6 +20,18 @@
         <!-- 1 Station -->
         <StackPanel Spacing="8" IsVisible="{Binding Step, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}">
           <TextBlock Text="Your station" FontSize="20" FontWeight="SemiBold" />
+          <Border IsVisible="{Binding WsjtxOffer, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Padding="12" CornerRadius="6"
+                  Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding WsjtxOffer}" TextWrapping="Wrap" FontWeight="SemiBold" />
+              <StackPanel Spacing="8" IsVisible="{Binding ShowWsjtxOffer}">
+                <TextBlock Classes="secondary" TextWrapping="Wrap"
+                           Text="Costas can copy your call, grid, radio, PTT and sound card from WSJT-X and import its log, so Next in line knows what you have worked. WSJT-X's own files are not changed." />
+                <Button Content="Use WSJT-X's settings and log" Classes="accent" Command="{Binding ImportWsjtxCommand}" IsEnabled="{Binding !Busy}" />
+              </StackPanel>
+              <TextBlock Text="{Binding WsjtxResult}" TextWrapping="Wrap" IsVisible="{Binding !ShowWsjtxOffer}" />
+            </StackPanel>
+          </Border>
           <TextBlock Text="Callsign" /><TextBox Text="{Binding Callsign}" Width="200" HorizontalAlignment="Left" />
           <TextBlock Text="Grid (4 or 6 characters)" /><TextBox Text="{Binding Grid}" Width="200" HorizontalAlignment="Left" />
           <CheckBox Content="Show distances in kilometres (miles otherwise)" IsChecked="{Binding UnitsKm}" />

@@ -11,6 +11,13 @@ Before you start, have the radio on, connected to the PC by USB, and tuned to an
 
 ![Setup step 1: Station](images/setup-1-station.png)
 
+**Coming from WSJT-X?** If WSJT-X is set up on this computer, the first step says so, with your call, radio and the
+number of contacts in its log. **Use WSJT-X's settings and log** copies your call, grid, radio, port, baud rate, PTT
+method and sound card into these steps and imports `wsjtx_log.adi` into Costas's log, so Next in line knows what you
+have already worked without QRZ. Anything it cannot copy (a radio not in Hamlib's list, a sound card not plugged in)
+is listed for you to set by hand. Nothing is sent to the radio: each step still runs its own test. WSJT-X's files are
+only read, never changed, so you can keep using both.
+
 - **Callsign**: your call, as you send it on the air.
 - **Grid**: your Maidenhead locator, 4 or 6 characters (for example `DN40` or `DN40dd`). It is sent in your
   messages and used to work out distance and bearing and to centre the maps.

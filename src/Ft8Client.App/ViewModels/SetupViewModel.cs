@@ -14,6 +14,8 @@ using Ft8Client.App.Services;
 using Ft8Client.Audio.Backends;
 using Ft8Client.Audio.Dsp;
 using Ft8Client.Core.Messages;
+using Ft8Client.Data.Adif;
+using Ft8Client.Data.Import;
 using Ft8Client.Data.Secrets;
 using Ft8Client.Data.Settings;
 using Ft8Client.Rig;
@@ -30,6 +32,9 @@ public sealed partial class SetupViewModel : ObservableObject
     private IReadOnlyList<HamlibModel> _allModels = [];
     private CancellationTokenSource? _scan;
     private InputLevelMonitor? _monitor;
+    private readonly Task _modelsLoaded;
+    private readonly WsjtxInstall? _wsjtx;
+    private readonly WsjtxSettings? _wsjtxSettings;
 
     /// <summary>Creates the wizard from current settings.</summary>
     public SetupViewModel(AppHost host)
@@ -59,7 +64,24 @@ public sealed partial class SetupViewModel : ObservableObject
         QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
         QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
         UploadSpots = s.PskReporter.UploadSpots;
-        _ = LoadModelsAsync(s.Profile.Rig.Model);
+        _modelsLoaded = LoadModelsAsync(s.Profile.Rig.Model);
+        // Someone coming from WSJT-X: offer its settings and log, only while Costas has not been set up.
+        if (!s.SetupComplete && WsjtxInstall.FindForCurrentUser() is { } wsjtx)
+        {
+            _wsjtx = wsjtx;
+            _wsjtxSettings = wsjtx.ReadSettings();
+            int? contacts = null;
+            try
+            {
+                if (wsjtx.LogPath is { } log) contacts = WsjtxSetupImport.CountRecords(File.ReadAllText(log));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // The log is offered only if it can be read.
+                _wsjtx = wsjtx with { LogPath = null };
+            }
+            WsjtxOffer = _wsjtxSettings is null && contacts is not > 0 ? string.Empty : WsjtxSetupImport.Summary(_wsjtxSettings, contacts);
+        }
     }
 
     /// <summary>Raised when the wizard closes.</summary>
@@ -95,6 +117,81 @@ public sealed partial class SetupViewModel : ObservableObject
     /// <summary>Grid.</summary>
     [ObservableProperty]
     public partial string Grid { get; set; }
+
+    /// <summary>"WSJT-X is set up on this computer: …", or empty when it is not (or Costas is already set up).</summary>
+    public string WsjtxOffer { get; } = string.Empty;
+
+    /// <summary>The WSJT-X offer is shown: found, and not used yet.</summary>
+    public bool ShowWsjtxOffer => WsjtxOffer.Length > 0 && WsjtxResult.Length == 0;
+
+    /// <summary>What the WSJT-X import copied and what is left to set by hand.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowWsjtxOffer))]
+    public partial string WsjtxResult { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Copies WSJT-X's station, radio and audio settings into these steps and imports its log into Costas's. Nothing is
+    /// sent to the radio: each step's own test still has to pass. WSJT-X's files are only read.
+    /// </summary>
+    [RelayCommand]
+    private async Task ImportWsjtxAsync()
+    {
+        if (_wsjtx is null) return;
+        Busy = true;
+        try
+        {
+            var lines = new List<string>();
+            if (_wsjtxSettings is { } ws)
+            {
+                await _modelsLoaded; // the radio is matched against Hamlib's list
+                var plan = WsjtxSetupImport.Plan(ws, _allModels, Inputs, Outputs);
+                ApplyWsjtx(plan);
+                lines.Add("Copied your station, radio and audio settings. Check each step and run its test.");
+                lines.AddRange(plan.NotCopied);
+            }
+            if (_wsjtx.LogPath is { } path)
+            {
+                var call = Callsign.Trim().ToUpperInvariant();
+                var profile = _host.Settings.Current.Profile.Id;
+                var r = await Task.Run(() => AdifImporter.Import(_host.Qsos, File.ReadAllText(path), profile, call, _host.Countries));
+                lines.Add($"Imported {r.Imported} contacts from the WSJT-X log ({r.Merged} already in Costas, {r.Skipped} skipped).");
+            }
+            WsjtxResult = string.Join('\n', lines);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            WsjtxResult = $"Could not read WSJT-X's files: {ex.Message}";
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+
+    private void ApplyWsjtx(WsjtxSetupPlan plan)
+    {
+        if (plan.Callsign.Length > 0) Callsign = plan.Callsign;
+        if (plan.Grid.Length > 0) Grid = plan.Grid;
+        AudioOnly = plan.AudioOnly;
+        if (plan.Model is { } model)
+        {
+            Manufacturer = model.Manufacturer;
+            Model = model;
+            if (model.IsNetwork && IsNetworkAddress(plan.NetworkAddress)) NetworkAddress = plan.NetworkAddress;
+        }
+        if (plan.Port.Length > 0)
+        {
+            if (!Ports.Contains(plan.Port)) Ports.Add(plan.Port);
+            Port = plan.Port;
+        }
+        Baud = plan.Baud;
+        Ptt = plan.Ptt;
+        OnPropertyChanged(nameof(PttChoice));
+        PttPort = plan.PttPort;
+        RefreshPttPortChoices();
+        if (plan.Input is { } input) Input = input;
+        if (plan.Output is { } output) Output = output;
+    }
 
     /// <summary>Kilometres instead of miles.</summary>
     [ObservableProperty]
