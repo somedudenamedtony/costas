@@ -243,7 +243,7 @@ None of this runs in simulation. With LoTW unreachable the status says so and no
 - Optional, on by default (Settings › Who to call › Parks on the Air): the feed is public and read-only and the app sends nothing about the operator except the usual User-Agent.
 - Polled every 2 minutes, only while the app runs and the setting is on; never more often (the response is a CDN-cached copy that changes about once a minute). On failure the wait doubles, up to 30 minutes. The last spots are shown for 15 minutes after the last good answer, then dropped. Status is the `pota` service: Ok, Degraded (showing the last spots), Down, or Off.
 - Matching: a spot matches a heard station when the base calls are equal (`Callsign.BaseCall`, so K1ABC matches K1ABC/P) and the spot's frequency is on the band being worked; the newest spot wins. A station calling `CQ POTA` with no spot is shown as POTA without a park.
-- Display only: the park never changes rank, tier, score or order.
+- Ranking (owner decision 2026-10-20, D16): with Settings › Who to call › "Rank stations at a park I have not worked higher" on (default), a spotted activator whose park is not in the log ranks right after the first tier and ahead of the rest, and stays in Next in line even when its call is worked on this band. A `CQ POTA` with no spot is not moved. The park never changes the need tier itself.
 - Logged contacts with a matched park get ADIF `SIG=POTA`, `SIG_INFO=<reference>`, kept in the record's raw ADIF (no `qso` column) and copied by `AdifMapper.ToAdif` into QRZ uploads, exports and the UDP logged-ADIF message. Worked parks come from `SIG`/`SIG_INFO` and from ADIF 3.1.4 `POTA_REF` (comma list, `@location` suffix stripped).
 
 ## 8. Country file

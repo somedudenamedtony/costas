@@ -64,6 +64,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ChimeOnCaller = s.Operating.ChimeOnCaller;
         CqParity = s.Operating.CqParity;
         ClockBlock = s.Operating.ClockBlockSeconds.ToString("0.0", CultureInfo.InvariantCulture);
+        CorrectClock = s.Operating.CorrectClock;
         foreach (var t in SettingsMapper.ToRanking(s.Ranking).TierOrder) TierOrder.Add(new TierItem(t, StationText.Need(t)));
         PreferHearsMe = s.Ranking.PreferHearsMe;
         OnlyCallingCq = s.Ranking.OnlyCallingCq;
@@ -98,6 +99,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         RefreshEqslInbox();
         FeedEnabled = s.PskReporter.FeedEnabled;
         PotaSpots = s.Pota.SpotsEnabled;
+        PreferNewParks = s.Ranking.PreferNewParks;
         CompareNeighbours = s.PskReporter.CompareNeighbours;
         BandActivity = s.PskReporter.BandActivity;
         UploadSpots = s.PskReporter.UploadSpots;
@@ -408,6 +410,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string CqParity { get; set; }
 
+    /// <summary>Correct Costas's clock from internet time.</summary>
+    [ObservableProperty]
+    public partial bool CorrectClock { get; set; }
+
     /// <summary>Clock block seconds.</summary>
     [ObservableProperty]
     public partial string ClockBlock { get; set; }
@@ -670,6 +676,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Read the POTA spot feed to show parks under Why.</summary>
     [ObservableProperty]
     public partial bool PotaSpots { get; set; }
+
+    /// <summary>Rank activators at parks not in the log higher.</summary>
+    [ObservableProperty]
+    public partial bool PreferNewParks { get; set; }
 
     /// <summary>Compare my signal with stations near me.</summary>
     [ObservableProperty]
@@ -991,12 +1001,14 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.ChimeOnCaller = ChimeOnCaller;
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
+            s.Operating.CorrectClock = CorrectClock;
             s.Qrz.LogbookEnabled = LogbookEnabled;
             s.Qrz.LookupEnabled = !string.IsNullOrWhiteSpace(QrzUser) && !string.IsNullOrEmpty(QrzPassword);
             s.Qrz.UploadOnComplete = UploadOnComplete;
             s.Qrz.SyncMinutes = Int(SyncMinutes, 5, 1440, 15);
             s.PskReporter.FeedEnabled = FeedEnabled;
             s.Pota.SpotsEnabled = PotaSpots;
+            s.Ranking.PreferNewParks = PreferNewParks;
             s.PskReporter.CompareNeighbours = CompareNeighbours;
             s.PskReporter.BandActivity = BandActivity;
             s.PskReporter.UploadSpots = UploadSpots;

@@ -65,6 +65,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private LogIndex _logIndex = LogIndex.Empty;
     private HearsMe _hearsMe;
     private LotwUsers? _lotwUsers;
+    private Core.Pota.PotaParks? _parks;
     private readonly ReceptionHistory _receptionHistory = new();
     private EntityMatch? _myEntity;
     private long _dialHz;
@@ -879,6 +880,13 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
+    /// <summary>Sets the POTA spots and worked parks (an activator at a new park ranks higher).</summary>
+    public void SetParks(Core.Pota.PotaParks parks)
+    {
+        lock (_gate) _parks = parks;
+        Publish();
+    }
+
     /// <summary>Swaps in a rebuilt log index (after sync or import).</summary>
     public void SetLogIndex(LogIndex index)
     {
@@ -900,10 +908,17 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
-    /// <summary>Records the SNTP clock offset.</summary>
-    public void SetClockOffset(double? seconds)
+    /// <summary>
+    /// Records the SNTP clock offset of the clock in use. <paramref name="stepped"/> says the clock was just corrected, so
+    /// the median DT of earlier decodes no longer applies.
+    /// </summary>
+    public void SetClockOffset(double? seconds, bool stepped = false)
     {
-        lock (_gate) _sntpOffset = seconds;
+        lock (_gate)
+        {
+            _sntpOffset = seconds;
+            if (stepped) _medianDt = null;
+        }
         Publish();
     }
 
@@ -1042,7 +1057,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             var now = _clock.UtcNow;
             var stations = _tracker.Stations.ToList();
             var rank = Ranker.Rank(new RankInput(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity,
-                _config.Band, ModeInfo.Name(_config.Mode), now, _countries, Lotw: _lotwUsers));
+                _config.Band, ModeInfo.Name(_config.Mode), now, _countries, Lotw: _lotwUsers, Parks: _parks));
             var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, ModeInfo.Name(_config.Mode), now, _slotCounts, _tonight,
                 _config.Ranking);
             snap = new SessionSnapshot

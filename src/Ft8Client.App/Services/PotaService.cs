@@ -19,8 +19,8 @@ namespace Ft8Client.App.Services;
 
 /// <summary>
 /// Keeps the POTA activator spots (polled every two minutes while the setting is on, backing off to 30 minutes while
-/// the feed cannot be reached) and the parks in the log, for the park line under Why. Optional and display only: it
-/// never changes who is ranked or called, and without it nothing but the park line is missing.
+/// the feed cannot be reached) and the parks in the log, for the park line under Why and for ranking new parks higher.
+/// Optional: without it the park line is missing and parks do not change the order.
 /// </summary>
 public sealed class PotaService : IDisposable
 {

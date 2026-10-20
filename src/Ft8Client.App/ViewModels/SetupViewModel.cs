@@ -925,7 +925,9 @@ public sealed partial class SetupViewModel : ObservableObject
             ? "No time server answered (offline is fine; the decodes will estimate the offset)."
             : Math.Abs(r.Offset.TotalSeconds) < 0.5
                 ? $"Your clock is {Math.Abs(r.Offset.TotalSeconds):0.00} s off. That is fine."
-                : $"Your clock is {Math.Abs(r.Offset.TotalSeconds):0.00} s off. Sync it in Windows time settings (Settings › Time & language › Date & time › Sync now).";
+                : _host.Settings.Current.Operating.CorrectClock && r.Offset.Duration() <= Core.Time.ClockCorrection.MaxCorrection
+                    ? $"Your clock is {Math.Abs(r.Offset.TotalSeconds):0.00} s off. Costas corrects for it from internet time, so you can carry on. Syncing it in Windows time settings is still better."
+                    : $"Your clock is {Math.Abs(r.Offset.TotalSeconds):0.00} s off. Sync it in Windows time settings (Settings › Time & language › Date & time › Sync now).";
     }
 
     private async Task LoadModelsAsync(int? current)

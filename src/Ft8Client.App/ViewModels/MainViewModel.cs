@@ -333,7 +333,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         var tonight = TonightRows(s);
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
-        Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current.Ranking);
+        Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current);
         Operate.ShowCqModifier(_host.Settings.Current.Operating.CqModifier);
         Operate.Apply(s, tonight.Rows, tonight.Total);
         Reach.ApplyNeighbours(s.Neighbours, s.Band, _host.Settings.Current.PskReporter is { FeedEnabled: true, CompareNeighbours: true });
@@ -374,9 +374,17 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var offset = s.ClockOffsetSeconds;
         ClockKind = offset is { } o && Math.Abs(o) > _host.Settings.Current.Operating.ClockBlockSeconds ? TextKind.Critical
             : offset is { } o2 && Math.Abs(o2) > ClockEstimate.WarnSeconds ? TextKind.Caution : TextKind.Normal;
-        ClockTip = offset is { } o3 ? $"Clock offset {o3:+0.00;-0.00} s." : "Clock offset not measured yet.";
+        ClockTip = ClockTipText(offset, _host.CorrectedClock.Correction);
         if (Tab == 2) Reach.Refresh();
         Mini.Refresh(SelectedBand, SelectedMode);
+    }
+
+    /// <summary>The clock tooltip: the offset left, and the correction Costas applies to the PC clock, if any.</summary>
+    public static string ClockTipText(double? offsetSeconds, TimeSpan correction)
+    {
+        var left = offsetSeconds is { } o ? $"Clock offset {o:+0.00;-0.00} s." : "Clock offset not measured yet.";
+        return correction == TimeSpan.Zero ? left
+            : $"{left} Your PC clock is {Math.Abs(correction.TotalSeconds):0.00} s {(correction > TimeSpan.Zero ? "slow" : "fast")}; Costas corrects for it from internet time.";
     }
 
     /// <summary>Called every 200 ms: clock and slot progress.</summary>

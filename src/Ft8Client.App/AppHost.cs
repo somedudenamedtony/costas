@@ -60,13 +60,15 @@ public sealed class AppHost : IAsyncDisposable
     private string? _outputId;
     private string? _audioProblem;
     private DateTime _usageDay;
+    private TaskCompletionSource _clockRecheck = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private AppHost(CommandLine args, AppPaths paths, AppSettingsAccessor settings)
     {
         Args = args;
         Paths = paths;
         Settings = settings;
-        Clock = SystemClock.Instance;
+        CorrectedClock = new CorrectedClock(SystemClock.Instance);
+        Clock = CorrectedClock;
         Guard = new ChildProcessGuard();
         Secrets = SecretStoreFactory.Create();
         Database = new SqliteDatabase(paths.Database);
@@ -91,8 +93,11 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Settings.</summary>
     public AppSettingsAccessor Settings { get; }
 
-    /// <summary>Clock.</summary>
+    /// <summary>Clock: the PC clock plus the correction from internet time, when that is on.</summary>
     public IClock Clock { get; }
+
+    /// <summary>The same clock, for its correction.</summary>
+    public CorrectedClock CorrectedClock { get; }
 
     /// <summary>Child process guard.</summary>
     public ChildProcessGuard Guard { get; }
@@ -369,6 +374,7 @@ public sealed class AppHost : IAsyncDisposable
         Session.Changed += NeighbourHistory.OnSnapshot;
         Pota = new PotaService(() => Settings.Current.Pota.SpotsEnabled, () => Settings.Current.Profile.Callsign, Clock,
             st => Session.SetService(ServiceNames.Pota, st));
+        Pota.Changed += Session.SetParks;
         Pota.SetWorked(WorkedParksFromLog());
         log.Stored += Pota.OnLogged;
         Pota.Start();
@@ -404,6 +410,7 @@ public sealed class AppHost : IAsyncDisposable
         _ = Task.Run(ClockCheckLoopAsync);
         _ = Task.Run(RigPollLoopAsync);
         var confirmedBy = SettingsMapper.ConfirmationSource(s);
+        var correctClock = s.Operating.CorrectClock;
         Settings.Changed += _ =>
         {
             if (SettingsMapper.ConfirmationSource(Settings.Current) != confirmedBy)
@@ -413,6 +420,11 @@ public sealed class AppHost : IAsyncDisposable
             }
             TxLevel.Apply();
             Pota.Wake();
+            if (Settings.Current.Operating.CorrectClock != correctClock)
+            {
+                correctClock = Settings.Current.Operating.CorrectClock;
+                _clockRecheck.TrySetResult();
+            }
             Session.Reconfigure(SettingsMapper.ToConfig(Settings.Current));
         };
     }
@@ -798,22 +810,46 @@ public sealed class AppHost : IAsyncDisposable
         await StopTransmitterForRetuneAsync().ConfigureAwait(false);
     }
 
+    // Measures the PC clock against internet time at start and then hourly, every 15 minutes while correcting (a PC
+    // clock that is off usually drifts too), and 5 minutes after no server answered.
     private async Task ClockCheckLoopAsync()
     {
         while (!_cts.IsCancellationRequested)
         {
             try
             {
-                Sntp = await new SntpClient().MeasureAsync(_cts.Token).ConfigureAwait(false);
-                if (Sntp is not null) Session.SetClockOffset(Sntp.Offset.TotalSeconds);
+                var recheck = _clockRecheck = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var r = await new SntpClient().MeasureAsync(_cts.Token).ConfigureAwait(false);
+                if (r is not null) Sntp = r;
+                await ApplyClockCorrectionAsync().ConfigureAwait(false);
                 TrackDay();
-                await Task.Delay(TimeSpan.FromHours(1), _cts.Token).ConfigureAwait(false);
+                var wait = r is null ? TimeSpan.FromMinutes(5)
+                    : Settings.Current.Operating.CorrectClock ? TimeSpan.FromMinutes(15) : TimeSpan.FromHours(1);
+                await Task.WhenAny(Task.Delay(wait, _cts.Token), recheck.Task).ConfigureAwait(false);
+                _cts.Token.ThrowIfCancellationRequested();
             }
             catch (OperationCanceledException)
             {
                 return;
             }
         }
+    }
+
+    // Sets the correction from the latest measurement and the setting, and tells the session the offset that remains.
+    // A change waits for a transmission in progress to end; the slot clock then takes it at the next slot boundary.
+    private async Task ApplyClockCorrectionAsync()
+    {
+        var r = Sntp;
+        var current = CorrectedClock.Correction;
+        var next = ClockCorrection.Next(Settings.Current.Operating.CorrectClock, r?.Offset, r?.RoundTrip ?? TimeSpan.Zero, current);
+        if (next != current)
+        {
+            for (var i = 0; i < 30 && Transmitter.Transmitting; i++) await Task.Delay(TimeSpan.FromSeconds(1), _cts.Token).ConfigureAwait(false);
+            CorrectedClock.SetCorrection(next);
+            Log.Information("Clock correction {Old:+0.000;-0.000} s -> {New:+0.000;-0.000} s (SNTP {Offset:+0.000;-0.000} s, round trip {Rtt:0} ms)",
+                current.TotalSeconds, next.TotalSeconds, r?.Offset.TotalSeconds ?? 0, r?.RoundTrip.TotalMilliseconds ?? 0);
+        }
+        if (r is not null) Session.SetClockOffset((r.Offset - next).TotalSeconds, stepped: next != current);
     }
 
     /// <summary>The repository's or app's samples folder.</summary>
