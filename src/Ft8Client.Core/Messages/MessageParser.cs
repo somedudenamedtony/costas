@@ -18,6 +18,8 @@ public static class MessageParser
         var t = norm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
         if (norm.Contains(';', StringComparison.Ordinal) && TryDxpedition(norm, out var dx)) return dx;
+        // "TU; W9XYZ K1ABC R 579 MA": a Roundup exchange thanking the last station; the rest is an ordinary exchange.
+        if (t.Length >= 4 && t[0] == "TU;" && IsCallToken(t[1]) && IsCallToken(t[2])) return TwoCall(norm, t[1..]);
         if (t.Length >= 2 && t[0] == "CQ" && TryCq(norm, t, out var cq)) return cq;
         if (t.Length >= 2 && IsCallToken(t[0]) && IsCallToken(t[1]) && t[0] != "CQ") return TwoCall(norm, t);
         return Free(norm);
@@ -82,7 +84,9 @@ public static class MessageParser
             if (Report.TryParse(x, out var rep)) return Make(MessageKind.Report) with { Report = rep };
             if (x.Length == 4 && x[0] == 'R' && Report.TryParse(x[1..], out var rr)) return Make(MessageKind.RogerReport) with { Report = rr };
         }
-        return Make(MessageKind.Exchange);
+        var roger = t[2] == "R" && t.Length > 3;
+        var exchange = string.Join(' ', t[(roger ? 3 : 2)..]);
+        return Make(MessageKind.Exchange) with { Roger = roger, Exchange = exchange, Grid = Grid.IsGrid4(exchange) ? exchange : null };
 
         ParsedMessage Make(MessageKind k) => new() { Kind = k, Text = norm, To = to, From = from };
     }

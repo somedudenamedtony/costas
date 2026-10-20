@@ -67,7 +67,8 @@ public static class MessagePacker
         }
 
         // Try each form and keep the first that a receiver will decode exactly as written (ft8code behaviour).
-        var candidates = new List<PackResult>(3);
+        var candidates = new List<PackResult>(4);
+        if (ContestPacker.Pack(tokens) is { } contest) candidates.Add(contest);
         if (pos == tokens.Length && callDe.Length > 0)
         {
             candidates.Add(PackStandard(callTo, callDe, extra));

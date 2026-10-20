@@ -28,7 +28,9 @@ public static class MessageUnpacker
         return i3 switch
         {
             0 when n3 == 0 => UnpackFree(payload),
+            0 when n3 is 3 or 4 => ContestPacker.UnpackFieldDay(payload, n3, n28 => Unpack28(n28, 0, 1, known)),
             1 or 2 => UnpackStandard(payload, i3, known),
+            3 => ContestPacker.UnpackRoundup(payload, n28 => Unpack28(n28, 0, 1, known)),
             4 => UnpackNonstandard(payload, known),
             _ => null,
         };

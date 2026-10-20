@@ -151,4 +151,29 @@ public class MessageParserTests
     {
         MessageParser.IsCqModifier(token).Should().Be(expected);
     }
+
+    [Theory]
+    [InlineData("K1ABC W9XYZ 6A WI", false, "6A WI", null)]
+    [InlineData("W9XYZ K1ABC R 2B EMA", true, "2B EMA", null)]
+    [InlineData("W9XYZ K1ABC R 589 MA", true, "589 MA", null)]
+    [InlineData("W9XYZ G8ABC 559 0013", false, "559 0013", null)]
+    [InlineData("W9XYZ K1ABC R FN42", true, "FN42", "FN42")]
+    public void Parse_ContestExchange_RogerAndExchangeText(string text, bool roger, string exchange, string? grid)
+    {
+        var m = MessageParser.Parse(text);
+        m.Kind.Should().Be(MessageKind.Exchange);
+        m.Roger.Should().Be(roger);
+        m.Exchange.Should().Be(exchange);
+        m.Grid.Should().Be(grid);
+    }
+
+    [Fact]
+    public void Parse_TuPrefix_ExchangeFromTheSender()
+    {
+        var m = MessageParser.Parse("TU; W9XYZ K1ABC R 579 MA");
+        m.Kind.Should().Be(MessageKind.Exchange);
+        m.SenderCall.Should().Be("K1ABC");
+        m.IsAddressedTo("W9XYZ").Should().BeTrue();
+        m.Exchange.Should().Be("579 MA");
+    }
 }

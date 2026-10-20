@@ -35,6 +35,15 @@ public sealed record ParsedMessage
     /// <summary>For <see cref="MessageKind.DxpeditionMulti"/>: the second station, which receives the report.</summary>
     public CallToken? To2 { get; init; }
 
+    /// <summary>
+    /// For <see cref="MessageKind.Exchange"/>: what follows the two calls, without a leading <c>R</c>
+    /// (<c>6A WI</c>, <c>579 MA</c>, <c>FN42</c>).
+    /// </summary>
+    public string? Exchange { get; init; }
+
+    /// <summary>For <see cref="MessageKind.Exchange"/>: the exchange starts with <c>R</c>, acknowledging the other's.</summary>
+    public bool Roger { get; init; }
+
     /// <summary>The sender's call when it is known and resolved; otherwise null.</summary>
     public string? SenderCall => From is { Unresolved: false } f ? f.Call : null;
 
