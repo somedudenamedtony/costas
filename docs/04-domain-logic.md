@@ -197,7 +197,7 @@ A Fox/Hound DXpedition is worked as a Hound with no mode to switch (owner decisi
 - While a contact is in progress, other stations calling me are added to `WaitingForMe` (maximum 5, oldest first) and are never answered automatically unless the operator pressed "Answer after this contact" for that caller.
 - When a contact ends without being logged (`Abandoned`, `NoReply`, `Watchdog`), the engine remembers it for 5 minutes. Anything its station sends to me in that time, including RR73, RRR or 73, puts it in `WaitingForMe` flagged as a reply after stopping (not counted against the maximum). Nothing is sent until the operator answers it; answering resumes the stopped contact and applies the late messages as if they had arrived in time (a late RR73 logs and sends 73, a late report gets the R-report). Calling or answering that station afresh, or stopping another contact, forgets it.
 - The engine never starts a contact by itself. `CallStation`, `CallCq` and `AnswerCaller` are operator commands.
-- Tx watchdog: if no operator input (key, click) has occurred for `WatchdogMinutes` (default 6), stop transmitting and show "Stopped by watchdog".
+- Tx watchdog: if no operator input (key, click) has occurred for `WatchdogMinutes` (default 6), stop transmitting and show "Stopped by watchdog". Owner decision 2026-10-20: a contact in which the other station has already sent me a message runs to its end first (still bounded by the retry limit, including a free text queued after it); CQ and queued "answer after this contact" callers do not start after it.
 
 ### Logged fields
 

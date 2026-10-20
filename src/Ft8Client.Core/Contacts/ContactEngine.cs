@@ -48,6 +48,7 @@ public sealed class ContactEngine
     private Stopped? _stopped;
     private string? _extraMessage;
     private SlotParity _extraParity;
+    private bool _lastBeforeWatchdog;
 
     /// <summary>Creates the engine.</summary>
     public ContactEngine(string myCall, string myGrid, ContactSettings settings, DateTime nowUtc)
@@ -119,6 +120,7 @@ public sealed class ContactEngine
     public void OperatorActivity(DateTime nowUtc)
     {
         _lastInputUtc = nowUtc;
+        _lastBeforeWatchdog = false;
         StopReason = null;
     }
 
@@ -337,7 +339,16 @@ public sealed class ContactEngine
         var wantsTx = _c is not null || _cqRunning || _extraMessage is not null;
         if (!wantsTx) return null;
 
-        if (nowUtc - _lastInputUtc >= TimeSpan.FromMinutes(_settings.WatchdogMinutes))
+        var watchdogExpired = nowUtc - _lastInputUtc >= TimeSpan.FromMinutes(_settings.WatchdogMinutes);
+        if (watchdogExpired && (_c is not null ? Answered(_c) : _lastBeforeWatchdog))
+        {
+            // Owner decision 2026-10-20: a contact the other station is answering runs to its end (still bounded by
+            // the retry limit), including a free text queued after it, so the watchdog never cuts it off halfway.
+            // Nothing new starts after it.
+            _cqRunning = false;
+            _lastBeforeWatchdog = true;
+        }
+        else if (watchdogExpired)
         {
             _cqRunning = false;
             _extraMessage = null;
@@ -665,6 +676,11 @@ public sealed class ContactEngine
         }
         _finished = _c;
         _c = null;
+        if (_lastBeforeWatchdog)
+        {
+            resume = false;
+            StopReason = "Stopped by watchdog";
+        }
         if (!resume) return;
         var next = _waiting.FirstOrDefault(w => w.AnswerAfter);
         if (next is not null) Begin(next, nowUtc);
@@ -686,6 +702,9 @@ public sealed class ContactEngine
         c.StepStartedUtc = null;
         c.AwaitingReply = false;
     }
+
+    // True once the other station has sent me something in this contact.
+    private static bool Answered(Contact c) => c.Steps.Exists(s => !s.Mine && s.State == StepState.Done);
 
     private static void MarkReceived(Contact c, int index, string text, DateTime utc) =>
         c.Steps[index] = c.Steps[index] with { Message = text, State = StepState.Done, Count = c.Steps[index].Count + 1, TimeUtc = utc };

@@ -44,7 +44,7 @@ exchange and the reports are fixed by FT8, so only the parts above can change.
 | --- | --- | --- |
 | **Call CQ in** | even | Even slots start at :00 and :30, odd slots at :15 and :45 |
 | **Give up after** | 4 | Tries without an answer before a contact ends as *No reply* |
-| **Watchdog** | 6 minutes | Transmitting stops if you have not touched the app for this long |
+| **Watchdog** | 6 minutes | Transmitting stops if you have not touched the app for this long. A contact the other station is answering is finished first |
 | **Clock limit** | 2.0 seconds | Transmitting is blocked when the PC clock is off by more than this |
 | **Clock correction** | on | When the PC clock is off, Costas times its slots, transmissions and log entries from internet time instead, checked every 15 minutes. The PC clock itself is not changed. Offsets over a minute are not corrected: set the Windows clock and time zone instead |
 | **Logging** | on | Log each contact automatically when it completes |
