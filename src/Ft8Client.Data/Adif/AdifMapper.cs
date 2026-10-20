@@ -56,6 +56,9 @@ public static class AdifMapper
             MyGridsquare = r["my_gridsquare"],
             TxPwr = r["tx_pwr"],
             Comment = r["comment"],
+            ContestId = r["contest_id"],
+            StxString = r["stx_string"],
+            SrxString = r["srx_string"],
             Confirmed = IsConfirmed(r),
             LotwConfirmed = r["lotw_qsl_rcvd"]?.ToUpperInvariant() is "Y" or "V",
             LotwUploadState = r["lotw_qsl_sent"]?.ToUpperInvariant() is "Y" ? UploadState.Uploaded : UploadState.None,
@@ -105,6 +108,9 @@ public static class AdifMapper
         r["country"] = q.Country;
         r["dxcc"] = q.Dxcc?.ToString(CultureInfo.InvariantCulture);
         r["comment"] = q.Comment;
+        r["contest_id"] = q.ContestId;
+        r["stx_string"] = q.StxString;
+        r["srx_string"] = q.SrxString;
         if (q.EqslConfirmed) r["eqsl_qsl_rcvd"] = "Y";
         r["app_qrzlog_logid"] = q.QrzLogid?.ToString(CultureInfo.InvariantCulture);
         // Park fields have no column; they travel in the raw ADIF (see PotaAdif).

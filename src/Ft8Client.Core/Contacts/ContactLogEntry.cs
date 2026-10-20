@@ -15,4 +15,14 @@ namespace Ft8Client.Core.Contacts;
 /// <param name="ReportReceived">Report I received, if any.</param>
 /// <param name="TimeOnUtc">Start of my first transmission in the contact.</param>
 /// <param name="TimeOffUtc">When it was logged.</param>
-public sealed record ContactLogEntry(string Call, string? Grid, int ReportSent, int? ReportReceived, DateTime TimeOnUtc, DateTime TimeOffUtc);
+public sealed record ContactLogEntry(string Call, string? Grid, int ReportSent, int? ReportReceived, DateTime TimeOnUtc, DateTime TimeOffUtc)
+{
+    /// <summary>The contest's CQ word (<c>FD</c>, <c>RU</c>, <c>WW</c>, <c>TEST</c>) for a contest contact, else null.</summary>
+    public string? Contest { get; init; }
+
+    /// <summary>The contest exchange I sent, without the calls.</summary>
+    public string? ExchangeSent { get; init; }
+
+    /// <summary>The contest exchange I received, without the calls or the R.</summary>
+    public string? ExchangeReceived { get; init; }
+}

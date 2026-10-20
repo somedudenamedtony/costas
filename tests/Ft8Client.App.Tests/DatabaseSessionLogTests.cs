@@ -52,6 +52,24 @@ public class DatabaseSessionLogTests
     }
 
     [Fact]
+    public void Write_RoundupContact_ContestFieldsAndRstsStoredAndExported()
+    {
+        var db = new SqliteDatabase(Path.Combine(Directory.CreateTempSubdirectory("ft8contest").FullName, "log.db"));
+        var qsos = new QsoRepository(db);
+        var entry = Entry with { Contest = "RU", ExchangeSent = "579 WI", ExchangeReceived = "589 MA" };
+        new DatabaseSessionLog(qsos, new UploadQueueRepository(db), () => "home", () => false).Write(entry, Context).Should().BeTrue();
+
+        var q = qsos.List().Single();
+        q.ContestId.Should().Be("ARRL-RTTY");
+        q.StxString.Should().Be("579 WI");
+        q.SrxString.Should().Be("589 MA");
+        q.RstSent.Should().Be("579");
+        q.RstRcvd.Should().Be("589");
+        var adif = AdifImporter.Export([q], DateTime.UtcNow);
+        adif.Should().Contain("<contest_id:9>ARRL-RTTY").And.Contain("<stx_string:6>579 WI").And.Contain("<srx_string:6>589 MA");
+    }
+
+    [Fact]
     public void Write_Contact_CommentHasModeAndReports()
     {
         Write(null).Comment.Should().Be("FT8 Sent: -01 Rcvd: -13");

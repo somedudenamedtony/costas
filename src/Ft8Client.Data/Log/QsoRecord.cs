@@ -80,6 +80,15 @@ public sealed class QsoRecord
     /// <summary>Comment.</summary>
     public string? Comment { get; set; }
 
+    /// <summary>The contest, as ADIF <c>CONTEST_ID</c> names it (<c>ARRL-FD</c>, <c>WW-DIGI</c>), or null.</summary>
+    public string? ContestId { get; set; }
+
+    /// <summary>Contest exchange sent (ADIF <c>STX_STRING</c>), or null.</summary>
+    public string? StxString { get; set; }
+
+    /// <summary>Contest exchange received (ADIF <c>SRX_STRING</c>), or null.</summary>
+    public string? SrxString { get; set; }
+
     /// <summary>True if any confirmation field says so.</summary>
     public bool Confirmed { get; set; }
 

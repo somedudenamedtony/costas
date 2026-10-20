@@ -118,7 +118,7 @@ If PSK Reporter is unavailable, chance is computed from S's SNR alone: Good at -
 
 ## 6. Ranking
 
-A station is **callable** when all hold: state is `CallingCq` (or, with "Only stations calling CQ" off, also `Finishing`); it was decoded in its most recent own-parity slot, or (owner request 2026-10-11) its latest message was a CQ and it was decoded within the operator's "Keep CQ callers listed" time (Ranking setting, default 2 minutes; 0 keeps the old rule); its call is resolved; its CQ modifier does not exclude me. A continent or country modifier that is not mine excludes me. I may answer `CQ DX` only if the caller is in a different entity from mine. Activity modifiers such as `POTA` and `SOTA` do not exclude. Contest modifiers (`TEST`, `CONT`, `RU`, `FD`, `WFD`, `ARRL`, `WW`, `WPX`, `VHF`) make the station not callable (owner decision 2026-10-12): it expects a contest exchange the standard contact cannot send, so it waits in Watching as "Contest (CQ RU), needs an exchange".
+A station is **callable** when all hold: state is `CallingCq` (or, with "Only stations calling CQ" off, also `Finishing`); it was decoded in its most recent own-parity slot, or (owner request 2026-10-11) its latest message was a CQ and it was decoded within the operator's "Keep CQ callers listed" time (Ranking setting, default 2 minutes; 0 keeps the old rule); its call is resolved; its CQ modifier does not exclude me. A continent or country modifier that is not mine excludes me. I may answer `CQ DX` only if the caller is in a different entity from mine. Activity modifiers such as `POTA` and `SOTA` do not exclude. Contest modifiers (`TEST`, `CONT`, `RU`, `FD`, `WFD`, `ARRL`, `WW`, `WPX`, `VHF`) make the station callable only when Costas can send that contest's exchange (owner request 2026-10-20, replacing the decision of 2026-10-12 that no contest CQ is callable): `TEST`, `WW`, `FD` and `RU`, with standard calls on both sides and my exchange set (flow C below). Otherwise it waits in Watching with the reason, for example "Contest (CQ FD): Set your Field Day class and section in Settings" or "Contest (CQ WPX): Costas has no exchange for CQ WPX".
 
 A **Fox** (a station heard sending a multi-answer message `CALL1 RR73; CALL2 <FOX> ±NN`) is callable whenever it was decoded in its latest own slot, whatever it is doing, and Doing now reads "DXpedition (Fox/Hound), working Hounds". Calling it starts a Hound contact (flow H).
 
@@ -159,6 +159,29 @@ The contact is **logged when step 4 is received**. Step 5 is a courtesy and is s
 | 6 | DX | `ME DX 73` | Optional; not waited for |
 
 The contact is **logged when step 5 has been transmitted**. Then CQ resumes, or the next caller in "Waiting for you" is answered if the operator queued one.
+
+### Flow C: answering a contest CQ (4 steps)
+
+Messages and sequence are WSJT-X's (user guide "Contest Messages" and `genStdMsgs`/`processMessage` in `widgets/mainwindow.cpp`, WSJT-X 3.0.2, read 2026-10-20). As in WSJT-X's contest modes, the contact starts with my exchange, not with Tx1.
+
+| Step | Who | Message | Advance when |
+| --- | --- | --- | --- |
+| 1 | Me | `DX ME EXCH` | An exchange with `R` from the DX station to me |
+| 2 | DX | `ME DX R EXCH` | — |
+| 3 | Me | `DX ME RR73`; logged when it has been sent | — |
+| 4 | DX | `ME DX 73` (optional, not waited for) | — |
+
+| CQ word | Contest | My exchange |
+| --- | --- | --- |
+| `TEST` | ARRL International Digital Contest, NA VHF | My 4-character grid (`K1ABC W9XYZ EN37`) |
+| `WW` | WW Digi | My 4-character grid |
+| `FD` | ARRL Field Day | Class and ARRL/RAC section from the station profile (`6A WI`; `DX` outside the US and Canada); message type 0.3/0.4 |
+| `RU` | FT Roundup | RST `5n9` with n = (SNR + 36) / 6 clamped 2..9 as WSJT-X computes it, then my state or province, or outside the US and Canada a 4-digit serial number that advances with each logged contact (`579 WI`, `559 0013`); message type 3 |
+
+- Not answered: `CQ TEST` from Europe on 6 m and up (the EU VHF contest, whose hashed-call and serial-number messages Costas does not send); other contest words (`WFD`, `WPX`, `CONT`, `ARRL`, `VHF`); either call nonstandard (WSJT-X does not support compound calls in contest messages).
+- The retry limit and the late-decode rule apply as in flow A. If the DX station answers another station's exchange first, the contact ends as `AnsweredOther`.
+- If the DX station sends its `R` exchange again after my `RR73` (within 2 minutes), `RR73` goes once more, as the guide advises; no second log entry.
+- Logged with ADIF `CONTEST_ID` (`ARRL-FD`, `ARRL-RTTY`, `WW-DIGI`, `TEST`), `STX_STRING` and `SRX_STRING`; in the Roundup the RSTs go in `RST_SENT` and `RST_RCVD`.
 
 ### Flow H: Hound (4 steps)
 

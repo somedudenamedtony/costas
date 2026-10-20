@@ -64,6 +64,25 @@ of Next in line (it is now worked on this band) and your tallies update:
 
 ![After logging](images/after-logging.png)
 
+### Answering a contest CQ
+
+Stations calling `CQ FD` (Field Day), `CQ RU` (FT Roundup), `CQ WW` (WW Digi) or `CQ TEST` (the ARRL Digital contest
+and NA VHF) can be called like anyone else, as long as Costas can send the exchange that contest needs. Costas sends
+exactly what WSJT-X sends: your exchange straight away instead of your grid call, then **RR73** once they send theirs
+with an R, and the contact is logged with the contest and both exchanges.
+
+```
+CQ FD K1ABC FN42
+                       K1ABC W9XYZ 6A WI
+W9XYZ K1ABC R 2B EMA
+                       K1ABC W9XYZ RR73
+```
+
+Set your Field Day class and section and your Roundup state, province or DX in
+[Settings › Station](settings.md#station). Until then those stations wait in Watching and say what is missing.
+Other contests (the EU VHF contest, Winter Field Day, WPX) and contests with a compound call are not answered, because
+FT8 has no message that would carry their exchange correctly.
+
 ### Compound and portable calls
 
 Costas works stations with a prefix or long suffix, such as **PJ4/K1ABC**, and you can use one as your own call

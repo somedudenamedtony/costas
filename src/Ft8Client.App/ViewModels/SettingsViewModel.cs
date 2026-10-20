@@ -39,6 +39,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             Profiles.Add(new ProfileDraft
             {
                 Id = p.Id, Name = p.Name, Callsign = p.Callsign, Grid = p.Grid, Power = p.PowerWatts.ToString(CultureInfo.InvariantCulture),
+                FieldDay = p.FieldDayExchange, Roundup = p.RoundupExchange,
                 LogbookKey = host.Secrets.Get(SecretNames.QrzLogbookKey(p.Id)) ?? string.Empty,
                 EqslUser = host.Secrets.Get(SecretNames.EqslUsername(p.Id)) ?? string.Empty,
                 EqslPassword = host.Secrets.Get(SecretNames.EqslPassword(p.Id)) ?? string.Empty,
@@ -48,6 +49,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _loadedProfile = s.Profile.Id;
         var active = Profiles.First(d => d.Id == s.Profile.Id);
         (Callsign, Grid, Power, LogbookKey) = (active.Callsign, active.Grid, active.Power, active.LogbookKey);
+        (FieldDay, Roundup) = (active.FieldDay, active.Roundup);
         _shownProfile = active;
         SelectedProfile = active;
         TxGain = _loadedTxGain = TxLevelController.LevelFor(s.Profile.Audio, s.Operating.Band).ToString("0.0", CultureInfo.InvariantCulture);
@@ -219,6 +221,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         if (value is null || ReferenceEquals(value, _shownProfile)) return;
         StoreFields();
         (Callsign, Grid, Power, LogbookKey) = (value.Callsign, value.Grid, value.Power, value.LogbookKey);
+        (FieldDay, Roundup) = (value.FieldDay, value.Roundup);
         ShowEqsl(value);
         KeyStatus = string.Empty;
         _shownProfile = value;
@@ -233,7 +236,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         var draft = new ProfileDraft
         {
             Id = "p" + Guid.NewGuid().ToString("N")[..8], CopyOf = from.Id, Name = NewProfileName(Profiles.Select(p => p.Name)),
-            Callsign = from.Callsign, Grid = from.Grid, Power = from.Power,
+            Callsign = from.Callsign, Grid = from.Grid, Power = from.Power, FieldDay = from.FieldDay, Roundup = from.Roundup,
         };
         Profiles.Add(draft);
         SelectedProfile = draft;
@@ -271,6 +274,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _shownProfile.Callsign = Callsign;
         _shownProfile.Grid = Grid;
         _shownProfile.Power = Power;
+        _shownProfile.FieldDay = FieldDay;
+        _shownProfile.Roundup = Roundup;
         _shownProfile.LogbookKey = LogbookKey;
         _shownProfile.EqslUser = EqslUser;
         _shownProfile.EqslPassword = EqslPassword;
@@ -305,6 +310,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             p.Callsign = d.Callsign.Trim().ToUpperInvariant();
             p.Grid = d.Grid.Trim().ToUpperInvariant();
             p.PowerWatts = Watts(d.Power, p.PowerWatts);
+            // Kept only in the form Costas can send; anything else leaves that contest's CQs uncallable, which Watching says.
+            p.FieldDayExchange = ContestRules.FieldDayExchange(d.FieldDay) ?? string.Empty;
+            p.RoundupExchange = ContestRules.RoundupLocation(d.Roundup) ?? string.Empty;
             p.Eqsl.SyncEnabled = d.EqslSync;
             p.Eqsl.UploadOnComplete = d.EqslUpload;
             p.Eqsl.QthNickname = d.EqslQth.Trim();
@@ -323,6 +331,24 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MessagePreview), nameof(MessageProblem))]
     public partial string Grid { get; set; }
+
+    /// <summary>Field Day class and section, for answering CQ FD.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ContestProblem))]
+    public partial string FieldDay { get; set; } = string.Empty;
+
+    /// <summary>Roundup state, province or DX, for answering CQ RU.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ContestProblem))]
+    public partial string Roundup { get; set; } = string.Empty;
+
+    /// <summary>What is wrong with the contest exchanges as typed, or empty.</summary>
+    public string ContestProblem =>
+        FieldDay.Trim().Length > 0 && ContestRules.FieldDayExchange(FieldDay) is null
+            ? "Field Day: the number of transmitters (1 to 32), the class letter A to F, a space and your ARRL or RAC section, for example 1D WI. Outside the US and Canada the section is DX."
+            : Roundup.Trim().Length > 0 && ContestRules.RoundupLocation(Roundup) is null
+                ? "Roundup: your two-letter state or province, for example WI or ON, or DX outside the US and Canada."
+                : string.Empty;
 
     /// <summary>Power in watts.</summary>
     [ObservableProperty]

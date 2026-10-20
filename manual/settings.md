@@ -18,6 +18,11 @@ Radio, audio devices and the transmit test are not here: they are in **☰ › S
 - **Callsign** and **Grid square** (4 or 6 characters). Used in every message you send and to work out distances.
 - **Power (watts)**: recorded in the log when the radio cannot report its own power setting. It does not change the
   radio's power.
+- **Contest exchange**: what you send when you answer a contest CQ. **Field Day**: your number of transmitters, class
+  and ARRL or RAC section, such as `1D WI`. **FT Roundup**: your state or province, such as `WI` or `ON`, or `DX`
+  outside the US and Canada, which sends a serial number that goes up by one after each Roundup contact. WW Digi and
+  the ARRL Digital contest need only your grid. Until these are set, CQ FD and CQ RU stations wait in Watching and say
+  what to set.
 
 ## Transmitting
 

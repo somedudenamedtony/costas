@@ -42,8 +42,12 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
             FreqHz = c.FrequencyHz,
             Mode = mode,
             Submode = submode,
-            RstSent = Report.Format(e.ReportSent),
-            RstRcvd = e.ReportReceived is { } r ? Report.Format(r) : null,
+            // The Roundup exchanges an RST; other contests exchange no report, so the measured SNR stands, as in WSJT-X.
+            RstSent = e.Contest == "RU" && Rst(e.ExchangeSent) is { } rs ? rs : Report.Format(e.ReportSent),
+            RstRcvd = e.Contest == "RU" && Rst(e.ExchangeReceived) is { } rr ? rr : e.ReportReceived is { } r ? Report.Format(r) : null,
+            ContestId = e.Contest is { } contest ? ContestRules.ContestId(contest) : null,
+            StxString = e.ExchangeSent,
+            SrxString = e.ExchangeReceived,
             Gridsquare = e.Grid,
             Name = c.Name,
             State = c.State,
@@ -66,4 +70,8 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
         Stored?.Invoke(q);
         return true;
     }
+
+    // The RST at the start of a Roundup exchange ("579 WI" gives 579).
+    private static string? Rst(string? exchange) =>
+        exchange?.Split(' ')[0] is { Length: 3 } r && r[0] == '5' && r[2] == '9' ? r : null;
 }

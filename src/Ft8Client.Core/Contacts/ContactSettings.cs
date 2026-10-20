@@ -32,6 +32,15 @@ public sealed record ContactSettings
     /// <summary>Free text of up to 13 characters sent once after that last message; empty for none.</summary>
     public string FreeTextAfter { get; init; } = string.Empty;
 
+    /// <summary>My ARRL Field Day class and section, such as <c>1D WI</c>; empty until set.</summary>
+    public string FieldDayExchange { get; init; } = string.Empty;
+
+    /// <summary>My FT Roundup state or province (<c>WI</c>, <c>ON</c>), or <c>DX</c> to send serial numbers; empty until set.</summary>
+    public string RoundupExchange { get; init; } = string.Empty;
+
+    /// <summary>The next serial number to send in the Roundup when <see cref="RoundupExchange"/> is <c>DX</c>.</summary>
+    public int RoundupSerial { get; init; } = 1;
+
     /// <summary>Log automatically when the contact completes.</summary>
     public bool AutoLog { get; init; } = true;
 }

@@ -68,6 +68,9 @@ CREATE TABLE qso (
   confirmed        INTEGER NOT NULL DEFAULT 0, -- 1 if any confirmation field says so
   lotw_confirmed   INTEGER NOT NULL DEFAULT 0, -- 1 if LoTW confirmed it (migration 003)
   lotw_upload_state TEXT   NOT NULL DEFAULT 'none', -- none | uploaded (signed through TQSL)
+  contest_id       TEXT,                      -- ADIF CONTEST_ID for a contest contact (ARRL-FD, ARRL-RTTY, WW-DIGI, TEST); migration 005
+  stx_string       TEXT,                      -- contest exchange sent (STX_STRING)
+  srx_string       TEXT,                      -- contest exchange received (SRX_STRING)
   need_tier        INTEGER,                   -- tier at the time of the contact (local contacts only)
   source           TEXT    NOT NULL,          -- 'local', 'qrz', 'adif'
   qrz_logid        INTEGER UNIQUE,

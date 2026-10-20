@@ -25,4 +25,10 @@ public enum ContactFlow
     /// contact is logged on its RR73. I send nothing after that.
     /// </summary>
     Hound,
+
+    /// <summary>
+    /// Contest: I answered a contest CQ with my exchange, it answers with R and its exchange, and my RR73 ends and logs
+    /// the contact (WSJT-X user guide, "Contest Messages").
+    /// </summary>
+    Contest,
 }

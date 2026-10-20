@@ -84,6 +84,22 @@
                 <TextBlock Classes="help" Text="Recorded in the log when the radio cannot report its own power setting. It does not change the radio's power." />
               </StackPanel>
             </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Contest exchange" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="Field Day" Width="90" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding FieldDay}" Width="120" PlaceholderText="1D WI" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="FT Roundup" Width="90" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding Roundup}" Width="120" PlaceholderText="WI, ON or DX" />
+                </StackPanel>
+                <TextBlock Classes="help" Foreground="{DynamicResource AccentTextBrush}" Text="{Binding ContestProblem}"
+                           IsVisible="{Binding ContestProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Classes="help" Text="Lets you answer CQ FD and CQ RU with the right exchange. CQ WW and CQ TEST (WW Digi, ARRL Digital) need only your grid. Outside the US and Canada enter DX: Field Day sends DX as the section and the Roundup sends a serial number." />
+              </StackPanel>
+            </Grid>
             <TextBlock Classes="help" Text="Radio, audio devices and the transmit test are in Station setup (menu ☰)." />
           </StackPanel>
         </ScrollViewer>

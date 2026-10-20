@@ -19,13 +19,15 @@ public sealed class QsoRepository(SqliteDatabase db)
     private const string Columns = """
         profile_id, call, qso_date_on, qso_date_off, band, freq_hz, mode, submode, rst_sent, rst_rcvd, gridsquare, name, qth, state,
         country, dxcc, entity_key, continent, station_callsign, my_gridsquare, tx_pwr, comment, confirmed, need_tier, source, qrz_logid,
-        upload_state, upload_error, eqsl_upload_state, eqsl_upload_error, eqsl_confirmed, raw_adif, created_utc, modified_utc, lotw_confirmed, lotw_upload_state
+        upload_state, upload_error, eqsl_upload_state, eqsl_upload_error, eqsl_confirmed, raw_adif, created_utc, modified_utc, lotw_confirmed, lotw_upload_state,
+        contest_id, stx_string, srx_string
         """;
 
     private const string Values = """
         @ProfileId, @Call, @QsoDateOn, @QsoDateOff, @Band, @FreqHz, @Mode, @Submode, @RstSent, @RstRcvd, @Gridsquare, @Name, @Qth, @State,
         @Country, @Dxcc, @EntityKey, @Continent, @StationCallsign, @MyGridsquare, @TxPwr, @Comment, @Confirmed, @NeedTier, @Source, @QrzLogid,
-        @UploadState, @UploadError, @EqslUploadState, @EqslUploadError, @EqslConfirmed, @RawAdif, @CreatedUtc, @ModifiedUtc, @LotwConfirmed, @LotwUploadState
+        @UploadState, @UploadError, @EqslUploadState, @EqslUploadError, @EqslConfirmed, @RawAdif, @CreatedUtc, @ModifiedUtc, @LotwConfirmed, @LotwUploadState,
+        @ContestId, @StxString, @SrxString
         """;
 
     private const string Updates = """
@@ -34,7 +36,7 @@ public sealed class QsoRepository(SqliteDatabase db)
         dxcc=@Dxcc, entity_key=@EntityKey, continent=@Continent, station_callsign=@StationCallsign, my_gridsquare=@MyGridsquare, tx_pwr=@TxPwr,
         comment=@Comment, confirmed=@Confirmed, need_tier=@NeedTier, source=@Source, qrz_logid=@QrzLogid, upload_state=@UploadState,
         upload_error=@UploadError, eqsl_upload_state=@EqslUploadState, eqsl_upload_error=@EqslUploadError, eqsl_confirmed=@EqslConfirmed, raw_adif=@RawAdif, modified_utc=@ModifiedUtc,
-        lotw_confirmed=@LotwConfirmed, lotw_upload_state=@LotwUploadState
+        lotw_confirmed=@LotwConfirmed, lotw_upload_state=@LotwUploadState, contest_id=@ContestId, stx_string=@StxString, srx_string=@SrxString
         """;
 
     /// <summary>Inserts a contact and returns its id.</summary>
@@ -267,6 +269,9 @@ public sealed class QsoRepository(SqliteDatabase db)
         target.MyGridsquare ??= source.MyGridsquare;
         target.TxPwr ??= source.TxPwr;
         target.Comment ??= source.Comment;
+        target.ContestId ??= source.ContestId;
+        target.StxString ??= source.StxString;
+        target.SrxString ??= source.SrxString;
         target.NeedTier ??= source.NeedTier;
         target.RawAdif ??= source.RawAdif;
         target.EqslConfirmed |= source.EqslConfirmed;

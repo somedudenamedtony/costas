@@ -33,6 +33,12 @@ public sealed partial class ProfileDraft : ObservableObject
     /// <summary>Power in watts as typed.</summary>
     public string Power { get; set; } = string.Empty;
 
+    /// <summary>Field Day class and section as typed.</summary>
+    public string FieldDay { get; set; } = string.Empty;
+
+    /// <summary>Roundup state, province or DX as typed.</summary>
+    public string Roundup { get; set; } = string.Empty;
+
     /// <summary>QRZ logbook API key as typed (kept in the credential store per profile).</summary>
     public string LogbookKey { get; set; } = string.Empty;
 

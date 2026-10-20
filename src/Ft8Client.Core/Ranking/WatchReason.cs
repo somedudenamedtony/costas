@@ -13,4 +13,5 @@ namespace Ft8Client.Core.Ranking;
 /// <param name="OtherCall">The partner, for contact reasons.</param>
 /// <param name="SinceUtc">When it was last heard, for "went quiet".</param>
 /// <param name="Modifier">The excluding CQ modifier.</param>
-public sealed record WatchReason(WatchReasonKind Kind, string? OtherCall = null, DateTime? SinceUtc = null, string? Modifier = null);
+/// <param name="Detail">For a contest CQ: why it cannot be answered.</param>
+public sealed record WatchReason(WatchReasonKind Kind, string? OtherCall = null, DateTime? SinceUtc = null, string? Modifier = null, string? Detail = null);

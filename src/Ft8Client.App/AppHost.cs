@@ -380,6 +380,7 @@ public sealed class AppHost : IAsyncDisposable
 
         Udp = new UdpInteropService(Session, Settings, offAir: Simulating);
         log.Stored += Udp.OnLogged;
+        log.Stored += SaveRoundupSerial;
         Udp.Start();
 
         Remote = new RemoteControlService(Session, Settings, Secrets, Clock, new HostTuning(this), () => new RemoteContext
@@ -457,6 +458,14 @@ public sealed class AppHost : IAsyncDisposable
     // Parks in the log under this station call, like the log index.
     private Core.Pota.WorkedParks WorkedParksFromLog() =>
         PotaAdif.Worked(Qsos.List().Where(q => string.Equals(q.StationCallsign, Settings.Current.Profile.Callsign, StringComparison.OrdinalIgnoreCase)));
+
+    // A Roundup serial number is sent once: after a contact that used one, the next contact sends the next.
+    private void SaveRoundupSerial(Data.Log.QsoRecord q)
+    {
+        if (q.ContestId != Core.Contacts.ContestRules.ContestId("RU") || q.StxString?.Split(' ') is not [_, var serial]) return;
+        if (!int.TryParse(serial, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var used)) return;
+        Settings.Update(s => s.Profile.RoundupSerial = Math.Max(s.Profile.RoundupSerial, used + 1));
+    }
 
     /// <summary>Changes band and mode: sets the dial through the radio.</summary>
     public async Task SetBandAsync(string band, Mode mode)

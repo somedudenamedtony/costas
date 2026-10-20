@@ -110,8 +110,13 @@ public static class Ranker
 
     private static WatchReason? CqReason(Station s, RankInput input)
     {
-        // Owner decision 2026-10-12: a contest CQ wants an exchange Costas cannot send, so it is not callable.
-        if (CqModifierRule.IsContest(s.CqModifier)) return new WatchReason(WatchReasonKind.Contest, Modifier: s.CqModifier);
+        // A contest CQ is callable only when Costas can send that contest's exchange (owner request 2026-10-20; before,
+        // owner decision 2026-10-12, no contest CQ was callable).
+        if (CqModifierRule.IsContest(s.CqModifier))
+        {
+            if (input.ContestProblem is not { } problem) return new WatchReason(WatchReasonKind.Contest, Modifier: s.CqModifier);
+            return problem(s) is { } why ? new WatchReason(WatchReasonKind.Contest, Modifier: s.CqModifier, Detail: why) : null;
+        }
         return CqModifierRule.Allows(s.CqModifier, input.MyEntity, s.EntityKey, input.Countries)
             ? null
             : new WatchReason(WatchReasonKind.NotCallingYou, Modifier: s.CqModifier);

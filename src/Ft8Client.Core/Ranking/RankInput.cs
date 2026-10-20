@@ -23,5 +23,10 @@ namespace Ft8Client.Core.Ranking;
 /// <param name="NowUtc">Current time.</param>
 /// <param name="Countries">Country file, for country CQ modifiers. Optional.</param>
 /// <param name="Lotw">Who uploads to LoTW; with only confirmed contacts counting, LoTW users rank ahead. Optional.</param>
+/// <param name="ContestProblem">
+/// Why a station's contest CQ cannot be answered, or null when its exchange can be sent (see
+/// <see cref="Contacts.ContestRules.Problem"/>). Without it no contest CQ is callable.
+/// </param>
 public sealed record RankInput(IReadOnlyCollection<Station> Stations, LogIndex Log, HearsMe? HearsMe, RankingSettings Settings,
-                               EntityMatch? MyEntity, string Band, string ModeKey, DateTime NowUtc, CountryFile? Countries = null, LotwUsers? Lotw = null);
+                               EntityMatch? MyEntity, string Band, string ModeKey, DateTime NowUtc, CountryFile? Countries = null, LotwUsers? Lotw = null,
+                               Func<Station, string?>? ContestProblem = null);

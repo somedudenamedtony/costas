@@ -653,7 +653,15 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 var busyWith = s is { State: StationState.InContact, Partner: { } p } && !Callsign.EqualsCall(p, _config.MyCall) ? p : null;
                 // A Fox (Fox/Hound DXpedition) is worked as a Hound: my calls at 1000 Hz or above, where it listens.
                 if (s.RunsFox) HoundCallOffset(SlotMath.Opposite(s.Parity));
-                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, busyWith, fox: s.RunsFox);
+                // A contest CQ is answered with the contest's exchange, and only when Costas can send it.
+                var contest = !s.RunsFox && s.LastCalledCq && CqModifierRule.IsContest(s.CqModifier) ? s.CqModifier : null;
+                if (contest is not null && ContestProblem(s) is { } why)
+                {
+                    _fault = $"Not calling {s.Call}: {why}.";
+                    Publish();
+                    return true;
+                }
+                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, busyWith, fox: s.RunsFox, contest: contest);
             }
             _fault = null;
         }
@@ -807,6 +815,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             lock (_gate) return _engine.CallingCq || _engine.InContact || _tx.Transmitting;
         }
     }
+
+    // Why this station's contest CQ cannot be answered, or null. Read under _gate.
+    private string? ContestProblem(Station s) => s.CqModifier is { } m
+        ? ContestRules.Problem(m, s.Call, s.Continent, _config.Band, _config.MyCall, _config.MyGrid, _config.Contact)
+        : "No contest";
 
     private ContactSettings CappedContact() => _watchdogCap is { } cap && cap < _config.Contact.WatchdogMinutes
         ? _config.Contact with { WatchdogMinutes = cap }
@@ -1024,7 +1037,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             var now = _clock.UtcNow;
             var stations = _tracker.Stations.ToList();
             var rank = Ranker.Rank(new RankInput(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity,
-                _config.Band, ModeInfo.Name(_config.Mode), now, _countries, Lotw: _lotwUsers));
+                _config.Band, ModeInfo.Name(_config.Mode), now, _countries, Lotw: _lotwUsers, ContestProblem: ContestProblem));
             var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, ModeInfo.Name(_config.Mode), now, _slotCounts, _tonight,
                 _config.Ranking);
             snap = new SessionSnapshot

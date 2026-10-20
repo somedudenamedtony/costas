@@ -37,6 +37,15 @@ public sealed class StationProfile
     /// <summary>Transmit power in watts, for the log.</summary>
     public int PowerWatts { get; set; } = 25;
 
+    /// <summary>ARRL Field Day class and section sent when answering <c>CQ FD</c>, such as <c>1D WI</c>; empty until set.</summary>
+    public string FieldDayExchange { get; set; } = string.Empty;
+
+    /// <summary>FT Roundup state or province sent when answering <c>CQ RU</c>, or <c>DX</c> for serial numbers; empty until set.</summary>
+    public string RoundupExchange { get; set; } = string.Empty;
+
+    /// <summary>The next Roundup serial number (with <c>DX</c>).</summary>
+    public int RoundupSerial { get; set; } = 1;
+
     /// <summary>A deep copy under a new id and name: same call, grid, power, radio and audio.</summary>
     public StationProfile CopyAs(string id, string name)
     {

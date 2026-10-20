@@ -188,6 +188,25 @@ public class RankerMockupScenarioTests
     }
 
     [Fact]
+    public void Rank_ContestCqWithExchangeReady_InTheLine()
+    {
+        var contest = Cq("F4ABC", "JN18", -5, 2, "WW");
+        var r = Ranker.Rank(new RankInput([.. Stations(), contest], Log(), Reports(), new RankingSettings(), TestData.Countries.Lookup("W7LIT"), "20m", "FT8", Now,
+            ContestProblem: _ => null));
+        r.Line.Select(x => x.Station.Call).Should().Contain("F4ABC");
+    }
+
+    [Fact]
+    public void Rank_ContestCqWithoutExchange_WatchingSaysWhy()
+    {
+        var contest = Cq("F4ABC", "JN18", -5, 2, "FD");
+        var r = Ranker.Rank(new RankInput([.. Stations(), contest], Log(), Reports(), new RankingSettings(), TestData.Countries.Lookup("W7LIT"), "20m", "FT8", Now,
+            ContestProblem: _ => "Set your Field Day class and section in Settings"));
+        var watched = r.Watching.Single(x => x.Station.Call == "F4ABC");
+        StationText.Watch(watched.Reason!, Now).Should().Be("Contest (CQ FD): Set your Field Day class and section in Settings");
+    }
+
+    [Fact]
     public void Rank_PotaCq_StaysInLine()
     {
         var pota = Cq("F4ABC", "JN18", -5, 2, "POTA");
