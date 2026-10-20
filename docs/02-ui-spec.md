@@ -256,7 +256,7 @@ Audio dropouts, decode time per slot, median DT of decodes, clock offset, CAT ro
 | --- | --- |
 | Enter | Call the selected station; in a contact, nothing |
 | Up, Down | Move selection in the line |
-| Esc | Halt Tx. In a contact: abandon it (second press confirms if both reports are exchanged) |
+| Esc | Halt Tx. In a contact: abandon it (second press confirms if both reports are exchanged). In a text box it belongs to the text box unless something is on the air, and then it only halts (owner request, U3) |
 | Ctrl+Q | Call CQ / stop CQ |
 | Ctrl+R | Resend |
 | Ctrl+L | Log now |

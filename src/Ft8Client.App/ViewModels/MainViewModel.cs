@@ -410,7 +410,44 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (_updatingBand || value is null) return;
         var band = value.Replace(" ", string.Empty, StringComparison.Ordinal);
         ModeInfo.TryParse(SelectedMode, out var mode);
-        _ = _host.SetBandAsync(band, mode);
+        _ = ChangeBandAsync(band, mode);
+    }
+
+    /// <summary>
+    /// Asks the operator whether to go ahead with a change that ends the contact or CQ in progress, as the phone remote
+    /// does. Null (tests, and before the window is shown) goes ahead without asking.
+    /// </summary>
+    public Func<string, string, Task<bool>>? Confirm { get; set; }
+
+    // A band, mode or frequency change ends the contact or CQ in progress (the station list belongs to the old band).
+    // Asks first; true to go ahead. The menus are put back when the operator says no.
+    private async Task<bool> ConfirmEndsContactAsync(string what)
+    {
+        var s = _host.Session.Snapshot;
+        var inContact = s.Contact is { Outcome: ContactOutcome.InProgress } c ? c.DxCall : null;
+        if (inContact is null && !s.CallingCq) return true;
+        if (Confirm is not { } ask) return true;
+        var ends = inContact is not null ? $"the contact with {inContact}" : "calling CQ";
+        if (await ask($"{what} ends {ends}.", $"{what} anyway")) return true;
+        FollowSessionBandAndMode();
+        return false;
+    }
+
+    private async Task ChangeBandAsync(string band, Mode mode)
+    {
+        if (!await ConfirmEndsContactAsync("Changing band")) return;
+        await _host.SetBandAsync(band, mode);
+    }
+
+    // Puts the band and mode menus back to what the session is on.
+    private void FollowSessionBandAndMode()
+    {
+        var cfg = _host.Session.Config;
+        _updatingBand = true;
+        SelectedMode = ModeInfo.Name(cfg.Mode);
+        RefreshBands(cfg.Mode);
+        SelectedBand = BandPlan.Display(cfg.Band);
+        _updatingBand = false;
     }
 
     // The band menu shows the band the session is on, whoever changed it (the operator turning the radio's band knob too).
@@ -435,10 +472,16 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         RefreshBands(mode);
         var band = SelectedBand?.Replace(" ", string.Empty, StringComparison.Ordinal) ?? "20m";
         if (_host.Frequencies.Find(band, mode) is null) band = _host.Frequencies.Bands(mode).FirstOrDefault() ?? band;
-        _ = _host.SetBandAsync(band, mode);
         _updatingBand = true;
         SelectedBand = BandPlan.Display(band);
         _updatingBand = false;
+        _ = ChangeModeAsync(band, mode);
+    }
+
+    private async Task ChangeModeAsync(string band, Mode mode)
+    {
+        if (!await ConfirmEndsContactAsync("Changing mode")) return;
+        await _host.SetBandAsync(band, mode);
     }
 
     /// <summary>False on the Operate view, whose contact card always has Call CQ and the countdown.</summary>
@@ -585,7 +628,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>Changes to the band (and mode) the hunted station was heard on. Nothing is sent.</summary>
     [RelayCommand]
-    private void HuntGo()
+    private async Task HuntGoAsync()
     {
         if (_hunt is not { } h || !CanChangeBand || !ModeInfo.TryParse(h.Heard.ModeKey, out var mode)) return;
         Activity();
@@ -594,6 +637,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             StatusText = $"{BandPlan.Display(h.Heard.Band)} {h.Heard.ModeKey} is not in the band list.";
             return;
         }
+        if (!await ConfirmEndsContactAsync($"Going to {BandPlan.Display(h.Heard.Band)}")) return;
         if (h.Heard.ModeKey != SelectedMode)
         {
             _updatingBand = true;
@@ -879,6 +923,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             DialMessage = "Type a frequency such as 14.090 (MHz) or 14090 (kHz).";
             return;
         }
+        if (!await ConfirmRetuneAsync(hz)) return;
         DialMessage = await _host.TuneDialAsync(hz) ?? string.Empty;
         if (DialMessage.Length == 0) DialEntry = string.Empty;
     }
@@ -887,8 +932,15 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [RelayCommand]
     private async Task UseSavedDialAsync(SavedDialViewModel? dial)
     {
-        if (dial is not null) DialMessage = await _host.TuneDialAsync(dial.Hz) ?? string.Empty;
+        if (dial is null || !await ConfirmRetuneAsync(dial.Hz)) return;
+        DialMessage = await _host.TuneDialAsync(dial.Hz) ?? string.Empty;
     }
+
+    // A frequency on another band changes band, which ends the contact: ask first. On the same band the contact goes on.
+    private Task<bool> ConfirmRetuneAsync(long hz) =>
+        BandPlan.BandOf(hz) is { } band && !string.Equals(band, _host.Session.Config.Band, StringComparison.OrdinalIgnoreCase)
+            ? ConfirmEndsContactAsync("Changing band")
+            : Task.FromResult(true);
 
     /// <summary>Saves the frequency the radio is on to the frequency menu.</summary>
     [RelayCommand]

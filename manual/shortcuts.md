@@ -6,7 +6,7 @@ Press ++f1++ in Costas to see this list.
 | --- | --- |
 | ++enter++ | Call the selected station (does nothing during a contact) |
 | ++up++, ++down++ | Move the selection in Next in line |
-| ++esc++ | Halt Tx. In a contact: abandon it (press twice once reports are exchanged) |
+| ++esc++ | Halt Tx. In a contact: abandon it (press twice once reports are exchanged). While typing in a box (Log search, frequency) it only clears or leaves the box, unless you are transmitting |
 | ++ctrl+q++ | Call CQ / Stop CQ |
 | ++ctrl+r++ | Resend |
 | ++ctrl+l++ | Log now |

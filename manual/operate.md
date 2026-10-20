@@ -11,6 +11,11 @@ should not need Settings while operating.
 | --- | --- |
 | **Band** | The band you are on, filled in at start-up, and follows the radio when you change band on it ([below](#changing-band-on-the-radio)). Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
 | **Mode** | FT8 or FT4. Changes the slot length and dial frequency. Locked while transmitting |
+
+Changing band or mode from these menus, typing a frequency on another band, or **Go to** on a Hunt alert ends the contact
+or CQ in progress, so Costas asks first: *Changing band ends the contact with F5RXL.* Choose **Changing band anyway** to
+go, or **Cancel** (or ++esc++) to stay where you are. Changing band on the radio itself does not ask, since the radio has
+already moved ([below](#changing-band-on-the-radio)).
 | Frequency | The dial frequency read from the radio, in MHz. Click it to type another frequency or use one you saved ([below](#typing-a-frequency)). Locked while transmitting |
 | **Operate**, **Raw decodes**, **Reach**, **Log**, **Awards** | The five views. ++ctrl+1++ to ++ctrl+5++ |
 | Clock | UTC. Turns amber with a tooltip when your clock is off by more than 0.5 s, red above 2 s |

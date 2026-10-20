@@ -68,6 +68,8 @@ public partial class MainWindow : Window
         vm.Host.Session.Changed += s => Dispatcher.UIThread.Post(() => vm.Apply(s));
         vm.Apply(vm.Host.Session.Snapshot);
         vm.OpenDialog += OpenDialog;
+        // Owned by whichever window is showing (the mini strip hides the main window).
+        vm.Confirm = (question, action) => new ConfirmWindow(question, action).ShowDialog<bool>(_mini is { IsVisible: true } m ? m : this);
         vm.Mini.ExpandRequested += CloseMini;
         vm.AttentionRequested += () => TaskbarFlash.Flash(_mini is { } m ? m : this);
         _timer.Tick += (_, _) =>
@@ -278,7 +280,9 @@ public partial class MainWindow : Window
                        && e.Source is not (Button or ComboBox or ComboBoxItem or MenuItem or Slider or NumericUpDown);
         switch (e.Key)
         {
-            case Key.Escape when !inPopup:
+            // Esc in a text box (Log search, the frequency entry) is the text box's, unless something is on the air:
+            // it must never end a contact by itself, and it always stops a transmission.
+            case Key.Escape when !inPopup && (!typing || vm.Transmitting):
                 vm.Escape();
                 e.Handled = true;
                 break;
