@@ -42,20 +42,57 @@ public static class BandOpenings
                                       && NeighbourComparison.IsNeighbour(me, r.SenderGrid));
         var result = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
         foreach (var band in near.GroupBy(r => r.Band.ToLowerInvariant(), StringComparer.Ordinal))
+            result[band.Key] = Opening(band.Key, [.. band], 1, null, countries, log);
+        return result;
+    }
+
+    /// <summary>
+    /// Builds one estimated opening per band sampled in the window (<see cref="BandSampler"/>), with no spots when nothing
+    /// near me arrived. A sample's reports are what arrived while the band was listened to, so the spots are scaled from the
+    /// time listened to the whole window: 40 spots in 1 minute of listening read as 600 in 15 minutes.
+    /// </summary>
+    /// <param name="samples">Samples on any band (other modes are skipped).</param>
+    /// <param name="myCall">My call.</param>
+    /// <param name="myGrid">My grid; without one there is nothing to show.</param>
+    /// <param name="mode"><c>FT8</c> or <c>FT4</c>.</param>
+    /// <param name="countries">For each receiver's country and continent.</param>
+    /// <param name="log">My log, for the countries I need.</param>
+    /// <param name="nowUtc">Now.</param>
+    public static IReadOnlyDictionary<string, BandOpening> BuildSampled(IEnumerable<BandSample> samples, string myCall, string? myGrid, string mode,
+                                                                        CountryFile countries, LogIndex log, DateTime nowUtc)
+    {
+        var result = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
+        if (Grid.ToLatLon(myGrid) is not { } me) return result;
+        var since = nowUtc - Window;
+        foreach (var band in samples.Where(s => s.EndUtc >= since && s.Mode == mode && s.Length > TimeSpan.Zero)
+                                    .GroupBy(s => s.Band.ToLowerInvariant(), StringComparer.Ordinal))
         {
-            var byContinent = new Dictionary<string, int>(StringComparer.Ordinal);
-            var needed = new Dictionary<string, int>(StringComparer.Ordinal);
-            foreach (var r in band)
-            {
-                if (countries.Lookup(r.ReceiverCall) is not { } rx) continue;
-                byContinent[rx.Continent] = byContinent.GetValueOrDefault(rx.Continent) + 1;
-                if (!log.IsEmpty && !log.EntityWorkedOnBand(rx.Entity.Key, band.Key)) needed[rx.Entity.Name] = needed.GetValueOrDefault(rx.Entity.Name) + 1;
-            }
-            var senders = band.Select(r => Callsign.Normalize(r.SenderCall)).Distinct(StringComparer.Ordinal).Count();
-            var neededNames = needed.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => kv.Key).ToList();
-            result[band.Key] = new BandOpening(band.Key, band.Count(), senders, byContinent, neededNames);
+            var listened = TimeSpan.FromTicks(band.Sum(s => s.Length.Ticks));
+            var near = band.SelectMany(s => s.Reports)
+                           .Where(r => r.Mode == mode && !Callsign.EqualsCall(r.SenderCall, myCall) && NeighbourComparison.IsNeighbour(me, r.SenderGrid))
+                           .ToList();
+            var scale = Math.Max(1, Window / listened);
+            result[band.Key] = Opening(band.Key, near, scale, listened, countries, log);
         }
         return result;
+    }
+
+    private static BandOpening Opening(string band, IReadOnlyList<NeighbourReport> reports, double scale, TimeSpan? sampledFor, CountryFile countries,
+                                       LogIndex log)
+    {
+        var byContinent = new Dictionary<string, int>(StringComparer.Ordinal);
+        var needed = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var r in reports)
+        {
+            if (countries.Lookup(r.ReceiverCall) is not { } rx) continue;
+            byContinent[rx.Continent] = byContinent.GetValueOrDefault(rx.Continent) + 1;
+            if (!log.IsEmpty && !log.EntityWorkedOnBand(rx.Entity.Key, band)) needed[rx.Entity.Name] = needed.GetValueOrDefault(rx.Entity.Name) + 1;
+        }
+        var senders = reports.Select(r => Callsign.Normalize(r.SenderCall)).Distinct(StringComparer.Ordinal).Count();
+        var neededNames = needed.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => kv.Key).ToList();
+        int Scaled(int n) => (int)Math.Round(n * scale);
+        return new BandOpening(band, Scaled(reports.Count), senders, byContinent.ToDictionary(kv => kv.Key, kv => Scaled(kv.Value), StringComparer.Ordinal),
+            neededNames, sampledFor);
     }
 
     /// <summary>How strongly a continent is shaded: 0 for no spots, 1 for a few, 2 for some, 3 for many.</summary>

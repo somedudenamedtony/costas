@@ -168,4 +168,30 @@ public class SessionNeighbourTests
 
         d.Session.Snapshot.BandOpenings.Should().BeEmpty();
     }
+
+    [Fact]
+    public void AddBandSample_NearbyReports_ShownAsEstimatedOpenings()
+    {
+        var d = new Driver();
+        var end = d.Clock.UtcNow.AddMinutes(-2);
+        d.Session.AddBandSample(new BandSample("15m", "FT8", end.AddSeconds(-30), end,
+            [new NeighbourReport("K7BBB", "DN41", "PY2ABC", "15m", "FT8", -15, end), new NeighbourReport("W1AW", "FN31", "PY2ABC", "15m", "FT8", -15, end)]));
+
+        var o = d.Session.Snapshot.SampledBandOpenings;
+        o["15m"].Spots.Should().Be(30);
+        o["15m"].Estimated.Should().BeTrue();
+        d.Session.Snapshot.BandOpenings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SetBand_OtherMode_ClearsSamples()
+    {
+        var d = new Driver();
+        var end = d.Clock.UtcNow.AddMinutes(-2);
+        d.Session.AddBandSample(new BandSample("15m", "FT8", end.AddSeconds(-30), end, []));
+        d.Session.SetBand("20m", Mode.Ft4);
+        d.Session.Publish();
+
+        d.Session.Snapshot.SampledBandOpenings.Should().BeEmpty();
+    }
 }

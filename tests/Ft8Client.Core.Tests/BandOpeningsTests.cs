@@ -110,8 +110,8 @@ public class BandOpeningsTests
 
     [Theory]
     [InlineData(BandActivityFeed.WaitingForMySpot, false, "Needs a spot of you")]
-    [InlineData(BandActivityFeed.CurrentBandOnly, false, "Too busy to follow")]
-    [InlineData(BandActivityFeed.Stopped, false, "Too busy to follow")]
+    [InlineData(BandActivityFeed.CurrentBandOnly, false, "Checking soon")]
+    [InlineData(BandActivityFeed.Stopped, false, "Checking soon")]
     [InlineData(BandActivityFeed.CurrentBandOnly, true, "")]
     [InlineData(BandActivityFeed.AllBands, true, "")]
     [InlineData(BandActivityFeed.Off, false, "")]
@@ -121,8 +121,67 @@ public class BandOpeningsTests
     }
 
     [Fact]
-    public void NotFollowedTip_CurrentBandOnly_ExplainsTheLimit()
+    public void NotFollowedTip_CurrentBandOnly_ExplainsTheTurns()
     {
-        BandOpeningText.NotFollowedTip(BandActivityFeed.CurrentBandOnly).Should().Contain("6,000 reports a minute");
+        BandOpeningText.NotFollowedTip(BandActivityFeed.CurrentBandOnly).Should().Contain("one at a time");
+    }
+
+    private static BandSample Sample(string band, int startMinutesAgo, int seconds, params NeighbourReport[] reports) =>
+        new(band, "FT8", Now.AddMinutes(-startMinutesAgo), Now.AddMinutes(-startMinutesAgo).AddSeconds(seconds), reports);
+
+    private static IReadOnlyDictionary<string, BandOpening> BuildSampled(params BandSample[] samples) =>
+        BandOpenings.BuildSampled(samples, "W7LIT", "DN40", "FT8", TestData.Countries, Log, Now);
+
+    [Fact]
+    public void BuildSampled_ThirtySeconds_ScalesToFifteenMinutes()
+    {
+        var o = BuildSampled(Sample("15m", 3, 30, R("15m", "K7AAA", "DN41", "PY2ABC"), R("15m", "N7BBB", "DN31", "DL1ABC"),
+            R("15m", "K7AAA", "DN41", "G4XYZ")));
+
+        o["15m"].Spots.Should().Be(90);
+        o["15m"].Estimated.Should().BeTrue();
+        o["15m"].SampledFor.Should().Be(TimeSpan.FromSeconds(30));
+        o["15m"].Senders.Should().Be(2);
+        o["15m"].SpotsByContinent.Should().Contain("EU", 60).And.Contain("SA", 30);
+    }
+
+    [Fact]
+    public void BuildSampled_TwoSamplesOfOneBand_AddsTheirTime()
+    {
+        var o = BuildSampled(Sample("20m", 10, 30, R("20m", "K7AAA", "DN41", "DL1ABC")), Sample("20m", 2, 30, R("20m", "K7AAA", "DN41", "DL1ABC")));
+
+        o["20m"].Spots.Should().Be(30);
+        o["20m"].SampledFor.Should().Be(TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public void BuildSampled_NothingNear_BandPresentWithNoSpots()
+    {
+        var o = BuildSampled(Sample("10m", 3, 30, R("10m", "W1AW", "FN31", "DL1ABC")));
+
+        o["10m"].Spots.Should().Be(0);
+        o["10m"].Estimated.Should().BeTrue();
+    }
+
+    [Fact]
+    public void BuildSampled_OldOrOtherMode_LeftOut()
+    {
+        var old = Sample("20m", 20, 30, R("20m", "K7AAA", "DN41", "DL1ABC"));
+        var ft4 = new BandSample("17m", "FT4", Now.AddMinutes(-1), Now.AddSeconds(-30), [R("17m", "K7AAA", "DN41", "DL1ABC", mode: "FT4")]);
+
+        BuildSampled(old, ft4).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Spots_Estimated_HasTilde()
+    {
+        BandOpeningText.Spots(1240, estimated: true).Should().Be("~1,240 spots");
+    }
+
+    [Fact]
+    public void Basis_Sampled_SaysEstimatedAndHowLong()
+    {
+        BandOpeningText.Basis(DistanceUnit.Miles, TimeSpan.FromSeconds(90)).Should().Contain("Estimated").And.Contain("1 minute 30 seconds");
+        BandOpeningText.Basis(DistanceUnit.Miles).Should().NotContain("Estimated");
     }
 }

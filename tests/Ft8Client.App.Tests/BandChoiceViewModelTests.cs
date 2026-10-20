@@ -73,15 +73,27 @@ public class BandChoiceViewModelTests
     }
 
     [Fact]
+    public void Apply_Estimated_MarksSpotsAndSaysSoInTip()
+    {
+        var b = new BandChoiceViewModel("15m");
+
+        b.Apply(Opening(90, ("SA", 60)) with { SampledFor = TimeSpan.FromSeconds(60) }, 90, true, DistanceUnit.Miles);
+
+        b.SpotsText.Should().Be("~90 spots");
+        b.Continents.Single(c => c.Label == "SA").Tip.Should().Be("SA · ~60 spots");
+        b.Tip.Should().Contain("Estimated").And.Contain("1 minute");
+    }
+
+    [Fact]
     public void ApplyNotFollowed_HadSpots_ShowsReasonWithoutNumbers()
     {
         var b = new BandChoiceViewModel("17m");
         b.Apply(Opening(60, ("NA", 50)), 60, true, DistanceUnit.Miles);
 
-        b.ApplyNotFollowed("Too busy to follow", "why");
+        b.ApplyNotFollowed("Checking soon", "why");
 
         b.HasActivity.Should().BeTrue();
-        b.SpotsText.Should().Be("Too busy to follow");
+        b.SpotsText.Should().Be("Checking soon");
         b.BarWidth.Should().Be(0);
         b.Continents.Should().BeEmpty();
         b.NeedText.Should().BeEmpty();

@@ -68,6 +68,12 @@ public sealed record SessionSnapshot
     /// <summary>Per band (ADIF, lower case): where stations near me are heard right now, for the band menu.</summary>
     public IReadOnlyDictionary<string, BandOpening> BandOpenings { get; init; } = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Per band: estimates from sampling, for bands not followed all the time (see <see cref="BandActivityFeed"/>); a band
+    /// sampled in the last 15 minutes is present even with no spots.
+    /// </summary>
+    public IReadOnlyDictionary<string, BandOpening> SampledBandOpenings { get; init; } = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
+
     /// <summary>Which bands <see cref="BandOpenings"/> are being received for.</summary>
     public BandActivityFeed BandActivityFeed { get; init; }
 

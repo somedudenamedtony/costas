@@ -764,22 +764,26 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (reachModeChanged) Reach.Refresh();
     }
 
-    // The band menu's activity rows, from PSK Reporter reports of stations near me. A band whose reports are not being
-    // received says why rather than "No spots", which would read as a closed band.
+    // The band menu's activity rows, from PSK Reporter reports of stations near me: followed all the time on every band,
+    // or, when that is too busy, on the current band with the others estimated from samples. A band with nothing received
+    // yet says why rather than "No spots", which would read as a closed band.
     private void ApplyBandOpenings(SessionSnapshot s)
     {
         var on = _host.Settings.Current.PskReporter is { FeedEnabled: true, BandActivity: true };
         var feed = on ? s.BandActivityFeed : BandActivityFeed.Off;
         var current = s.Band.ToLowerInvariant();
         bool Followed(string band) => feed == BandActivityFeed.AllBands || (feed == BandActivityFeed.CurrentBandOnly && band == current);
-        var openings = s.BandOpenings.Where(kv => Followed(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
-        var live = openings.Count > 0;
+        bool Sampled(string band) => feed == BandActivityFeed.Stopped || (feed == BandActivityFeed.CurrentBandOnly && band != current);
+        var openings = s.BandOpenings.Where(kv => Followed(kv.Key))
+                        .Concat(s.SampledBandOpenings.Where(kv => Sampled(kv.Key)))
+                        .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+        var live = openings.Values.Any(o => o.Spots > 0);
         var max = live ? openings.Values.Max(o => o.Spots) : 0;
         var units = SettingsMapper.Units(_host.Settings.Current);
         var tip = BandOpeningText.NotFollowedTip(feed);
         foreach (var b in Bands)
         {
-            var reason = BandOpeningText.NotFollowed(feed, Followed(b.Band));
+            var reason = BandOpeningText.NotFollowed(feed, Followed(b.Band) || openings.ContainsKey(b.Band));
             if (reason.Length > 0) b.ApplyNotFollowed(reason, tip);
             else b.Apply(openings.GetValueOrDefault(b.Band), max, live, units);
         }

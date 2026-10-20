@@ -348,7 +348,7 @@ public sealed class AppHost : IAsyncDisposable
         Eqsl.LogChanged += RebuildLogIndex;
         Eqsl.Start();
 
-        Psk = new PskReporterService(Session, Settings, Spots, Countries, Clock, uploadsAllowed: !Simulating);
+        Psk = new PskReporterService(Session, Settings, Spots, Countries, Frequencies, Clock, uploadsAllowed: !Simulating);
         Psk.Start();
 
         Lotw = new LotwService(Session, Settings, Secrets, Qsos, SyncState, Countries, Paths, Clock, Guard, allowed: !Simulating);

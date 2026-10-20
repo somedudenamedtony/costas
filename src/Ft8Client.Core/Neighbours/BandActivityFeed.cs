@@ -21,9 +21,15 @@ public enum BandActivityFeed
     /// <summary>Followed on every band.</summary>
     AllBands,
 
-    /// <summary>Reports on every band came too fast; followed on the current band only.</summary>
+    /// <summary>
+    /// Reports on every band came too fast; followed on the current band, and the other bands are sampled one at a time
+    /// (<see cref="BandSampler"/>).
+    /// </summary>
     CurrentBandOnly,
 
-    /// <summary>Reports came too fast even on the current band; not followed for the rest of the session.</summary>
+    /// <summary>
+    /// Reports came too fast even on the current band; no band is followed all the time for the rest of the session, and
+    /// every band is sampled one at a time.
+    /// </summary>
     Stopped,
 }

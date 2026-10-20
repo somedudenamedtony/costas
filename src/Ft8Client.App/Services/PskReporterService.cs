@@ -9,6 +9,7 @@
 using System.Net.Sockets;
 using Ft8Client.App.Engine;
 using Ft8Client.Core;
+using Ft8Client.Core.Bands;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Messages;
@@ -40,6 +41,7 @@ public sealed class PskReporterService : IAsyncDisposable
     private readonly SpotRepository _spots;
     private readonly CountryFile _countries;
     private readonly IClock _clock;
+    private readonly FrequencyTable _frequencies;
     private readonly bool _uploadsAllowed;
     private readonly CancellationTokenSource _cts = new();
     private readonly PskSpotUploader _uploader;
@@ -55,8 +57,10 @@ public sealed class PskReporterService : IAsyncDisposable
     /// Creates the service. <paramref name="uploadsAllowed"/> is false in simulation: replayed recordings must never be
     /// reported as heard on the air.
     /// </summary>
-    public PskReporterService(Session session, AppSettingsAccessor settings, SpotRepository spots, CountryFile countries, IClock clock, bool uploadsAllowed)
+    public PskReporterService(Session session, AppSettingsAccessor settings, SpotRepository spots, CountryFile countries, FrequencyTable frequencies, IClock clock,
+                              bool uploadsAllowed)
     {
+        _frequencies = frequencies;
         _session = session;
         _settings = settings;
         _spots = spots;
@@ -102,6 +106,7 @@ public sealed class PskReporterService : IAsyncDisposable
             if (s.PskReporter is { MyDxcc: { } dxcc, MyDxccCall: { } call } && Callsign.EqualsCall(call, _myCall)) _feed.RememberMyDxcc(dxcc);
             _feed.Report += OnReport;
             _feed.NeighbourReport += _session.AddNeighbourReport;
+            _feed.BandSampled += _session.AddBandSample;
             _feed.HuntReport += spot => HuntReport?.Invoke(spot);
             _feed.StatusChanged += st =>
             {
@@ -142,14 +147,16 @@ public sealed class PskReporterService : IAsyncDisposable
     }
 
     // Follows the stations near me once my DXCC code is known (from my own reports, or remembered from the last run): on
-    // the current band for the neighbour comparison, on every band for the band menu.
+    // the current band for the neighbour comparison, on every band for the band menu (sampling the menu's bands in turn
+    // when every band at once is too busy).
     private void FollowNeighbours()
     {
         if (_feed is null) return;
         var o = _settings.Current.PskReporter;
         var on = o.CompareNeighbours || o.BandActivity;
         var snap = _session.Snapshot;
-        _feed.FollowNeighbours(on ? snap.Band : null, on ? ModeInfo.Name(snap.Mode) : null, on ? _feed.MyDxcc : null, o.BandActivity);
+        _feed.FollowNeighbours(on ? snap.Band : null, on ? ModeInfo.Name(snap.Mode) : null, on ? _feed.MyDxcc : null, o.BandActivity,
+            _frequencies.Bands(snap.Mode));
         _session.SetBandActivityFeed(!o.BandActivity ? BandActivityFeed.Off
             : _feed.MyDxcc is null ? BandActivityFeed.WaitingForMySpot
             : _feed.NeighboursStopped ? BandActivityFeed.Stopped
@@ -167,12 +174,12 @@ public sealed class PskReporterService : IAsyncDisposable
         if (_feed.AllBandsStopped && !_allBandsStopLogged)
         {
             _allBandsStopLogged = true;
-            Log.Warning("PSK Reporter reports on every band came too fast; following the current band only");
+            Log.Warning("PSK Reporter reports on every band came too fast; following the current band and sampling the others");
         }
         if (_feed.NeighboursStopped && !_neighboursStopLogged)
         {
             _neighboursStopLogged = true;
-            Log.Warning("PSK Reporter neighbour reports came too fast; stopped following them");
+            Log.Warning("PSK Reporter neighbour reports came too fast; stopped following them and sampling every band");
         }
     }
 

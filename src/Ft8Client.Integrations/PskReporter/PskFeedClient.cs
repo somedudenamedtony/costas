@@ -19,7 +19,8 @@ namespace Ft8Client.Integrations.PskReporter;
 /// <summary>
 /// The live "who hears me" feed from mqtt.pskreporter.info (a best-effort community service by M0LTE). Subscribes to
 /// <c>pskr/filter/v2/+/+/MYCALL/#</c>, reconnects with back-off, and drops repeated sequence numbers. When asked, it also
-/// follows the reports of every station in my DXCC entity on one band and mode, for the neighbour comparison.
+/// follows the reports of every station in my DXCC entity on one band and mode, for the neighbour comparison, and on every
+/// band for the band menu; when every band is too busy to follow at once, it samples the other bands one at a time.
 /// </summary>
 public sealed class PskFeedClient : IAsyncDisposable
 {
@@ -43,7 +44,12 @@ public sealed class PskFeedClient : IAsyncDisposable
     private readonly object _topicGate = new();
     private string? _neighbourTopic;
     private string? _subscribedNeighbourTopic;
-    private (string? Band, string? Mode, int? Dxcc) _followed;
+    private (string? Band, string? Mode, int? Dxcc, bool AllBands, IReadOnlyList<string> Bands) _followed = (null, null, null, false, []);
+    private bool _neighbourAllBands;
+    private readonly BandSampler _sampler;
+    private string? _sampleTopic;
+    private string? _subscribedSampleTopic;
+    private Timer? _sampleTimer;
     private HashSet<string> _huntTopics = new(StringComparer.Ordinal);
     private readonly HashSet<string> _subscribedHuntTopics = new(StringComparer.Ordinal);
     private HashSet<string> _huntCalls = new(StringComparer.Ordinal);
@@ -57,9 +63,15 @@ public sealed class PskFeedClient : IAsyncDisposable
     public const int MaxNeighbourReportsPerMinute = 6000;
 
     /// <summary>Creates a client.</summary>
-    public PskFeedClient(CountryFile? countries, string host = DefaultHost, int port = DefaultTlsPort, bool tls = true)
+    /// <param name="countries">For the receivers' countries.</param>
+    /// <param name="host">The broker.</param>
+    /// <param name="port">Its port.</param>
+    /// <param name="tls">True to use TLS.</param>
+    /// <param name="sampleDwell">How long each band is sampled (<see cref="BandSampler.DefaultDwell"/>; shorter in tests).</param>
+    public PskFeedClient(CountryFile? countries, string host = DefaultHost, int port = DefaultTlsPort, bool tls = true, TimeSpan? sampleDwell = null)
     {
         _countries = countries;
+        _sampler = new BandSampler(sampleDwell ?? BandSampler.DefaultDwell);
         _host = host;
         _port = port;
         _tls = tls;
@@ -70,6 +82,12 @@ public sealed class PskFeedClient : IAsyncDisposable
 
     /// <summary>Raised for each report of another station on the band followed by <see cref="FollowNeighbours"/>.</summary>
     public event Action<NeighbourReport>? NeighbourReport;
+
+    /// <summary>
+    /// Raised each time a band finishes being sampled, while the bands are too busy to follow all at once (see
+    /// <see cref="FollowNeighbours"/>). Raised on a timer thread.
+    /// </summary>
+    public event Action<BandSample>? BandSampled;
 
     /// <summary>
     /// My ADIF DXCC code, learned from the first report of my signal that carries one, or remembered from an earlier run.
@@ -83,7 +101,7 @@ public sealed class PskFeedClient : IAsyncDisposable
     public bool NeighboursStopped { get; private set; }
 
     /// <summary>
-    /// True when neighbour reports on every band came too fast; the feed then follows the current band only.
+    /// True when neighbour reports on every band came too fast; the feed then follows the current band and samples the others.
     /// </summary>
     public bool AllBandsStopped { get; private set; }
 
@@ -169,19 +187,76 @@ public sealed class PskFeedClient : IAsyncDisposable
     /// <summary>
     /// Follows the reports of stations in DXCC entity <paramref name="dxcc"/> on <paramref name="band"/> and
     /// <paramref name="mode"/>, replacing any earlier choice; null for any of them stops following. With
-    /// <paramref name="allBands"/> it follows every band (for the band menu), unless that proved too busy.
+    /// <paramref name="allBands"/> it follows every band (for the band menu); when that proves too busy it follows
+    /// <paramref name="band"/> and samples the other <paramref name="bands"/> one at a time (<see cref="BandSampled"/>).
     /// </summary>
-    public void FollowNeighbours(string? band, string? mode, int? dxcc, bool allBands = false)
+    /// <param name="band">The band I am on.</param>
+    /// <param name="mode"><c>FT8</c> or <c>FT4</c>.</param>
+    /// <param name="dxcc">My ADIF DXCC code.</param>
+    /// <param name="allBands">True to follow every band.</param>
+    /// <param name="bands">The bands to sample when every band is too busy to follow; null or empty for none.</param>
+    public void FollowNeighbours(string? band, string? mode, int? dxcc, bool allBands = false, IReadOnlyList<string>? bands = null)
     {
+        var wide = allBands && !AllBandsStopped;
         var topic = band is null || mode is null || dxcc is null || NeighboursStopped ? null
-            : NeighbourTopicFor(allBands && !AllBandsStopped ? "+" : band, mode, dxcc.Value);
+            : NeighbourTopicFor(wide ? "+" : band, mode, dxcc.Value);
         lock (_topicGate)
         {
-            _followed = (band, mode, dxcc);
+            _followed = (band, mode, dxcc, allBands, bands ?? []);
+            _neighbourAllBands = wide;
             if (topic == _neighbourTopic) return;
             _neighbourTopic = topic;
         }
         _ = UpdateNeighbourSubscriptionAsync();
+    }
+
+    // Once a second: moves the band sampling on while every band is too busy to follow at once.
+    private void SampleTick()
+    {
+        BandSample? finished = null;
+        bool resubscribe;
+        lock (_topicGate)
+        {
+            var (band, mode, dxcc, allBands, bands) = _followed;
+            if (allBands && mode is not null && dxcc is not null && bands.Count > 0 && (AllBandsStopped || NeighboursStopped))
+            {
+                var m = mode.ToUpperInvariant();
+                (finished, _) = _sampler.Tick(DateTime.UtcNow, bands, NeighboursStopped ? null : band, m);
+                _sampleTopic = _sampler.Band is { } b ? NeighbourTopicFor(b, m, dxcc.Value) : null;
+            }
+            else
+            {
+                _sampler.Stop();
+                _sampleTopic = null;
+            }
+            resubscribe = _sampleTopic != _subscribedSampleTopic;
+        }
+        if (resubscribe) _ = UpdateSampleSubscriptionAsync();
+        if (finished is not null) BandSampled?.Invoke(finished);
+    }
+
+    private async Task UpdateSampleSubscriptionAsync()
+    {
+        var client = _client;
+        if (client is null || !_subscribed) return;
+        string? want, have;
+        lock (_topicGate)
+        {
+            want = _sampleTopic;
+            have = _subscribedSampleTopic;
+            if (want == have) return;
+            _subscribedSampleTopic = want;
+        }
+        try
+        {
+            if (have is not null) await client.UnsubscribeAsync(have).ConfigureAwait(false);
+            if (want is not null) await client.SubscribeAsync(new MqttClientSubscribeOptionsBuilder().WithTopicFilter(want).Build()).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // The next tick or reconnect subscribes again.
+            lock (_topicGate) _subscribedSampleTopic = null;
+        }
     }
 
     private async Task UpdateNeighbourSubscriptionAsync()
@@ -213,6 +288,7 @@ public sealed class PskFeedClient : IAsyncDisposable
     {
         _cts = new CancellationTokenSource();
         _loop = Task.Run(() => RunAsync(Callsign.Normalize(myCall), _cts.Token));
+        _sampleTimer = new Timer(_ => SampleTick(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
     private async Task RunAsync(string myCall, CancellationToken ct)
@@ -248,10 +324,12 @@ public sealed class PskFeedClient : IAsyncDisposable
                 lock (_topicGate)
                 {
                     _subscribedNeighbourTopic = null;
+                    _subscribedSampleTopic = null;
                     _subscribedHuntTopics.Clear();
                 }
                 _subscribed = true;
                 await UpdateNeighbourSubscriptionAsync().ConfigureAwait(false);
+                await UpdateSampleSubscriptionAsync().ConfigureAwait(false);
                 await UpdateHuntSubscriptionsAsync().ConfigureAwait(false);
                 _backoff.Reset();
                 StatusChanged?.Invoke(new ServiceStatus(ServiceHealth.Ok, "Live feed connected", DateTime.UtcNow));
@@ -289,8 +367,16 @@ public sealed class PskFeedClient : IAsyncDisposable
         if (parsed is not { } p) return;
         var mine = Callsign.EqualsCall(p.SenderCall, myCall);
         var hunted = !mine && IsHunted(p.SenderCall, p.SenderDxcc);
-        var neighbour = !mine && _neighbourTopic is not null && p.SenderGrid is not null;
-        if (!mine && !hunted && !neighbour) return;
+        bool neighbour, sampled;
+        lock (_topicGate)
+        {
+            var (band, _, dxcc, _, _) = _followed;
+            neighbour = !mine && _neighbourTopic is not null && p.SenderGrid is not null
+                        && (_neighbourAllBands || string.Equals(p.Report.Band, band, StringComparison.OrdinalIgnoreCase));
+            // The sampled band's reports only feed the band menu's estimate, not the neighbour comparison or its limit.
+            sampled = !mine && _sampler.Band is { } sb && string.Equals(p.Report.Band, sb, StringComparison.OrdinalIgnoreCase) && p.SenderDxcc == dxcc;
+        }
+        if (!mine && !hunted && !neighbour && !sampled) return;
         lock (_seen)
         {
             if (p.Sequence != 0)
@@ -307,6 +393,13 @@ public sealed class PskFeedClient : IAsyncDisposable
             return;
         }
         if (hunted && !TooManyHuntReports()) HuntReport?.Invoke(new HuntSpot(p.SenderCall, p.SenderGrid, p.SenderDxcc, p.Report));
+        if (sampled)
+        {
+            var r = p.SenderGrid is null ? null
+                : new NeighbourReport(p.SenderCall, p.SenderGrid, p.Report.ReceiverCall, p.Report.Band, p.Report.Mode, p.Report.Snr, p.Report.TimeUtc);
+            lock (_topicGate) _sampler.Add(r);
+            return;
+        }
         if (!neighbour || TooManyNeighbourReports()) return;
         NeighbourReport?.Invoke(new NeighbourReport(p.SenderCall, p.SenderGrid!, p.Report.ReceiverCall, p.Report.Band, p.Report.Mode, p.Report.Snr,
             p.Report.TimeUtc));
@@ -353,15 +446,19 @@ public sealed class PskFeedClient : IAsyncDisposable
         lock (_topicGate) topic = _neighbourTopic;
         if (topic is not null && topic.StartsWith("pskr/filter/v2/+/", StringComparison.Ordinal))
         {
-            // Every band is too busy: fall back to the current band, which the neighbour comparison needs.
+            // Every band is too busy: fall back to the current band, which the neighbour comparison needs. The current band
+            // starts a fresh count, or its next report would stop following altogether.
             AllBandsStopped = true;
-            var (band, mode, dxcc) = _followed;
-            FollowNeighbours(band, mode, dxcc);
+            _neighbourCount = 0;
+            var (band, mode, dxcc, allBands, bands) = _followed;
+            FollowNeighbours(band, mode, dxcc, allBands, bands);
         }
         else if (!NeighboursStopped)
         {
+            // Following stops; the band menu goes on sampling every band.
             NeighboursStopped = true;
-            FollowNeighbours(null, null, null);
+            var (band, mode, dxcc, allBands, bands) = _followed;
+            FollowNeighbours(band, mode, dxcc, allBands, bands);
         }
         return true;
     }
@@ -370,6 +467,7 @@ public sealed class PskFeedClient : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (_cts is null) return;
+        if (_sampleTimer is not null) await _sampleTimer.DisposeAsync().ConfigureAwait(false);
         await _cts.CancelAsync().ConfigureAwait(false);
         try
         {
