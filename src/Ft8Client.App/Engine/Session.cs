@@ -709,6 +709,18 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Halt Tx: drop PTT now and stop sequencing.</summary>
     public Task HaltAsync() => HaltAsync(null);
 
+    /// <summary>Drop PTT now and send nothing more, but keep the contact so the DX's sign-off is still logged.</summary>
+    public async Task HoldAsync()
+    {
+        lock (_gate)
+        {
+            _engine.Hold(_clock.UtcNow);
+            _rigTuningUntil = null;
+        }
+        await _tx.HaltAsync().ConfigureAwait(false);
+        Publish();
+    }
+
     /// <summary>Halt Tx with a reason for the bottom bar (for a stop the operator did not ask for).</summary>
     public async Task HaltAsync(string? reason)
     {

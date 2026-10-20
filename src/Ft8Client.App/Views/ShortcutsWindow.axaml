@@ -6,7 +6,7 @@
   <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="20">
     <TextBlock Grid.Row="0" Text="Enter" FontWeight="SemiBold" /><TextBlock Grid.Row="0" Grid.Column="1" Text="Call the selected station" Margin="0,0,0,8" />
     <TextBlock Grid.Row="1" Text="Up, Down" FontWeight="SemiBold" /><TextBlock Grid.Row="1" Grid.Column="1" Text="Move the selection in the line" Margin="0,0,0,8" />
-    <TextBlock Grid.Row="2" Text="Esc" FontWeight="SemiBold" /><TextBlock Grid.Row="2" Grid.Column="1" Text="Halt Tx. In a contact: abandon it (press twice once reports are exchanged)" TextWrapping="Wrap" Margin="0,0,0,8" />
+    <TextBlock Grid.Row="2" Text="Esc" FontWeight="SemiBold" /><TextBlock Grid.Row="2" Grid.Column="1" Text="Halt Tx. In a contact: abandon it. Once reports are exchanged, the first press only stops transmitting and keeps listening; press again to abandon" TextWrapping="Wrap" Margin="0,0,0,8" />
     <TextBlock Grid.Row="3" Text="Ctrl+Q" FontWeight="SemiBold" /><TextBlock Grid.Row="3" Grid.Column="1" Text="Call CQ / stop CQ" Margin="0,0,0,8" />
     <TextBlock Grid.Row="4" Text="Ctrl+R" FontWeight="SemiBold" /><TextBlock Grid.Row="4" Grid.Column="1" Text="Resend" Margin="0,0,0,8" />
     <TextBlock Grid.Row="5" Text="Ctrl+L" FontWeight="SemiBold" /><TextBlock Grid.Row="5" Grid.Column="1" Text="Log now" Margin="0,0,0,8" />
