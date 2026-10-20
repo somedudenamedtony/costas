@@ -33,7 +33,6 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     private readonly AppHost _host;
     private readonly CallerAlert _callers = new();
     private readonly HashSet<string> _cacheChecked = new(StringComparer.Ordinal);
-    private bool _escArmed;
     private bool _updatingBand;
 
     /// <summary>Creates the view model.</summary>
@@ -503,7 +502,6 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <inheritdoc />
     public void Abandon()
     {
-        _escArmed = false;
         _ = _host.Session.AbandonAsync();
     }
 
@@ -676,7 +674,6 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [RelayCommand]
     private void Halt()
     {
-        _escArmed = false;
         _ = _host.Session.HaltAsync();
     }
 
@@ -712,19 +709,20 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [RelayCommand]
     private void ShowTab(string index) => Tab = int.Parse(index, CultureInfo.InvariantCulture);
 
-    /// <summary>Esc: halt; in a contact, abandon (a second press confirms once both reports are exchanged).</summary>
+    /// <summary>
+    /// Esc: once both reports are exchanged, the first press stops transmitting but keeps the contact (the DX's RR73 is
+    /// still logged) and a second press abandons it; otherwise it abandons at once.
+    /// </summary>
     public void Escape()
     {
         var c = _host.Session.Snapshot.Contact;
-        if (c is { Outcome: ContactOutcome.InProgress } && c.ReportSent is not null && c.ReportReceived is not null && !_escArmed)
+        if (c is { Outcome: ContactOutcome.InProgress, Held: false } && c.ReportSent is not null && c.ReportReceived is not null)
         {
-            _escArmed = true;
-            _ = _host.Session.HaltAsync();
-            StatusText = "Transmitting stopped. Press Esc again to abandon the contact with " + c.DxCall + ".";
+            _ = _host.Session.HoldAsync();
+            StatusText = "Transmitting stopped. Still listening to " + c.DxCall + ": its RR73 will be logged. Ctrl+R carries on, Esc again abandons.";
             StatusKind = TextKind.Critical;
             return;
         }
-        _escArmed = false;
         _ = _host.Session.AbandonAsync();
     }
 

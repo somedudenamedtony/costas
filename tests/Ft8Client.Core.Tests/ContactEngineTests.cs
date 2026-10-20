@@ -479,6 +479,87 @@ public class ContactEngineTests
     }
 
     [Fact]
+    public void Hold_DxSendsRr73_LoggedAndNothingMoreSent()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step().Should().Be("ZL2RPA W7LIT R-19");
+        s.E.Hold(s.Now);
+        s.E.Holding.Should().BeTrue();
+        s.E.View!.Held.Should().BeTrue();
+        s.Step("W7LIT ZL2RPA RR73");
+
+        s.Logs.Should().ContainSingle().Which.Call.Should().Be("ZL2RPA");
+        s.E.InContact.Should().BeFalse();
+        s.E.View!.Outcome.Should().Be(ContactOutcome.Logged);
+        s.Steps(4);
+        s.Sent.Select(x => x.Message).Should().NotContain("ZL2RPA W7LIT 73");
+    }
+
+    [Fact]
+    public void Hold_NoReply_SendsNothingAndKeepsContact()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step().Should().Be("ZL2RPA W7LIT R-19");
+        s.E.Hold(s.Now);
+        var sent = s.Sent.Count;
+        s.Steps(6);
+
+        s.Sent.Should().HaveCount(sent);
+        s.E.InContact.Should().BeTrue();
+        s.E.View!.Outcome.Should().Be(ContactOutcome.InProgress);
+        s.Logs.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Hold_ThenResend_CarriesOnTransmitting()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step().Should().Be("ZL2RPA W7LIT R-19");
+        s.E.Hold(s.Now);
+        s.Step();
+        s.Step().Should().BeNull();
+
+        s.E.Resend(s.Now);
+        s.E.Holding.Should().BeFalse();
+        s.Step();
+        s.Step().Should().Be("ZL2RPA W7LIT R-19");
+    }
+
+    [Fact]
+    public void Hold_ThenAbandon_EndsWithoutLogging()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step();
+        s.E.Hold(s.Now);
+        s.E.Abandon(s.Now);
+
+        s.E.View!.Outcome.Should().Be(ContactOutcome.Abandoned);
+        s.Logs.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Hold_WhileCallingCq_StopsCq()
+    {
+        var s = new Sim();
+        s.E.CallCq(SlotParity.Even, Sim.T0);
+        s.E.Hold(Sim.T0);
+        s.E.CallingCq.Should().BeFalse();
+        s.Step().Should().BeNull();
+    }
+
+    [Fact]
     public void NoReply_DxRepliesLate_IsFlaggedAfterStop()
     {
         var s = new Sim(new ContactSettings { RetryLimit = 1 });

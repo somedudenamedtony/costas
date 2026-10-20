@@ -37,4 +37,7 @@ public sealed record ContactView(string DxCall, string? DxGrid, ContactFlow Flow
 
     /// <summary>The slot parity I transmit in during this contact.</summary>
     public SlotParity MyParity { get; init; }
+
+    /// <summary>True while the operator has stopped transmitting but kept the contact (first Esc).</summary>
+    public bool Held { get; init; }
 }

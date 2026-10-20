@@ -140,8 +140,10 @@ shows it in Next in line as *DXpedition (Fox/Hound), working Hounds*. There is n
 **Halt Tx** in the bottom bar, **Halt (Esc)** in the ON AIR banner, and the ++esc++ key all drop PTT immediately and
 stop the sequence.
 
-In a contact, the first ++esc++ stops transmitting. Once both reports have been exchanged, Costas asks you to press
-++esc++ a second time before it abandons the contact, so a stray key press does not lose a nearly complete contact.
+Before both reports have been exchanged, ++esc++ abandons the contact at once. After that, the first ++esc++ only stops
+transmitting: Costas keeps the contact and keeps listening, so if the other station's RR73 or 73 arrives the contact is
+logged (with automatic logging on) and nothing more is sent. ++ctrl+r++ carries on transmitting where you left off, and a
+second ++esc++ abandons the contact. A stray key press does not lose a nearly complete contact.
 
 ## Safety guards
 

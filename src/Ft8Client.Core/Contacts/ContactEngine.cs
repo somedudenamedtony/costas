@@ -191,6 +191,7 @@ public sealed class ContactEngine
         OperatorActivity(nowUtc);
         if (_c is not null)
         {
+            _c.Held = false;
             _c.AwaitingReply = false;
             if (_c.StepTxCount > 0) _c.StepTxCount--; // an operator resend is not counted against the retry limit
         }
@@ -226,12 +227,29 @@ public sealed class ContactEngine
     /// <summary>Halt Tx: stops transmitting and sequencing (same as abandon).</summary>
     public void Halt(DateTime nowUtc) => Abandon(nowUtc);
 
+    /// <summary>True while the contact is kept but nothing is sent (see <see cref="Hold"/>).</summary>
+    public bool Holding => _c?.Held == true;
+
+    /// <summary>
+    /// Stops transmitting but keeps the contact (the operator's first Esc): the DX station's replies are still read, so
+    /// a sign-off that completes the contact is logged and ends it with nothing more sent. Resend or a step jump carries
+    /// on transmitting; <see cref="Abandon"/> ends it.
+    /// </summary>
+    public void Hold(DateTime nowUtc)
+    {
+        OperatorActivity(nowUtc);
+        _cqRunning = false;
+        _extraMessage = null;
+        if (_c is not null) _c.Held = true;
+    }
+
     /// <summary>Manual override: jump the sequence to one of my upcoming steps.</summary>
     public bool JumpTo(int stepIndex, DateTime nowUtc)
     {
         OperatorActivity(nowUtc);
         if (_c is null || stepIndex < 0 || stepIndex >= _c.Steps.Count || !_c.Steps[stepIndex].Mine || stepIndex <= _c.Phase) return false;
         if (stepIndex == 0) return false;
+        _c.Held = false;
         for (var i = _c.Phase; i < stepIndex; i++) _c.Steps[i] = _c.Steps[i] with { State = StepState.Done };
         SetPhase(_c, stepIndex);
         return true;
@@ -264,6 +282,8 @@ public sealed class ContactEngine
                 Advance(_c, m, slotStartUtc, nowUtc, h);
                 if (_c is null) break;
             }
+            // Held: nothing more goes out, so a contact the DX's sign-off has just logged is finished.
+            if (_c is { Held: true, Logged: true }) End(ContactOutcome.Logged, nowUtc, resume: false);
         }
         else
         {
@@ -328,6 +348,7 @@ public sealed class ContactEngine
 
         if (_c is not null)
         {
+            if (_c.Held) return null;
             if (parity != _c.MyParity) return null;
             if (_c.Phase >= _c.Steps.Count || !_c.Steps[_c.Phase].Mine) return null;
             if (_c.Flow == ContactFlow.Hound) return PlanHound(_c, slotStartUtc, mode, nowUtc);
@@ -756,6 +777,7 @@ public sealed class ContactEngine
         var sentAny = c.Steps.Any(s => s.Mine && s.Count > 0 && s.Message.Contains(Report.Format(c.ReportSent), StringComparison.Ordinal));
         var status = c.Outcome switch
         {
+            ContactOutcome.InProgress when c.Held => $"Transmitting stopped. Still listening to {c.DxCall}; Ctrl+R carries on, Esc abandons.",
             ContactOutcome.InProgress when c.AwaitingReply => $"Waiting for {c.DxCall}.",
             ContactOutcome.InProgress => $"Transmitting to {c.DxCall}.",
             ContactOutcome.Logged => $"Logged {c.DxCall}.",
@@ -768,7 +790,7 @@ public sealed class ContactEngine
             _ => $"Stopped calling {c.DxCall}.",
         };
         return new ContactView(c.DxCall, c.DxGrid, c.Flow, c.Outcome, sentAny ? c.ReportSent : null, c.ReportReceived, steps, c.Logged,
-            !c.Logged && sentAny && c.ReportReceived is not null, status) { MyParity = c.MyParity };
+            !c.Logged && sentAny && c.ReportReceived is not null, status) { MyParity = c.MyParity, Held = c.Held && c.Outcome == ContactOutcome.InProgress };
     }
 
     private sealed class Contact(ContactFlow flow, string dxCall, string? dxGrid, SlotParity myParity, int reportSent, int dxOffset)
@@ -804,6 +826,8 @@ public sealed class ContactEngine
         public DateTime? TimeOnUtc { get; set; }
 
         public bool Logged { get; set; }
+
+        public bool Held { get; set; }
 
         public DateTime? LoggedUtc { get; set; }
 

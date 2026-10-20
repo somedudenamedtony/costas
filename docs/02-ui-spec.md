@@ -256,7 +256,7 @@ Audio dropouts, decode time per slot, median DT of decodes, clock offset, CAT ro
 | --- | --- |
 | Enter | Call the selected station; in a contact, nothing |
 | Up, Down | Move selection in the line |
-| Esc | Halt Tx. In a contact: abandon it (second press confirms if both reports are exchanged) |
+| Esc | Halt Tx. In a contact: abandon it. Once both reports are exchanged, the first press stops transmitting but keeps the contact (a late RR73 is still logged); the second abandons (owner decision 2026-10-20) |
 | Ctrl+Q | Call CQ / stop CQ |
 | Ctrl+R | Resend |
 | Ctrl+L | Log now |
