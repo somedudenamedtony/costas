@@ -214,9 +214,15 @@ public class PskReporterTests
             var msg = new MqttApplicationMessageBuilder().WithTopic($"pskr/filter/v2/{band}/FT8/{call}/DL1ABC/DN41/JO62/291/230").WithPayload(json).Build();
             await server.InjectApplicationMessage(new InjectedMqttApplicationMessage(msg) { SenderClientId = "test" }, TestContext.Current.CancellationToken);
         }
-        // More than the limit in one minute (retried across a minute boundary).
+        // More than the limit in one minute, in small batches so the broker's per-client queue does not drop them
+        // (retried across a minute boundary).
         long seq = 1000;
-        while (!feed.AllBandsStopped && seq < 30000) await Send(seq++, "20m", "K7AAA");
+        var until = DateTime.UtcNow.AddSeconds(60);
+        while (!feed.AllBandsStopped && DateTime.UtcNow < until)
+        {
+            for (var i = 0; i < 100; i++) await Send(seq++, "20m", "K7AAA");
+            await Task.Delay(20, TestContext.Current.CancellationToken);
+        }
         feed.AllBandsStopped.Should().BeTrue();
 
         // 15 m takes its turn; what arrives then is a sample, not a neighbour report.
