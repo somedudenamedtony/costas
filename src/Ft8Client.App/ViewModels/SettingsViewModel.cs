@@ -98,6 +98,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         RefreshEqslInbox();
         FeedEnabled = s.PskReporter.FeedEnabled;
         PotaSpots = s.Pota.SpotsEnabled;
+        PreferNewParks = s.Ranking.PreferNewParks;
         CompareNeighbours = s.PskReporter.CompareNeighbours;
         BandActivity = s.PskReporter.BandActivity;
         UploadSpots = s.PskReporter.UploadSpots;
@@ -671,6 +672,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool PotaSpots { get; set; }
 
+    /// <summary>Rank activators at parks not in the log higher.</summary>
+    [ObservableProperty]
+    public partial bool PreferNewParks { get; set; }
+
     /// <summary>Compare my signal with stations near me.</summary>
     [ObservableProperty]
     public partial bool CompareNeighbours { get; set; }
@@ -997,6 +1002,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Qrz.SyncMinutes = Int(SyncMinutes, 5, 1440, 15);
             s.PskReporter.FeedEnabled = FeedEnabled;
             s.Pota.SpotsEnabled = PotaSpots;
+            s.Ranking.PreferNewParks = PreferNewParks;
             s.PskReporter.CompareNeighbours = CompareNeighbours;
             s.PskReporter.BandActivity = BandActivity;
             s.PskReporter.UploadSpots = UploadSpots;

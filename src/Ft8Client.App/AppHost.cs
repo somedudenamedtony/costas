@@ -369,6 +369,7 @@ public sealed class AppHost : IAsyncDisposable
         Session.Changed += NeighbourHistory.OnSnapshot;
         Pota = new PotaService(() => Settings.Current.Pota.SpotsEnabled, () => Settings.Current.Profile.Callsign, Clock,
             st => Session.SetService(ServiceNames.Pota, st));
+        Pota.Changed += Session.SetParks;
         Pota.SetWorked(WorkedParksFromLog());
         log.Stored += Pota.OnLogged;
         Pota.Start();

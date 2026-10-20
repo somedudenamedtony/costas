@@ -333,7 +333,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         var tonight = TonightRows(s);
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
-        Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current.Ranking);
+        Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current);
         Operate.ShowCqModifier(_host.Settings.Current.Operating.CqModifier);
         Operate.Apply(s, tonight.Rows, tonight.Total);
         Reach.ApplyNeighbours(s.Neighbours, s.Band, _host.Settings.Current.PskReporter is { FeedEnabled: true, CompareNeighbours: true });

@@ -242,7 +242,8 @@
               <TextBlock Classes="label" Text="Parks on the Air" />
               <StackPanel Grid.Column="1">
                 <CheckBox Content="Show which park a station is activating (POTA spots)" IsChecked="{Binding PotaSpots}" />
-                <TextBlock Classes="help" Text="Reads the public spot list at pota.app every two minutes and shows New park or Park with the reference under Why. It does not change the order of the list. A park you work is written to the log." TextWrapping="Wrap" />
+                <CheckBox Content="Rank stations at a park I have not worked higher" IsChecked="{Binding PreferNewParks}" IsEnabled="{Binding PotaSpots}" Margin="24,0,0,0" />
+                <TextBlock Classes="help" Text="Reads the public spot list at pota.app every two minutes and shows New park or Park with the reference under Why. A station at a new park comes right after your first need (new countries by default), even if you have worked its call on this band before. A park you work is written to the log." TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">

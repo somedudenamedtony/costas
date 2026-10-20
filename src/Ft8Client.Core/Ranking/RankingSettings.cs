@@ -31,6 +31,12 @@ public sealed record RankingSettings
     /// <summary>Count only confirmed contacts for country, band and grid tiers.</summary>
     public bool ConfirmedOnly { get; init; }
 
+    /// <summary>
+    /// Rank an activator at a park not in the log ahead of every station but those in the first tier, and list it in
+    /// Next in line even when its call is already worked on this band (owner decision 2026-10-20).
+    /// </summary>
+    public bool PreferNewParks { get; init; } = true;
+
     /// <summary>Default for <see cref="KeepCqCallers"/>.</summary>
     public static readonly TimeSpan DefaultKeepCqCallers = TimeSpan.FromMinutes(2);
 

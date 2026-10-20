@@ -30,7 +30,7 @@ public static class SettingsMapper
             MyGrid = s.Profile.Grid.Trim(),
             Band = s.Operating.Band,
             Mode = mode,
-            Ranking = ToRanking(s.Ranking),
+            Ranking = ToRanking(s),
             Contact = new ContactSettings
             {
                 RetryLimit = s.Operating.RetryLimit,
@@ -51,6 +51,10 @@ public static class SettingsMapper
         };
     }
 
+    /// <summary>Ranking settings from all settings: new parks rank higher only while POTA spots are read.</summary>
+    public static RankingSettings ToRanking(AppSettings s) =>
+        ToRanking(s.Ranking) with { PreferNewParks = s.Ranking.PreferNewParks && s.Pota.SpotsEnabled };
+
     /// <summary>Ranking settings from stored options.</summary>
     public static RankingSettings ToRanking(RankingOptions r)
     {
@@ -70,6 +74,7 @@ public static class SettingsMapper
             HideWorked = r.HideWorked,
             SkipLongShots = r.SkipLongShots,
             ConfirmedOnly = r.ConfirmedOnly,
+            PreferNewParks = r.PreferNewParks,
             KeepCqCallers = TimeSpan.FromMinutes(Math.Clamp(r.KeepCqCallersMinutes, 0, 60)),
         };
     }

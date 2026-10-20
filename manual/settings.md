@@ -70,9 +70,13 @@ line*.
   minutes. A station heard working someone else leaves the list straight away whatever this says.
 - **Parks on the Air: Show which park a station is activating (POTA spots)**: on. Costas reads the public spot list
   at pota.app every two minutes while it runs and shows *New park* or *Park* with the reference under **Why**
-  ([Operate](operate.md#next-in-line)). It does not change the order of the list. When you log a contact with a
-  spotted activator, the park goes into the log (see [Log](log.md#what-costas-logs)). If pota.app cannot be reached,
-  the **POTA** indicator says so and Costas tries again less often; nothing else is affected. Off makes no requests.
+  ([Operate](operate.md#next-in-line)). When you log a contact with a spotted activator, the park goes into the log
+  (see [Log](log.md#what-costas-logs)). If pota.app cannot be reached, the **POTA** indicator says so and Costas tries
+  again less often; nothing else is affected. Off makes no requests.
+  - **Rank stations at a park I have not worked higher**: on. A spotted activator at a park that is not in your log
+    comes right after your first need (new countries by default) and ahead of everything else, and it is listed in
+    **Next in line** even when you have worked that call on this band before. A station calling CQ POTA that nobody
+    has spotted is not moved, since Costas cannot tell which park it is at.
 
 ## Hunt list
 

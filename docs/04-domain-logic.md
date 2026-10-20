@@ -122,14 +122,15 @@ A station is **callable** when all hold: state is `CallingCq` (or, with "Only st
 
 A **Fox** (a station heard sending a multi-answer message `CALL1 RR73; CALL2 <FOX> ±NN`) is callable whenever it was decoded in its latest own slot, whatever it is doing, and Doing now reads "DXpedition (Fox/Hound), working Hounds". Calling it starts a Hound contact (flow H).
 
-- **Next in line**: callable, tier 1 to 4, passing the filters. Order by tier (ascending), then calling me first, then stations decoded in their latest own slot before CQ callers kept after a miss, then chance (Good, Fair, Long shot), then report strength (direct or regional, stronger first, none last), then S's SNR (stronger first), then callsign.
+- **Next in line**: callable, tier 1 to 4 (or tier 5 at a new park, below), passing the filters. Order first by bucket: tier 1, then new parks, then the rest (owner decision 2026-10-20; with "Rank stations at a park I have not worked higher" off, there are no new parks). Within a bucket, order by tier (ascending), then calling me first, then stations decoded in their latest own slot before CQ callers kept after a miss, then chance (Good, Fair, Long shot), then report strength (direct or regional, stronger first, none last), then S's SNR (stronger first), then callsign.
 - **Watching**: tier 1 to 4 and not callable. Order by tier, then most recently heard. Reason text from state.
-- **Already worked**: tier 5, kept out of Next in line and Watching and shown in the Repeats panel (callable first, then not confirmed on this band and mode).
+- **New park**: a POTA spot (docs/05, section 7c) puts the station at a park not in the log. Such a station is listed in Next in line even at tier 5, since a new park is a new contact for park hunters. A `CQ POTA` with no spot is not a new park.
+- **Already worked**: tier 5 and not at a new park, kept out of Next in line and Watching and shown in the Repeats panel (callable first, then not confirmed on this band and mode).
 - **Calling me**: stations in state `CallingMe` go to "Waiting for you" and are shown in the line with "Calling you" in Doing now, ranked first within their tier.
 
 Filters (ranking settings): prefer stations that hear me (when off, chance is ignored in ordering), only stations calling CQ, hide stations worked on this band, skip long shots.
 
-The ranker is a pure function: `(stations, logIndex, hearsMe, settings, myEntity) -> (line, watching, workedCount)`. Test it with table-driven cases; the sample data in the mockups is one such case.
+The ranker is a pure function: `(stations, logIndex, hearsMe, settings, myEntity, parks) -> (line, watching, workedCount)`. Test it with table-driven cases; the sample data in the mockups is one such case.
 
 ## 7. Contact engine
 

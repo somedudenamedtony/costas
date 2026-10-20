@@ -35,11 +35,13 @@ public static class Ranker
             var ranked = new RankedStation(s, need, hears, chance, reason is null, reason)
             {
                 UsesLotw = input.Lotw?.IsUser(s.Call, input.NowUtc) == true,
+                NewPark = settings.PreferNewParks && input.Parks?.Match(s.Call, input.Band, s.CqModifier) is { NewPark: true },
             };
 
             if (s.State == StationState.CallingMe && s.HeardInLastOwnSlot) callingMe.Add(ranked);
 
-            if (need.Tag == NeedTag.Worked)
+            // A new park is a new contact for a park hunter even with the call worked before on this band.
+            if (need.Tag == NeedTag.Worked && !ranked.NewPark)
             {
                 worked.Add(ranked);
                 continue;
@@ -119,7 +121,9 @@ public static class Ranker
 
     private static int CompareLine(RankedStation a, RankedStation b, RankingSettings settings)
     {
-        var c = a.Need.Tier.CompareTo(b.Need.Tier);
+        var c = LineBucket(a).CompareTo(LineBucket(b));
+        if (c != 0) return c;
+        c = a.Need.Tier.CompareTo(b.Need.Tier);
         if (c != 0) return c;
         c = b.CallingMe.CompareTo(a.CallingMe);
         if (c != 0) return c;
@@ -145,6 +149,9 @@ public static class Ranker
         c = b.Station.LastSnr.CompareTo(a.Station.LastSnr);
         return c != 0 ? c : string.CompareOrdinal(a.Station.Call, b.Station.Call);
     }
+
+    // The first tier (a new country by default) leads, then activators at new parks, then everyone else by tier.
+    private static int LineBucket(RankedStation r) => r.Need.Tier == 1 ? 0 : r.NewPark ? 1 : 2;
 
     private static int ReportKey(RankedStation r) => r.Hears.HasReport ? r.Hears.Snr ?? -99 : -1000;
 }
