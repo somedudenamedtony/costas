@@ -247,6 +247,8 @@ Richer page (owner request 2026-10-12, "more feature rich"): under the top bar, 
 
 Tablet layout (owner request 2026-10-12): at 760 px wide and up the same page shows the desk's Operate view at once, with two tabs (Operate, Decodes). Next in line and Repeats are tables with the desk's columns (Call with need tag, Where, Doing now, Signal, Chance with its reason, Last heard, Last worked, button); Watching shows Call, Where and why not now. Portrait (760 to 1079 px) is one column and drops Last worked; landscape (1080 px and up) adds a 340 px right column with the band summary, your signal and tonight's contacts. The contact card shows all five messages under the strip. Touch targets are at least 44 px; station details open as a right-hand panel; HALT TX is a 420 px button pinned bottom right.
 
+Home-screen app (owner request 2026-10-20, "make it a PWA"): the page links a web app manifest (`display: standalone`, Costas icon) and the Apple home-screen tags, so Add to Home Screen gives an icon that opens full screen on iOS and iPadOS. There is no service worker and no install prompt, because both need a secure (HTTPS) origin and the page is plain HTTP on the LAN. Chrome on Android adds a shortcut that opens in a tab. The top bar and the tablet side panel pad for the status bar and notch.
+
 
 Audio dropouts, decode time per slot, median DT of decodes, clock offset, CAT round-trip time, ALC and SWR of the last transmission, `jt9` and `rigctld` process state and restarts, QRZ and PSK Reporter connection state and last error, upload queue length. A button "Save diagnostics bundle" writes a zip of logs and settings (with secrets removed).
 

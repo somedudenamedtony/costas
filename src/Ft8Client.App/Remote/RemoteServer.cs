@@ -75,11 +75,13 @@ public sealed class RemoteServer : IAsyncDisposable
             ctx.Response.Headers["X-Frame-Options"] = "DENY";
             ctx.Response.Headers["Referrer-Policy"] = "no-referrer";
             ctx.Response.Headers["Content-Security-Policy"] =
-                "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' ws: wss:; frame-ancestors 'none'";
+                "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' ws: wss:; " +
+                "manifest-src 'self'; img-src 'self'; frame-ancestors 'none'";
             await next(ctx).ConfigureAwait(false);
         });
         app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(10) });
         app.MapGet("/", (Delegate)ServePage);
+        foreach (var (path, type) in Files) app.MapGet("/" + path, () => ServeFile(path, type));
         app.MapPost("/api/pair", (Delegate)PairAsync);
         app.Map("/ws", AcceptAsync);
         try
@@ -123,6 +125,24 @@ public sealed class RemoteServer : IAsyncDisposable
             await app.StopAsync(cts.Token).ConfigureAwait(false);
             await app.DisposeAsync().ConfigureAwait(false);
         }
+    }
+
+    // What a phone needs to add the page to its home screen as an app.
+    private static readonly (string Path, string Type)[] Files =
+    [
+        ("manifest.webmanifest", "application/manifest+json"),
+        ("icon-180.png", "image/png"),
+        ("icon-192.png", "image/png"),
+        ("icon-512.png", "image/png"),
+    ];
+
+    private static IResult ServeFile(string path, string type)
+    {
+        using var s = typeof(RemoteServer).Assembly.GetManifestResourceStream("Ft8Client.App.Remote." + path);
+        if (s is null) return Results.NotFound();
+        using var m = new MemoryStream();
+        s.CopyTo(m);
+        return Results.Bytes(m.ToArray(), type);
     }
 
     private static IResult ServePage()

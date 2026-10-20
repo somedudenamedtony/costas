@@ -58,6 +58,26 @@ public sealed class RemoteServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Get_Manifest_ServesTheHomeScreenAppAndItsIcons()
+    {
+        var page = await _http.GetAsync("/", TestContext.Current.CancellationToken);
+        page.Headers.GetValues("Content-Security-Policy").Single().Should().Contain("manifest-src 'self'").And.Contain("img-src 'self'");
+
+        var m = await _http.GetAsync("/manifest.webmanifest", TestContext.Current.CancellationToken);
+        m.StatusCode.Should().Be(HttpStatusCode.OK);
+        m.Content.Headers.ContentType!.MediaType.Should().Be("application/manifest+json");
+        var j = await m.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        j.GetProperty("display").GetString().Should().Be("standalone");
+
+        foreach (var icon in j.GetProperty("icons").EnumerateArray().Select(i => i.GetProperty("src").GetString()).Append("/icon-180.png"))
+        {
+            var r = await _http.GetAsync(icon, TestContext.Current.CancellationToken);
+            r.StatusCode.Should().Be(HttpStatusCode.OK, icon);
+            r.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
+        }
+    }
+
+    [Fact]
     public async Task Pair_WrongCode_Forbidden()
     {
         _control.Pairing.Open(_clock.UtcNow);

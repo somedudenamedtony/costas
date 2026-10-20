@@ -22,6 +22,20 @@ The code works once, only while the Settings window is open, for up to 10 minute
 Press **New code** for another. The phone stays paired until you press **Forget paired phones**; to pair another
 phone, open **Settings › Mobile connection** again and press **Pair a phone**.
 
+## Adding it to your home screen
+
+The page can sit on your home screen with the Costas icon, like an app.
+
+- **iPhone or iPad:** in Safari, tap **Share**, then **Add to Home Screen**. It opens full screen, without Safari's
+  address bar. The home-screen copy keeps its own storage, so pair it once more with a new code from
+  **Settings › Mobile connection**. After that, use the icon.
+- **Android:** in Chrome, open the menu and tap **Add to Home screen**. The icon opens the page in Chrome. Chrome only
+  installs full-screen apps from secure (HTTPS) addresses, and Costas serves the page over plain HTTP on your home
+  network.
+
+If the station computer's address changes (for example, your router hands it a new one), add the page again from the
+new address.
+
 ## What the phone can do
 
 The top of the page shows the band and frequency, the radio, the clock and the decoder, who is in control, and a
