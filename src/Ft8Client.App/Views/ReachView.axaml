@@ -9,7 +9,7 @@
     <Border Grid.Row="0" Classes="card" Padding="14,12" Margin="0,0,0,12">
       <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,380">
         <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
-          <CheckBox x:Name="WorldView" Content="World" ToolTip.Tip="Show a rotating globe" />
+          <CheckBox x:Name="WorldView" Content="World" ToolTip.Tip="Show a globe you can drag to any part of the world" />
           <TextBlock Text="Band" VerticalAlignment="Center" />
           <ComboBox ItemsSource="{Binding Bands}" SelectedItem="{Binding Band}" MinWidth="80" />
           <TextBlock Text="Window" VerticalAlignment="Center" Margin="8,0,0,0" />

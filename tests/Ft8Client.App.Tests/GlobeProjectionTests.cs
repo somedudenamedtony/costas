@@ -38,4 +38,46 @@ public class GlobeProjectionTests
         wrapped.X.Should().BeApproximately(p.X, 1e-10);
         wrapped.Depth.Should().BeApproximately(p.Depth, 1e-10);
     }
+
+    [Fact]
+    public void GlobePoint_TiltedToMyLatitude_PutsMeInTheMiddle()
+    {
+        var me = new LatLon(40.5, -113);
+        var p = MapGeometry.GlobePoint(me, me.Lon, me.Lat);
+        p.X.Should().BeApproximately(0, 1e-10);
+        p.Y.Should().BeApproximately(0, 1e-10);
+        p.Depth.Should().BeApproximately(1, 1e-10);
+    }
+
+    [Fact]
+    public void GlobePoint_TiltedNorth_StaysOnUnitSphereWithNorthUp()
+    {
+        var north = MapGeometry.GlobePoint(new LatLon(60, 0), 0, 40);
+        var south = MapGeometry.GlobePoint(new LatLon(20, 0), 0, 40);
+        (north.X * north.X + north.Y * north.Y + north.Depth * north.Depth).Should().BeApproximately(1, 1e-10);
+        north.Y.Should().BePositive();
+        south.Y.Should().BeNegative();
+    }
+
+    [Fact]
+    public void Turn_DragRight_BringsTheWestIntoView()
+    {
+        var (lon, _) = StationMap.Turn(0, 0, new Avalonia.Vector(10, 0), 100);
+        lon.Should().BeGreaterThan(180).And.BeLessThan(360);
+    }
+
+    [Fact]
+    public void Turn_DragLeftFromDn40_ReachesEurope()
+    {
+        // Two globe radii is about 115 degrees, enough to bring Greenwich from DN40 to the middle.
+        var (lon, _) = StationMap.Turn(-113 + 360, 40, new Avalonia.Vector(-200, 0), 100);
+        lon.Should().BeApproximately(1.6, 0.1);
+    }
+
+    [Fact]
+    public void Turn_DragFarDown_StopsShortOfThePole()
+    {
+        var (_, lat) = StationMap.Turn(0, 40, new Avalonia.Vector(0, 10_000), 100);
+        lat.Should().Be(StationMap.MaxTilt);
+    }
 }

@@ -15,11 +15,16 @@ a dot for its call, place, need, report and when it was heard. Your choices are 
 
 | Control | Options |
 | --- | --- |
-| View | **Around me**: centred on you, north up, with distance rings. **World**: a flat world map |
+| View | **Around me**: centred on you, north up, with distance rings. **World**: a globe, see below |
 | Show | **Everyone heard**, **Needed only**, **Calling CQ** |
 | Colour by | **Need** (new country amber, new band or grid blue, new call black, worked grey), **Signal** (strong, fair, weak), **Last heard** (last minute, 1 to 5 minutes, 5 to 15 minutes) |
 | **Who heard you** | Adds a hollow ring for each PSK Reporter receiver that heard you in the last 15 minutes. A station you hear that also hears you shows as a dot inside a ring |
 | **Day and night** | World view only: shades the night side of the earth, so you can see the greyline |
+
+**The globe** (World view, here and in Reach) starts facing your station and spins slowly. Hovering pauses it so
+you can read a dot. Drag it with the mouse to turn it to any part of the world, east and west or up and over towards
+the poles; once you have turned it, it stays where you left it. Double-click it to come back to your station and
+start the spin again.
 
 The legend under the map says in words what each colour means. Labels that would overlap are dropped; hover to see
 them. Without a grid, the map falls back to the World view and asks you to set your grid.
@@ -32,6 +37,8 @@ Press **Reach** in the top bar (++ctrl+3++), or **Open reach view** under *Your 
 
 - **Band** and **Window** (15 minutes, 1 hour, 24 hours) choose which reports to show.
 - **Headline**: heard by how many stations, in how many countries, the farthest and the best report.
+- **World**: switches the plot for the globe, with a ring for each station that reported you. Drag to turn it,
+  double-click to come back to your station (see [the globe](#heard-here) above).
 - **Plot**: you are at the centre, north is up, with rings every 2,000 miles (or 3,000 km). Each dot is a station
   that reported you, at its bearing and distance. Bigger, darker dots are stronger reports: strong (-10 dB or
   better), fair (-11 to -17), weak (-18 or below).

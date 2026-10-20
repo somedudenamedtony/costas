@@ -29,7 +29,7 @@ public partial class ReachView : UserControl
             Globe.IsVisible = world;
             Plot.IsVisible = ZoomControls.IsVisible = ZoomHelp.IsVisible = !world;
             MapHelp.Text = world
-                ? "The globe rotates automatically. Hover to pause and read a station's report. Larger rings are stronger reports; the square marks your station."
+                ? "Drag the globe to turn it to any part of the world; double-click to come back to your station. Hover to read a station's report. Larger rings are stronger reports; the square marks your station."
                 : "You are at the centre, north is up. Bigger, darker dots are stronger reports. Hover over a dot for its call.";
         };
     }
