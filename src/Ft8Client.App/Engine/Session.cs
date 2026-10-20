@@ -55,6 +55,9 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private DateTime _openingsUtc;
     private BandActivityFeed _bandFeed;
     private bool _openingsDirty;
+    private readonly List<BandSample> _samples = [];
+    private IReadOnlyDictionary<string, BandOpening> _sampledOpenings = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
+    private bool _samplesDirty;
     private StationTracker _tracker;
     private PileupTracker _pileups;
     private readonly List<NeighbourReport> _neighbours = [];
@@ -819,6 +822,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             if (mode != oldMode)
             {
                 _neighbours.Clear();
+                _samples.Clear();
+                _samplesDirty = true;
                 _openingsUtc = default;
             }
             _recentOffsets.Clear();
@@ -937,6 +942,33 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         }
     }
 
+    /// <summary>
+    /// Adds what arrived while one band was sampled, for the band menu's estimate on bands too busy to follow all the time.
+    /// Samples of another mode are dropped; samples older than the band menu's window are pruned.
+    /// </summary>
+    public void AddBandSample(BandSample sample)
+    {
+        lock (_gate)
+        {
+            if (sample.Mode != ModeInfo.Name(_config.Mode)) return;
+            _samples.Add(sample);
+            var since = _clock.UtcNow - BandOpenings.Window;
+            _samples.RemoveAll(x => x.EndUtc < since);
+            _samplesDirty = true;
+        }
+        Publish();
+    }
+
+    // The band menu's estimates for sampled bands; rebuilt when a sample arrives, or once a slot so old samples age out.
+    // Under _gate.
+    private IReadOnlyDictionary<string, BandOpening> SampledOpenings(DateTime now)
+    {
+        if (!_samplesDirty && now - _openingsUtc < ModeInfo.SlotLength(_config.Mode)) return _sampledOpenings;
+        _samplesDirty = false;
+        _sampledOpenings = BandOpenings.BuildSampled(_samples, _config.MyCall, _config.MyGrid, ModeInfo.Name(_config.Mode), _countries, _logIndex, now);
+        return _sampledOpenings;
+    }
+
     // The band menu's activity. It looks up the country of every receiver, so while reports stream in it is rebuilt at
     // most once a slot (sooner when it is empty). Under _gate.
     private IReadOnlyDictionary<string, BandOpening> Openings(DateTime now)
@@ -1021,6 +1053,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 ReceptionHistory = _receptionHistory.Buckets(_config.Band, ModeInfo.Name(_config.Mode), now),
                 Neighbours = NeighbourComparison.Compare(_hearsMe.Reports, _neighbours, _config.MyCall, _config.MyGrid, _config.Band,
                     ModeInfo.Name(_config.Mode), _countries, now),
+                SampledBandOpenings = SampledOpenings(now),
                 BandOpenings = Openings(now),
                 BandActivityFeed = _bandFeed,
                 Services = new Dictionary<string, ServiceStatus>(_services),
