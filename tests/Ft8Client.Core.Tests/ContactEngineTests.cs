@@ -624,6 +624,52 @@ public class ContactEngineTests
     }
 
     [Fact]
+    public void Watchdog_ExpiresWhileAnswered_FinishesContactThenStops()
+    {
+        var s = new Sim(new ContactSettings { WatchdogMinutes = 1 });
+        s.E.CallCq(SlotParity.Even, Sim.T0);
+        s.Step();
+        s.Step();
+        s.Step().Should().Be("CQ W7LIT DN40");
+        s.Step("W7LIT K1ABC FN42");
+        s.Step().Should().Be("K1ABC W7LIT -12");
+        s.Step("W7LIT K1ABC R-08");
+        s.Step().Should().Be("K1ABC W7LIT RR73", "the watchdog ran out, but K1ABC is answering");
+        s.Logs.Should().ContainSingle().Which.Call.Should().Be("K1ABC");
+        s.Step("W7LIT K1ABC 73");
+        s.Step().Should().BeNull("CQ does not resume after the watchdog ran out");
+        s.E.CallingCq.Should().BeFalse();
+        s.E.StopReason.Should().Be("Stopped by watchdog");
+    }
+
+    [Fact]
+    public void Watchdog_ExpiresWhileAnswered_DoesNotStartQueuedCaller()
+    {
+        var s = new Sim(new ContactSettings { WatchdogMinutes = 1 });
+        s.E.CallCq(SlotParity.Even, Sim.T0);
+        s.Step();
+        s.Step("W7LIT K1ABC FN42", "W7LIT VE7HLB CN89");
+        s.E.AnswerAfterThisContact("VE7HLB", s.Now); // the last input: the watchdog runs out in slot 8
+        s.Steps(5);
+        s.Step("W7LIT K1ABC R-08");
+        s.Step().Should().Be("K1ABC W7LIT RR73");
+        s.Step();
+        s.Step().Should().BeNull();
+        s.E.InContact.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Watchdog_ExpiresWhileUnanswered_StopsContact()
+    {
+        var s = new Sim(new ContactSettings { WatchdogMinutes = 1, RetryLimit = 10 });
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Steps(8);
+        s.Sent.Select(x => x.Slot).Should().Equal([0, 2, 4], "ZL2RPA never answered, so the watchdog stops the call in slot 6");
+        s.E.InContact.Should().BeFalse();
+        s.E.StopReason.Should().Be("Stopped by watchdog");
+    }
+
+    [Fact]
     public void Watchdog_OperatorInputResets()
     {
         var s = new Sim();

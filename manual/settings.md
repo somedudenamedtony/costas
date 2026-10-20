@@ -44,7 +44,7 @@ exchange and the reports are fixed by FT8, so only the parts above can change.
 | --- | --- | --- |
 | **Call CQ in** | even | Even slots start at :00 and :30, odd slots at :15 and :45 |
 | **Give up after** | 4 | Tries without an answer before a contact ends as *No reply* |
-| **Watchdog** | 6 minutes | Transmitting stops if you have not touched the app for this long |
+| **Watchdog** | 6 minutes | Transmitting stops if you have not touched the app for this long. A contact the other station is answering is finished first |
 | **Clock limit** | 2.0 seconds | Transmitting is blocked when the PC clock is off by more than this |
 | **Logging** | on | Log each contact automatically when it completes |
 | **Calling you › Chime** | off | A chime on the computer's default speakers when a new station calls you. Never on the radio's audio device |

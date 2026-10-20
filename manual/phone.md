@@ -100,7 +100,9 @@ While the phone has control:
 - **Transmit stops if the phone goes quiet for 15 seconds.** The page checks in every 5 seconds. Locking the phone,
   closing the browser, switching apps or losing Wi-Fi all count as going quiet. Receiving and logging carry on, and
   nothing is sent again until you press **Call** or **Call CQ**.
-- **The Tx watchdog is at most 3 minutes**, whatever it is set to in **Settings › Transmitting**.
+- **The Tx watchdog is at most 3 minutes**, whatever it is set to in **Settings › Transmitting**. It counts from your last
+  tap. A contact the other station is already answering is finished first, then nothing more is sent until you tap
+  **Call** or **Call CQ**.
 
 Keep the page open on the screen while you operate.
 

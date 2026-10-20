@@ -151,7 +151,7 @@ These are always on:
 
 | Guard | What happens |
 | --- | --- |
-| **Watchdog** | If you have not touched the app (key or click) for 6 minutes (**Settings › Transmitting › Watchdog**), transmitting stops: *Stopped by watchdog* |
+| **Watchdog** | If you have not touched the app (key or click) for 6 minutes (**Settings › Transmitting › Watchdog**), transmitting stops: *Stopped by watchdog*. A contact the other station is already answering is finished first; CQ does not start again after it |
 | **Clock** | Transmitting is refused while your clock is off by more than 2 s (**Clock limit**) |
 | **Band edge** | Costas will not transmit outside the band's limits for the dial frequency and offset |
 | **Faults** | Any radio or audio error releases PTT at once |
