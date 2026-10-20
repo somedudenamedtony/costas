@@ -59,6 +59,9 @@ public sealed class OperatingSettings
     /// <summary>Dial frequencies in hertz the operator saved from the frequency menu (DXpedition and other off-standard spots).</summary>
     public List<long> SavedFrequencies { get; set; } = [];
 
+    /// <summary>Correct Costas's own clock from internet time when the PC clock is off (the PC clock is never changed).</summary>
+    public bool CorrectClock { get; set; } = true;
+
     /// <summary>Clock offset above which transmit is blocked, in seconds.</summary>
     public double ClockBlockSeconds { get; set; } = 2.0;
 }

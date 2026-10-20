@@ -187,6 +187,13 @@
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Clock correction" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Correct the clock inside Costas from internet time" IsChecked="{Binding CorrectClock}" />
+                <TextBlock Classes="help" Text="When the computer's clock is off, Costas times its slots from internet time instead, checked every 15 minutes. Your computer's clock is not changed. Offsets over a minute are not corrected: set the Windows clock and time zone instead." TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Logging" />
               <CheckBox Grid.Column="1" Content="Log each contact automatically when it completes" IsChecked="{Binding AutoLog}" />
             </Grid>

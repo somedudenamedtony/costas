@@ -103,7 +103,7 @@ Costas does not know your log yet. Add your QRZ logbook API key in [Settings ›
 
 | Message | Cause and fix |
 | --- | --- |
-| *Your clock is off by 2.4 s. Transmitting is blocked above 2 s.* | Sync the Windows clock. The limit is in Settings › Transmitting › Clock limit |
+| *Your clock is off by 2.4 s. Transmitting is blocked above 2 s.* | Sync the Windows clock. With **Clock correction** on, Costas fixes this itself once a time server answers; if it cannot reach one, or the clock is off by more than a minute, it can't. The limit is in Settings › Transmitting › Clock limit |
 | *Stopped by watchdog* | You had not touched the app for 6 minutes. Click Call or Call CQ again |
 | *… cannot be sent …* | The message cannot be encoded exactly as shown, for example a callsign or free text FT8 cannot carry. Costas never changes a message silently; shorten or change it |
 | No radio set up | See *Radio not connected* above |

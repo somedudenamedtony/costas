@@ -13,7 +13,7 @@ should not need Settings while operating.
 | **Mode** | FT8 or FT4. Changes the slot length and dial frequency. Locked while transmitting |
 | Frequency | The dial frequency read from the radio, in MHz. Click it to type another frequency or use one you saved ([below](#typing-a-frequency)). Locked while transmitting |
 | **Operate**, **Raw decodes**, **Reach**, **Log**, **Awards** | The five views. ++ctrl+1++ to ++ctrl+5++ |
-| Clock | UTC. Turns amber with a tooltip when your clock is off by more than 0.5 s, red above 2 s |
+| Clock | UTC, corrected from internet time when your PC clock is off (the tooltip says by how much). Turns amber with a tooltip when the clock is still off by more than 0.5 s, red above 2 s |
 | **☰** | Mini mode, Settings, Station setup, Diagnostics, Keyboard shortcuts, About |
 
 ### Typing a frequency

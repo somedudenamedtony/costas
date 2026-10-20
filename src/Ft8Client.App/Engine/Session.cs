@@ -908,10 +908,17 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
-    /// <summary>Records the SNTP clock offset.</summary>
-    public void SetClockOffset(double? seconds)
+    /// <summary>
+    /// Records the SNTP clock offset of the clock in use. <paramref name="stepped"/> says the clock was just corrected, so
+    /// the median DT of earlier decodes no longer applies.
+    /// </summary>
+    public void SetClockOffset(double? seconds, bool stepped = false)
     {
-        lock (_gate) _sntpOffset = seconds;
+        lock (_gate)
+        {
+            _sntpOffset = seconds;
+            if (stepped) _medianDt = null;
+        }
         Publish();
     }
 
