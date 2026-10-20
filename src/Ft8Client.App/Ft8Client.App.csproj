@@ -20,6 +20,9 @@
   <ItemGroup>
     <AvaloniaResource Include="Assets\costas.ico" />
     <EmbeddedResource Include="Remote\index.html" LogicalName="Ft8Client.App.Remote.index.html" />
+    <!-- Home-screen app: the manifest and icons (drawn by scripts/make-icon.py). -->
+    <EmbeddedResource Include="Remote\manifest.webmanifest" LogicalName="Ft8Client.App.Remote.manifest.webmanifest" />
+    <EmbeddedResource Include="Remote\icon-*.png" LogicalName="Ft8Client.App.Remote.%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>
     <!-- Kestrel serves the remote page; HttpListener would need an admin URL reservation to listen beyond localhost. -->
