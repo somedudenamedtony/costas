@@ -163,6 +163,14 @@ shows it in Next in line as *DXpedition (Fox/Hound), working Hounds*. There is n
 - **SuperFox** DXpeditions (WSJT-X 2.7's SuperHound mode) can't be worked yet: their signal needs a decoder that
   Costas can't run until it keeps `jt9` running between slots.
 
+### SuperFox DXpeditions
+
+Many DXpeditions now run SuperFox, one wide signal that carries all their replies and that the normal FT8 decoder cannot
+read. Costas searches every other FT8 slot for one (Settings › Transmitting › SuperFox) and lists the DXpedition like
+any Fox. Click **Call** and it is worked the SuperHound way automatically: your calls go at 1000 Hz or above, your
+R-report stays on your own frequency, and the contact is logged on the Fox's RR73. The search needs the WSJT-X 3.0
+decoder that Costas installs on Windows.
+
 ## Halting
 
 **Halt Tx** in the bottom bar, **Halt (Esc)** in the ON AIR banner, and the ++esc++ key all drop PTT immediately and

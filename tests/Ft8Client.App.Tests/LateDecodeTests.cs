@@ -42,6 +42,7 @@ public class LateDecodeTests
         public readonly SimulatedRig Radio;
         public readonly NullAudioOutput Output;
         public readonly List<(string Message, DateTime StartedUtc)> Sent = [];
+        public readonly List<int> SentOffsets = [];
 
         public Rig(ContactSettings? contact = null, ISessionLog? log = null)
         {
@@ -51,7 +52,11 @@ public class LateDecodeTests
             Tx = new Transmitter(Radio, Output, Clock, freqs);
             var config = new SessionConfig { MyCall = "W7LIT", MyGrid = "DN40", FixedTxOffsetHz = 1080, Contact = contact ?? new ContactSettings() };
             Session = new Session(config, Decoder, new SilentSource(), Tx, Clock, ReferenceData.LoadCountries(), freqs, log);
-            Session.Transmitting += (tx, at) => Sent.Add((tx.Plan.Message, at));
+            Session.Transmitting += (tx, at) =>
+            {
+                Sent.Add((tx.Plan.Message, at));
+                SentOffsets.Add(tx.OffsetHz);
+            };
             Slots = new SlotClock(Clock, Mode.Ft8);
             Slots.Event += Session.OnSlotEvent;
             Slots.Poll();
@@ -452,6 +457,50 @@ public class LateDecodeTests
         }
     }
 
+    [Fact]
+    public async Task SuperFox_FoundBySearch_CalledAsSuperHoundRReportOnMyFrequencyLoggedOnRr73()
+    {
+        var log = new RecordingLog();
+        var r = new Rig(log: log);
+        r.Decoder.SuperFoxCapable = true;
+        r.Decoder.ScriptSuperFox(CqSlot, TimeSpan.FromSeconds(0.6), "CQ KH1X", "W0AAA KH1X RR73");
+        await r.RunUntilAsync(CqSlot.AddSeconds(14.9));
+
+        var fox = r.Session.Snapshot.Stations.Single(s => s.Call == "KH1X");
+        fox.RunsSuperFox.Should().BeTrue();
+        r.Session.Snapshot.Rank.Line.Should().Contain(x => x.Station.Call == "KH1X", "a SuperFox is callable like any Fox");
+
+        r.Session.CallStation("KH1X").Should().BeTrue();
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(14));
+        r.Sent.Should().ContainSingle().Which.Message.Should().Be("KH1X W7LIT DN40");
+        r.SentOffsets.Single().Should().BeGreaterThanOrEqualTo(1000, "a Hound calls at 1000 Hz or above");
+
+        r.Decoder.ScriptSuperFox(ReportSlot, TimeSpan.FromSeconds(1.2), "W7LIT KH1X -12");
+        await r.RunUntilAsync(MySecondSlot.AddSeconds(14));
+        r.Sent.Last().Message.Should().Be("KH1X W7LIT R-09");
+        r.SentOffsets.Last().Should().Be(r.SentOffsets[0], "with a SuperFox the R-report stays on my frequency, not the Fox's 750 Hz");
+
+        var rr73Slot = MySecondSlot.AddSeconds(15);
+        r.Decoder.ScriptSuperFox(rr73Slot, TimeSpan.FromSeconds(0.6), "W7LIT KH1X RR73");
+        await r.RunUntilAsync(rr73Slot.AddSeconds(30));
+        await r.Session.DecodeIdle;
+
+        log.Calls.Should().Equal("KH1X");
+        r.Sent.Should().HaveCount(2, "nothing is sent after the Fox's RR73");
+        r.Decoder.QuickCalls.Should().Be(0, "the SuperFox search takes the quick decode's place");
+    }
+
+    [Fact]
+    public async Task SuperFox_SearchOnlyInEvenFt8Slots()
+    {
+        var r = new Rig();
+        r.Decoder.SuperFoxCapable = true;
+
+        await r.RunUntilAsync(CqSlot.AddSeconds(60));
+
+        r.Decoder.SuperFoxCalls.Should().Be(2, "slots :00 and :30 are the Fox's; :15 and :45 are not searched");
+    }
+
     /// <summary>Silent slot audio; the decoder below supplies the decodes.</summary>
     private sealed class SilentSource : ISlotSource
     {
@@ -471,8 +520,36 @@ public class LateDecodeTests
     /// after one delay, the session's quick decode (narrow band or shallow) after another. Unscripted runs return
     /// nothing at the cut-off. Results are released from the test loop, which waits until the session has applied them.
     /// </summary>
-    private sealed class ScriptedDecoder : IDecoder
+    private sealed class ScriptedDecoder : IDecoder, ISuperFoxDecoder
     {
+        private readonly Dictionary<DateTime, (TimeSpan Delay, string[] Lines)> _superFox = [];
+
+        /// <summary>Whether the SuperFox search is offered (a jt9 with the SuperFox decoder).</summary>
+        public bool SuperFoxCapable { get; set; }
+
+        public int SuperFoxCalls { get; private set; }
+
+        /// <summary>Scripts what the SuperFox search finds in a slot, at an offset of 750 Hz.</summary>
+        public void ScriptSuperFox(DateTime slot, TimeSpan delay, params string[] lines)
+        {
+            lock (_gate) _superFox[slot] = (delay, lines);
+        }
+
+        public bool CanDecodeSuperFox(Mode mode) => SuperFoxCapable && mode == Mode.Ft8;
+
+        public Task<DecodeResult> DecodeSuperFoxAsync(SlotAudio slot, DecodeContext ctx, CancellationToken ct)
+        {
+            lock (_gate)
+            {
+                _calls++;
+                SuperFoxCalls++;
+                var (delay, lines) = _superFox.Remove(slot.SlotStartUtc, out var s) ? s : (TimeSpan.Zero, []);
+                var tcs = new TaskCompletionSource<DecodeResult>();
+                _parked.Add((slot.SlotStartUtc + Cutoff + delay, slot.SlotStartUtc, lines.Select(l => "@750 " + l).ToArray(), tcs));
+                return tcs.Task;
+            }
+        }
+
         private static readonly TimeSpan Cutoff = TimeSpan.FromSeconds(13.6);
         private readonly object _gate = new();
         private readonly Dictionary<(DateTime Slot, bool Quick), (TimeSpan Delay, string[] Lines)> _script = [];
@@ -530,7 +607,9 @@ public class LateDecodeTests
             }
             foreach (var p in due)
             {
-                var decodes = p.Lines.Select(t => new Decode(p.Slot, -9, 0.1, 1264, t, false)).ToList();
+                var decodes = p.Lines.Select(t => t.StartsWith("@750 ", StringComparison.Ordinal)
+                    ? new Decode(p.Slot, -9, 0.1, 750, t[5..], false)
+                    : new Decode(p.Slot, -9, 0.1, 1264, t, false)).ToList();
                 p.Tcs.SetResult(new DecodeResult(decodes, p.Due - p.Slot - Cutoff, DecodeStatus.Ok));
             }
         }

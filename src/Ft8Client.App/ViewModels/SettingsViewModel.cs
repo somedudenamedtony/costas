@@ -63,6 +63,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         AnswerSignoff = s.Operating.AnswerSignoff == "RR73" ? "RR73" : "73";
         FreeTextAfter = s.Operating.FreeTextAfter;
         AutoLog = s.Operating.AutoLog;
+        SuperFoxScan = s.Operating.SuperFoxScan;
         ChimeOnCaller = s.Operating.ChimeOnCaller;
         CqParity = s.Operating.CqParity;
         ClockBlock = s.Operating.ClockBlockSeconds.ToString("0.0", CultureInfo.InvariantCulture);
@@ -448,6 +449,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Auto log.</summary>
     [ObservableProperty]
     public partial bool AutoLog { get; set; }
+
+    /// <summary>Look for SuperFox DXpeditions.</summary>
+    [ObservableProperty]
+    public partial bool SuperFoxScan { get; set; }
 
     /// <summary>Chime when a new station calls me.</summary>
     [ObservableProperty]
@@ -1048,6 +1053,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.AnswerSignoff = AnswerSignoff == "RR73" ? "RR73" : "73";
             s.Operating.FreeTextAfter = FreeText();
             s.Operating.AutoLog = AutoLog;
+            s.Operating.SuperFoxScan = SuperFoxScan;
             s.Operating.ChimeOnCaller = ChimeOnCaller;
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);

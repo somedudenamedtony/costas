@@ -91,6 +91,12 @@ public sealed record Station
     /// </summary>
     public bool RunsFox { get; init; }
 
+    /// <summary>
+    /// True once the SuperFox search has decoded it: a Fox running WSJT-X's SuperFox mode (also <see cref="RunsFox"/>),
+    /// worked as a SuperHound.
+    /// </summary>
+    public bool RunsSuperFox { get; init; }
+
     /// <summary>Its latest message.</summary>
     public ParsedMessage? LastMessage { get; init; }
 

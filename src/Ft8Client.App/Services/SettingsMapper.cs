@@ -45,6 +45,7 @@ public static class SettingsMapper
                 RoundupExchange = s.Profile.RoundupExchange,
                 RoundupSerial = Math.Max(1, s.Profile.RoundupSerial),
             },
+            SuperFoxScan = s.Operating.SuperFoxScan,
             CqParity = s.Operating.CqParity == "odd" ? SlotParity.Odd : SlotParity.Even,
             FixedTxOffsetHz = fixedOffset,
             ClockBlockSeconds = s.Operating.ClockBlockSeconds,

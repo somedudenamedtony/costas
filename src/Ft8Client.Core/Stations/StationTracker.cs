@@ -80,6 +80,32 @@ public sealed class StationTracker
     }
 
     /// <summary>
+    /// Applies what the SuperFox search found in a slot: each sender is a Fox running SuperFox (worked as a SuperHound).
+    /// SuperFox stations of this slot's parity it did not find get a miss; other stations are left alone, since the
+    /// normal decode of the slot covers them.
+    /// </summary>
+    public void ApplySuperFox(DateTime slotStartUtc, IEnumerable<HeardMessage> heard)
+    {
+        var parity = SlotMath.Parity(slotStartUtc, _mode);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var h in heard)
+        {
+            if (h.Decode.LowConfidence) continue;
+            var m = h.Message;
+            var sender = m.SenderCall;
+            if (sender is null || !Callsign.IsValid(sender) || Callsign.EqualsCall(sender, _myCall)) continue;
+            Apply(sender, m, h.Decode.Snr, h.Decode.OffsetHz, slotStartUtc, parity, seen.Add(sender), fox: true);
+            _stations[sender] = _stations[sender] with { RunsSuperFox = true };
+        }
+        foreach (var (call, s) in _stations.ToList())
+        {
+            if (!s.RunsSuperFox || seen.Contains(call) || s.Parity != parity || s.LastHeardUtc >= slotStartUtc) continue;
+            var missed = s.MissedSlots + 1;
+            _stations[call] = s with { MissedSlots = missed, SnrHistory = Push(s.SnrHistory, null), State = missed >= 2 ? StationState.Quiet : s.State };
+        }
+    }
+
+    /// <summary>
     /// Applies the decodes of one received slot. Low-confidence decodes and unresolved senders are ignored.
     /// Stations of this slot's parity that were not decoded get a miss.
     /// </summary>
@@ -104,7 +130,8 @@ public sealed class StationTracker
         {
             var s = _stations[call];
             if (seen.Contains(call)) continue;
-            if (s.Parity == parity && s.LastHeardUtc < slotStartUtc)
+            // Only the SuperFox search hears a SuperFox: it counts its misses (ApplySuperFox), the normal decode cannot.
+            if (s.Parity == parity && s.LastHeardUtc < slotStartUtc && !s.RunsSuperFox)
             {
                 var missed = s.MissedSlots + 1;
                 var state = missed >= 2 ? StationState.Quiet : s.State;

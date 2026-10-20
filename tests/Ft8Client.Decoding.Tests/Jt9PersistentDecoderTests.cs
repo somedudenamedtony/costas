@@ -169,6 +169,27 @@ public class Jt9PersistentDecoderTests
         Directory.EnumerateDirectories(Path.Combine(dir, "tmp"), "jt9-shm-*").Should().BeEmpty("a failed process's folder is removed");
     }
 
+    [Fact]
+    public async Task DecodeSuperFoxAsync_SuperFoxSlot_FoxMessagesAsOrdinaryLines()
+    {
+        var jt9 = Jt9OrSkip(out var version);
+        using var decoder = new Jt9PersistentDecoder(Options(jt9), version);
+        Assert.SkipUnless(decoder.CanDecodeSuperFox(Mode.Ft8), $"jt9 {version} has no SuperFox decoder (WSJT-X 3.0 and later do).");
+        var audio = Load("superfox/260101_000200.wav"); // sfoxsim 750 0.0 AW KH1X 2 2 1 0 1 -10 (WSJT-X 3.0.2)
+
+        var result = await decoder.DecodeSuperFoxAsync(audio, new DecodeContext("W7LIT", "DN40", null, null), TestContext.Current.CancellationToken);
+        var normal = await decoder.DecodeAsync(audio, new DecodeContext("W7LIT", "DN40", null, null), TestContext.Current.CancellationToken);
+
+        result.Status.Should().Be(DecodeStatus.Ok, result.Message);
+        result.Decodes.Select(d => d.Text).Should().Contain(["CQ KH1X", "W0AAA KH1X RR73", "W5FFF KH1X -18"]);
+        result.Decodes.Should().Contain(d => d.Text.StartsWith("$VERIFY$ KH1X", StringComparison.Ordinal));
+        normal.Decodes.Should().BeEmpty("the normal decode cannot read a SuperFox signal; only the search can");
+    }
+
+    [Fact]
+    public void CanDecodeSuperFox_Wsjtx27_False() =>
+        new Jt9PersistentDecoder(Options("jt9"), "WSJT-X 2.7.0-rc3").CanDecodeSuperFox(Mode.Ft8).Should().BeFalse();
+
     private static string Jt9OrSkip(out string? version)
     {
         var jt9 = Jt9Locator.Find();

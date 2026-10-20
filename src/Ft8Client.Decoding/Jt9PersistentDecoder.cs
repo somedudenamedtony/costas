@@ -21,13 +21,15 @@ namespace Ft8Client.Decoding;
 /// of its own, so it never waits for the full decode. Where shared memory cannot be used (an unknown <c>jt9</c>
 /// version, an unsupported system, or a <c>jt9</c> that will not start that way), it decodes in file mode instead.
 /// </summary>
-public sealed class Jt9PersistentDecoder : IDecoder, IEarlyDecoder, IDisposable
+public sealed class Jt9PersistentDecoder : IDecoder, IEarlyDecoder, ISuperFoxDecoder, IDisposable
 {
     private const int FailuresBeforeFileMode = 3;
     private readonly Jt9Options _options;
     private readonly Jt9Decoder _fileMode;
     private readonly Jt9SharedProcess _main;
     private readonly Jt9SharedProcess _quick;
+    private readonly Jt9SharedProcess _superFox;
+    private readonly bool _hasSuperFoxDecoder;
     private readonly object _lock = new();
     private (DateTime Slot, List<Decode> Decodes)? _early;
     private int _failuresWithoutSuccess;
@@ -44,6 +46,9 @@ public sealed class Jt9PersistentDecoder : IDecoder, IEarlyDecoder, IDisposable
         _fileMode = new Jt9Decoder(options, guard);
         _main = new Jt9SharedProcess(options.ExecutablePath, options.TempRoot, "main", guard);
         _quick = new Jt9SharedProcess(options.ExecutablePath, options.TempRoot, "quick", guard);
+        _superFox = new Jt9SharedProcess(options.ExecutablePath, options.TempRoot, "superfox", guard);
+        // WSJT-X 2.7.0 builds have the flag in shared memory but print nothing for a SuperFox (08-open-questions, V19).
+        _hasSuperFoxDecoder = MajorVersion(sharedMemoryVersion) >= 3;
         if (!SharedMemorySegment.Supported) _fileModeReason = "this system has no shared memory jt9 can use";
         else if (!LayoutKnown(sharedMemoryVersion))
             _fileModeReason = sharedMemoryVersion is null ? "the jt9 version could not be read" : $"jt9 from {sharedMemoryVersion} is not a version Costas knows";
@@ -70,7 +75,7 @@ public sealed class Jt9PersistentDecoder : IDecoder, IEarlyDecoder, IDisposable
     }
 
     /// <summary>jt9 processes started in shared-memory mode, for tests and diagnostics.</summary>
-    public int ProcessStarts => _main.Starts + _quick.Starts;
+    public int ProcessStarts => _main.Starts + _quick.Starts + _superFox.Starts;
 
     /// <summary>True for the WSJT-X versions whose <c>dec_data</c> layout this build writes (2.7 and 3.0).</summary>
     public static bool LayoutKnown(string? version)
@@ -85,6 +90,23 @@ public sealed class Jt9PersistentDecoder : IDecoder, IEarlyDecoder, IDisposable
 
     /// <inheritdoc />
     public bool HasEarlyPass(Mode mode) => mode == Mode.Ft8 && KeepsRunning;
+
+    /// <inheritdoc />
+    public bool CanDecodeSuperFox(Mode mode) => mode == Mode.Ft8 && _hasSuperFoxDecoder && KeepsRunning;
+
+    /// <inheritdoc />
+    public async Task<DecodeResult> DecodeSuperFoxAsync(SlotAudio slot, DecodeContext ctx, CancellationToken ct)
+    {
+        if (!CanDecodeSuperFox(slot.Mode)) return new DecodeResult([], TimeSpan.Zero, DecodeStatus.Ok);
+        var sw = Stopwatch.StartNew();
+        // Its own process: a slow search never holds up the next slot's normal decode. A search still running when the
+        // next one is due is skipped rather than queued.
+        var result = await _superFox.RunAsync(slot, ctx with { Hound = true, SuperFox = true, Quick = false }, FullStep(slot.Mode), fromDisk: true,
+            slot.Samples12k.Length, Timeout(slot.Mode), ct, skipIfBusy: true).ConfigureAwait(false);
+        return result is null
+            ? new DecodeResult([], sw.Elapsed, DecodeStatus.Ok, "Skipped: the SuperFox search was busy.")
+            : result with { Elapsed = sw.Elapsed };
+    }
 
     /// <inheritdoc />
     public async Task<DecodeResult> DecodeEarlyAsync(SlotAudio partial, DecodeContext ctx, CancellationToken ct)
@@ -138,7 +160,13 @@ public sealed class Jt9PersistentDecoder : IDecoder, IEarlyDecoder, IDisposable
     {
         _main.Dispose();
         _quick.Dispose();
+        _superFox.Dispose();
     }
+
+    private static int MajorVersion(string? version) =>
+        version is not null && System.Text.RegularExpressions.Regex.Match(version, @"(\d+)\.\d+") is { Success: true } m
+            ? int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)
+            : 0;
 
     // After an early pass: the second pass (13.5 s) subtracts what the first found, the last decodes what is left.
     // Together with the early decodes they make the slot's whole list, each message once.

@@ -107,6 +107,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         _engine = new ContactEngine(config.MyCall, config.MyGrid, config.Contact, clock.UtcNow);
         _engine.Logged += OnLogged;
         _engine.IsFox = call => _tracker.Find(call)?.RunsFox == true; // read under _gate, as every engine call is
+        _engine.IsSuperFox = call => _tracker.Find(call)?.RunsSuperFox == true;
         _tx.Started += OnTxStarted;
         _tx.Ended += (_, _) => Publish();
         _tx.Fault += OnTxFault;
@@ -286,6 +287,38 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             {
                 _decodeTask = full;
             }
+            // The Fox's slot (first, even) is also searched for a SuperFox, which the normal decode cannot read. In a
+            // SuperHound contact the search plays the quick decode's part: my reply waits for it, up to the late limit.
+            if (_config.SuperFoxScan && _decoder is ISuperFoxDecoder sf && sf.CanDecodeSuperFox(e.Mode) && SlotMath.Parity(e.SlotStartUtc, e.Mode) == SlotParity.Even)
+            {
+                DecodesStarted++;
+                var ctx = new DecodeContext(_config.MyCall, Grid.Grid4(_config.MyGrid) ?? string.Empty, _engine.DxCall, _engine.DxGrid, QsoProgress: _engine.QsoProgress);
+                if (_engine.InSuperHoundContact) _quickSlot = e.SlotStartUtc;
+                _decodeTask = Task.WhenAll(_decodeTask, Task.Run(() => SuperFoxScanAsync(sf, audio, ctx)));
+            }
+        }
+    }
+
+    private async Task SuperFoxScanAsync(ISuperFoxDecoder decoder, SlotAudio audio, DecodeContext ctx)
+    {
+        try
+        {
+            var result = await decoder.DecodeSuperFoxAsync(audio, ctx, CancellationToken.None).ConfigureAwait(false);
+            lock (_gate)
+            {
+                if (_quickSlot == audio.SlotStartUtc) _quickSlot = null;
+                if (audio.Mode != _config.Mode || !result.Succeeded) return;
+                var heard = result.Decodes.Select(HeardMessage.From).ToList();
+                AddRaw(audio.SlotStartUtc, heard);
+                _tracker.ApplySuperFox(audio.SlotStartUtc, heard);
+                FeedEngine(audio.SlotStartUtc, audio.Mode, heard, _clock.UtcNow);
+            }
+            PlanFor(SlotMath.SlotStart(_clock.UtcNow, audio.Mode), audio.Mode, late: true);
+            Publish();
+        }
+        finally
+        {
+            Interlocked.Increment(ref _decodesApplied);
         }
     }
 
@@ -297,6 +330,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private DecodeContext? QuickContext()
     {
         var myGrid = Grid.Grid4(_config.MyGrid) ?? string.Empty;
+        // A SuperFox is heard only by the SuperFox search, which takes the quick decode's place.
+        if (_engine.InSuperHoundContact) return null;
         if (_engine.InContact && _engine.DxOffsetHz is { } dx)
         {
             // A Fox answers on any of its streams, all below 1000 Hz: search the whole Fox range, not just around it.
@@ -367,7 +402,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             return new DecodeContext(_config.MyCall, Grid.Grid4(_config.MyGrid) ?? string.Empty, _engine.DxCall, _engine.DxGrid,
                 QsoProgress: _engine.QsoProgress, RxOffsetHz: _engine.DxOffsetHz ?? _txOffset)
             {
-                Hound = _engine.InHoundContact, // jt9 decodes as a Hound (WSJT-X special operation 7) while I work a Fox
+                // jt9 decodes as a Hound (WSJT-X special operation 7) while I work a Fox; a SuperFox has its own search.
+                Hound = _engine.InHoundContact && !_engine.InSuperHoundContact,
             };
         }
     }
@@ -661,7 +697,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                     Publish();
                     return true;
                 }
-                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, busyWith, fox: s.RunsFox, contest: contest);
+                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, busyWith, fox: s.RunsFox, contest: contest,
+                    superFox: s.RunsSuperFox);
             }
             _fault = null;
         }

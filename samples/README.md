@@ -20,3 +20,7 @@ Callsigns in the simulated files are examples, used only by tests.
 
 `wsjtx/WSJT-X.ini` is a hand-written WSJT-X settings file in the shape WSJT-X 2.7 writes (`[Configuration]` keys from
 `Configuration.cpp`, enum settings inside Qt `@Variant(...)` values), for the import tests. It holds example values only.
+
+`superfox/260101_000200.wav` is a SuperFox slot made with WSJT-X 3.0.2's simulator, `sfoxsim 750 0.0 AW KH1X 2 2 1 0 1 -10`
+(Fox KH1X, two RR73s, two reports, a CQ, -10 dB, AWGN channel). Only the SuperFox decoder reads it, so it has no golden
+file; `Jt9PersistentDecoderTests` checks it when `jt9` is 3.0 or later.

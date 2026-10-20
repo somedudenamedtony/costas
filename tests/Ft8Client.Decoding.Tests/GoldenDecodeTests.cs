@@ -19,6 +19,8 @@ public class GoldenDecodeTests
         var data = new TheoryData<string>();
         foreach (var f in Directory.EnumerateFiles(TestPaths.Samples, "*.wav", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
         {
+            // A SuperFox signal decodes only through the SuperFox decoder (Jt9PersistentDecoderTests), never in file mode.
+            if (Path.GetRelativePath(TestPaths.Samples, f).StartsWith("superfox", StringComparison.Ordinal)) continue;
             data.Add(Path.GetRelativePath(TestPaths.Samples, f));
         }
         return data;

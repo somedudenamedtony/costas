@@ -34,6 +34,9 @@ public sealed record SessionConfig
     /// <summary>Contact settings.</summary>
     public ContactSettings Contact { get; init; } = new();
 
+    /// <summary>Search the Fox's (even) FT8 slots for a SuperFox, with a decoder that can.</summary>
+    public bool SuperFoxScan { get; init; } = true;
+
     /// <summary>Parity for CQ.</summary>
     public SlotParity CqParity { get; init; } = SlotParity.Even;
 

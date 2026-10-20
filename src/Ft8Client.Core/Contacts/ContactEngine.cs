@@ -85,6 +85,12 @@ public sealed class ContactEngine
     /// <summary>True while a <see cref="ContactFlow.Hound"/> contact (with a Fox) is in progress.</summary>
     public bool InHoundContact => _c?.Flow == ContactFlow.Hound;
 
+    /// <summary>True while a Hound contact with a SuperFox is in progress: the Fox is heard only by the SuperFox search.</summary>
+    public bool InSuperHoundContact => _c is { Flow: ContactFlow.Hound, SuperFox: true };
+
+    /// <summary>Tells the engine which Foxes run SuperFox, for a SuperFox's report answered from Waiting for you.</summary>
+    public Func<string, bool>? IsSuperFox { get; set; }
+
     /// <summary>
     /// Tells the engine which stations run Fox/Hound, so a Fox's report that the operator answers from Waiting for you
     /// continues as a Hound contact. Null treats no station as a Fox.
@@ -130,17 +136,19 @@ public sealed class ContactEngine
     /// station runs Fox/Hound: it is called as a Hound (<see cref="ContactFlow.Hound"/>), and since a Fox is always working
     /// someone, <paramref name="busyWith"/> is ignored. With <paramref name="contest"/>, the CQ word of a contest CQ
     /// (<c>FD</c>, <c>RU</c>, <c>WW</c>, <c>TEST</c>), the contact uses that contest's exchange
-    /// (<see cref="ContactFlow.Contest"/>); the caller has checked <see cref="ContestRules.Problem"/>.
+    /// (<see cref="ContactFlow.Contest"/>); the caller has checked <see cref="ContestRules.Problem"/>. With
+    /// <paramref name="superFox"/> as well as <paramref name="fox"/>, the Fox runs SuperFox: my R-report stays on my own
+    /// frequency instead of moving to the Fox's (WSJT-X <c>hound_reply</c>, SuperFox mode).
     /// </summary>
     public void CallStation(string call, string? grid, int snr, SlotParity dxParity, int dxOffsetHz, DateTime nowUtc, string? busyWith = null,
-                            bool fox = false, string? contest = null)
+                            bool fox = false, string? contest = null, bool superFox = false)
     {
         OperatorActivity(nowUtc);
         call = Callsign.Normalize(call);
         _finished = null;
         _extraMessage = null;
         var flow = fox ? ContactFlow.Hound : contest is not null ? ContactFlow.Contest : ContactFlow.AnswerCq;
-        _c = new Contact(flow, call, Grid.Grid4(grid), SlotMath.Opposite(dxParity), Report.Clamp(snr), dxOffsetHz);
+        _c = new Contact(flow, call, Grid.Grid4(grid), SlotMath.Opposite(dxParity), Report.Clamp(snr), dxOffsetHz) { SuperFox = fox && superFox };
         if (contest is not null && !fox)
         {
             var kind = ContestRules.KindOf(contest) ?? throw new ArgumentException($"No exchange for CQ {contest}.", nameof(contest));
@@ -495,7 +503,8 @@ public sealed class ContactEngine
                 c.ReportReceivedUtc = slotUtc;
                 if (heard is not null)
                 {
-                    c.TxOffset = heard.Decode.OffsetHz;
+                    // A SuperFox listens across the Hound band: the R-report stays on my frequency (WSJT-X 3.0).
+                    if (!c.SuperFox) c.TxOffset = heard.Decode.OffsetHz;
                     c.ReportSent = Report.Clamp(heard.Decode.Snr);
                 }
                 c.Steps[2] = c.Steps[2] with { Message = OutgoingMessages.Report(Calls(c.DxCall), c.ReportSent, roger: true) };
@@ -598,9 +607,10 @@ public sealed class ContactEngine
         if (w.Kind == MessageKind.Report && IsFox?.Invoke(w.Call) == true)
         {
             // A Fox's report with no Hound contact running (I stopped calling it): my R-report on its frequency.
+            var superFox = IsSuperFox?.Invoke(w.Call) == true;
             var c = new Contact(ContactFlow.Hound, w.Call, w.Grid, parity, Report.Clamp(w.Snr), w.OffsetHz)
             {
-                ReportReceived = w.Report, ReportReceivedUtc = w.LastCalledUtc, TxOffset = w.OffsetHz,
+                ReportReceived = w.Report, ReportReceivedUtc = w.LastCalledUtc, TxOffset = superFox ? null : w.OffsetHz, SuperFox = superFox,
             };
             c.Steps.AddRange(StepsFor(c));
             c.Steps[0] = c.Steps[0] with { State = StepState.Done };
@@ -889,6 +899,8 @@ public sealed class ContactEngine
         public bool BusyAtStart { get; set; }
 
         public string? Contest { get; set; }
+
+        public bool SuperFox { get; init; }
 
         public string? ExchangeSent { get; set; }
 

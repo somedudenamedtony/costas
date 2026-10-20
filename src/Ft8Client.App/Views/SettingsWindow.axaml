@@ -207,6 +207,13 @@
               <CheckBox Grid.Column="1" Content="Log each contact automatically when it completes" IsChecked="{Binding AutoLog}" />
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="SuperFox" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Look for SuperFox DXpeditions" IsChecked="{Binding SuperFoxScan}" />
+                <TextBlock Classes="help" Text="Many DXpeditions run SuperFox, a signal the normal decoder cannot read. With this on, Costas also searches every other FT8 slot for one with a second decoder run, lists it like any Fox and works it the SuperHound way when you click Call. Needs the WSJT-X 3.0 decoder that Costas installs on Windows." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Calling you" />
               <StackPanel Grid.Column="1" Spacing="4">
                 <CheckBox Content="Chime when a new station calls me" IsChecked="{Binding ChimeOnCaller}" />

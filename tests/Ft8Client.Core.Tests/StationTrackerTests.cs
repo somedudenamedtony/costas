@@ -203,4 +203,30 @@ public class StationTrackerTests
         s.State.Should().Be(StationState.InContact);
         s.Partner.Should().Be("W9XYZ");
     }
+
+    [Fact]
+    public void ApplySuperFox_FoxFound_MarkedAndNotMissedByTheNormalDecode()
+    {
+        var t = NewTracker();
+        t.ApplySlot(S(0), [H(S(0), "CQ K1ABC FN42")]);
+        t.ApplySuperFox(S(0), [H(S(0), "CQ KH1X", offset: 750), H(S(0), "W0AAA KH1X RR73", offset: 750)]);
+        t.ApplySlot(S(2), []); // the normal decode of the Fox's next slot never hears it
+
+        var fox = t.Find("KH1X")!;
+        fox.RunsFox.Should().BeTrue();
+        fox.RunsSuperFox.Should().BeTrue();
+        fox.MissedSlots.Should().Be(0, "only the SuperFox search counts a SuperFox's misses");
+        t.Find("K1ABC")!.MissedSlots.Should().Be(1);
+    }
+
+    [Fact]
+    public void ApplySuperFox_FoxGoneTwoSearches_Quiet()
+    {
+        var t = NewTracker();
+        t.ApplySuperFox(S(0), [H(S(0), "CQ KH1X", offset: 750)]);
+        t.ApplySuperFox(S(2), []);
+        t.ApplySuperFox(S(4), []);
+
+        t.Find("KH1X")!.State.Should().Be(StationState.Quiet);
+    }
 }

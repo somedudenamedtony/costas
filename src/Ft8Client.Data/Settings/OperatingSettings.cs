@@ -41,6 +41,9 @@ public sealed class OperatingSettings
     /// <summary>Free text of up to 13 characters sent once after that last message; empty for none.</summary>
     public string FreeTextAfter { get; set; } = string.Empty;
 
+    /// <summary>Look for SuperFox DXpeditions in every other FT8 slot (a second decoder run; needs WSJT-X 3.0 or later).</summary>
+    public bool SuperFoxScan { get; set; } = true;
+
     /// <summary>Log automatically when the contact completes.</summary>
     public bool AutoLog { get; set; } = true;
 
