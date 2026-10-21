@@ -15,8 +15,8 @@ public enum BandActivityFeed
     /// <summary>Not followed: the feed or the setting is off.</summary>
     Off,
 
-    /// <summary>My DXCC code is not known yet, so nothing can be followed until PSK Reporter reports my signal.</summary>
-    WaitingForMySpot,
+    /// <summary>The station grid in Settings is missing or invalid, so nearby stations cannot be followed.</summary>
+    WaitingForGrid,
 
     /// <summary>Followed on every band.</summary>
     AllBands,

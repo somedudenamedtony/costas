@@ -19,7 +19,7 @@ namespace Ft8Client.Integrations.PskReporter;
 /// <summary>
 /// The live "who hears me" feed from mqtt.pskreporter.info (a best-effort community service by M0LTE). Subscribes to
 /// <c>pskr/filter/v2/+/+/MYCALL/#</c>, reconnects with back-off, and drops repeated sequence numbers. When asked, it also
-/// follows the reports of every station in my DXCC entity on one band and mode, for the neighbour comparison, and on every
+/// follows reports from the squares around my configured locator on one band and mode, for the neighbour comparison, and on every
 /// band for the band menu; when every band is too busy to follow at once, it samples the other bands one at a time.
 /// </summary>
 public sealed class PskFeedClient : IAsyncDisposable
@@ -42,13 +42,14 @@ public sealed class PskFeedClient : IAsyncDisposable
     private IMqttClient? _client;
     private volatile bool _subscribed;
     private readonly object _topicGate = new();
-    private string? _neighbourTopic;
-    private string? _subscribedNeighbourTopic;
-    private (string? Band, string? Mode, int? Dxcc, bool AllBands, IReadOnlyList<string> Bands) _followed = (null, null, null, false, []);
+    private HashSet<string> _neighbourTopics = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _subscribedAreaTopics = new(StringComparer.Ordinal);
+    private readonly SemaphoreSlim _areaSubscriptions = new(1, 1);
+    private (string? Band, string? Mode, string? Grid, bool AllBands, IReadOnlyList<string> Bands) _followed = (null, null, null, false, []);
+    private IReadOnlyList<string> _nearGrids = [];
     private bool _neighbourAllBands;
     private readonly BandSampler _sampler;
-    private string? _sampleTopic;
-    private string? _subscribedSampleTopic;
+    private HashSet<string> _sampleTopics = new(StringComparer.Ordinal);
     private Timer? _sampleTimer;
     private HashSet<string> _huntTopics = new(StringComparer.Ordinal);
     private readonly HashSet<string> _subscribedHuntTopics = new(StringComparer.Ordinal);
@@ -90,12 +91,9 @@ public sealed class PskFeedClient : IAsyncDisposable
     public event Action<BandSample>? BandSampled;
 
     /// <summary>
-    /// My ADIF DXCC code, learned from the first report of my signal that carries one, or remembered from an earlier run.
+    /// My ADIF DXCC code, learned from reports of my signal, for Hunt receiver filtering during this run.
     /// </summary>
     public int? MyDxcc { get; private set; }
-
-    /// <summary>Uses a DXCC code remembered from an earlier run until a report of my signal gives one.</summary>
-    public void RememberMyDxcc(int dxcc) => MyDxcc ??= dxcc;
 
     /// <summary>True when neighbour reports came too fast and following them was stopped.</summary>
     public bool NeighboursStopped { get; private set; }
@@ -126,9 +124,9 @@ public sealed class PskFeedClient : IAsyncDisposable
     /// <summary>The topic filter for a call.</summary>
     public static string TopicFor(string call) => $"pskr/filter/v2/+/+/{Callsign.Normalize(call)}/#";
 
-    /// <summary>The topic filter for every sender in one DXCC entity on one band (<c>+</c> for every band) and mode.</summary>
-    public static string NeighbourTopicFor(string band, string mode, int dxcc) =>
-        $"pskr/filter/v2/{band.ToLowerInvariant()}/{mode.ToUpperInvariant()}/+/+/+/+/{dxcc}/#";
+    /// <summary>The topic filter for senders in a four-character square on one band (or <c>+</c>) and mode, in any country.</summary>
+    public static string NeighbourTopicFor(string band, string mode, string grid) =>
+        $"pskr/filter/v2/{band.ToLowerInvariant()}/{mode.ToUpperInvariant()}/+/+/{Grid.Grid4(grid) ?? throw new ArgumentException("Invalid grid.", nameof(grid))}/#";
 
     /// <summary>The topic filter for every report of one sender, on any band and mode.</summary>
     public static string HuntCallTopicFor(string call) => $"pskr/filter/v2/+/+/{Callsign.Normalize(call)}/#";
@@ -185,101 +183,105 @@ public sealed class PskFeedClient : IAsyncDisposable
     }
 
     /// <summary>
-    /// Follows the reports of stations in DXCC entity <paramref name="dxcc"/> on <paramref name="band"/> and
-    /// <paramref name="mode"/>, replacing any earlier choice; null for any of them stops following. With
-    /// <paramref name="allBands"/> it follows every band (for the band menu); when that proves too busy it follows
-    /// <paramref name="band"/> and samples the other <paramref name="bands"/> one at a time (<see cref="BandSampled"/>).
+    /// Follows stations within 300 miles of <paramref name="myGrid"/> on <paramref name="band"/> and
+    /// <paramref name="mode"/>, replacing any earlier choice; an invalid grid or null band/mode stops following.
+    /// With <paramref name="allBands"/> it follows every band; when that proves too busy it follows
+    /// <paramref name="band"/> and samples the other <paramref name="bands"/> one at a time.
+    /// No report of my signal or remembered country is needed.
     /// </summary>
-    /// <param name="band">The band I am on.</param>
-    /// <param name="mode"><c>FT8</c> or <c>FT4</c>.</param>
-    /// <param name="dxcc">My ADIF DXCC code.</param>
-    /// <param name="allBands">True to follow every band.</param>
-    /// <param name="bands">The bands to sample when every band is too busy to follow; null or empty for none.</param>
-    public void FollowNeighbours(string? band, string? mode, int? dxcc, bool allBands = false, IReadOnlyList<string>? bands = null)
+    public void FollowNeighbours(string? band, string? mode, string? myGrid, bool allBands = false, IReadOnlyList<string>? bands = null)
     {
-        var wide = allBands && !AllBandsStopped;
-        var topic = band is null || mode is null || dxcc is null || NeighboursStopped ? null
-            : NeighbourTopicFor(wide ? "+" : band, mode, dxcc.Value);
+        var grid = Grid.IsGrid4Or6(myGrid) ? myGrid!.ToUpperInvariant() : null;
         lock (_topicGate)
         {
-            _followed = (band, mode, dxcc, allBands, bands ?? []);
-            _neighbourAllBands = wide;
-            if (topic == _neighbourTopic) return;
-            _neighbourTopic = topic;
+            if (band == _followed.Band && mode == _followed.Mode && grid == _followed.Grid
+                && allBands == _followed.AllBands && (bands ?? []).SequenceEqual(_followed.Bands)
+                && _neighbourAllBands == (allBands && !AllBandsStopped)
+                && (_neighbourTopics.Count == 0) == (band is null || mode is null || grid is null || NeighboursStopped)) return;
+            if (grid != _followed.Grid)
+            {
+                _nearGrids = NeighbourGrids.Covering(grid);
+                AllBandsStopped = false;
+                NeighboursStopped = false;
+                _neighbourCount = 0;
+            }
+            if (grid != _followed.Grid || !string.Equals(mode, _followed.Mode, StringComparison.OrdinalIgnoreCase)
+                || !allBands)
+            {
+                _sampler.Stop();
+                _sampleTopics.Clear();
+            }
+            _followed = (band, mode, grid, allBands, bands ?? []);
+            _neighbourAllBands = allBands && !AllBandsStopped;
+            _neighbourTopics = band is null || mode is null || grid is null || NeighboursStopped ? new(StringComparer.Ordinal)
+                : new(_nearGrids.Select(g => NeighbourTopicFor(_neighbourAllBands ? "+" : band, mode, g)), StringComparer.Ordinal);
         }
-        _ = UpdateNeighbourSubscriptionAsync();
+        _ = UpdateAreaSubscriptionsAsync();
     }
 
     // Once a second: moves the band sampling on while every band is too busy to follow at once.
     private void SampleTick()
     {
         BandSample? finished = null;
-        bool resubscribe;
         lock (_topicGate)
         {
-            var (band, mode, dxcc, allBands, bands) = _followed;
-            if (allBands && mode is not null && dxcc is not null && bands.Count > 0 && (AllBandsStopped || NeighboursStopped))
+            var (band, mode, grid, allBands, bands) = _followed;
+            if (allBands && mode is not null && grid is not null && bands.Count > 0 && (AllBandsStopped || NeighboursStopped))
             {
                 var m = mode.ToUpperInvariant();
                 (finished, _) = _sampler.Tick(DateTime.UtcNow, bands, NeighboursStopped ? null : band, m);
-                _sampleTopic = _sampler.Band is { } b ? NeighbourTopicFor(b, m, dxcc.Value) : null;
+                _sampleTopics = _sampler.Band is { } b
+                    ? new(_nearGrids.Select(g => NeighbourTopicFor(b, m, g)), StringComparer.Ordinal) : new(StringComparer.Ordinal);
             }
             else
             {
                 _sampler.Stop();
-                _sampleTopic = null;
+                _sampleTopics.Clear();
             }
-            resubscribe = _sampleTopic != _subscribedSampleTopic;
         }
-        if (resubscribe) _ = UpdateSampleSubscriptionAsync();
+        _ = UpdateAreaSubscriptionsAsync();
         if (finished is not null) BandSampled?.Invoke(finished);
     }
 
-    private async Task UpdateSampleSubscriptionAsync()
+    // Serialize changes so a location or band change cannot leave an older set of subscriptions installed last.
+    // Continuous and sampled bands share this set, so removing one never unsubscribes a topic the other still needs.
+    private async Task UpdateAreaSubscriptionsAsync()
     {
-        var client = _client;
-        if (client is null || !_subscribed) return;
-        string? want, have;
-        lock (_topicGate)
-        {
-            want = _sampleTopic;
-            have = _subscribedSampleTopic;
-            if (want == have) return;
-            _subscribedSampleTopic = want;
-        }
+        await _areaSubscriptions.WaitAsync().ConfigureAwait(false);
         try
         {
-            if (have is not null) await client.UnsubscribeAsync(have).ConfigureAwait(false);
-            if (want is not null) await client.SubscribeAsync(new MqttClientSubscribeOptionsBuilder().WithTopicFilter(want).Build()).ConfigureAwait(false);
+            var client = _client;
+            if (client is null || !_subscribed) return;
+            List<string> add, remove;
+            lock (_topicGate)
+            {
+                var want = new HashSet<string>(_neighbourTopics.Concat(_sampleTopics), StringComparer.Ordinal);
+                add = want.Except(_subscribedAreaTopics).ToList();
+                remove = _subscribedAreaTopics.Except(want).ToList();
+            }
+            if (remove.Count > 0)
+            {
+                var options = new MqttClientUnsubscribeOptionsBuilder();
+                foreach (var t in remove) options.WithTopicFilter(t);
+                await client.UnsubscribeAsync(options.Build()).ConfigureAwait(false);
+                lock (_topicGate) _subscribedAreaTopics.ExceptWith(remove);
+            }
+            if (add.Count > 0)
+            {
+                var options = new MqttClientSubscribeOptionsBuilder();
+                foreach (var t in add) options.WithTopicFilter(t);
+                await client.SubscribeAsync(options.Build()).ConfigureAwait(false);
+                lock (_topicGate) _subscribedAreaTopics.UnionWith(add);
+            }
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            // The next tick or reconnect subscribes again.
-            lock (_topicGate) _subscribedSampleTopic = null;
+            // Keep acknowledged subscriptions so the next tick retries any failed removals as well as additions.
+            // Reconnecting clears them because the broker uses a clean session.
         }
-    }
-
-    private async Task UpdateNeighbourSubscriptionAsync()
-    {
-        var client = _client;
-        if (client is null || !_subscribed) return;
-        string? want, have;
-        lock (_topicGate)
+        finally
         {
-            want = _neighbourTopic;
-            have = _subscribedNeighbourTopic;
-            if (want == have) return;
-            _subscribedNeighbourTopic = want;
-        }
-        try
-        {
-            if (have is not null) await client.UnsubscribeAsync(have).ConfigureAwait(false);
-            if (want is not null) await client.SubscribeAsync(new MqttClientSubscribeOptionsBuilder().WithTopicFilter(want).Build()).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException)
-        {
-            // The next reconnect subscribes again.
-            lock (_topicGate) _subscribedNeighbourTopic = null;
+            _areaSubscriptions.Release();
         }
     }
 
@@ -323,13 +325,11 @@ public sealed class PskFeedClient : IAsyncDisposable
                 Connections++;
                 lock (_topicGate)
                 {
-                    _subscribedNeighbourTopic = null;
-                    _subscribedSampleTopic = null;
+                    _subscribedAreaTopics.Clear();
                     _subscribedHuntTopics.Clear();
                 }
                 _subscribed = true;
-                await UpdateNeighbourSubscriptionAsync().ConfigureAwait(false);
-                await UpdateSampleSubscriptionAsync().ConfigureAwait(false);
+                await UpdateAreaSubscriptionsAsync().ConfigureAwait(false);
                 await UpdateHuntSubscriptionsAsync().ConfigureAwait(false);
                 _backoff.Reset();
                 StatusChanged?.Invoke(new ServiceStatus(ServiceHealth.Ok, "Live feed connected", DateTime.UtcNow));
@@ -370,11 +370,13 @@ public sealed class PskFeedClient : IAsyncDisposable
         bool neighbour, sampled;
         lock (_topicGate)
         {
-            var (band, _, dxcc, _, _) = _followed;
-            neighbour = !mine && _neighbourTopic is not null && p.SenderGrid is not null
+            var (band, mode, grid, _, _) = _followed;
+            var nearby = !mine && string.Equals(p.Report.Mode, mode, StringComparison.OrdinalIgnoreCase)
+                && Grid.ToLatLon(grid) is { } me && NeighbourComparison.IsNeighbour(me, p.SenderGrid);
+            neighbour = nearby && _neighbourTopics.Count > 0
                         && (_neighbourAllBands || string.Equals(p.Report.Band, band, StringComparison.OrdinalIgnoreCase));
             // The sampled band's reports only feed the band menu's estimate, not the neighbour comparison or its limit.
-            sampled = !mine && _sampler.Band is { } sb && string.Equals(p.Report.Band, sb, StringComparison.OrdinalIgnoreCase) && p.SenderDxcc == dxcc;
+            sampled = nearby && _sampler.Band is { } sb && string.Equals(p.Report.Band, sb, StringComparison.OrdinalIgnoreCase);
         }
         if (!mine && !hunted && !neighbour && !sampled) return;
         lock (_seen)
@@ -442,23 +444,23 @@ public sealed class PskFeedClient : IAsyncDisposable
             _neighbourCount = 0;
         }
         if (++_neighbourCount <= MaxNeighbourReportsPerMinute) return false;
-        string? topic;
-        lock (_topicGate) topic = _neighbourTopic;
-        if (topic is not null && topic.StartsWith("pskr/filter/v2/+/", StringComparison.Ordinal))
+        bool wide;
+        lock (_topicGate) wide = _neighbourAllBands;
+        if (wide)
         {
             // Every band is too busy: fall back to the current band, which the neighbour comparison needs. The current band
             // starts a fresh count, or its next report would stop following altogether.
             AllBandsStopped = true;
             _neighbourCount = 0;
-            var (band, mode, dxcc, allBands, bands) = _followed;
-            FollowNeighbours(band, mode, dxcc, allBands, bands);
+            var (band, mode, grid, allBands, bands) = _followed;
+            FollowNeighbours(band, mode, grid, allBands, bands);
         }
         else if (!NeighboursStopped)
         {
             // Following stops; the band menu goes on sampling every band.
             NeighboursStopped = true;
-            var (band, mode, dxcc, allBands, bands) = _followed;
-            FollowNeighbours(band, mode, dxcc, allBands, bands);
+            var (band, mode, grid, allBands, bands) = _followed;
+            FollowNeighbours(band, mode, grid, allBands, bands);
         }
         return true;
     }

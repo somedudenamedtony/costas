@@ -34,14 +34,14 @@ public static class BandOpeningText
 
     /// <summary>
     /// What a band's row says when it has no reports to show yet: "Checking soon" while it waits for its turn to be sampled,
-    /// "Needs a spot of you", or empty when its reports are being received.
+    /// "Set your grid in Settings", or empty when its reports are being received.
     /// </summary>
     /// <param name="feed">How the reports are followed.</param>
     /// <param name="followed">True when this band's reports are being received.</param>
     public static string NotFollowed(BandActivityFeed feed, bool followed) => feed switch
     {
         _ when followed => string.Empty,
-        BandActivityFeed.WaitingForMySpot => "Needs a spot of you",
+        BandActivityFeed.WaitingForGrid => "Set your grid in Settings",
         BandActivityFeed.CurrentBandOnly or BandActivityFeed.Stopped => "Checking soon",
         _ => string.Empty,
     };
@@ -50,8 +50,8 @@ public static class BandOpeningText
     /// <param name="feed">How the reports are followed.</param>
     public static string NotFollowedTip(BandActivityFeed feed) => feed switch
     {
-        BandActivityFeed.WaitingForMySpot =>
-            "Band activity starts once PSK Reporter has reported your own signal, which tells Costas your country. Costas remembers it for next time.",
+        BandActivityFeed.WaitingForGrid =>
+            "Set a valid grid square in Settings › Station. Band activity uses stations within 300 miles of that grid and follows changes to it.",
         BandActivityFeed.CurrentBandOnly or BandActivityFeed.Stopped =>
             "PSK Reporter sends too many reports to follow every band at once, so Costas listens to the other bands one at a time, "
             + "30 seconds each. This band's turn comes within a few minutes.",

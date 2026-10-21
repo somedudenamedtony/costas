@@ -133,24 +133,6 @@ public class PskReporterTests
     }
 
     [Fact]
-    public async Task Feed_RememberedDxcc_UsedUntilMySignalGivesOne()
-    {
-        var port = FreePort();
-        var server = new MqttServerFactory().CreateMqttServer(BrokerOptions(port));
-        await server.StartAsync();
-        await using var feed = new PskFeedClient(Countries, "127.0.0.1", port, tls: false);
-
-        feed.RememberMyDxcc(1);
-        feed.MyDxcc.Should().Be(1);
-        feed.Start("W7LIT");
-        await WaitFor(() => feed.Connected);
-        await Publish(server);
-
-        await WaitFor(() => feed.MyDxcc == 291);
-        await server.StopAsync(new MqttServerStopOptions());
-    }
-
-    [Fact]
     public async Task Feed_FollowNeighbours_RaisesNeighbourReportsAndLearnsMyDxcc()
     {
         var port = FreePort();
@@ -168,7 +150,7 @@ public class PskReporterTests
         await WaitFor(() => feed.MyDxcc is not null);
         feed.MyDxcc.Should().Be(291);
 
-        feed.FollowNeighbours("20m", "FT8", 291);
+        feed.FollowNeighbours("20m", "FT8", "DN40");
         await Task.Delay(300, TestContext.Current.CancellationToken);
         var line = """{"sq":1,"f":14075500,"md":"FT8","rp":-12,"t":1767495300,"sc":"K7AAA","sl":"DN41","rc":"DL1ABC","rl":"JO62","sa":291,"ra":230,"b":"20m"}""";
         var msg = new MqttApplicationMessageBuilder().WithTopic("pskr/filter/v2/20m/FT8/K7AAA/DL1ABC/DN41/JO62/291/230").WithPayload(line).Build();
@@ -202,10 +184,9 @@ public class PskReporterTests
         {
             lock (samples) samples.Add(x);
         };
-        feed.RememberMyDxcc(291);
         feed.Start("W7LIT");
         await WaitFor(() => feed.Connected);
-        feed.FollowNeighbours("20m", "FT8", 291, allBands: true, bands: ["20m", "15m"]);
+        feed.FollowNeighbours("20m", "FT8", "DN40", allBands: true, bands: ["20m", "15m"]);
         await Task.Delay(300, TestContext.Current.CancellationToken);
 
         async Task Send(long sq, string band, string call)
@@ -310,7 +291,7 @@ public class PskReporterTests
         feed.Start("W7LIT");
         await WaitFor(() => feed.Connected);
 
-        feed.FollowNeighbours("20m", "FT8", 291, allBands: true);
+        feed.FollowNeighbours("20m", "FT8", "DN40", allBands: true);
         await Task.Delay(300, TestContext.Current.CancellationToken);
         var line = """{"sq":2,"f":21075500,"md":"FT8","rp":-15,"t":1767495300,"sc":"K7AAA","sl":"DN41","rc":"PY2ABC","rl":"GG66","sa":291,"ra":108,"b":"15m"}""";
         var msg = new MqttApplicationMessageBuilder().WithTopic("pskr/filter/v2/15m/FT8/K7AAA/PY2ABC/DN41/GG66/291/108").WithPayload(line).Build();
@@ -325,15 +306,62 @@ public class PskReporterTests
     }
 
     [Fact]
-    public void NeighbourTopicFor_AllBands_UsesWildcard()
+    public async Task Feed_ConfiguredGridWithoutMySpot_FollowsNearbyCountriesAndChangesLocation()
     {
-        PskFeedClient.NeighbourTopicFor("+", "FT8", 291).Should().Be("pskr/filter/v2/+/FT8/+/+/+/+/291/#");
+        var port = FreePort();
+        var server = new MqttServerFactory().CreateMqttServer(BrokerOptions(port));
+        await server.StartAsync();
+        var neighbours = new System.Collections.Concurrent.ConcurrentQueue<NeighbourReport>();
+        var hunts = new System.Collections.Concurrent.ConcurrentQueue<HuntSpot>();
+        await using var feed = new PskFeedClient(Countries, "127.0.0.1", port, tls: false);
+        feed.NeighbourReport += neighbours.Enqueue;
+        feed.HuntReport += hunts.Enqueue;
+        feed.FollowNeighbours("20m", "FT8", "fn25ab", allBands: true);
+        feed.FollowHunt(["VE3AAA", "DL2ABC"], [], null);
+        feed.Start("W7LIT");
+        await WaitFor(() => feed.Connected);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+
+        async Task Send(long seq, string call, string grid, int dxcc, string mode = "FT8")
+        {
+            var json = $$"""{"sq":{{seq}},"f":21075500,"md":"{{mode}}","rp":-12,"t":1767495300,"sc":"{{call}}","sl":"{{grid}}","rc":"PY2ABC","rl":"GG66","sa":{{dxcc}},"ra":108,"b":"15m"}""";
+            var msg = new MqttApplicationMessageBuilder().WithTopic($"pskr/filter/v2/15m/{mode}/{call}/PY2ABC/{grid[..4]}/GG66/{dxcc}/108").WithPayload(json).Build();
+            await server.InjectApplicationMessage(new InjectedMqttApplicationMessage(msg) { SenderClientId = "test" }, TestContext.Current.CancellationToken);
+        }
+        // Both sides of the US/Canada border, before any report of my own signal.
+        await Send(101, "VE3AAA", "FN25AB", 1);
+        await Send(102, "W1AAA", "FN24", 291);
+        await WaitFor(() => neighbours.Count == 2);
+        feed.MyDxcc.Should().BeNull();
+        neighbours.Select(r => r.SenderCall).Should().Equal("VE3AAA", "W1AAA");
+
+        feed.FollowNeighbours("20m", "FT8", "JO62", allBands: true);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+        // Hunt subscriptions also deliver reports from far away and in another mode; neither is local activity.
+        await Send(103, "VE3AAA", "FN25AB", 1);
+        await Send(104, "DL2ABC", "JO62", 230, "FT4");
+        await Send(105, "DL2ABC", "JO62", 230);
+        await WaitFor(() => hunts.Count == 4 && neighbours.Count >= 3);
+        neighbours.Select(r => r.SenderCall).Should().Equal("VE3AAA", "W1AAA", "DL2ABC");
+
+        feed.FollowNeighbours("20m", "FT8", "invalid", allBands: true);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await Send(106, "DL2ABC", "JO62", 230);
+        await WaitFor(() => hunts.Count == 5);
+        neighbours.Should().HaveCount(3);
+        await server.StopAsync(new MqttServerStopOptions());
     }
 
     [Fact]
-    public void NeighbourTopicFor_BandModeDxcc_FiltersOnSenderEntity()
+    public void NeighbourTopicFor_AllBands_UsesWildcard()
     {
-        PskFeedClient.NeighbourTopicFor("20M", "ft8", 291).Should().Be("pskr/filter/v2/20m/FT8/+/+/+/+/291/#");
+        PskFeedClient.NeighbourTopicFor("+", "FT8", "DN40ab").Should().Be("pskr/filter/v2/+/FT8/+/+/DN40/#");
+    }
+
+    [Fact]
+    public void NeighbourTopicFor_BandModeGrid_FiltersOnSenderSquare()
+    {
+        PskFeedClient.NeighbourTopicFor("20M", "ft8", "dn40").Should().Be("pskr/filter/v2/20m/FT8/+/+/DN40/#");
     }
 
     private static async Task Publish(MqttServer server)
