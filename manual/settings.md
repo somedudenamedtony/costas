@@ -154,7 +154,10 @@ See [Operating from a phone](phone.md).
 
 ![Settings: Appearance](images/settings-appearance.png)
 
-- **Theme**: system (follows the Windows light or dark setting), light or dark.
+- **Skin**: Classic (the original appearance and system accent), Ocean (cool blues), Forest (soft greens), or
+  Amber (warm sand and copper). Light and dark swatches preview your choice. Press **Save** to apply it to all
+  desktop windows; it is remembered the next time you start Costas. Transmit and warning colors stay the same.
+- **Theme**: system (follows your device's light or dark setting), light or dark. Each skin supports both.
 - **Distances in**: miles or kilometres.
 
 ## Updates

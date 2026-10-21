@@ -14,6 +14,9 @@ public sealed class AppearanceOptions
     /// <summary><c>system</c>, <c>light</c> or <c>dark</c>.</summary>
     public string Theme { get; set; } = "system";
 
+    /// <summary><c>classic</c>, <c>ocean</c>, <c>forest</c> or <c>amber</c>.</summary>
+    public string Skin { get; set; } = "classic";
+
     /// <summary><c>miles</c> or <c>km</c>.</summary>
     public string Units { get; set; } = "miles";
 }

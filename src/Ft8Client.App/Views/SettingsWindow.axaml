@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Ft8Client.App.ViewModels"
+        xmlns:services="using:Ft8Client.App.Services"
         x:Class="Ft8Client.App.Views.SettingsWindow"
         Icon="/Assets/costas.ico"
         x:DataType="vm:SettingsViewModel"
@@ -547,10 +548,48 @@
             <TextBlock Classes="page" Text="Appearance" />
             <TextBlock Classes="intro" Text="How the app looks." />
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Skin" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <ComboBox ItemsSource="{Binding Skins}" SelectedItem="{Binding Skin}" MinWidth="160" AutomationProperties.Name="Skin">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="services:AppSkin"><TextBlock Text="{Binding Name}" /></DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Classes="help" Text="{Binding Skin.Description}" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,4,0,0">
+                  <Border Background="{Binding Skin.Light.WindowBrush}" Padding="10" CornerRadius="6" BorderThickness="1" BorderBrush="{Binding Skin.Light.SecondaryBrush}">
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="Light" Foreground="{Binding Skin.Light.SecondaryBrush}" FontSize="12" />
+                      <Border Background="{Binding Skin.Light.CardBrush}" Padding="8" CornerRadius="4">
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="Next in line" Foreground="{Binding Skin.Light.TextBrush}" FontWeight="SemiBold" />
+                          <Border Background="{Binding Skin.Light.SelectionBrush}" Height="12" CornerRadius="2" />
+                          <Border Background="{Binding Skin.Light.AccentBrush}" Height="6" Width="40" HorizontalAlignment="Left" CornerRadius="2" />
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </Border>
+                  <Border Grid.Column="1" Background="{Binding Skin.Dark.WindowBrush}" Padding="10" CornerRadius="6" BorderThickness="1" BorderBrush="{Binding Skin.Dark.SecondaryBrush}">
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="Dark" Foreground="{Binding Skin.Dark.SecondaryBrush}" FontSize="12" />
+                      <Border Background="{Binding Skin.Dark.CardBrush}" Padding="8" CornerRadius="4">
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="Next in line" Foreground="{Binding Skin.Dark.TextBrush}" FontWeight="SemiBold" />
+                          <Border Background="{Binding Skin.Dark.SelectionBrush}" Height="12" CornerRadius="2" />
+                          <Border Background="{Binding Skin.Dark.AccentBrush}" Height="6" Width="40" HorizontalAlignment="Left" CornerRadius="2" />
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </Border>
+                </Grid>
+                <TextBlock Classes="help" Text="Save applies the skin to all desktop windows. Transmit and warning colors stay the same." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Theme" />
               <StackPanel Grid.Column="1">
                 <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}" MinWidth="120" />
-                <TextBlock Classes="help" Text="System follows the Windows light or dark setting." />
+                <TextBlock Classes="help" Text="System follows your device's light or dark setting. Every skin supports both." />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
