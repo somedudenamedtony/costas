@@ -183,6 +183,25 @@ public class SessionNeighbourTests
         d.Session.Snapshot.BandOpenings.Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData("DN41")]
+    [InlineData("FN42")]
+    public void Reconfigure_GridChanges_ClearsActivityAndSamplesFromPreviousLocation(string grid)
+    {
+        var d = new Driver();
+        var end = d.Clock.UtcNow.AddMinutes(-2);
+        var report = new NeighbourReport("K7AAA", "DN41", "DL1ABC", "20m", "FT8", -12, end);
+        d.Session.AddNeighbourReport(report);
+        d.Session.AddBandSample(new BandSample("15m", "FT8", end.AddSeconds(-30), end, [report with { Band = "15m" }]));
+        d.Session.Snapshot.BandOpenings.Should().NotBeEmpty();
+        d.Session.Snapshot.SampledBandOpenings.Should().NotBeEmpty();
+
+        d.Session.Reconfigure(d.Session.Config with { MyGrid = grid });
+
+        d.Session.Snapshot.BandOpenings.Should().BeEmpty();
+        d.Session.Snapshot.SampledBandOpenings.Should().BeEmpty();
+    }
+
     [Fact]
     public void SetBand_OtherMode_ClearsSamples()
     {

@@ -866,6 +866,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             if (stationChanged)
             {
                 _receptionHistory.Clear();
+                _neighbours.Clear();
+                _samples.Clear();
+                _samplesDirty = true;
+                _openingsUtc = default;
                 _tracker.SetMyStation(config.MyCall, config.MyGrid);
                 _myEntity = _countries.Lookup(config.MyCall);
             }

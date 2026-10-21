@@ -103,7 +103,6 @@ public sealed class PskReporterService : IAsyncDisposable
         {
             LoadStored();
             _feed = new PskFeedClient(_countries);
-            if (s.PskReporter is { MyDxcc: { } dxcc, MyDxccCall: { } call } && Callsign.EqualsCall(call, _myCall)) _feed.RememberMyDxcc(dxcc);
             _feed.Report += OnReport;
             _feed.NeighbourReport += _session.AddNeighbourReport;
             _feed.BandSampled += _session.AddBandSample;
@@ -119,6 +118,8 @@ public sealed class PskReporterService : IAsyncDisposable
             _feed.FollowHunt(_hunt.Calls, _hunt.Dxccs, _feed.MyDxcc);
             _ = Task.Run(() => QueryLoopAsync(_cts.Token));
         }
+        _settings.Changed += OnSettingsChanged;
+        _session.BandChanged += FollowNeighbours;
         _session.SlotDecoded += OnSlotDecoded;
         _ = Task.Run(() => UploadLoopAsync(_cts.Token));
     }
@@ -146,31 +147,24 @@ public sealed class PskReporterService : IAsyncDisposable
         FollowNeighbours();
     }
 
-    // Follows the stations near me once my DXCC code is known (from my own reports, or remembered from the last run): on
+    // Follows stations around the current grid in Settings, without waiting for a report of my signal: on
     // the current band for the neighbour comparison, on every band for the band menu (sampling the menu's bands in turn
     // when every band at once is too busy).
     private void FollowNeighbours()
     {
         if (_feed is null) return;
-        var o = _settings.Current.PskReporter;
-        var on = o.CompareNeighbours || o.BandActivity;
-        var snap = _session.Snapshot;
-        _feed.FollowNeighbours(on ? snap.Band : null, on ? ModeInfo.Name(snap.Mode) : null, on ? _feed.MyDxcc : null, o.BandActivity,
-            _frequencies.Bands(snap.Mode));
-        _session.SetBandActivityFeed(!o.BandActivity ? BandActivityFeed.Off
-            : _feed.MyDxcc is null ? BandActivityFeed.WaitingForMySpot
+        var settings = _settings.Current;
+        var o = settings.PskReporter;
+        var on = o.FeedEnabled && (o.CompareNeighbours || o.BandActivity);
+        var config = _session.Config;
+        _feed.FollowNeighbours(on ? config.Band : null, on ? ModeInfo.Name(config.Mode) : null, on ? settings.Profile.Grid : null, o.BandActivity,
+            _frequencies.Bands(config.Mode));
+        _session.SetBandActivityFeed(!o.FeedEnabled || !o.BandActivity ? BandActivityFeed.Off
+            : Grid.ToLatLon(settings.Profile.Grid) is null ? BandActivityFeed.WaitingForGrid
             : _feed.NeighboursStopped ? BandActivityFeed.Stopped
             : _feed.AllBandsStopped ? BandActivityFeed.CurrentBandOnly
             : BandActivityFeed.AllBands);
         _feed.FollowHunt(_hunt.Calls, _hunt.Dxccs, _feed.MyDxcc);
-        if (_feed.MyDxcc is { } dxcc && (o.MyDxcc != dxcc || !Callsign.EqualsCall(o.MyDxccCall ?? string.Empty, _myCall)))
-        {
-            _settings.Update(x =>
-            {
-                x.PskReporter.MyDxcc = dxcc;
-                x.PskReporter.MyDxccCall = _myCall;
-            });
-        }
         if (_feed.AllBandsStopped && !_allBandsStopLogged)
         {
             _allBandsStopLogged = true;
@@ -182,6 +176,8 @@ public sealed class PskReporterService : IAsyncDisposable
             Log.Warning("PSK Reporter neighbour reports came too fast; stopped following them and sampling every band");
         }
     }
+
+    private void OnSettingsChanged(Ft8Client.Data.Settings.AppSettings _) => FollowNeighbours();
 
     private void Store(ReceptionReport r, string source)
     {
@@ -291,6 +287,8 @@ public sealed class PskReporterService : IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        _settings.Changed -= OnSettingsChanged;
+        _session.BandChanged -= FollowNeighbours;
         _session.SlotDecoded -= OnSlotDecoded;
         await _cts.CancelAsync().ConfigureAwait(false);
         if (_feed is not null) await _feed.DisposeAsync().ConfigureAwait(false);

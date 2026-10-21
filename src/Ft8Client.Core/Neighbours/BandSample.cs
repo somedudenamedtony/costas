@@ -16,7 +16,7 @@ namespace Ft8Client.Core.Neighbours;
 /// <param name="Mode"><c>FT8</c> or <c>FT4</c>.</param>
 /// <param name="StartUtc">When listening to the band started.</param>
 /// <param name="EndUtc">When it stopped.</param>
-/// <param name="Reports">Reports of other stations in my DXCC entity that arrived meanwhile (near or far).</param>
+/// <param name="Reports">Reports of nearby stations around the configured grid that arrived meanwhile.</param>
 public sealed record BandSample(string Band, string Mode, DateTime StartUtc, DateTime EndUtc, IReadOnlyList<NeighbourReport> Reports)
 {
     /// <summary>How long the band was listened to.</summary>

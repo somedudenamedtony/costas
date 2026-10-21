@@ -109,7 +109,7 @@ public class BandOpeningsTests
     }
 
     [Theory]
-    [InlineData(BandActivityFeed.WaitingForMySpot, false, "Needs a spot of you")]
+    [InlineData(BandActivityFeed.WaitingForGrid, false, "Set your grid in Settings")]
     [InlineData(BandActivityFeed.CurrentBandOnly, false, "Checking soon")]
     [InlineData(BandActivityFeed.Stopped, false, "Checking soon")]
     [InlineData(BandActivityFeed.CurrentBandOnly, true, "")]

@@ -30,7 +30,7 @@ public sealed class BandSampler(TimeSpan dwell)
     /// <summary>How long each band is listened to.</summary>
     public TimeSpan Dwell { get; } = dwell;
 
-    /// <summary>Reports (of any station in the entity) after which a sample ends early.</summary>
+    /// <summary>Reports of nearby stations after which a sample ends early.</summary>
     public const int MaxReports = 1000;
 
     private readonly List<NeighbourReport> _reports = [];

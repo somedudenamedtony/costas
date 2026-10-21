@@ -78,6 +78,25 @@ public class DatabaseAndSettingsTests
     }
 
     [Fact]
+    public void SettingsStore_OldPskCountryCache_UsesConfiguredGridAndDropsCacheOnSave()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("ft8set").FullName, "settings.json");
+        File.WriteAllText(path, """
+            { "schema": 2, "profiles": [ { "id": "home", "callsign": "W7LIT", "grid": "JO62" } ],
+              "pskReporter": { "myDxcc": 291, "myDxccCall": "W7LIT", "bandActivity": true } }
+            """);
+        var store = new SettingsStore(path);
+        var settings = store.Load();
+        settings.Profile.Grid.Should().Be("JO62");
+        settings.PskReporter.BandActivity.Should().BeTrue();
+
+        store.Save(settings);
+
+        File.ReadAllText(path).Should().NotContain("myDxcc");
+        store.Load().Profile.Grid.Should().Be("JO62");
+    }
+
+    [Fact]
     public void SettingsStore_SchemaZero_MigratesCallAndDropsSecrets()
     {
         var path = Path.Combine(Directory.CreateTempSubdirectory("ft8set").FullName, "settings.json");
