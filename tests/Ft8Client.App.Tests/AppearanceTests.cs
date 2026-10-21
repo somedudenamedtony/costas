@@ -16,7 +16,9 @@ using Avalonia.Styling;
 using Ft8Client.App.Services;
 using Ft8Client.App.ViewModels;
 using Ft8Client.App.Views;
+using Ft8Client.Data.Database;
 using Ft8Client.Data.Settings;
+using Microsoft.Data.Sqlite;
 using System.Globalization;
 
 namespace Ft8Client.App.Tests;
@@ -99,9 +101,11 @@ public class AppearanceTests
         settings.PskReporter.FeedEnabled = false;
         settings.Usage.Enabled = false;
         new SettingsStore(Path.Combine(dir, "settings.json")).Save(settings);
+        SqliteDatabase? database = null;
         try
         {
             await using var host = await AppHost.StartAsync(new CommandLine { Home = dir, SimulateFolder = Path.Combine(TestPaths.Samples, "ft8") });
+            database = host.Database;
             var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(AppearanceTests).Assembly);
             await session.Dispatch(() =>
             {
@@ -161,6 +165,13 @@ public class AppearanceTests
         }
         finally
         {
+            // The host has stopped, but pooled SQLite handles still lock the file on Windows.
+            // Release this test's pool only; other tests may be using their own databases in parallel.
+            if (database is not null)
+            {
+                using var connection = database.Open();
+                SqliteConnection.ClearPool(connection);
+            }
             Directory.Delete(dir, true);
         }
     }
