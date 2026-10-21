@@ -66,7 +66,7 @@ public class AppearanceTests
                     ColorOf(labelBrush).Should().Be(Color.Parse(palette.AccentText));
                     ColorOf(chipBrush).Should().Be(Color.Parse(palette.Accent));
                     chipBrush!.Opacity.Should().Be(0.65);
-                    card.CornerRadius.Should().Be(new CornerRadius(skin.Id switch { "radio" => 3, "vintage" => 14, "sdr" => 0, _ => 8 }));
+                    card.CornerRadius.Should().Be(new CornerRadius(skin.Id switch { "radio" => 3, "retro" => 2, "vintage" => 14, "sdr" => 0, _ => 8 }));
                     Resource(app, "CriticalBrush", variant).Should().BeSameAs(critical);
                     Resource(app, "OnAirBrush", variant).Should().BeSameAs(onAir);
                 }
@@ -127,6 +127,13 @@ public class AppearanceTests
                         var meter = face.GetVisualDescendants().OfType<SlotMeter>().Single();
                         meter.Value.Should().Be(0.42);
                         meter.Analog.Should().Be(skin.Id == "vintage");
+                        if (skin.Id == "retro")
+                        {
+                            var display = face.GetVisualDescendants().OfType<SegmentedDisplay>().Single();
+                            display.Text.Should().Be(vm.Frequency);
+                            vm.Frequency = "50.313.000";
+                            display.Text.Should().Be("50.313.000", "the segmented display must follow dial changes");
+                        }
                         var dials = face.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("instrument-dial")).ToArray();
                         dials.Should().NotBeEmpty();
                         foreach (var dial in dials)

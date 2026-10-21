@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Ft8Client.App.ViewModels"
         xmlns:services="using:Ft8Client.App.Services"
+        xmlns:v="using:Ft8Client.App.Views"
         x:Class="Ft8Client.App.Views.SettingsWindow"
         Icon="/Assets/costas.ico"
         x:DataType="vm:SettingsViewModel"
@@ -562,7 +563,10 @@
                       <TextBlock Text="Light" Foreground="{Binding Skin.Light.SecondaryBrush}" FontSize="12" />
                       <Border Background="{Binding Skin.Light.CardBrush}" Padding="8" CornerRadius="{Binding Skin.PreviewCornerRadius}">
                         <StackPanel Spacing="6">
-                          <TextBlock Text="{Binding Skin.PreviewTitle}" FontFamily="{Binding Skin.PreviewFont}" Foreground="{Binding Skin.Light.TextBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding Skin.PreviewTitle}" FontFamily="{Binding Skin.PreviewFont}" Foreground="{Binding Skin.Light.TextBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" IsVisible="{Binding Skin.HasPlainPreview}" />
+                          <Border Background="#111A0B" Padding="4" IsVisible="{Binding Skin.HasSegmentedDisplay}">
+                            <v:SegmentedDisplay Text="14.074.000" DigitHeight="22" AutomationProperties.Name="Example frequency 14.074 MHz" />
+                          </Border>
                           <Border Background="{Binding Skin.Light.SelectionBrush}" Height="12" CornerRadius="2" />
                           <Border Background="{Binding Skin.Light.AccentBrush}" Height="6" Width="40" HorizontalAlignment="Left" CornerRadius="2" />
                         </StackPanel>
@@ -574,7 +578,10 @@
                       <TextBlock Text="Dark" Foreground="{Binding Skin.Dark.SecondaryBrush}" FontSize="12" />
                       <Border Background="{Binding Skin.Dark.CardBrush}" Padding="8" CornerRadius="{Binding Skin.PreviewCornerRadius}">
                         <StackPanel Spacing="6">
-                          <TextBlock Text="{Binding Skin.PreviewTitle}" FontFamily="{Binding Skin.PreviewFont}" Foreground="{Binding Skin.Dark.TextBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding Skin.PreviewTitle}" FontFamily="{Binding Skin.PreviewFont}" Foreground="{Binding Skin.Dark.TextBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" IsVisible="{Binding Skin.HasPlainPreview}" />
+                          <Border Background="#111A0B" Padding="4" IsVisible="{Binding Skin.HasSegmentedDisplay}">
+                            <v:SegmentedDisplay Text="14.074.000" DigitHeight="22" AutomationProperties.Name="Example frequency 14.074 MHz" />
+                          </Border>
                           <Border Background="{Binding Skin.Dark.SelectionBrush}" Height="12" CornerRadius="2" />
                           <Border Background="{Binding Skin.Dark.AccentBrush}" Height="6" Width="40" HorizontalAlignment="Left" CornerRadius="2" />
                         </StackPanel>

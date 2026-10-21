@@ -14,7 +14,9 @@ namespace Ft8Client.App.Services;
 /// <summary>A named desktop skin. Classic leaves Fluent's system accent in place.</summary>
 public sealed record AppSkin(string Id, string Name, string Description, SkinPalette Light, SkinPalette Dark, string? StyleResource = null)
 {
-    public CornerRadius PreviewCornerRadius => Id switch { "radio" => new(3), "vintage" => new(14), "sdr" => new(0), _ => new(4) };
+    public CornerRadius PreviewCornerRadius => Id switch { "radio" => new(3), "retro" => new(2), "vintage" => new(14), "sdr" => new(0), _ => new(4) };
+    public bool HasSegmentedDisplay => Id == "retro";
+    public bool HasPlainPreview => !HasSegmentedDisplay;
     public FontFamily PreviewFont => Id == "vintage" ? new("Georgia, Liberation Serif, DejaVu Serif") :
         StyleResource is not null ? new("Cascadia Mono, Consolas, DejaVu Sans Mono, monospace") : new("Segoe UI, DejaVu Sans");
     public string PreviewTitle => StyleResource is null ? "Next in line" : Id == "vintage" ? "Receiver dial" : "DIAL FREQUENCY";
@@ -37,6 +39,10 @@ public sealed record AppSkin(string Id, string Name, string Description, SkinPal
             new("#D4DCE2", "#EEF2F5", "#8A9AA8", "#718594", "#152B3A", "#445E70", "#126380", "#105774", "#C4E1EC", "#C2CED7"),
             new("#151C22", "#222E37", "#52616D", "#6B7D89", "#EBF5FB", "#B2C6D3", "#126780", "#70DAF6", "#1B485B", "#35454F"),
             "RadioFace.axaml"),
+        new("retro", "Classic Transceiver", "An old-school gray and black transceiver with lime green seven-segment LCD digits, a recessed display, tactile keys and a black tuning dial.",
+            new("#CDCFCE", "#E2E4E2", "#838783", "#696F69", "#1B201B", "#505950", "#42631B", "#33520D", "#D3DEC2", "#B9BEBB"),
+            new("#181A19", "#2B2E2C", "#656D67", "#858F87", "#EDF2EC", "#B7C0B9", "#446A18", "#B5E75A", "#3B482D", "#404841"),
+            "ClassicTransceiver.axaml"),
         new("vintage", "Vintage Receiver", "A classic receiver: a warm illuminated dial, a sweeping slot needle, rounded knobs, brass trim and serif panel labels.",
             new("#E2D5B8", "#F7EED8", "#AA8956", "#907044", "#3E3020", "#69553B", "#79501E", "#6C4416", "#EAD5A9", "#DBCBA8"),
             new("#2B251D", "#3B3327", "#8E744D", "#AD8E5B", "#F7ECD2", "#D1BD94", "#825A28", "#F2CB7E", "#5A4629", "#594B37"),
