@@ -6,11 +6,19 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using Avalonia;
+using Avalonia.Media;
+
 namespace Ft8Client.App.Services;
 
 /// <summary>A named desktop skin. Classic leaves Fluent's system accent in place.</summary>
-public sealed record AppSkin(string Id, string Name, string Description, SkinPalette Light, SkinPalette Dark)
+public sealed record AppSkin(string Id, string Name, string Description, SkinPalette Light, SkinPalette Dark, string? StyleResource = null)
 {
+    public CornerRadius PreviewCornerRadius => Id switch { "radio" => new(3), "vintage" => new(14), "sdr" => new(0), _ => new(4) };
+    public FontFamily PreviewFont => Id == "vintage" ? new("Georgia, Liberation Serif, DejaVu Serif") :
+        StyleResource is not null ? new("Cascadia Mono, Consolas, DejaVu Sans Mono, monospace") : new("Segoe UI, DejaVu Sans");
+    public string PreviewTitle => StyleResource is null ? "Next in line" : Id == "vintage" ? "Receiver dial" : "DIAL FREQUENCY";
+
     public static IReadOnlyList<AppSkin> All { get; } =
     [
         new("classic", "Classic", "The original neutral surfaces and your system accent. Preview shows the default blue accent.",
@@ -25,6 +33,18 @@ public sealed record AppSkin(string Id, string Name, string Description, SkinPal
         new("amber", "Amber", "Warm sand surfaces with a copper accent.",
             new("#F5EFE5", "#FFFBF4", "#E1D4BF", "#C6B293", "#35291B", "#71604B", "#875219", "#794813", "#F1E1C6", "#ECE2D3"),
             new("#261E16", "#352A1E", "#51412F", "#756044", "#FAF0DF", "#CDBB9E", "#955E22", "#F1C17F", "#523B22", "#463727")),
+        new("radio", "Modern Radio", "A transceiver faceplate: recessed digital display, machined panels, illuminated keys and a dial button. Includes a live slot meter.",
+            new("#D4DCE2", "#EEF2F5", "#8A9AA8", "#718594", "#152B3A", "#445E70", "#126380", "#105774", "#C4E1EC", "#C2CED7"),
+            new("#151C22", "#222E37", "#52616D", "#6B7D89", "#EBF5FB", "#B2C6D3", "#126780", "#70DAF6", "#1B485B", "#35454F"),
+            "RadioFace.axaml"),
+        new("vintage", "Vintage Receiver", "A classic receiver: a warm illuminated dial, a sweeping slot needle, rounded knobs, brass trim and serif panel labels.",
+            new("#E2D5B8", "#F7EED8", "#AA8956", "#907044", "#3E3020", "#69553B", "#79501E", "#6C4416", "#EAD5A9", "#DBCBA8"),
+            new("#2B251D", "#3B3327", "#8E744D", "#AD8E5B", "#F7ECD2", "#D1BD94", "#825A28", "#F2CB7E", "#5A4629", "#594B37"),
+            "VintageReceiver.axaml"),
+        new("sdr", "SDR Console", "A signal workstation: square modules, monospace readouts, a segmented slot strip and a precise instrument grid.",
+            new("#E4EDF1", "#F7FBFC", "#A3BBC8", "#7895A7", "#142D3C", "#486777", "#006D82", "#005E72", "#C6E8EF", "#D1E0E7"),
+            new("#0B141D", "#122331", "#36546A", "#58788F", "#E3F3FF", "#A1BED3", "#12657D", "#67DEEE", "#153D51", "#233C4F"),
+            "SdrConsole.axaml"),
     ];
 
     /// <summary>Old settings and unrecognized IDs retain the original appearance.</summary>

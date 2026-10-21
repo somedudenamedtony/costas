@@ -10,6 +10,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Media;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Avalonia.Styling;
 using Ft8Client.App.Services;
 using Ft8Client.App.ViewModels;
@@ -40,6 +42,8 @@ public class AppearanceTests
         var chipBrush = (IBrush?)Converters.ShadeBackground.Convert(2, typeof(IBrush), null, CultureInfo.InvariantCulture);
         var main = new Window();
         var dialog = new Window();
+        var card = new Border { Classes = { "card" } };
+        main.Content = card;
         main.Show();
         dialog.Show();
         try
@@ -52,6 +56,8 @@ public class AppearanceTests
                     var critical = Resource(app, "CriticalBrush", variant);
                     var onAir = Resource(app, "OnAirBrush", variant);
                     appearance.Apply(new AppearanceOptions { Skin = skin.Id, Theme = mode });
+                    main.UpdateLayout();
+                    dialog.UpdateLayout();
                     ColorOf(main.Background).Should().Be(Color.Parse(palette.Window));
                     ColorOf(dialog.Background).Should().Be(Color.Parse(palette.Window));
                     ColorOf(main.Foreground).Should().Be(Color.Parse(palette.Text));
@@ -60,6 +66,7 @@ public class AppearanceTests
                     ColorOf(labelBrush).Should().Be(Color.Parse(palette.AccentText));
                     ColorOf(chipBrush).Should().Be(Color.Parse(palette.Accent));
                     chipBrush!.Opacity.Should().Be(0.65);
+                    card.CornerRadius.Should().Be(new CornerRadius(skin.Id switch { "radio" => 3, "vintage" => 14, "sdr" => 0, _ => 8 }));
                     Resource(app, "CriticalBrush", variant).Should().BeSameAs(critical);
                     Resource(app, "OnAirBrush", variant).Should().BeSameAs(onAir);
                 }
@@ -67,7 +74,9 @@ public class AppearanceTests
 
             // An unknown value behaves like Classic, including restoring Fluent's original system accent.
             appearance.Apply(new AppearanceOptions { Skin = "future-skin", Theme = "light" });
+            main.UpdateLayout();
             main.Background.Should().BeSameAs(originalBackground);
+            card.CornerRadius.Should().Be(new CornerRadius(8));
             Resource(app, "SystemAccentColor", ThemeVariant.Light).Should().Be(originalAccent);
             appearance.Apply(new AppearanceOptions { Theme = "system", Skin = "forest" });
             app.RequestedThemeVariant.Should().Be(ThemeVariant.Default);
@@ -77,6 +86,75 @@ public class AppearanceTests
             main.Close();
             dialog.Close();
             appearance.Apply(new AppearanceOptions());
+        }
+    }
+
+    [Fact]
+    public async Task Apply_InstrumentSkins_BindLiveMetersAndReuseTheDialEditor()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "costas-faceplates-" + Guid.NewGuid());
+        Directory.CreateDirectory(dir);
+        var settings = new AppSettings { SetupComplete = true };
+        settings.Updates.CheckEnabled = false;
+        settings.PskReporter.FeedEnabled = false;
+        settings.Usage.Enabled = false;
+        new SettingsStore(Path.Combine(dir, "settings.json")).Save(settings);
+        try
+        {
+            await using var host = await AppHost.StartAsync(new CommandLine { Home = dir, SimulateFolder = Path.Combine(TestPaths.Samples, "ft8") });
+            var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(AppearanceTests).Assembly);
+            await session.Dispatch(() =>
+            {
+                var appearance = new AppearanceService(Application.Current!);
+                var vm = new MainViewModel(host);
+                var window = new MainWindow { DataContext = vm };
+                window.Show();
+                try
+                {
+                    var originalDial = window.FindControl<Button>("DialFrequencyButton")!;
+                    var face = window.FindControl<ContentControl>("InstrumentFace")!;
+                    foreach (var skin in AppSkin.All.Where(s => s.StyleResource is not null))
+                    {
+                        appearance.Apply(new AppearanceOptions { Skin = skin.Id, Theme = "dark" });
+                        window.Width = 1100;
+                        window.Height = 720;
+                        vm.SlotProgress = 0.42;
+                        window.UpdateLayout();
+                        face.IsVisible.Should().BeTrue();
+                        originalDial.IsVisible.Should().BeFalse();
+                        window.GetVisualDescendants().OfType<ScrollViewer>().Single(s => s.Name == "LeftScroll").Bounds.Height
+                            .Should().BeGreaterThan(200, "the map below must leave room for contact controls");
+                        var meter = face.GetVisualDescendants().OfType<SlotMeter>().Single();
+                        meter.Value.Should().Be(0.42);
+                        meter.Analog.Should().Be(skin.Id == "vintage");
+                        var dials = face.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("instrument-dial")).ToArray();
+                        dials.Should().NotBeEmpty();
+                        foreach (var dial in dials)
+                        {
+                            var at = dial.TranslatePoint(new Point(), face)!.Value;
+                            (at.X + dial.Bounds.Width).Should().BeLessThanOrEqualTo(face.Bounds.Width + 1, "the dial must fit at minimum window width");
+                        }
+                        dials[0].RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        originalDial.Flyout!.IsOpen.Should().BeTrue();
+                        originalDial.Flyout.Hide();
+                        vm.CanChangeBand = false;
+                        dials.Should().OnlyContain(b => !b.IsEnabled, "frequency editing is locked out while transmitting");
+                        vm.CanChangeBand = true;
+                    }
+                    appearance.Apply(new AppearanceOptions { Skin = "classic" });
+                    face.IsVisible.Should().BeFalse();
+                    originalDial.IsVisible.Should().BeTrue();
+                }
+                finally
+                {
+                    window.Close();
+                    appearance.Apply(new AppearanceOptions());
+                }
+            }, CancellationToken.None);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
         }
     }
 

@@ -560,9 +560,9 @@
                   <Border Background="{Binding Skin.Light.WindowBrush}" Padding="10" CornerRadius="6" BorderThickness="1" BorderBrush="{Binding Skin.Light.SecondaryBrush}">
                     <StackPanel Spacing="8">
                       <TextBlock Text="Light" Foreground="{Binding Skin.Light.SecondaryBrush}" FontSize="12" />
-                      <Border Background="{Binding Skin.Light.CardBrush}" Padding="8" CornerRadius="4">
+                      <Border Background="{Binding Skin.Light.CardBrush}" Padding="8" CornerRadius="{Binding Skin.PreviewCornerRadius}">
                         <StackPanel Spacing="6">
-                          <TextBlock Text="Next in line" Foreground="{Binding Skin.Light.TextBrush}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding Skin.PreviewTitle}" FontFamily="{Binding Skin.PreviewFont}" Foreground="{Binding Skin.Light.TextBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                           <Border Background="{Binding Skin.Light.SelectionBrush}" Height="12" CornerRadius="2" />
                           <Border Background="{Binding Skin.Light.AccentBrush}" Height="6" Width="40" HorizontalAlignment="Left" CornerRadius="2" />
                         </StackPanel>
@@ -572,9 +572,9 @@
                   <Border Grid.Column="1" Background="{Binding Skin.Dark.WindowBrush}" Padding="10" CornerRadius="6" BorderThickness="1" BorderBrush="{Binding Skin.Dark.SecondaryBrush}">
                     <StackPanel Spacing="8">
                       <TextBlock Text="Dark" Foreground="{Binding Skin.Dark.SecondaryBrush}" FontSize="12" />
-                      <Border Background="{Binding Skin.Dark.CardBrush}" Padding="8" CornerRadius="4">
+                      <Border Background="{Binding Skin.Dark.CardBrush}" Padding="8" CornerRadius="{Binding Skin.PreviewCornerRadius}">
                         <StackPanel Spacing="6">
-                          <TextBlock Text="Next in line" Foreground="{Binding Skin.Dark.TextBrush}" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding Skin.PreviewTitle}" FontFamily="{Binding Skin.PreviewFont}" Foreground="{Binding Skin.Dark.TextBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                           <Border Background="{Binding Skin.Dark.SelectionBrush}" Height="12" CornerRadius="2" />
                           <Border Background="{Binding Skin.Dark.AccentBrush}" Height="6" Width="40" HorizontalAlignment="Left" CornerRadius="2" />
                         </StackPanel>

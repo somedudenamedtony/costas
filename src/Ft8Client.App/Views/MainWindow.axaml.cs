@@ -44,6 +44,14 @@ public partial class MainWindow : Window
         };
         WaterfallGrip.KeyDown += OnGripKey;
         PopOutButton.Click += (_, _) => PopOutWaterfall();
+        AddHandler(Button.ClickEvent, (_, e) =>
+        {
+            if (e.Source is Button button && button.Classes.Contains("instrument-dial"))
+            {
+                DialFrequencyButton.Flyout?.ShowAt(button);
+                e.Handled = true;
+            }
+        });
         SizeChanged += (_, _) => SetWaterfallHeight(WaterfallHeight, save: false);
         AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
         AddHandler(PointerPressedEvent, (_, _) => Vm?.Activity(), RoutingStrategies.Tunnel);

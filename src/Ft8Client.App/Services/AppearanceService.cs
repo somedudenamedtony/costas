@@ -9,6 +9,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 using Ft8Client.Data.Settings;
@@ -23,6 +24,7 @@ internal sealed class AppearanceService
     private readonly ResourceDictionary _light;
     private readonly ResourceDictionary _dark;
     private string? _skin;
+    private IStyle? _skinStyle;
 
     public AppearanceService(Application app)
     {
@@ -39,6 +41,13 @@ internal sealed class AppearanceService
         {
             ApplyPalette(ThemeVariant.Light, _light, skin.Id == "classic" ? null : skin.Light);
             ApplyPalette(ThemeVariant.Dark, _dark, skin.Id == "classic" ? null : skin.Dark);
+            if (_skinStyle is not null) _app.Styles.Remove(_skinStyle);
+            _skinStyle = skin.StyleResource is { } resource
+                ? new StyleInclude(new Uri("avares://Costas/Styles/")) { Source = new Uri($"avares://Costas/Styles/{resource}") }
+                : null;
+            if (_skinStyle is not null) _app.Styles.Add(_skinStyle);
+            _app.Resources["InstrumentSkin"] = skin.StyleResource is not null;
+            _app.Resources["StandardSkin"] = skin.StyleResource is null;
             _skin = skin.Id;
         }
         var theme = options.Theme switch
@@ -73,6 +82,8 @@ internal sealed class AppearanceService
         resources["AccentTextBrush"] = Brush.Parse(palette.AccentText);
         resources["SelectedRowBrush"] = Brush.Parse(palette.Selection);
         resources["RowDividerBrush"] = Brush.Parse(palette.Divider);
+        resources["SkinCardColor"] = Color.Parse(palette.Card);
+        resources["SkinWindowColor"] = Color.Parse(palette.Window);
         _app.Resources.ThemeDictionaries[variant] = resources;
 
         // Use Fluent's palette API so stock buttons, checks, menus and selection states share the skin's accent.
