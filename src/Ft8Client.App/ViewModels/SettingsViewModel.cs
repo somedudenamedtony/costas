@@ -115,6 +115,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         SaveWav = s.Files.SaveWav;
         Retention = s.Files.RetentionDays.ToString(CultureInfo.InvariantCulture);
         Theme = s.Appearance.Theme;
+        Skin = AppSkin.Find(s.Appearance.Skin);
         Units = s.Appearance.Units;
         Jt9Path = s.Paths.Jt9 ?? string.Empty;
         HamlibDir = s.Paths.HamlibDir ?? string.Empty;
@@ -902,6 +903,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string Theme { get; set; }
 
+    /// <summary>Desktop skin choices, each with light and dark palettes.</summary>
+    public IReadOnlyList<AppSkin> Skins => AppSkin.All;
+
+    /// <summary>The skin to apply when settings are saved.</summary>
+    [ObservableProperty]
+    public partial AppSkin Skin { get; set; }
+
     /// <summary>Unit choices.</summary>
     public IReadOnlyList<string> UnitChoices { get; } = ["miles", "km"];
 
@@ -1020,6 +1028,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Files.SaveWav = SaveWav;
             s.Files.RetentionDays = Int(Retention, 1, 3650, 30);
             s.Appearance.Theme = Theme;
+            s.Appearance.Skin = Skin.Id;
             s.Appearance.Units = Units;
             s.Paths.Jt9 = string.IsNullOrWhiteSpace(Jt9Path) ? null : Jt9Path.Trim();
             s.Paths.HamlibDir = string.IsNullOrWhiteSpace(HamlibDir) ? null : HamlibDir.Trim();

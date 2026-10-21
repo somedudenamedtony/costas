@@ -236,7 +236,7 @@ Plain text, one line per event, monthly files. Compatible in spirit with WSJT-X 
   "pskReporter": { "feedEnabled": true, "uploadSpots": false },
   "udp": { "enabled": true, "address": "127.0.0.1", "port": 2237 },
   "files": { "saveWav": "none", "retentionDays": 30 },
-  "appearance": { "theme": "system", "units": "miles" },
+  "appearance": { "theme": "system", "skin": "classic", "units": "miles" },
   "paths": { "jt9": null, "hamlibDir": null }
 }
 ```

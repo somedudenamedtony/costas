@@ -52,6 +52,7 @@ public partial class OperateView : UserControl
         Root.RowDefinitions = narrow ? new RowDefinitions("*,Auto") : new RowDefinitions("*");
         Grid.SetColumn(RightColumn, narrow ? 0 : 1);
         Grid.SetRow(RightColumn, narrow ? 1 : 0);
-        RightColumn.MaxHeight = narrow ? 320 : double.PositiveInfinity;
+        // Leave room to operate when a faceplate or status banner takes vertical space from a small window.
+        RightColumn.MaxHeight = narrow ? Math.Min(320, Math.Max(100, Bounds.Height / 3)) : double.PositiveInfinity;
     }
 }

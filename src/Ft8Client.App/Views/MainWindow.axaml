@@ -13,9 +13,13 @@
       <Style Selector="Border.frame"><Setter Property="BorderBrush" Value="Transparent" /></Style>
       <Style Selector="Border.frame.onair"><Setter Property="BorderBrush" Value="{DynamicResource OnAirBrush}" /></Style>
     </Border.Styles>
-  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+    <!-- Instrument faceplates use live state and open the existing dial editor. -->
+    <ContentControl x:Name="InstrumentFace" Grid.Row="0" Content="{Binding}" Margin="16,12,16,4"
+                    ContentTemplate="{DynamicResource InstrumentFaceTemplate}" IsVisible="{DynamicResource InstrumentSkin}"
+                    HorizontalContentAlignment="Stretch" />
     <!-- Top bar -->
-    <DockPanel Grid.Row="0" Margin="16,8,16,8" LastChildFill="False">
+    <DockPanel Grid.Row="1" Margin="16,8,16,8" LastChildFill="False">
       <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
         <TextBlock Text="Band" VerticalAlignment="Center" />
         <!-- The open list shows, per band, where stations near me are heard right now (PSK Reporter); the closed box shows only the band. -->
@@ -60,7 +64,8 @@
         <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" IsEnabled="{Binding CanChangeBand}" MinWidth="70"
                   AutomationProperties.Name="Mode" />
         <!-- Click the dial to type a frequency (DXpeditions often sit off the standard one) or to use one you saved. -->
-        <Button Classes="link" Margin="12,0,0,0" Padding="0" VerticalAlignment="Center" IsEnabled="{Binding CanChangeBand}"
+        <Button x:Name="DialFrequencyButton" Classes="link" Margin="12,0,0,0" Padding="0" VerticalAlignment="Center" IsEnabled="{Binding CanChangeBand}"
+                IsVisible="{DynamicResource StandardSkin}"
                 ToolTip.Tip="Type a frequency, or use one you saved" AutomationProperties.Name="Dial frequency">
           <TextBlock Text="{Binding Frequency}" FontSize="24" FontWeight="SemiBold" Classes="num" TextDecorations="{x:Null}" />
           <Button.Flyout>
@@ -95,7 +100,7 @@
             </Flyout>
           </Button.Flyout>
         </Button>
-        <TextBlock Text="MHz" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,6" />
+        <TextBlock Text="MHz" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,6" IsVisible="{DynamicResource StandardSkin}" />
       </StackPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}"
@@ -130,7 +135,7 @@
     <!-- Views -->
     <!-- Update bar -->
     <!-- Radio state: red while keyed, yellow when no radio is connected. -->
-    <Border Grid.Row="1" IsVisible="{Binding Transmitting}" Background="{DynamicResource OnAirBrush}" Padding="16,10"
+    <Border Grid.Row="2" IsVisible="{Binding Transmitting}" Background="{DynamicResource OnAirBrush}" Padding="16,10"
             AutomationProperties.Name="On air" AutomationProperties.LiveSetting="Assertive">
       <DockPanel>
         <Button DockPanel.Dock="Right" Content="Halt (Esc)" Command="{Binding HaltCommand}" Background="White" Foreground="#D11F1F"
@@ -139,7 +144,7 @@
                    TextTrimming="CharacterEllipsis" />
       </DockPanel>
     </Border>
-    <Border Grid.Row="1" IsVisible="{Binding NoRadio}" Background="{DynamicResource NoRadioBrush}" Padding="16,8"
+    <Border Grid.Row="2" IsVisible="{Binding NoRadio}" Background="{DynamicResource NoRadioBrush}" Padding="16,8"
             AutomationProperties.Name="No radio connected">
       <DockPanel>
         <Button DockPanel.Dock="Right" Content="Station setup" Command="{Binding OpenCommand}" CommandParameter="setup"
@@ -149,7 +154,7 @@
       </DockPanel>
     </Border>
 
-    <StackPanel Grid.Row="2">
+    <StackPanel Grid.Row="3">
     <!-- Hunt list alert: a wanted station was heard. It only tells; changing band is the operator's click and nothing is sent. -->
     <Border IsVisible="{Binding HuntVisible}" Margin="16,0,16,8" Padding="12,8" CornerRadius="6"
             Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource CautionBrush}" BorderThickness="1"
@@ -184,7 +189,7 @@
     </Border>
     </StackPanel>
 
-    <Panel Grid.Row="3">
+    <Panel Grid.Row="4">
       <v:OperateView DataContext="{Binding Operate}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}" />
       <v:RawDecodesView DataContext="{Binding Raw}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}" />
       <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
@@ -193,7 +198,7 @@
     </Panel>
 
     <!-- Bottom bar -->
-    <Border Grid.Row="4" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource CardBackgroundBrush}">
+    <Border Grid.Row="5" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Background="{DynamicResource CardBackgroundBrush}">
       <Grid x:Name="BottomGrid" RowDefinitions="Auto,Auto,52" Margin="16,6">
       <DockPanel Margin="0,0,0,4">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">

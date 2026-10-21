@@ -42,6 +42,8 @@
       </ResourceDictionary.ThemeDictionaries>
       <FontFamily x:Key="AppFont">Segoe UI Variable Text, Segoe UI, Inter, Open Sans, DejaVu Sans</FontFamily>
       <FontFamily x:Key="MessageFont">Cascadia Mono, Consolas, DejaVu Sans Mono, monospace</FontFamily>
+      <x:Boolean x:Key="InstrumentSkin">False</x:Boolean>
+      <x:Boolean x:Key="StandardSkin">True</x:Boolean>
     </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>

@@ -154,7 +154,16 @@ See [Operating from a phone](phone.md).
 
 ![Settings: Appearance](images/settings-appearance.png)
 
-- **Theme**: system (follows the Windows light or dark setting), light or dark.
+- **Skin**: Classic (the original appearance and system accent), Ocean (cool blues), Forest (soft greens), or
+  Amber (warm sand and copper). Four instrument skins also change the faceplate, typography, panel shapes and controls:
+  **Modern Radio** has a recessed digital display and a dial button; **Classic Transceiver** has a gray and black
+  faceplate, lime green seven-segment LCD digits and a black tuning dial; **Vintage Receiver** has warm dial lighting,
+  brass trim, rounded controls and a sweeping slot needle; **SDR Console** has square modules, monospace readouts
+  and a segmented slot strip. Their meters show progress through the current FT8 or FT4 slot. Click the large
+  frequency display or **DIAL** button to open the same frequency editor used by Classic.
+  Light and dark swatches preview your choice. Press **Save** to apply it to all desktop windows; it is remembered
+  the next time you start Costas. Transmit and warning colors stay the same.
+- **Theme**: system (follows your device's light or dark setting), light or dark. Each skin supports both.
 - **Distances in**: miles or kilometres.
 
 ## Updates

@@ -9,7 +9,6 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Styling;
 using Avalonia.Threading;
 using Serilog;
 using Ft8Client.App.Services;
@@ -21,11 +20,17 @@ namespace Ft8Client.App;
 /// <summary>The Avalonia application.</summary>
 public sealed class App : Application
 {
+    private AppearanceService? _appearance;
+
     /// <summary>The host, set by Program before start.</summary>
     public static AppHost? Host { get; set; }
 
     /// <inheritdoc />
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        _appearance = new AppearanceService(this);
+    }
 
     /// <inheritdoc />
     public override void OnFrameworkInitializationCompleted()
@@ -49,13 +54,7 @@ public sealed class App : Application
 
     private void ApplyTheme(AppHost host)
     {
-        var theme = host.Settings.Current.Appearance.Theme switch
-        {
-            "light" => ThemeVariant.Light,
-            "dark" => ThemeVariant.Dark,
-            _ => ThemeVariant.Default,
-        };
-        if (RequestedThemeVariant != theme) RequestedThemeVariant = theme;
+        _appearance?.Apply(host.Settings.Current.Appearance);
     }
 
     // An error nothing caught (a command failing on a driver or system error) used to close the app without a word.
