@@ -151,10 +151,20 @@ public class AppearanceTests
                         vm.CanChangeBand = false;
                         dials.Should().OnlyContain(b => !b.IsEnabled, "frequency editing is locked out while transmitting");
                         vm.CanChangeBand = true;
+                        SlotReadouts(window).Should().BeEmpty("the faceplate meter is the only slot countdown on Operate");
+                        vm.Tab = 3;
+                        window.UpdateLayout();
+                        SlotReadouts(window).Should().BeEmpty("the faceplate meter is the only slot countdown on other tabs");
+                        vm.Tab = 0;
                     }
                     appearance.Apply(new AppearanceOptions { Skin = "classic" });
+                    window.UpdateLayout();
                     face.IsVisible.Should().BeFalse();
                     originalDial.IsVisible.Should().BeTrue();
+                    SlotReadouts(window).Should().Equal("CardSlot");
+                    vm.Tab = 3;
+                    window.UpdateLayout();
+                    SlotReadouts(window).Should().Equal("BarSlot");
                 }
                 finally
                 {
@@ -203,6 +213,9 @@ public class AppearanceTests
             Directory.Delete(dir, true);
         }
     }
+
+    private static IEnumerable<string?> SlotReadouts(Window window) => window.GetVisualDescendants().OfType<StackPanel>()
+        .Where(p => p.Name is "CardSlot" or "BarSlot" && p.IsEffectivelyVisible).Select(p => p.Name);
 
     private static object? Resource(Application app, string key, ThemeVariant variant)
     {
