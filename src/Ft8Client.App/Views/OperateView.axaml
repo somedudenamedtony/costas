@@ -56,7 +56,7 @@
                         <TextBlock Text="dB" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5" />
                       </StackPanel>
                     </StackPanel>
-                    <StackPanel Grid.Column="2" MinWidth="150" AutomationProperties.LiveSetting="Polite">
+                    <StackPanel x:Name="CardSlot" Grid.Column="2" MinWidth="150" AutomationProperties.LiveSetting="Polite" IsVisible="{DynamicResource StandardSkin}">
                       <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLabel}" Classes="secondary" />
                       <StackPanel Orientation="Horizontal" Spacing="4">
                         <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLeft}" FontSize="24" FontWeight="SemiBold" Classes="num"

@@ -187,7 +187,7 @@ From top to bottom:
 | **Call CQ** | Starts calling CQ in the next slot. Becomes **Stop CQ** while running. ++ctrl+q++ |
 | **Tune** | Starts your radio's own antenna tuner, as its TUNE button would. If the radio has no tuner Costas can start (or its tuner is switched off), Costas sends a steady tone at your transmit offset for up to 10 seconds instead, for an external tuner. Becomes **Stop tune** for up to 10 seconds; click it to stop. Available only when nothing else is being sent; calling a station or CQ stops the tone |
 | **Halt Tx** | Always available. Drops PTT at once and stops sequencing. ++esc++ does the same |
-| Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar |
+| Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar. Shown away from Operate, where the contact card has it. Hidden with an instrument skin, whose faceplate shows it |
 | Meter warning | Appears only when the last transmission's SWR or ALC was high, for example *SWR 3.4 · ALC 70%* |
 | Indicators | **Radio**, **Audio**, **QRZ**, **eQSL**, **PSK Reporter**, **POTA**: a dot and a word each. Click to open Diagnostics |
 
