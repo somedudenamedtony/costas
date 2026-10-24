@@ -229,14 +229,17 @@
                   ToolTip.Tip="Starts the radio's own antenna tuner. A radio without one gets a steady tone at your transmit offset for up to 10 seconds instead. Click again to stop." />
           <Button Content="Halt Tx" Command="{Binding HaltCommand}" MinWidth="70" AutomationProperties.Name="Halt transmit"
                   Classes.critical="{Binding Transmitting}" />
-          <StackPanel Width="200" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding BarShowsCqAndSlot}">
-            <DockPanel>
-              <TextBlock DockPanel.Dock="Right" Text="{Binding SlotRemaining}" Classes="secondary num" />
-              <TextBlock Text="{Binding SlotLabel}" Classes="secondary" />
-            </DockPanel>
-            <ProgressBar Value="{Binding SlotProgress}" Maximum="1" Height="4" MinHeight="4" Margin="0,4,0,0"
-                         Foreground="{Binding Transmitting, Converter={x:Static v:Converters.ProgressBrush}}" />
-          </StackPanel>
+          <!-- Instrument skins show the slot on the faceplate, so they hide this copy and the contact card's. -->
+          <Panel IsVisible="{DynamicResource StandardSkin}">
+            <StackPanel x:Name="BarSlot" Width="200" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding BarShowsCqAndSlot}">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding SlotRemaining}" Classes="secondary num" />
+                <TextBlock Text="{Binding SlotLabel}" Classes="secondary" />
+              </DockPanel>
+              <ProgressBar Value="{Binding SlotProgress}" Maximum="1" Height="4" MinHeight="4" Margin="0,4,0,0"
+                           Foreground="{Binding Transmitting, Converter={x:Static v:Converters.ProgressBrush}}" />
+            </StackPanel>
+          </Panel>
           <ItemsControl ItemsSource="{Binding Indicators}" VerticalAlignment="Center">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
