@@ -16,10 +16,4 @@ public sealed class RemoteOptions
 
     /// <summary>TCP port for the remote page.</summary>
     public int Port { get; set; } = 8073;
-
-    /// <summary>Let the phone change the radio's power setting. Off until the operator turns it on.</summary>
-    public bool RigControl { get; set; }
-
-    /// <summary>The most power, in watts, the phone may set, below the radio's own maximum.</summary>
-    public int MaxPowerWatts { get; set; } = 100;
 }

@@ -9,10 +9,10 @@
 
 using Ft8Client.App.Engine;
 using Ft8Client.App.Remote;
+using Ft8Client.App.Services;
 using Ft8Client.Core;
 using Ft8Client.Core.Remote;
 using Ft8Client.Core.Time;
-using Ft8Client.Data.Settings;
 using Ft8Client.Rig;
 
 namespace Ft8Client.App.Tests;
@@ -21,112 +21,117 @@ public class RemotePowerTests
 {
     private readonly ManualClock _clock = new(new DateTime(2026, 10, 25, 22, 30, 0, DateTimeKind.Utc));
     private readonly FakeRemoteTarget _target = new() { Snapshot = new SessionSnapshot { Band = "20m", Mode = Mode.Ft8 } };
-    private readonly FakeRemoteRig _rig = new();
-    private readonly RemoteOptions _options = new() { Enabled = true, RigControl = true };
+    private readonly SimulatedRig _rig;
+    private bool _transmitting;
 
-    private RemoteControl Make(bool rig = true) =>
-        new(_target, _clock, new DeviceTokens(), _ => { }, new PairingGate(() => 314159), new FakeRemoteTuning(), rig ? _rig : null, () => _options);
+    public RemotePowerTests() => _rig = new SimulatedRig(_clock) { PowerWatts = 50 };
+
+    private async Task<RadioPowerService> PowerAsync()
+    {
+        var p = new RadioPowerService(() => _rig, () => _transmitting);
+        await p.RefreshAsync();
+        return p;
+    }
+
+    private RemoteControl Make(RadioPowerService? power) =>
+        new(_target, _clock, new DeviceTokens(), _ => { }, new FakeRemoteTuning(), power);
+
+    [Fact]
+    public async Task RefreshAsync_RadioReports_PowerAndMaximum()
+    {
+        var p = await PowerAsync();
+        p.Power.Should().Be(new RigPower(50, 100));
+    }
+
+    [Fact]
+    public async Task RefreshAsync_WhileTransmitting_DoesNotTalkToTheRadio()
+    {
+        _transmitting = true;
+        var p = await PowerAsync();
+        p.Power.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SetAsync_InRange_SetsTheRadioWithoutKeying()
+    {
+        var p = await PowerAsync();
+        var changed = 0;
+        p.Changed += () => changed++;
+
+        (await p.SetAsync(30)).Should().BeNull();
+
+        _rig.PowerWatts.Should().Be(30);
+        p.Power!.Watts.Should().Be(30);
+        changed.Should().Be(1);
+        _rig.Ptt.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SetAsync_WhileTransmitting_Refused()
+    {
+        var p = await PowerAsync();
+        _transmitting = true;
+
+        (await p.SetAsync(30)).Should().Be("Wait until this transmission ends to change power.");
+        _rig.PowerWatts.Should().Be(50);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(150)]
+    public async Task SetAsync_OutsideRadioRange_RefusedNotRounded(int watts)
+    {
+        var p = await PowerAsync();
+        (await p.SetAsync(watts)).Should().Be("Power must be between 1 and 100 W.");
+        _rig.PowerWatts.Should().Be(50);
+    }
+
+    [Fact]
+    public async Task SetAsync_RadioRaisesToItsMinimum_SaysWhatItSet()
+    {
+        var p = await PowerAsync();
+        (await p.SetAsync(2)).Should().Be("The radio set 5 W.");
+    }
+
+    [Fact]
+    public async Task SetAsync_RadioDoesNotReport_Refused()
+    {
+        _rig.PowerWatts = null;
+        var p = await PowerAsync();
+        (await p.SetAsync(30)).Should().Be("The radio does not report its power, so Costas cannot change it.");
+    }
 
     [Fact]
     public async Task HandleAsync_Power_SetsTheRadioAndTakesControl()
     {
-        var rc = Make();
+        var rc = Make(await PowerAsync());
         var note = await rc.HandleAsync("phone", new RemoteCommand("power", Watts: 30));
 
         note.Should().BeNull();
-        _rig.Sets.Should().Equal(30);
+        _rig.PowerWatts.Should().Be(30);
         rc.Lease.Holder.Should().Be("phone");
-        _target.WantsTransmit.Should().BeFalse();
         _target.Calls.Should().BeEmpty("changing the power starts nothing on the air");
     }
 
     [Fact]
-    public async Task HandleAsync_PowerWhenSettingOff_RefusesAndSaysWhere()
+    public async Task HandleAsync_PowerRefused_PhoneSeesWhy()
     {
-        _options.RigControl = false;
-        var note = await Make().HandleAsync("phone", new RemoteCommand("power", Watts: 30));
-
-        note.Should().Be("Changing the radio's power from the phone is off. Turn it on at the station in Settings, Mobile connection.");
-        _rig.Sets.Should().BeEmpty();
+        var rc = Make(await PowerAsync());
+        _transmitting = true;
+        (await rc.HandleAsync("phone", new RemoteCommand("power", Watts: 30))).Should().Be("Wait until this transmission ends to change power.");
     }
 
     [Fact]
-    public async Task HandleAsync_PowerWhileTransmitting_RefusesLikeBand()
+    public async Task HandleAsync_PowerWithoutService_SaysSo()
     {
-        _target.Snapshot = _target.Snapshot with { Transmitting = true };
-        var note = await Make().HandleAsync("phone", new RemoteCommand("power", Watts: 30));
-
-        note.Should().Be("Wait until this transmission ends to change power.");
-        _rig.Sets.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task HandleAsync_PowerAboveLimit_RefusesWithoutClamping()
-    {
-        _options.MaxPowerWatts = 40;
-        var note = await Make().HandleAsync("phone", new RemoteCommand("power", Watts: 50));
-
-        note.Should().Be("Power must be between 1 and 40 W (the limit set at the station).");
-        _rig.Sets.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task HandleAsync_PowerAboveRadioMaximum_Refuses()
-    {
-        var note = await Make().HandleAsync("phone", new RemoteCommand("power", Watts: 150));
-
-        note.Should().Be("Power must be between 1 and 100 W.");
-        _rig.Sets.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task HandleAsync_PowerBelowZero_Refuses()
-    {
-        var note = await Make().HandleAsync("phone", new RemoteCommand("power", Watts: 0));
-
-        note.Should().Be("Power must be between 1 and 100 W.");
-        _rig.Sets.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task HandleAsync_PowerRadioRaisesToItsMinimum_SaysWhatItSet()
-    {
-        var note = await Make().HandleAsync("phone", new RemoteCommand("power", Watts: 2));
-
-        note.Should().Be("The radio set 5 W.");
-    }
-
-    [Fact]
-    public async Task HandleAsync_PowerRadioRefuses_SaysSo()
-    {
-        _rig.Refuse = true;
-        var note = await Make().HandleAsync("phone", new RemoteCommand("power", Watts: 30));
-
-        note.Should().Be("The radio did not take the power change.");
-    }
-
-    [Fact]
-    public async Task HandleAsync_PowerRadioDoesNotReport_SaysSo()
-    {
-        _rig.Power = null;
-        var note = await Make().HandleAsync("phone", new RemoteCommand("power", Watts: 30));
-
-        note.Should().Be("The radio does not report its power, so it cannot be changed from the phone.");
-        _rig.Sets.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task HandleAsync_PowerWithoutRig_SaysSo()
-    {
-        var note = await Make(rig: false).HandleAsync("phone", new RemoteCommand("power", Watts: 30));
-
+        var note = await Make(null).HandleAsync("phone", new RemoteCommand("power", Watts: 30));
         note.Should().Be("The station cannot change that from the phone.");
     }
 
     [Fact]
     public async Task HandleAsync_PowerWithoutWatts_NotUnderstoodAndNoControl()
     {
-        var rc = Make();
+        var rc = Make(await PowerAsync());
         var note = await rc.HandleAsync("phone", new RemoteCommand("power"));
 
         note.Should().Be("The station did not understand that.");
@@ -134,36 +139,18 @@ public class RemotePowerTests
     }
 
     [Fact]
-    public void PowerFor_Allowed_LowerOfRadioAndSettingLimit()
+    public async Task PowerFor_RadioReports_WattsMaximumAndWhetherItCanChange()
     {
-        _options.MaxPowerWatts = 40;
-        Make().PowerFor(_target.Snapshot).Should().Be(new RemotePower(50, 40, true));
+        var rc = Make(await PowerAsync());
+        rc.PowerFor().Should().Be(new RemotePower(50, 100, true));
+        _transmitting = true;
+        rc.PowerFor()!.CanChange.Should().BeFalse();
     }
 
     [Fact]
-    public void PowerFor_Transmitting_CannotChange()
+    public async Task PowerFor_RadioDoesNotReport_Hidden()
     {
-        Make().PowerFor(_target.Snapshot with { Transmitting = true })!.CanChange.Should().BeFalse();
-    }
-
-    [Fact]
-    public void PowerFor_SettingOff_Hidden()
-    {
-        _options.RigControl = false;
-        Make().PowerFor(_target.Snapshot).Should().BeNull();
-    }
-
-    [Fact]
-    public void PowerFor_NotRead_Hidden()
-    {
-        _rig.Power = null;
-        Make().PowerFor(_target.Snapshot).Should().BeNull();
-    }
-
-    [Fact]
-    public void RemoteOptions_Default_PhoneCannotChangePower()
-    {
-        new RemoteOptions().RigControl.Should().BeFalse();
-        new RemoteOptions().MaxPowerWatts.Should().Be(100);
+        _rig.PowerWatts = null;
+        Make(await PowerAsync()).PowerFor().Should().BeNull();
     }
 }

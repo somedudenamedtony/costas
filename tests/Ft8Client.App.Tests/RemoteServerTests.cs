@@ -34,7 +34,7 @@ public sealed class RemoteServerTests : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        _control = new RemoteControl(_target, _clock, new DeviceTokens(), _ => { }, new PairingGate(() => 271828));
+        _control = new RemoteControl(_target, _clock, new DeviceTokens(), _ => { });
         _server = new RemoteServer(_control, id => RemoteStateBuilder.Build(_target.Snapshot, _clock.UtcNow, new RemoteContext { Units = DistanceUnit.Miles },
             _control.ControlFor(id), _control.ViewingFor(id)));
         _port = FreePort();
@@ -78,11 +78,12 @@ public sealed class RemoteServerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Pair_WrongCode_Forbidden()
+    public async Task Pair_NoCode_EachPhoneGetsItsOwnToken()
     {
-        _control.Pairing.Open(_clock.UtcNow);
-        var r = await _http.PostAsJsonAsync("/api/pair", new { code = "000000" }, TestContext.Current.CancellationToken);
-        r.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var a = await PairAsync();
+        var b = await PairAsync();
+        a.Should().NotBe(b);
+        _control.SignIn(a).Should().NotBe(_control.SignIn(b));
     }
 
     [Fact]
@@ -126,24 +127,6 @@ public sealed class RemoteServerTests : IAsyncLifetime
         using var ws = await ConnectAsync();
         await SendAsync(ws, new { type = "hello", token = "guess" });
         var buf = new byte[256];
-        var r = await ws.ReceiveAsync(buf, TestContext.Current.CancellationToken);
-        r.MessageType.Should().Be(WebSocketMessageType.Close);
-        ws.CloseStatusDescription.Should().Be("unpaired");
-        _target.Calls.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task Socket_PhonesForgotten_ConnectedPhoneCutOff()
-    {
-        var token = await PairAsync();
-        using var ws = await ConnectAsync();
-        await SendAsync(ws, new { type = "hello", token });
-        await ReceiveAsync(ws);
-
-        _control.ForgetPhones();
-        await _server.BroadcastAsync();
-
-        var buf = new byte[4096];
         var r = await ws.ReceiveAsync(buf, TestContext.Current.CancellationToken);
         r.MessageType.Should().Be(WebSocketMessageType.Close);
         ws.CloseStatusDescription.Should().Be("unpaired");
@@ -197,8 +180,7 @@ public sealed class RemoteServerTests : IAsyncLifetime
 
     private async Task<string> PairAsync()
     {
-        _control.Pairing.Open(_clock.UtcNow);
-        var r = await _http.PostAsJsonAsync("/api/pair", new { code = "271828" }, TestContext.Current.CancellationToken);
+        var r = await _http.PostAsJsonAsync("/api/pair", new { }, TestContext.Current.CancellationToken);
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var j = await r.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         return j.GetProperty("token").GetString()!;

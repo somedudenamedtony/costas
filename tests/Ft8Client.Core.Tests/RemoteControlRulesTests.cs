@@ -63,39 +63,6 @@ public class RemoteControlRulesTests
     }
 
     [Fact]
-    public void TryRedeem_RightCodeInTime_TrueOnce()
-    {
-        var gate = new PairingGate(() => 42);
-        gate.Open(T0).Should().Be("000042");
-        gate.TryRedeem("000042", T0.AddMinutes(9)).Should().BeTrue();
-        gate.TryRedeem("000042", T0.AddMinutes(9)).Should().BeFalse();
-    }
-
-    [Fact]
-    public void TryRedeem_Expired_False()
-    {
-        var gate = new PairingGate(() => 123456);
-        gate.Open(T0);
-        gate.TryRedeem("123456", T0.AddMinutes(10)).Should().BeFalse();
-        gate.Code.Should().BeNull();
-    }
-
-    [Fact]
-    public void TryRedeem_FiveWrongCodes_CodeVoid()
-    {
-        var gate = new PairingGate(() => 123456);
-        gate.Open(T0);
-        for (var i = 0; i < PairingGate.MaxAttempts; i++) gate.TryRedeem("000000", T0).Should().BeFalse();
-        gate.TryRedeem("123456", T0).Should().BeFalse();
-    }
-
-    [Fact]
-    public void TryRedeem_NoCodeOpen_False()
-    {
-        new PairingGate(() => 1).TryRedeem("000001", T0).Should().BeFalse();
-    }
-
-    [Fact]
     public void Verify_IssuedTokenAfterRoundTrip_True()
     {
         var tokens = new DeviceTokens();

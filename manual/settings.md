@@ -144,12 +144,9 @@ The password is kept in Windows Credential Manager.
 
 ![Settings: Mobile connection](images/settings-mobile-connection.png)
 
-- **Let a paired phone on this network operate the station**: off by default. Takes effect at once and shows a
-  **Pair a phone** card with the address and a large one-time code.
-- **Forget paired phones** unpairs them all. **Port**: `8073`, applied when you save.
-- **Radio power**: **Let the phone change the radio's power** is off by default. When on, the phone shows the radio's
-  power setting and can change it between transmissions, up to **Highest power the phone may set** (100 W by
-  default) or the radio's own maximum, whichever is lower. It only changes the setting and never keys the radio.
+- **Let a phone on this network operate the station**: off by default. Takes effect at once and shows the address
+  to open on the phone. There is no code: any phone on your home network can connect.
+- **Port**: `8073`, applied when you save.
 
 See [Operating from a phone](phone.md).
 

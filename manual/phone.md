@@ -6,29 +6,24 @@ you turn it on.
 
 ![The phone page in a contact](images/phone-contact.png){ width="320" }
 
-## Turning it on and pairing a phone
+## Turning it on and connecting a phone
 
-1. On the station computer, open **Settings › Mobile connection** and tick **Let a paired phone on this network
-   operate the station**. It starts at once; there is no need to save first.
+1. On the station computer, open **Settings › Mobile connection** and tick **Let a phone on this network operate the
+   station**. It starts at once; there is no need to save first.
 2. If Windows asks whether Costas may use the network, choose **Allow** for private networks. Phones cannot connect
    until you do.
-3. A **Pair a phone** card appears with the address to open on the phone, for example `http://192.168.1.20:8073/`,
-   and a large six-digit code.
-4. On the phone, open the address and type the code.
+3. Settings shows the address to open on the phone, for example `http://192.168.1.20:8073/`.
+4. On the phone, open the address. There is no code to type: the page connects straight away.
 
-![Pairing a phone](images/phone-pair.png){ width="320" }
-
-The code works once, only while the Settings window is open, for up to 10 minutes, and five wrong tries cancel it.
-Press **New code** for another. The phone stays paired until you press **Forget paired phones**; to pair another
-phone, open **Settings › Mobile connection** again and press **Pair a phone**.
+Any phone or tablet on your home network can open the page and operate the station, so turn it off when you are not
+using it if others share your Wi-Fi.
 
 ## Adding it to your home screen
 
 The page can sit on your home screen with the Costas icon, like an app.
 
 - **iPhone or iPad:** in Safari, tap **Share**, then **Add to Home Screen**. It opens full screen, without Safari's
-  address bar. The home-screen copy keeps its own storage, so pair it once more with a new code from
-  **Settings › Mobile connection**. After that, use the icon.
+  address bar.
 - **Android:** in Chrome, open the menu and tap **Add to Home screen**. The icon opens the page in Chrome. Chrome only
   installs full-screen apps from secure (HTTPS) addresses, and Costas serves the page over plain HTTP on your home
   network.
@@ -86,11 +81,10 @@ them too.
 
 ### Radio power
 
-When **Settings › Mobile connection › Let the phone change the radio's power** is on, the same sheet shows the
-radio's power setting under **Radio power**. Type a power and press **Use**, or step it with **−5** and **+5**. The
-phone can set anything from 1 W up to the radio's maximum or the limit in Settings, whichever is lower; anything
-outside that is refused, not rounded. If the radio has its own minimum (5 W on the FT-710), it keeps that and the
-phone says what it set.
+The same sheet shows the radio's power setting under **Radio power**, the same as the power in the desk's bottom bar.
+Type a power and press **Use**, or step it with **−5** and **+5**. Anything from 1 W up to the radio's maximum is
+accepted; anything outside that is refused, not rounded. If the radio has its own minimum (5 W on the FT-710), it
+keeps that and the phone says what it set.
 
 - It only changes the power setting. It never keys the radio, and it is not allowed while a transmission is on the
   air (as with band changes).
@@ -135,5 +129,6 @@ as it does when you are at the desk.
 ## Security
 
 - The page only answers addresses on your home network (and Tailscale's). Do not forward the port on your router.
-- Only paired phones can see or operate the station.
+- There is no pairing code: any device on your home network can open the page and operate the station. Turn the
+  mobile connection off when you are not using it if you share your network.
 - The page uses plain HTTP inside your network, like most home devices. Use it on a network you trust.

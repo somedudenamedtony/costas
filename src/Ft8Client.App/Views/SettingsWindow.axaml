@@ -483,60 +483,28 @@
         <ScrollViewer>
           <StackPanel>
             <TextBlock Classes="page" Text="Mobile connection" />
-            <TextBlock Classes="intro" Text="Operate from a phone on your home network: see the contact, who is calling you and Next in line, call stations, call CQ and halt transmit. The phone opens a page in its browser; nothing to install." />
+            <TextBlock Classes="intro" Text="Operate from a phone on your home network: see the contact, who is calling you and Next in line, call stations, call CQ, change band and the radio's power, and halt transmit. The phone opens a page in its browser; nothing to install." />
             <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Mobile connection" />
               <StackPanel Grid.Column="1" Spacing="6">
-                <CheckBox Content="Let a paired phone on this network operate the station" IsChecked="{Binding RemoteEnabled}" />
+                <CheckBox Content="Let a phone on this network operate the station" IsChecked="{Binding RemoteEnabled}" />
                 <TextBlock Classes="help" Text="{Binding RemoteStatus}" />
                 <TextBlock Classes="help" IsVisible="{Binding RemoteEnabled}"
                            Text="If Windows asks whether Costas may use the network, choose Allow for private networks. Phones cannot connect until you do. Addresses outside your home network are always refused." />
               </StackPanel>
             </Grid>
 
-            <!-- The pairing code, large enough to read from across the desk while typing it on the phone. -->
-            <Border IsVisible="{Binding HasPairingCode}" Margin="0,4,0,16" Padding="20,16" CornerRadius="8" BorderThickness="2"
+            <!-- The address, large enough to read from across the desk while typing it on the phone. -->
+            <Border IsVisible="{Binding RemoteRunning}" Margin="0,4,0,16" Padding="20,16" CornerRadius="8" BorderThickness="2"
                     BorderBrush="{DynamicResource AccentBrush}" Background="{DynamicResource CardBackgroundBrush}">
-              <StackPanel Spacing="10">
-                <TextBlock Text="Pair a phone" FontSize="18" FontWeight="SemiBold" />
-                <StackPanel Spacing="2">
-                  <TextBlock Classes="help" Text="1. On the phone, open" />
-                  <SelectableTextBlock Text="{Binding PairingUrl}" FontSize="22" FontWeight="SemiBold" />
-                  <TextBlock Classes="help" Text="{Binding PairingOtherUrls}" IsVisible="{Binding PairingOtherUrls, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                </StackPanel>
-                <StackPanel Spacing="2">
-                  <TextBlock Classes="help" Text="2. Type this code" />
-                  <SelectableTextBlock Text="{Binding PairingCode}" FontSize="56" FontWeight="Bold" FontFamily="Consolas,Menlo,monospace"
-                                       LetterSpacing="4" Foreground="{DynamicResource AccentBrush}" />
-                  <TextBlock Classes="help" Text="{Binding PairingExpiry}" />
-                </StackPanel>
-                <Button Content="New code" Command="{Binding PairPhoneCommand}" HorizontalAlignment="Left" />
+              <StackPanel Spacing="4">
+                <TextBlock Text="On the phone, open" FontSize="18" FontWeight="SemiBold" />
+                <SelectableTextBlock Text="{Binding PhoneUrl}" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock Classes="help" Text="{Binding PhoneOtherUrls}" IsVisible="{Binding PhoneOtherUrls, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Classes="help" Text="No code to type: any phone or tablet on your home network can open it and operate the station." />
               </StackPanel>
             </Border>
 
-            <Grid Classes="field" ColumnDefinitions="210,*" IsVisible="{Binding RemoteEnabled}">
-              <TextBlock Classes="label" Text="Phones" />
-              <StackPanel Grid.Column="1" Spacing="6">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Button Content="Pair a phone" Command="{Binding PairPhoneCommand}" IsEnabled="{Binding RemoteRunning}" IsVisible="{Binding !HasPairingCode}" />
-                  <Button Content="{Binding ForgetPhonesText}" Command="{Binding ForgetPhonesCommand}" IsVisible="{Binding HasPairedPhones}" />
-                </StackPanel>
-                <TextBlock Classes="help" Text="{Binding PairingNote}" IsVisible="{Binding PairingNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                <TextBlock Classes="help" Text="A paired phone stays paired until you forget it here. The code only works while this window is open." />
-              </StackPanel>
-            </Grid>
-            <Grid Classes="field" ColumnDefinitions="210,*" IsVisible="{Binding RemoteEnabled}">
-              <TextBlock Classes="label" Text="Radio power" />
-              <StackPanel Grid.Column="1" Spacing="6">
-                <CheckBox Content="Let the phone change the radio's power" IsChecked="{Binding RemoteRigControl}" />
-                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding RemoteRigControl}">
-                  <TextBlock Text="Highest power the phone may set" VerticalAlignment="Center" />
-                  <TextBox Text="{Binding RemoteMaxPower}" Width="70" />
-                  <TextBlock Text="W" VerticalAlignment="Center" />
-                </StackPanel>
-                <TextBlock Classes="help" Text="The phone shows the radio's power setting under Band and offset and can change it between transmissions, up to this limit or the radio's own maximum, whichever is lower. It only changes the setting; it never keys the radio. Needs a radio connected by CAT that reports its power." />
-              </StackPanel>
-            </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Port" />
               <StackPanel Grid.Column="1" Spacing="6">

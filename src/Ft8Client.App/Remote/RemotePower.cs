@@ -11,6 +11,6 @@ namespace Ft8Client.App.Remote;
 
 /// <summary>The radio's power setting, as the phone shows it.</summary>
 /// <param name="Watts">The power setting now.</param>
-/// <param name="LimitWatts">The most the phone may set: the radio's maximum or the limit in Settings, whichever is lower.</param>
+/// <param name="MaxWatts">The most the radio can be set to.</param>
 /// <param name="CanChange">False while transmitting, as for band changes.</param>
-public sealed record RemotePower(int Watts, int LimitWatts, bool CanChange);
+public sealed record RemotePower(int Watts, int MaxWatts, bool CanChange);

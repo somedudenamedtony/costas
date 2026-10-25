@@ -222,6 +222,32 @@
               </Flyout>
             </Button.Flyout>
           </Button>
+          <!-- The radio's power setting, when the radio reports it over CAT. Changes the setting only, never keys. -->
+          <Button Classes="link" AutomationProperties.Name="Radio power" VerticalAlignment="Center" IsVisible="{Binding HasPower}"
+                  ToolTip.Tip="The radio's power setting. Click to change it.">
+            <TextBlock Text="{Binding PowerText}" Classes="secondary num" TextDecorations="{x:Null}" />
+            <Button.Flyout>
+              <Flyout>
+                <StackPanel Spacing="8" Width="240">
+                  <TextBlock Text="Radio power" Classes="title" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Content="−5" Command="{Binding PowerStepCommand}" CommandParameter="-5" AutomationProperties.Name="5 watts less" />
+                    <TextBox Text="{Binding PowerEntry}" Width="60" AutomationProperties.Name="Power in watts">
+                      <TextBox.KeyBindings><KeyBinding Gesture="Enter" Command="{Binding PowerSetCommand}" /></TextBox.KeyBindings>
+                    </TextBox>
+                    <TextBlock Text="W" VerticalAlignment="Center" />
+                    <Button Content="+5" Command="{Binding PowerStepCommand}" CommandParameter="5" AutomationProperties.Name="5 watts more" />
+                    <Button Content="Use" Command="{Binding PowerSetCommand}" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding PowerRange}" Classes="secondary" />
+                  <TextBlock Text="{Binding PowerMessage}" TextWrapping="Wrap" Foreground="{DynamicResource CautionBrush}"
+                             IsVisible="{Binding PowerMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  <TextBlock Text="Changes the radio's power setting only; it does not transmit. Not while a transmission is on the air."
+                             Classes="secondary" TextWrapping="Wrap" />
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
           <Button Content="Auto-select" Command="{Binding OffsetAutoCommand}"
                   ToolTip.Tip="Automatically pick a clear transmit channel" AutomationProperties.Name="Auto-select transmit channel" />
           <Button Content="{Binding CqText}" Command="{Binding ToggleCqCommand}" MinWidth="80" IsVisible="{Binding BarShowsCqAndSlot}" />

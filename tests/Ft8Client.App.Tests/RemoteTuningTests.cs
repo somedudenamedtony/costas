@@ -21,7 +21,7 @@ public class RemoteTuningTests
     private readonly FakeRemoteTuning _tuning = new();
 
     private RemoteControl Make(bool tuning = true) =>
-        new(_target, _clock, new DeviceTokens(), _ => { }, new PairingGate(() => 314159), tuning ? _tuning : null);
+        new(_target, _clock, new DeviceTokens(), _ => { }, tuning ? _tuning : null);
 
     [Fact]
     public async Task HandleAsync_Band_TunesAndTakesControl()
@@ -122,16 +122,6 @@ public class RemoteTuningTests
         _target.WatchdogCap.Should().BeNull();
 
         await rc.HandleAsync("phone", new RemoteCommand("show", ""));
-        rc.ViewingFor("phone").Should().BeNull();
-    }
-
-    [Fact]
-    public async Task ForgetPhones_ClosesOpenDetails()
-    {
-        var rc = Make();
-        await rc.HandleAsync("phone", new RemoteCommand("show", "VE7XYZ"));
-        rc.ForgetPhones();
-
         rc.ViewingFor("phone").Should().BeNull();
     }
 }

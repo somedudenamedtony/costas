@@ -18,7 +18,7 @@ public class RemoteControlTests
     private readonly FakeRemoteTarget _target = new();
     private string _saved = string.Empty;
 
-    private RemoteControl Make() => new(_target, _clock, new DeviceTokens(), t => _saved = t, new PairingGate(() => 314159));
+    private RemoteControl Make() => new(_target, _clock, new DeviceTokens(), t => _saved = t);
 
     [Fact]
     public async Task HandleAsync_CommandFromPhone_TakesControlAndCapsWatchdog()
@@ -78,11 +78,9 @@ public class RemoteControlTests
     [Fact]
     public void Pair_SavingFails_StillPairsForThisRun()
     {
-        var gate = new PairingGate(() => 314159);
-        var rc = new RemoteControl(_target, _clock, new DeviceTokens(), _ => throw new InvalidOperationException("credential store full"), gate);
-        gate.Open(_clock.UtcNow);
+        var rc = new RemoteControl(_target, _clock, new DeviceTokens(), _ => throw new InvalidOperationException("credential store full"));
 
-        var token = rc.Pair("314159");
+        var token = rc.Pair();
 
         token.Should().NotBeNull();
         rc.SignIn(token).Should().NotBeNull();
@@ -154,31 +152,14 @@ public class RemoteControlTests
     }
 
     [Fact]
-    public void Pair_RightCode_TokenSignsInAndIsSaved()
+    public void Pair_NoCode_TokenSignsInAndIsSaved()
     {
         var rc = Make();
-        rc.Pairing.Open(_clock.UtcNow);
-        rc.Pair("000000").Should().BeNull();
-        var token = rc.Pair("314159");
+        var token = rc.Pair();
 
         token.Should().NotBeNull();
         _saved.Should().NotBeEmpty().And.NotContain(token!);
         rc.SignIn(token).Should().NotBeNull().And.Be(rc.SignIn(token));
         rc.SignIn("not-a-token").Should().BeNull();
-    }
-
-    [Fact]
-    public async Task ForgetPhones_AfterPairing_TokenRefusedAndDeskControls()
-    {
-        var rc = Make();
-        rc.Pairing.Open(_clock.UtcNow);
-        var token = rc.Pair("314159");
-        await rc.HandleAsync(rc.SignIn(token)!, new RemoteCommand("cq"));
-
-        rc.ForgetPhones();
-
-        rc.SignIn(token).Should().BeNull();
-        rc.Lease.IsHeld.Should().BeFalse();
-        _saved.Should().BeEmpty();
     }
 }

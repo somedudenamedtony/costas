@@ -10,15 +10,15 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
 using Ft8Client.App.Engine;
+using Ft8Client.App.Services;
 using Ft8Client.Core;
 using Ft8Client.Core.Remote;
 using Ft8Client.Core.Time;
-using Ft8Client.Data.Settings;
 
 namespace Ft8Client.App.Remote;
 
 /// <summary>
-/// The rules of remote operation, without the network: pairing, sign-in, who has control, the commands, and the link-loss
+/// The rules of remote operation, without the network: sign-in, who has control, the commands, and the link-loss
 /// stop. A phone takes control with any command; operator input at the desk takes it back. While a phone has control the
 /// Tx watchdog is capped at <see cref="ControlLease.WatchdogCapMinutes"/> minutes, and when it goes silent for
 /// <see cref="ControlLease.LinkTimeout"/> transmit is halted.
@@ -29,8 +29,7 @@ public sealed class RemoteControl
     private readonly IClock _clock;
     private readonly Action<string> _saveTokens;
     private readonly IRemoteTuning? _tuning;
-    private readonly IRemoteRig? _rig;
-    private readonly Func<RemoteOptions> _options;
+    private readonly RadioPowerService? _power;
     private readonly ConcurrentDictionary<string, string> _viewing = new(StringComparer.Ordinal);
     private readonly object _gate = new();
 
@@ -40,32 +39,25 @@ public sealed class RemoteControl
     /// <summary>Highest Tx offset the phone can set, as on the desk.</summary>
     public const int MaxOffsetHz = 2900;
 
-    /// <summary>Lowest power setting the phone can ask for; the radio may raise it to its own minimum.</summary>
-    public const int MinPowerWatts = 1;
-
     /// <summary>Creates the rules over a target session.</summary>
     /// <param name="target">The session.</param>
     /// <param name="clock">Clock.</param>
     /// <param name="tokens">The paired phones.</param>
     /// <param name="saveTokens">Saves the paired phones (to the OS credential store).</param>
-    /// <param name="pairing">The pairing code.</param>
     /// <param name="tuning">Band and Tx offset changes; without it the phone cannot change them.</param>
-    /// <param name="rig">Radio settings; without it the phone cannot change them.</param>
-    /// <param name="options">Settings, Mobile connection: whether the phone may change radio settings, and the power limit.</param>
-    public RemoteControl(IRemoteTarget target, IClock clock, DeviceTokens tokens, Action<string> saveTokens, PairingGate? pairing = null,
-                         IRemoteTuning? tuning = null, IRemoteRig? rig = null, Func<RemoteOptions>? options = null)
+    /// <param name="power">The radio's power setting; without it the phone cannot change it.</param>
+    public RemoteControl(IRemoteTarget target, IClock clock, DeviceTokens tokens, Action<string> saveTokens,
+                         IRemoteTuning? tuning = null, RadioPowerService? power = null)
     {
         _target = target;
         _tuning = tuning;
-        _rig = rig;
-        _options = options ?? (() => new RemoteOptions());
+        _power = power;
         _clock = clock;
         Tokens = tokens;
         _saveTokens = saveTokens;
-        Pairing = pairing ?? new PairingGate();
     }
 
-    /// <summary>Raised when control changes hands, a phone is paired or the paired phones are forgotten.</summary>
+    /// <summary>Raised when control changes hands or a phone connects for the first time.</summary>
     public event Action? Changed;
 
     /// <summary>Who has control.</summary>
@@ -74,9 +66,6 @@ public sealed class RemoteControl
     /// <summary>The paired phones.</summary>
     public DeviceTokens Tokens { get; }
 
-    /// <summary>The pairing code.</summary>
-    public PairingGate Pairing { get; }
-
     /// <summary>A stable id for the phone holding <paramref name="token"/>, or null when the token is not paired.</summary>
     public string? SignIn(string? token)
     {
@@ -84,10 +73,12 @@ public sealed class RemoteControl
         return Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token!)))[..16];
     }
 
-    /// <summary>Pairs a phone with the code shown in Settings. Returns its token, or null for a wrong or expired code.</summary>
-    public string? Pair(string? code)
+    /// <summary>
+    /// Gives a phone its token the first time it opens the page. There is no code to type (owner decision, 2026-10-25):
+    /// the server only answers addresses on the home network, and the token just identifies the phone.
+    /// </summary>
+    public string Pair()
     {
-        if (!Pairing.TryRedeem(code, _clock.UtcNow)) return null;
         var token = Tokens.Issue();
         try
         {
@@ -100,16 +91,6 @@ public sealed class RemoteControl
         }
         Changed?.Invoke();
         return token;
-    }
-
-    /// <summary>Forgets every paired phone and hands control back to the desk.</summary>
-    public void ForgetPhones()
-    {
-        Tokens.Clear();
-        _saveTokens(string.Empty);
-        _viewing.Clear();
-        DeskActivity();
-        Changed?.Invoke();
     }
 
     /// <summary>"you", "desk" or "other": who has control, as seen by <paramref name="deviceId"/>.</summary>
@@ -208,7 +189,8 @@ public sealed class RemoteControl
                 _tuning.SetTxOffset(null);
                 return null;
             case "power" when cmd.Watts is { } watts:
-                return await PowerAsync(watts).ConfigureAwait(false);
+                // Only the setting changes, never PTT; refused while transmitting, like a band change.
+                return _power is null ? "The station cannot change that from the phone." : await _power.SetAsync(watts).ConfigureAwait(false);
             default:
                 return "The station did not understand that.";
         }
@@ -248,35 +230,8 @@ public sealed class RemoteControl
         return null;
     }
 
-    /// <summary>
-    /// The radio's power as the phone shows it, or null when Settings does not let the phone change it or the radio
-    /// does not report it.
-    /// </summary>
-    public RemotePower? PowerFor(SessionSnapshot snapshot)
-    {
-        var o = _options();
-        if (_rig?.Power is not { } p || !o.RigControl) return null;
-        return new RemotePower(p.Watts, Math.Min(p.MaxWatts, o.MaxPowerWatts), !snapshot.Transmitting);
-    }
-
-    // Only the setting changes, never PTT. Not while transmitting, like a band change, so no CAT command goes out while
-    // the radio is keyed. Outside the limit is refused rather than clamped, so the phone never shows a power it did not ask for.
-    private async Task<string?> PowerAsync(int watts)
-    {
-        if (_rig is null) return "The station cannot change that from the phone.";
-        var o = _options();
-        if (!o.RigControl) return "Changing the radio's power from the phone is off. Turn it on at the station in Settings, Mobile connection.";
-        if (_target.Snapshot.Transmitting) return "Wait until this transmission ends to change power.";
-        if (_rig.Power is not { } now) return "The radio does not report its power, so it cannot be changed from the phone.";
-        var limit = Math.Min(now.MaxWatts, o.MaxPowerWatts);
-        if (watts < MinPowerWatts || watts > limit)
-            return o.MaxPowerWatts < now.MaxWatts
-                ? $"Power must be between {MinPowerWatts} and {limit} W (the limit set at the station)."
-                : $"Power must be between {MinPowerWatts} and {limit} W.";
-        var set = await _rig.SetPowerAsync(watts).ConfigureAwait(false);
-        if (set is null) return "The radio did not take the power change.";
-        return set.Watts == watts ? null : $"The radio set {set.Watts} W.";
-    }
+    /// <summary>The radio's power as the phone shows it, or null when the radio does not report it.</summary>
+    public RemotePower? PowerFor() => _power?.Power is { } p ? new RemotePower(p.Watts, p.MaxWatts, _power.CanChange) : null;
 
     /// <summary>
     /// Checks the link of the phone in control. When it has been silent too long, control returns to the desk and transmit

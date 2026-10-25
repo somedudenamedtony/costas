@@ -83,6 +83,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         ApplySettings();
         _host.Settings.Changed += _ => Dispatch(ApplySettings);
         _host.Remote.Changed += () => Dispatch(UpdateRemote);
+        _host.RadioPower.Changed += () => Dispatch(UpdatePower);
         UpdateRemote();
         _host.Udp.Inbound += m => Dispatch(() => OnUdp(m));
     }
@@ -262,6 +263,26 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>Manual offset entry.</summary>
     [ObservableProperty]
     public partial string ManualOffset { get; set; } = "1500";
+
+    /// <summary>The radio's power setting, "50 W", for the bottom bar.</summary>
+    [ObservableProperty]
+    public partial string PowerText { get; set; } = string.Empty;
+
+    /// <summary>True when the radio reports its power, so it can be changed here.</summary>
+    [ObservableProperty]
+    public partial bool HasPower { get; set; }
+
+    /// <summary>"1 to 100 W".</summary>
+    [ObservableProperty]
+    public partial string PowerRange { get; set; } = string.Empty;
+
+    /// <summary>What the operator typed in the power box.</summary>
+    [ObservableProperty]
+    public partial string PowerEntry { get; set; } = string.Empty;
+
+    /// <summary>Why the power was not changed, or what the radio set instead; empty when it took it.</summary>
+    [ObservableProperty]
+    public partial string PowerMessage { get; set; } = string.Empty;
 
     /// <summary>"Call CQ" or "Stop CQ".</summary>
     [ObservableProperty]
@@ -704,6 +725,41 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         }
         _host.Session.SetTxOffset(hz);
         _host.Settings.Update(s => s.Operating.TxOffset = hz.ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>Sets the radio's power to what was typed.</summary>
+    [RelayCommand]
+    private Task PowerSet()
+    {
+        if (!int.TryParse(PowerEntry, NumberStyles.Integer, CultureInfo.InvariantCulture, out var w))
+        {
+            PowerMessage = "Type the power in watts, such as 50.";
+            return Task.CompletedTask;
+        }
+        return SetPowerAsync(w);
+    }
+
+    /// <summary>Steps the radio's power up or down by the watts given ("5" or "-5").</summary>
+    [RelayCommand]
+    private Task PowerStep(string step)
+    {
+        if (_host.RadioPower.Power is not { } p || !int.TryParse(step, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var d)) return Task.CompletedTask;
+        return SetPowerAsync(Math.Clamp(p.Watts + d, RadioPowerService.MinWatts, p.MaxWatts));
+    }
+
+    private async Task SetPowerAsync(int watts)
+    {
+        PowerMessage = await _host.RadioPower.SetAsync(watts) ?? string.Empty;
+        UpdatePower();
+    }
+
+    private void UpdatePower()
+    {
+        var p = _host.RadioPower.Power;
+        HasPower = p is not null;
+        PowerText = p is null ? string.Empty : $"{p.Watts} W";
+        PowerRange = p is null ? string.Empty : $"{RadioPowerService.MinWatts} to {p.MaxWatts} W";
+        if (p is not null) PowerEntry = p.Watts.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>Opens a dialog by name.</summary>

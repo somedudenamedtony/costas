@@ -204,6 +204,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>WSJT-X UDP interop.</summary>
     public UdpInteropService Udp { get; private set; } = null!;
 
+    /// <summary>The radio's transmit power setting, for the desk and the phone.</summary>
+    public RadioPowerService RadioPower { get; private set; } = null!;
+
     /// <summary>Remote control from a phone on the home network.</summary>
     public RemoteControlService Remote { get; private set; } = null!;
 
@@ -398,6 +401,8 @@ public sealed class AppHost : IAsyncDisposable
         log.Stored += Udp.OnLogged;
         Udp.Start();
 
+        RadioPower = new RadioPowerService(() => _rig, () => Transmitter.Transmitting || Session.Snapshot.Transmitting);
+        RadioPower.Start();
         Remote = new RemoteControlService(Session, Settings, Secrets, Clock, new HostTuning(this), () => new RemoteContext
         {
             Units = SettingsMapper.Units(Settings.Current),
@@ -408,7 +413,7 @@ public sealed class AppHost : IAsyncDisposable
             MostWantedRank = MostWanted.Current.RankOf,
             Bands = Frequencies.Bands,
             Hunt = () => this.Hunt.Recent().FirstOrDefault() is { } h ? Core.Hunting.HuntText.Alert(h, Countries, SettingsMapper.Units(Settings.Current)) : null,
-        }, new HostRig(() => _rig));
+        }, RadioPower);
         Remote.Start();
 
         if (!Simulating)
@@ -1052,6 +1057,7 @@ public sealed class AppHost : IAsyncDisposable
         }
         _cts.Cancel();
         if (Remote is not null) await Remote.DisposeAsync().ConfigureAwait(false);
+        if (RadioPower is not null) await RadioPower.DisposeAsync().ConfigureAwait(false);
         _loop?.Dispose();
         _pump?.Dispose();
         _input?.Dispose();
