@@ -408,7 +408,7 @@ public sealed class AppHost : IAsyncDisposable
             MostWantedRank = MostWanted.Current.RankOf,
             Bands = Frequencies.Bands,
             Hunt = () => this.Hunt.Recent().FirstOrDefault() is { } h ? Core.Hunting.HuntText.Alert(h, Countries, SettingsMapper.Units(Settings.Current)) : null,
-        });
+        }, new HostRig(() => _rig));
         Remote.Start();
 
         if (!Simulating)

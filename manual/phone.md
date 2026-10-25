@@ -82,10 +82,26 @@ offset box on the desk: band changes wait until the current transmission ends, c
 (the phone asks first), and a fixed offset must be between 200 and 2900 Hz. Changes are saved, so the desk shows
 them too.
 
-![Band and offset on the phone](images/phone-band.png){ width="320" }
+![Band, offset and power on the phone](images/phone-band.png){ width="320" }
+
+### Radio power
+
+When **Settings › Mobile connection › Let the phone change the radio's power** is on, the same sheet shows the
+radio's power setting under **Radio power**. Type a power and press **Use**, or step it with **−5** and **+5**. The
+phone can set anything from 1 W up to the radio's maximum or the limit in Settings, whichever is lower; anything
+outside that is refused, not rounded. If the radio has its own minimum (5 W on the FT-710), it keeps that and the
+phone says what it set.
+
+- It only changes the power setting. It never keys the radio, and it is not allowed while a transmission is on the
+  air (as with band changes).
+- It needs a radio connected by CAT that reports its power. With an audio-only (VOX) radio the section does not show.
+- On the FT-710 it needs Hamlib 4.6 or newer, which the Windows installer includes. Older Hamlib releases (such as
+  the one many Linux distributions package) scale the FT-710's power wrongly, so Costas leaves power control off
+  there rather than send the wrong power.
+
 
 Settings, editing the log and the waterfall stay on the desk. Opening a station's details or switching tabs does not
-take control; calling, answering, band and offset changes do.
+take control; calling, answering, band, offset and power changes do.
 
 ## Who is in control
 

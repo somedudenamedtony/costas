@@ -525,6 +525,18 @@
                 <TextBlock Classes="help" Text="A paired phone stays paired until you forget it here. The code only works while this window is open." />
               </StackPanel>
             </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*" IsVisible="{Binding RemoteEnabled}">
+              <TextBlock Classes="label" Text="Radio power" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <CheckBox Content="Let the phone change the radio's power" IsChecked="{Binding RemoteRigControl}" />
+                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding RemoteRigControl}">
+                  <TextBlock Text="Highest power the phone may set" VerticalAlignment="Center" />
+                  <TextBox Text="{Binding RemoteMaxPower}" Width="70" />
+                  <TextBlock Text="W" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="The phone shows the radio's power setting under Band and offset and can change it between transmissions, up to this limit or the radio's own maximum, whichever is lower. It only changes the setting; it never keys the radio. Needs a radio connected by CAT that reports its power." />
+              </StackPanel>
+            </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Port" />
               <StackPanel Grid.Column="1" Spacing="6">

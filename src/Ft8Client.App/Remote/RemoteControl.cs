@@ -9,9 +9,11 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
+using Ft8Client.App.Engine;
 using Ft8Client.Core;
 using Ft8Client.Core.Remote;
 using Ft8Client.Core.Time;
+using Ft8Client.Data.Settings;
 
 namespace Ft8Client.App.Remote;
 
@@ -27,6 +29,8 @@ public sealed class RemoteControl
     private readonly IClock _clock;
     private readonly Action<string> _saveTokens;
     private readonly IRemoteTuning? _tuning;
+    private readonly IRemoteRig? _rig;
+    private readonly Func<RemoteOptions> _options;
     private readonly ConcurrentDictionary<string, string> _viewing = new(StringComparer.Ordinal);
     private readonly object _gate = new();
 
@@ -36,6 +40,9 @@ public sealed class RemoteControl
     /// <summary>Highest Tx offset the phone can set, as on the desk.</summary>
     public const int MaxOffsetHz = 2900;
 
+    /// <summary>Lowest power setting the phone can ask for; the radio may raise it to its own minimum.</summary>
+    public const int MinPowerWatts = 1;
+
     /// <summary>Creates the rules over a target session.</summary>
     /// <param name="target">The session.</param>
     /// <param name="clock">Clock.</param>
@@ -43,11 +50,15 @@ public sealed class RemoteControl
     /// <param name="saveTokens">Saves the paired phones (to the OS credential store).</param>
     /// <param name="pairing">The pairing code.</param>
     /// <param name="tuning">Band and Tx offset changes; without it the phone cannot change them.</param>
+    /// <param name="rig">Radio settings; without it the phone cannot change them.</param>
+    /// <param name="options">Settings, Mobile connection: whether the phone may change radio settings, and the power limit.</param>
     public RemoteControl(IRemoteTarget target, IClock clock, DeviceTokens tokens, Action<string> saveTokens, PairingGate? pairing = null,
-                         IRemoteTuning? tuning = null)
+                         IRemoteTuning? tuning = null, IRemoteRig? rig = null, Func<RemoteOptions>? options = null)
     {
         _target = target;
         _tuning = tuning;
+        _rig = rig;
+        _options = options ?? (() => new RemoteOptions());
         _clock = clock;
         Tokens = tokens;
         _saveTokens = saveTokens;
@@ -196,6 +207,8 @@ public sealed class RemoteControl
                 if (_tuning is null) return "The station cannot change that from the phone.";
                 _tuning.SetTxOffset(null);
                 return null;
+            case "power" when cmd.Watts is { } watts:
+                return await PowerAsync(watts).ConfigureAwait(false);
             default:
                 return "The station did not understand that.";
         }
@@ -207,6 +220,7 @@ public sealed class RemoteControl
         "call" or "answer" or "answerAfter" => call.Length > 0,
         "jump" => cmd.Step is not null,
         "offset" => cmd.Hz is not null,
+        "power" => cmd.Watts is not null,
         _ => false,
     };
 
@@ -232,6 +246,36 @@ public sealed class RemoteControl
         }
         await _tuning.SetBandAsync(band, mode).ConfigureAwait(false);
         return null;
+    }
+
+    /// <summary>
+    /// The radio's power as the phone shows it, or null when Settings does not let the phone change it or the radio
+    /// does not report it.
+    /// </summary>
+    public RemotePower? PowerFor(SessionSnapshot snapshot)
+    {
+        var o = _options();
+        if (_rig?.Power is not { } p || !o.RigControl) return null;
+        return new RemotePower(p.Watts, Math.Min(p.MaxWatts, o.MaxPowerWatts), !snapshot.Transmitting);
+    }
+
+    // Only the setting changes, never PTT. Not while transmitting, like a band change, so no CAT command goes out while
+    // the radio is keyed. Outside the limit is refused rather than clamped, so the phone never shows a power it did not ask for.
+    private async Task<string?> PowerAsync(int watts)
+    {
+        if (_rig is null) return "The station cannot change that from the phone.";
+        var o = _options();
+        if (!o.RigControl) return "Changing the radio's power from the phone is off. Turn it on at the station in Settings, Mobile connection.";
+        if (_target.Snapshot.Transmitting) return "Wait until this transmission ends to change power.";
+        if (_rig.Power is not { } now) return "The radio does not report its power, so it cannot be changed from the phone.";
+        var limit = Math.Min(now.MaxWatts, o.MaxPowerWatts);
+        if (watts < MinPowerWatts || watts > limit)
+            return o.MaxPowerWatts < now.MaxWatts
+                ? $"Power must be between {MinPowerWatts} and {limit} W (the limit set at the station)."
+                : $"Power must be between {MinPowerWatts} and {limit} W.";
+        var set = await _rig.SetPowerAsync(watts).ConfigureAwait(false);
+        if (set is null) return "The radio did not take the power change.";
+        return set.Watts == watts ? null : $"The radio set {set.Watts} W.";
     }
 
     /// <summary>

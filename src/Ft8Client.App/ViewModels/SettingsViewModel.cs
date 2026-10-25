@@ -108,6 +108,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         UdpPort = s.Udp.Port.ToString(CultureInfo.InvariantCulture);
         RemoteEnabled = s.Remote.Enabled;
         RemotePort = s.Remote.Port.ToString(CultureInfo.InvariantCulture);
+        RemoteRigControl = s.Remote.RigControl;
+        RemoteMaxPower = s.Remote.MaxPowerWatts.ToString(CultureInfo.InvariantCulture);
         RefreshRemote();
         host.Remote.Changed += OnRemoteChanged;
         _remoteLoaded = true;
@@ -714,6 +716,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string RemotePort { get; set; }
 
+    /// <summary>Let the phone change the radio's power.</summary>
+    [ObservableProperty]
+    public partial bool RemoteRigControl { get; set; }
+
+    /// <summary>The most power the phone may set, in watts.</summary>
+    [ObservableProperty]
+    public partial string RemoteMaxPower { get; set; }
+
     /// <summary>Where to point the phone, or why the page is not served.</summary>
     [ObservableProperty]
     public partial string RemoteStatus { get; set; } = string.Empty;
@@ -1025,6 +1035,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Udp.Port = Int(UdpPort, 1, 65535, 2237);
             s.Remote.Enabled = RemoteEnabled;
             s.Remote.Port = Int(RemotePort, 1024, 65535, 8073);
+            s.Remote.RigControl = RemoteRigControl;
+            s.Remote.MaxPowerWatts = Int(RemoteMaxPower, 1, 2000, 100);
             s.Files.SaveWav = SaveWav;
             s.Files.RetentionDays = Int(Retention, 1, 3650, 30);
             s.Appearance.Theme = Theme;

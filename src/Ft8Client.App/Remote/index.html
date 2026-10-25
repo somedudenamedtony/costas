@@ -157,7 +157,7 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 <section id="opView" class="hidden">
   <div class="top">
     <div class="row"><span id="station">Costas</span><span class="pill"><span id="linkDot" class="dot"></span><span id="link">Connecting…</span></span></div>
-    <div class="row"><button id="freq" class="freq tunebtn" title="Band, mode and Tx offset">—</button><span class="pill"><span id="radioDot" class="dot"></span>Radio</span></div>
+    <div class="row"><button id="freq" class="freq tunebtn" title="Band, mode, Tx offset and radio power">—</button><span class="pill"><span id="radioDot" class="dot"></span>Radio</span></div>
     <div class="row" style="margin-top:3px"><span id="health"></span><span id="control"></span></div>
     <div id="slot" class="slot"><span id="slotLabel">Receiving</span><div class="track"><div id="slotFill" class="fill"></div></div><span id="slotLeft"></span></div>
   </div>
@@ -657,9 +657,9 @@ function changeBand(band, mode) {
 
 function renderTune(s) {
   $("tuneShade").classList.toggle("hidden", !tuning);
-  if (!tuning || !changed("tune", { b: s.bands, band: s.band, mode: s.mode, can: s.canChangeBand, o: s.offset, a: s.offsetAuto })) return;
+  if (!tuning || !changed("tune", { b: s.bands, band: s.band, mode: s.mode, can: s.canChangeBand, o: s.offset, a: s.offsetAuto, p: s.power })) return;
   const box = $("tune"); box.replaceChildren();
-  const top = el("div", "row"); top.append(el("b", null, "Band and offset"), button("Close", "", () => { tuning = false; render(); }));
+  const top = el("div", "row"); top.append(el("b", null, s.power ? "Band, offset and power" : "Band and offset"), button("Close", "", () => { tuning = false; render(); }));
   box.append(top);
   if (!s.canChangeBand) box.append(el("div", "s", "Wait until this transmission ends to change band."));
   const seg = el("div", "seg");
@@ -679,6 +679,25 @@ function renderTune(s) {
   }));
   box.append(row, button("Automatic (picks a clear spot)", s.offsetAuto ? "on" : "", () => cmd("offsetAuto")),
     el("div", "s", "Or type a fixed offset from 200 to 2900 Hz and press Use."));
+  if (s.power) renderPower(box, s.power);
+}
+
+// The radio's power setting, shown only when the station allows changing it (Settings, Mobile connection). Changes only
+// the setting, between transmissions; the station refuses anything above its limit.
+function renderPower(box, p) {
+  box.append(el("div", "lbl", "Radio power · " + p.watts + " W"));
+  if (!p.canChange) box.append(el("div", "s", "Wait until this transmission ends to change power."));
+  const row = el("div", "offset");
+  const input = el("input"); input.type = "number"; input.inputMode = "numeric"; input.min = 1; input.max = p.limitWatts; input.step = 1;
+  input.value = p.watts; input.setAttribute("aria-label", "Radio power in watts");
+  const set = w => {
+    if (Number.isNaN(w) || w < 1 || w > p.limitWatts) { note("Type a power from 1 to " + p.limitWatts + " W first."); return; }
+    cmd("power", { watts: w });
+  };
+  row.append(button("−5", "", () => set(Math.max(1, p.watts - 5)), !p.canChange), input,
+    button("+5", "", () => set(Math.min(p.limitWatts, p.watts + 5)), !p.canChange),
+    button("Use", "", () => set(parseInt(input.value, 10)), !p.canChange));
+  box.append(row, el("div", "s", "Up to " + p.limitWatts + " W. This changes the radio's power setting only; it does not transmit."));
 }
 
 // The slot countdown runs on the phone between states, from the station's position in the slot.

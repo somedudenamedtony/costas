@@ -86,6 +86,9 @@ public sealed record RemoteState
     /// <summary>True when the Tx offset is picked automatically.</summary>
     public bool OffsetAuto { get; init; }
 
+    /// <summary>The radio's power setting, or null when the phone may not change it or the radio does not report it.</summary>
+    public RemotePower? Power { get; init; }
+
     /// <summary>"SWR 3.4 · ALC 70%" after a transmission outside limits, else blank.</summary>
     public string Meter { get; init; } = string.Empty;
 

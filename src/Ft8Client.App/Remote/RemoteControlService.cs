@@ -25,11 +25,14 @@ namespace Ft8Client.App.Remote;
 public sealed class RemoteControlService : IAsyncDisposable
 {
     private static readonly TimeSpan Pace = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan PowerEvery = TimeSpan.FromSeconds(5);
 
     private readonly Session _session;
     private readonly AppSettingsAccessor _settings;
     private readonly IClock _clock;
     private readonly Func<RemoteContext> _context;
+    private readonly IRemoteRig? _rig;
+    private int _readingPower;
     private readonly CancellationTokenSource _cts = new();
     private readonly SemaphoreSlim _switch = new(1, 1);
     private RemoteServer? _server;
@@ -44,9 +47,11 @@ public sealed class RemoteControlService : IAsyncDisposable
     /// <param name="clock">Clock.</param>
     /// <param name="tuning">Band and Tx offset changes.</param>
     /// <param name="context">The log, QRZ, country file and bands the phone's state is built from.</param>
+    /// <param name="rig">Radio settings (power) the phone may change when Settings allows it.</param>
     public RemoteControlService(Session session, AppSettingsAccessor settings, ISecretStore secrets, IClock clock, IRemoteTuning? tuning = null,
-                                Func<RemoteContext>? context = null)
+                                Func<RemoteContext>? context = null, IRemoteRig? rig = null)
     {
+        _rig = rig;
         _session = session;
         _settings = settings;
         _clock = clock;
@@ -55,7 +60,7 @@ public sealed class RemoteControlService : IAsyncDisposable
         {
             if (t.Length == 0) secrets.Delete(SecretNames.RemoteDevices);
             else secrets.Set(SecretNames.RemoteDevices, t);
-        }, tuning: tuning);
+        }, tuning: tuning, rig: rig, options: () => settings.Current.Remote);
         Control.Changed += () =>
         {
             _dirty = true;
@@ -155,12 +160,41 @@ public sealed class RemoteControlService : IAsyncDisposable
         Changed?.Invoke();
     }
 
-    private RemoteState StateFor(string deviceId) =>
-        RemoteStateBuilder.Build(_session.Snapshot, _clock.UtcNow, _context(), Control.ControlFor(deviceId), Control.ViewingFor(deviceId));
+    private RemoteState StateFor(string deviceId)
+    {
+        var s = _session.Snapshot;
+        return RemoteStateBuilder.Build(s, _clock.UtcNow, _context(), Control.ControlFor(deviceId), Control.ViewingFor(deviceId)) with { Power = Control.PowerFor(s) };
+    }
+
+    // Reads the radio's power for the phone every few seconds, only while a phone is connected and Settings lets it
+    // change the power, and never while transmitting. Off the loop, so a slow radio never delays the link-loss check.
+    private void ReadPower(DateTime now, ref DateTime lastRead)
+    {
+        if (_rig is null || !_settings.Current.Remote.RigControl || _session.Snapshot.Transmitting || now - lastRead < PowerEvery) return;
+        if (Interlocked.Exchange(ref _readingPower, 1) == 1) return;
+        lastRead = now;
+        var before = _rig.Power;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (await _rig.RefreshAsync().ConfigureAwait(false) != before) _dirty = true;
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Reading radio power for the phone");
+            }
+            finally
+            {
+                Volatile.Write(ref _readingPower, 0);
+            }
+        });
+    }
 
     private async Task LoopAsync()
     {
         var lastSent = DateTime.MinValue;
+        var lastPower = DateTime.MinValue;
         var lastConnected = 0;
         while (!_cts.IsCancellationRequested)
         {
@@ -171,6 +205,7 @@ public sealed class RemoteControlService : IAsyncDisposable
                 var server = _server;
                 if (server is null) continue;
                 var now = _clock.UtcNow;
+                if (server.Connected > 0) ReadPower(now, ref lastPower);
                 if (_dirty || now - lastSent >= TimeSpan.FromSeconds(1))
                 {
                     _dirty = false;
