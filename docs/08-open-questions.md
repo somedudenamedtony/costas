@@ -108,6 +108,15 @@ reads 0.50 and power2mW gives 50 W. Hamlib 4.5.5 divides by 255 instead, so the 
 yet tried on the real radio or the IC-7300. The app reads power once per transmission on the meter connection and
 logs it; a radio that reports nothing (or a value outside 1 to 2000 W) falls back to the power in Settings.
 
+Setting the power from the phone (2026-10-25): `+L RFPOWER x` with x = watts / (power2mW of 1.0), then read back. Against
+the FT-710 CAT emulator with Hamlib 4.5.5, `L RFPOWER 0.25` sent `PC064;` and 0.5 sent `PC128;` (the same /255 scale),
+so 25 W would really go out as 64 W. Costas therefore refuses to read or set power on model 1049 unless
+`rigctld --version` says 4.6 or newer. Raw CAT through `+w PC;` was tried as a workaround and is unusable on 4.5.5 (the
+reply is lost). `\mW2power 25000 14074000 PKTUSB` answers `Power [0.0..1.0]: 0.250000` (not used). Other radios rely on
+Hamlib's own scaling plus the read-back. With Hamlib 4.6.5 built from source, the same emulator reads `PC050;` as 0.5,
+power2mW of 1.0 gives 100000 mW, and `L RFPOWER 0.25` sends `PC025;`, so the FT-710 is right there. Not yet tried on the
+real FT-710.
+
 Other notes from M2:
 
 - 60 m transmit limits in `frequencies.json` use the ITU WRC-15 range 5351.5 to 5366.5 kHz. US 60 m rules are channelised; the owner should check the limits for his licence before transmitting on 60 m.

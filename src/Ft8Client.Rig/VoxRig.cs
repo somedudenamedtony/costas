@@ -51,6 +51,12 @@ public sealed class VoxRig(long frequencyHz) : IRig
     public Task<int?> ReadPowerWattsAsync(CancellationToken ct) => Task.FromResult<int?>(null);
 
     /// <inheritdoc />
+    public Task<RigPower?> ReadPowerAsync(CancellationToken ct) => Task.FromResult<RigPower?>(null);
+
+    /// <inheritdoc />
+    public Task<RigPower?> SetPowerWattsAsync(int watts, CancellationToken ct) => Task.FromResult<RigPower?>(null);
+
+    /// <inheritdoc />
     public Task<bool> StartTunerAsync(CancellationToken ct) => Task.FromResult(false);
 
     /// <inheritdoc />
