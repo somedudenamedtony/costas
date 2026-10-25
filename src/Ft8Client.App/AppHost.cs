@@ -42,7 +42,17 @@ public sealed class AppHost : IAsyncDisposable
 {
     private readonly CancellationTokenSource _cts = new();
     private readonly List<IDisposable> _disposables = [];
+    private static readonly TimeSpan RecoveryInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan RecoveryRetry = TimeSpan.FromSeconds(10);
+    private readonly SemaphoreSlim _deviceLock = new(1, 1);
     private IAudioInput? _input;
+    private volatile bool _inputDown;
+    private SlotRecorder? _recorder;
+    private DateTime _inputRetryUtc;
+    private DateTime _outputRetryUtc;
+    private DateTime _rigRetryUtc;
+    // The radio is set up but could not be opened (switched off at start, say): retried until it opens.
+    private volatile bool _rigRetry;
     private IAudioOutput? _output;
     private Jt9PersistentDecoder? _decoder;
     private NullAudioOutput? _mutedOutput;
@@ -409,6 +419,7 @@ public sealed class AppHost : IAsyncDisposable
 
         _ = Task.Run(ClockCheckLoopAsync);
         _ = Task.Run(RigPollLoopAsync);
+        _ = Task.Run(DeviceRecoveryLoopAsync);
         var confirmedBy = SettingsMapper.ConfirmationSource(s);
         var correctClock = s.Operating.CorrectClock;
         Settings.Changed += _ =>
@@ -569,6 +580,19 @@ public sealed class AppHost : IAsyncDisposable
     /// </summary>
     public async Task ReopenDevicesAsync()
     {
+        await _deviceLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await ReopenDevicesCoreAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _deviceLock.Release();
+        }
+    }
+
+    private async Task ReopenDevicesCoreAsync()
+    {
         var a = Settings.Current.Profile.Audio;
         IAudioOutput? closed = null;
         if (!Simulating && AudioBackend is not NullAudioBackend
@@ -609,6 +633,20 @@ public sealed class AppHost : IAsyncDisposable
     /// </summary>
     public async Task ReleaseRigAsync()
     {
+        await _deviceLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await ReleaseRigCoreAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _deviceLock.Release();
+        }
+    }
+
+    private async Task ReleaseRigCoreAsync()
+    {
+        _rigRetry = false; // Setup's port scan needs the port: no retry may take it back
         if (Transmitter.Transmitting) await Transmitter.HaltAsync().ConfigureAwait(false);
         var old = _rig;
         var rig = new VoxRig(Session.Snapshot.DialHz);
@@ -646,24 +684,10 @@ public sealed class AppHost : IAsyncDisposable
         var a = Settings.Current.Profile.Audio;
         // Each device on its own: an output that fails must not drop an input that is already capturing (the status
         // then said "No input device configured" while receive worked), and the reason is shown, not only logged.
-        if (a.InputId is not null && AudioBackend is not NullAudioBackend)
+        _recorder = recorder;
+        if (a.InputId is not null && AudioBackend is not NullAudioBackend && StartInput(a.InputId) is { } why)
         {
-            IAudioInput? input = null;
-            try
-            {
-                input = AudioBackend.OpenInput(a.InputId, 48_000);
-                var pump = new CapturePump(input, recorder);
-                input.Stopped += (_, why) => Session?.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down, why, Clock.UtcNow));
-                input.Start();
-                pump.Start();
-                (_input, _pump) = (input, pump);
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
-            {
-                Log.Warning(ex, "Audio input could not be opened");
-                _audioProblem = $"The input device could not be opened: {ex.Message}";
-                input?.Dispose();
-            }
+            _audioProblem = $"The input device could not be opened: {why}";
         }
         if (a.OutputId is not null && AudioBackend is not NullAudioBackend)
         {
@@ -681,8 +705,158 @@ public sealed class AppHost : IAsyncDisposable
         _outputId = a.OutputId;
     }
 
+    // Opens the capture device and its pump; the previous ones must be closed already. Returns why it failed, or null.
+    private string? StartInput(string id)
+    {
+        IAudioInput? input = null;
+        try
+        {
+            input = AudioBackend.OpenInput(id, 48_000);
+            var pump = new CapturePump(input, _recorder!);
+            input.Stopped += OnInputStopped;
+            // Current before it starts: a device that stops at once must find itself the one in use.
+            (_input, _pump) = (input, pump);
+            _inputDown = false;
+            input.Start();
+            pump.Start();
+            return null;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+        {
+            Log.Warning(ex, "Audio input could not be opened");
+            if (ReferenceEquals(_input, input)) (_input, _pump) = (null, null);
+            if (input is not null) CloseQuietly(input);
+            return ex.Message;
+        }
+    }
+
+    private void OnInputStopped(object? sender, string why)
+    {
+        // A closed input reports its own stop too; only the one in use matters.
+        if (!ReferenceEquals(sender, _input)) return;
+        _inputDown = true;
+        Log.Warning("Audio input stopped: {Why}", why);
+        Session?.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down,
+            $"{why.TrimEnd('.')}. Costas opens it again when the device is back.", Clock.UtcNow));
+    }
+
+    // A device that has gone away can fail on the way out too; it is being dropped either way.
+    private static void CloseQuietly(IDisposable device)
+    {
+        try
+        {
+            device.Dispose();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ObjectDisposedException)
+        {
+            Log.Debug(ex, "Closing a lost audio device failed");
+        }
+    }
+
+    // Brings back what went away while Costas was open, typically a radio switched off with its USB audio and serial
+    // port: the audio input and output are reopened as soon as their device is listed again, and a radio that could not
+    // be opened is retried. Nothing waits for Station setup or a restart. rigctld restarts itself for a radio that was
+    // open (RigctldRig), so only a radio that never opened is retried here.
+    private async Task DeviceRecoveryLoopAsync()
+    {
+        while (!_cts.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(RecoveryInterval, _cts.Token).ConfigureAwait(false);
+                if (Simulating) continue;
+                await _deviceLock.WaitAsync(_cts.Token).ConfigureAwait(false);
+                try
+                {
+                    if (AudioBackend is not NullAudioBackend)
+                    {
+                        RecoverInput();
+                        RecoverOutput();
+                    }
+                    if (_rigRetry && DateTime.UtcNow >= _rigRetryUtc) await RecoverRigAsync().ConfigureAwait(false);
+                }
+                finally
+                {
+                    _deviceLock.Release();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ObjectDisposedException)
+            {
+                // Listing devices can fail while Windows is still setting one up; the next pass tries again.
+                Log.Debug(ex, "Device recovery pass failed");
+            }
+        }
+    }
+
+    private void RecoverInput()
+    {
+        var id = Settings.Current.Profile.Audio.InputId;
+        // An input changed in Station setup waits for a restart (the status says so); only the device in use comes back.
+        if (id is null || !string.Equals(id, _inputId, StringComparison.Ordinal)) return;
+        if ((_input is not null && !_inputDown) || DateTime.UtcNow < _inputRetryUtc) return;
+        if (!AudioBackend.ListInputs().Any(d => string.Equals(d.Id, id, StringComparison.Ordinal))) return;
+        var (oldPump, oldInput) = (_pump, _input);
+        (_pump, _input) = (null, null);
+        oldPump?.Dispose();
+        if (oldInput is not null) CloseQuietly(oldInput);
+        if (StartInput(id) is { } why)
+        {
+            _inputRetryUtc = DateTime.UtcNow + RecoveryRetry;
+            Session.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down, $"The input device could not be opened: {why}", Clock.UtcNow));
+            return;
+        }
+        Log.Information("Audio input is back; receiving again");
+        Session.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Ok, "Receiving", Clock.UtcNow));
+    }
+
+    private void RecoverOutput()
+    {
+        var id = Settings.Current.Profile.Audio.OutputId;
+        if (id is null || !string.Equals(id, _outputId, StringComparison.Ordinal)) return;
+        var lost = Transmitter.OutputFault;
+        if ((_output is not null && lost is null) || DateTime.UtcNow < _outputRetryUtc) return;
+        // A fault mid-transmission halts it; the swap waits until PTT is down.
+        if (Transmitter.Transmitting) return;
+        if (!AudioBackend.ListOutputs().Any(d => string.Equals(d.Id, id, StringComparison.Ordinal))) return;
+        IAudioOutput fresh;
+        try
+        {
+            fresh = AudioBackend.OpenOutput(id, 48_000);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+        {
+            Log.Warning(ex, "Audio output could not be reopened");
+            _outputRetryUtc = DateTime.UtcNow + RecoveryRetry;
+            return;
+        }
+        var old = _output;
+        _output = fresh;
+        Transmitter.SetOutput(Plan.MutesTransmitAudio(Settings.Current.Profile.Rig) ? _mutedOutput ??= new NullAudioOutput() : _output);
+        if (old is not null) CloseQuietly(old); // after the transmitter has let go of it
+        if (lost is not null) Session.ClearFault(lost);
+        Log.Information("Audio output is back");
+    }
+
+    private async Task RecoverRigAsync()
+    {
+        _rigRetryUtc = DateTime.UtcNow + RecoveryRetry;
+        // A serial port that is not there yet would only start rigctld to fail; wait for Windows to list it.
+        var port = RigctldRig.CleanSerialPort(Settings.Current.Profile.Rig.Port, OperatingSystem.IsWindows());
+        if (port is not null && IsSerialPortName(port) && !RigctldRig.SerialPorts().Contains(port, StringComparer.OrdinalIgnoreCase)) return;
+        await OpenRigAsync().ConfigureAwait(false);
+        if (!_rigRetry) Log.Information("Radio is back: {Radio}", _rig.Name);
+    }
+
+    private static bool IsSerialPortName(string port) =>
+        port.StartsWith("COM", StringComparison.OrdinalIgnoreCase) || port.StartsWith("/dev/", StringComparison.Ordinal);
+
     private async Task OpenRigAsync()
     {
+        _rigRetry = false;
         var r = Settings.Current.Profile.Rig;
         var old = _rig;
         IRig rig;
@@ -741,6 +915,7 @@ public sealed class AppHost : IAsyncDisposable
                 {
                     rig = new VoxRig(dialHz);
                     status = new ServiceStatus(ServiceHealth.Down, ex.Message, Clock.UtcNow);
+                    _rigRetry = true;
                 }
             }
         }
