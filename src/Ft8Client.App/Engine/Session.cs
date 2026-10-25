@@ -905,6 +905,19 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
+    /// <summary>
+    /// Clears the fault line when it is about <paramref name="cause"/> (a device that has come back). Any other fault stays.
+    /// </summary>
+    public void ClearFault(string cause)
+    {
+        lock (_gate)
+        {
+            if (_fault is null || !_fault.Contains(cause, StringComparison.Ordinal)) return;
+            _fault = null;
+        }
+        Publish();
+    }
+
     /// <summary>Records the ALC and SWR meters from the latest transmission.</summary>
     public void SetTxMeters(TxMeterResult result)
     {

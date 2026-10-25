@@ -428,7 +428,7 @@ public sealed class Transmitter
     }
 
     private static string OutputDeadText(string why) =>
-        $"The audio output stopped ({why}). Run Station setup to open it again, or restart Costas.";
+        $"The audio output stopped ({why}). Costas opens it again when the device is back, for a radio's USB audio when the radio is on.";
 
     private async Task AbortAsync(string message)
     {

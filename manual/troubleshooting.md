@@ -29,6 +29,17 @@ it when you report a problem on [GitHub Issues](https://github.com/somedudenamed
 Costas has no radio configured, so it receives nothing and refuses to transmit. Click **Station setup** in the
 banner and go through the [Radio step](setup.md#2-radio-cat-and-ptt).
 
+### The radio was switched off while Costas was open
+
+Many radios (the FT-710, FT-991A, IC-7300 and others) take their USB audio and serial port with them when they are
+switched off. Costas shows **Radio** and **Audio** red, and may say "The audio output stopped (The audio device has been
+disconnected…)". Leave Costas open and switch the radio back on: within about 15 seconds of Windows finding the radio
+again, Costas reopens the audio input and output and reconnects to the radio by itself, and the message goes away.
+This also works when Costas was started with the radio off. Nothing is sent when the radio comes back.
+
+If it does not come back, the radio may now be on a different USB socket or COM port (Windows gives it a new name):
+open **Station setup** and pick the radio's devices again.
+
 ### Test connection says "No serial ports were found"
 
 Windows does not see the radio's USB serial port. Check the USB cable, that the radio is on, and that the radio's USB
