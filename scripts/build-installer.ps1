@@ -35,9 +35,10 @@ if (-not (Test-Path (Join-Path $stage 'Costas.exe'))) { throw 'Costas.exe missin
 
 # jt9 and Hamlib in the layout the app searches (third_party/... beside the exe), with their licences.
 $stp = Join-Path $stage 'third_party'
-# Only jt9 and the DLLs it loads, not all of WSJT-X's bin folder (about 60 MB instead of 300 MB). The list is jt9.exe's
-# import closure in WSJT-X 3.0.1; a DLL missing after a WSJT-X upgrade makes the staged decode check below fail.
-$jt9Files = 'jt9.exe', 'libdouble-conversion.dll', 'libfftw3f-3.dll', 'libfftw3f_threads-3.dll', 'libgcc_s_seh-1.dll',
+# Only jt9 and the DLLs it loads, not all of WSJT-X's bin folder (about 60 MB instead of 300 MB), plus
+# wsjtx_app_version.exe, which Costas asks for jt9's version before it keeps jt9 running (shared memory). The list is
+# the import closure of those two in WSJT-X 3.0.1; a DLL missing after a WSJT-X upgrade makes the staged checks fail.
+$jt9Files = 'jt9.exe', 'wsjtx_app_version.exe', 'libdouble-conversion.dll', 'libfftw3f-3.dll', 'libfftw3f_threads-3.dll', 'libgcc_s_seh-1.dll',
     'libgfortran-5.dll', 'libgomp-1.dll', 'libicudt78.dll', 'libicuin78.dll', 'libicuuc78.dll', 'libpcre2-16-0.dll',
     'libquadmath-0.dll', 'libstdc++-6.dll', 'libwinpthread-1.dll', 'libzstd.dll', 'Qt5Core.dll', 'zlib1.dll'
 New-Item -ItemType Directory -Force -Path (Join-Path $stp 'wsjtx/bin') | Out-Null
