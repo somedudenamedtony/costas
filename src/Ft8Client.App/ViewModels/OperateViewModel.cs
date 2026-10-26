@@ -182,6 +182,14 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial IReadOnlyList<ReceptionBucket> SignalHistory { get; set; } = [];
 
+    /// <summary>"USA 30 · Canada 2": the countries that heard me, most stations first.</summary>
+    [ObservableProperty]
+    public partial string SignalCountries { get; set; } = string.Empty;
+
+    /// <summary>Every country that heard me, with its best report and farthest station.</summary>
+    [ObservableProperty]
+    public partial string SignalCountriesTip { get; set; } = string.Empty;
+
     /// <summary>Farthest.</summary>
     [ObservableProperty]
     public partial string SignalFarthest { get; set; } = "—";
@@ -630,10 +638,12 @@ public sealed partial class OperateViewModel : ObservableObject
         };
         if (Countries is null || Log is null) return;
         var points = ReachPoint.From(s.Reports, now, TimeSpan.FromMinutes(15), s.MyGrid, Countries, Log(), s.Band, ModeInfo.Name(s.Mode));
-        var countries = points.Select(p => p.EntityKey).Where(k => k is not null).Distinct().Count();
+        var countries = CountryReach.From(points, Countries, Units);
         SignalHeadline = points.Count == 0
             ? "No reports yet. Reports appear a few minutes after you transmit."
-            : $"{points.Count} stations in {countries} countries heard you in the last 15 minutes.";
+            : $"{points.Count} stations in {countries.Count} countries heard you in the last 15 minutes.";
+        SignalCountries = CountryReach.Summary(countries);
+        SignalCountriesTip = CountryReach.Tip(countries);
         var far = points.MaxBy(p => p.Km);
         SignalFarthest = far is null ? "—" : $"{far.Call} · {StationText.Distance(far.Km, Units)}";
         var best = points.MaxBy(p => p.Snr);
