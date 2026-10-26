@@ -404,13 +404,17 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:WatchRowViewModel">
                   <Border BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
-                    <Grid ColumnDefinitions="100,180,160,64,*" MinHeight="34" Margin="14,0">
+                    <Grid ColumnDefinitions="100,180,160,64,*,Auto" MinHeight="34" Margin="14,0">
                       <TextBlock Text="{Binding Call}" Classes="secondary" FontWeight="SemiBold" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="1" Text="{Binding Where}" Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                       <TextBlock Grid.Column="2" Text="{Binding Why}" VerticalAlignment="Center" Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" />
                       <v:SignalSparkline Grid.Column="3" Values="{Binding History}" Width="52" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" Opacity="0.7"
                                          ToolTip.Tip="{Binding HistoryTip}" AutomationProperties.Name="{Binding HistoryTip}" />
-                      <TextBlock Grid.Column="4" Text="{Binding Reason}" Classes="secondary" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="4" Text="{Binding Reason}" Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <!-- Call when free: the station is called in my next slot once its current contact is over. -->
+                      <Button Grid.Column="5" Classes="link" Content="{Binding CallWhenFreeText}" VerticalAlignment="Center"
+                              Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ToggleCallWhenFreeCommand}" CommandParameter="{Binding}"
+                              ToolTip.Tip="{Binding CallWhenFreeTip}" AutomationProperties.Name="{Binding CallWhenFreeTip}" />
                     </Grid>
                   </Border>
                 </DataTemplate>

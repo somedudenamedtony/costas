@@ -135,6 +135,9 @@ public sealed record SessionSnapshot
     /// <summary>Stations waiting for me (called me), oldest first.</summary>
     public IReadOnlyList<WaitingCaller> Waiting { get; init; } = [];
 
+    /// <summary>Watching stations marked "call when free", oldest first.</summary>
+    public IReadOnlyList<string> CallWhenFree { get; init; } = [];
+
     /// <summary>Per-slot activity on this band over the last hour, oldest first.</summary>
     public IReadOnlyList<SlotActivity> Activity { get; init; } = [];
 

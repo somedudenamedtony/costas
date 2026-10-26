@@ -166,6 +166,26 @@ you change it. A new country or a new band is never folded away: as soon as one 
 
 Stations you have already worked on this band are not in Watching; they are in [Repeats](#repeats).
 
+### Call when free
+
+Each Watching row has a **Call when free** link. Click it on a station you want, and Costas calls that station
+for you as soon as its current contact is over. The row then reads *· calling when free* and the link changes to
+**Cancel**.
+
+Costas calls the station in your next slot after it is heard signing off with someone else (`RR73`, `RRR` or
+`73`), or calling CQ again, the same moment you would tail-end it by hand. There is no extra wait.
+
+Nothing goes out unless you clicked the link, and the usual transmit checks still apply. The mark is dropped when:
+
+- the call starts (it is used once; the contact then runs as if you had clicked **Call**),
+- you click **Cancel**, press **Halt Tx**, or change band or mode,
+- the station is no longer heard, or
+- the Tx watchdog time passes with no click or key from you, so nothing starts after you have walked away.
+
+If you are in a contact of your own when the station comes free, your contact carries on and the station is called
+once yours ends, if it is still free then. You can mark more than one station; the first one marked that comes
+free is called first. A marked station is never folded away, even past the first eight rows.
+
 ## Right column
 
 From top to bottom:
