@@ -60,6 +60,13 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
 .banner{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-tx);border-radius:12px;padding:12px;font-size:14px}
 .note{position:fixed;left:14px;right:14px;bottom:110px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;display:none;z-index:3}
+/* The "Logged" notice: one slim line above HALT TX with a countdown bar; it closes itself after 5 s. */
+.logged{position:fixed;left:14px;right:14px;bottom:110px;background:var(--card);border:1px solid var(--grn);border-radius:12px;padding:9px 10px 0;z-index:3;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.logged .row1{display:flex;gap:10px;align-items:center}
+.logged .ok{width:26px;height:26px;border-radius:50%;background:var(--grn);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.logged .t{font-weight:700;font-size:15px}.logged .body{flex:1;min-width:0}.logged .body .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logged .x{background:none;padding:4px 8px;color:var(--mut)}
+.logged .track{height:3px;background:var(--line);margin:8px -10px 0}.logged .track div{height:100%;background:var(--grn)}
 .haltbar{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 30%)}
 .halt{width:100%;background:var(--halt);color:#fff;border-radius:14px;padding:14px;font-size:19px;font-weight:800;letter-spacing:1px}
 .halt span{display:block;font-size:12px;font-weight:400;letter-spacing:0;opacity:.9;margin-top:2px}
@@ -131,7 +138,7 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
   .dec .cty{grid-column:5;font-size:13px;align-self:center}
   .haltbar{padding:10px 24px calc(14px + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;pointer-events:none}
   .halt{width:420px;padding:12px;font-size:18px;pointer-events:auto;box-shadow:0 4px 18px rgba(0,0,0,.35)}
-  .note{left:auto;right:24px;width:420px}
+  .note,.logged{left:auto;right:24px;width:420px}
 }
 @media (min-width:760px) and (max-width:1079px){
   .thead:not(.wide2) > :nth-child(7),.trow:not(.wide2) > :nth-child(7){display:none}
@@ -188,6 +195,7 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
   <div id="detailsShade" class="shade hidden"><div id="details" class="sheet"></div></div>
   <div id="tuneShade" class="shade hidden"><div id="tune" class="sheet"></div></div>
   <div id="note" class="note"></div>
+  <div id="logged" class="logged hidden" role="status" aria-live="polite"></div>
   <div class="haltbar"><button id="halt" class="halt">HALT TX<span>Stops transmitting now. Receive keeps running.</span></button></div>
 </section>
 
@@ -346,6 +354,7 @@ function render() {
   renderTonight(s);
   renderDetails(s);
   renderTune(s);
+  renderLogged(s);
 
   const busy = s.transmitting || s.callingCq || (s.contact && s.contact.active);
   const h = $("halt");
@@ -710,6 +719,42 @@ function renderSlot() {
   $("slotLeft").textContent = Math.max(0, Math.ceil((s.slotLengthMs - into) / 1000)) + " s";
 }
 setInterval(renderSlot, 200);
+
+// The "Logged" notice. The station sends the contact only while its notice should show, with the time left; the
+// phone counts down between states and shows each contact once, so ✕ keeps it closed.
+let loggedId = 0, loggedUntil = 0;
+function renderLogged(s) {
+  const l = s.logged;
+  if (!l || l.id === loggedId) return;
+  loggedId = l.id;
+  loggedUntil = Date.now() + l.msLeft;
+  const box = $("logged"); box.replaceChildren();
+  const row = el("div", "row1");
+  const body = el("div", "body");
+  const t = el("div", "t", "Logged " + l.call + " ");
+  if (l.need) t.append(el("span", "tag", l.need));
+  body.append(t, el("div", "s", l.line));
+  row.append(el("div", "ok", "✓"), body, el("span", "s left"), button("✕", "x", closeLogged));
+  const track = el("div", "track"); track.append(el("div"));
+  box.append(row, track);
+  box.classList.remove("hidden");
+  tickLogged();
+}
+function closeLogged() { loggedUntil = 0; tickLogged(); }
+function tickLogged() {
+  const box = $("logged");
+  const left = loggedUntil - Date.now();
+  if (left <= 0) {
+    box.classList.add("hidden");
+    $("note").style.bottom = "";
+    return;
+  }
+  box.querySelector(".left").textContent = Math.ceil(left / 1000) + " s";
+  box.querySelector(".track div").style.width = (100 * left / 5000).toFixed(1) + "%";
+  // A command's note stacks above the notice rather than over it.
+  $("note").style.bottom = (110 + box.offsetHeight + 8) + "px";
+}
+setInterval(() => { if (loggedUntil) tickLogged(); }, 200);
 
 // Tabs; the one in use is remembered on this phone.
 const TAB = "costas-remote-tab";

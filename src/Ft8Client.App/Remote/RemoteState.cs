@@ -119,6 +119,9 @@ public sealed record RemoteState
     /// <summary>Contacts made tonight, newest first.</summary>
     public IReadOnlyList<RemoteTonight> Tonight { get; init; } = [];
 
+    /// <summary>The contact just logged while its notice should still show, else null.</summary>
+    public RemoteLogged? Logged { get; init; }
+
     /// <summary>Band activity, newest first.</summary>
     public IReadOnlyList<RemoteDecode> Decodes { get; init; } = [];
 

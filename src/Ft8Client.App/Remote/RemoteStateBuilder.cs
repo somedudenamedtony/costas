@@ -100,6 +100,7 @@ public static class RemoteStateBuilder
             TonightTitle = $"Worked tonight · {s.Tonight.Count}",
             Tonight = [.. s.Tonight.OrderByDescending(t => t.TimeUtc).Take(MaxRecent).Select(t => new RemoteTonight(t.Call,
                 StationText.Place(ctx.Countries?.Lookup(t.Call), null), BandPlan.Display(t.Band), StationText.Need(t.Need), OperateViewModel.Hm(t.TimeUtc)))],
+            Logged = Logged(s.LastLogged, nowUtc),
             Decodes = [.. s.RawDecodes.Reverse().Take(MaxDecodes).Select(Decode)],
             Details = viewing is null ? null : Details(viewing, s, nowUtc, ctx, log, inContact),
         };
@@ -137,6 +138,14 @@ public static class RemoteStateBuilder
     }
 
     // Same figures as "Your signal" on the Operate view.
+    private static RemoteLogged? Logged(LoggedContact? c, DateTime now)
+    {
+        var left = c is null ? TimeSpan.Zero : c.LoggedUtc + LoggedNoticeViewModel.ShowFor - now;
+        return c is null || left <= TimeSpan.Zero ? null
+            : new RemoteLogged(c.Id, c.Call, StationText.Need(c.Need), string.Join(" · ", new[] { LoggedNoticeViewModel.ReportsOf(c, withTime: false), c.Place }
+                .Where(x => x.Length > 0)), (int)left.TotalMilliseconds);
+    }
+
     private static RemoteSignal Signal(SessionSnapshot s, DateTime now, RemoteContext ctx, LogIndex? log, string band)
     {
         var psk = s.Services.TryGetValue(ServiceNames.Psk, out var p) ? p : null;

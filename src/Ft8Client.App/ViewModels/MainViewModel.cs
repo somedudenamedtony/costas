@@ -77,6 +77,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _ = heard.Refresh();
         Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
             () => Shutdown());
+        Logged = new LoggedNoticeViewModel(() => host.Clock.UtcNow);
         Mini = new MiniViewModel(Operate, this, () => HaltCommand.Execute(null));
         Mini.HuntDismissed += () => HuntDismissCommand.Execute(null);
         Modes = ["FT8", "FT4"];
@@ -145,6 +146,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>The update bar.</summary>
     public UpdateBarViewModel Update { get; }
+
+    /// <summary>The "Logged" notice in the corner of the window.</summary>
+    public LoggedNoticeViewModel Logged { get; }
 
     /// <summary>Operate view.</summary>
     public OperateViewModel Operate { get; }
@@ -364,6 +368,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         RefreshHuntGo();
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
         Raw.Apply(s.RawDecodes);
+        Logged.Apply(s.LastLogged);
         Frequency = FormatFrequency(s.DialHz);
         FollowBand(s.Band);
         Transmitting = s.Transmitting;
@@ -423,6 +428,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         SlotLabel = Transmitting ? "Transmitting" : "Receiving";
         UpdateTune(_host.Session.Snapshot);
         Operate.Tick();
+        Logged.Tick();
         Mini.Refresh(SelectedBand, SelectedMode);
     }
 

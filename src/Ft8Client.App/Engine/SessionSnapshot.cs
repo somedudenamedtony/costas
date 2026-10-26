@@ -112,6 +112,9 @@ public sealed record SessionSnapshot
     /// <summary>True when the offset is chosen automatically.</summary>
     public bool TxOffsetAuto { get; init; } = true;
 
+    /// <summary>The contact logged most recently this session, or null.</summary>
+    public LoggedContact? LastLogged { get; init; }
+
     /// <summary>A line for the bottom bar when something is wrong (fault text), else null.</summary>
     public string? Fault { get; init; }
 

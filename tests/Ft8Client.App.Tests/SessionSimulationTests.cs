@@ -107,6 +107,9 @@ public class SessionSimulationTests
         queue.Count().Should().Be(logged.Count);
         logged.Should().OnlyContain(q => q.UploadState == UploadState.Queued);
         d.Session.Snapshot.Tonight.Should().HaveCount(logged.Count);
+        d.Session.Snapshot.LastLogged.Should().NotBeNull();
+        d.Session.Snapshot.LastLogged!.Id.Should().Be(logged.Count, "each logged contact gets the next id, so its notice shows once");
+        d.Session.Snapshot.LastLogged.Call.Should().Be(logged.OrderBy(q => q.Id).Last().Call);
         txSlots.Should().NotBeEmpty();
         txSlots.Intersect(decodedSlots).Should().BeEmpty("nothing is recorded or decoded in a slot we transmit in");
         // PTT was only ever asserted for our planned transmissions, each released.

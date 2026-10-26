@@ -64,6 +64,12 @@ of Next in line (it is now worked on this band) and your tallies update:
 
 ![After logging](images/after-logging.png)
 
+A **Logged** notice also appears in the bottom-right corner of the window, over the right-hand column so it never
+covers the contact panel or Next in line. It names the call, what it was new for, where it is, the band and mode, and
+the reports, and closes itself after 5 seconds with a bar counting down. Resting the pointer on it keeps it open;
+**✕** closes it at once. It never takes the keyboard, so ++esc++ still halts. When you are running CQ and the next
+caller takes over the panel straight away, the notice is how you see the last contact went in the log.
+
 ## Calling CQ
 
 Click **Call CQ** (or press ++ctrl+q++). Costas calls CQ in the parity set in **Settings › Transmitting › Call CQ in**

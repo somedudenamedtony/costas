@@ -1,0 +1,35 @@
+<!-- The "Logged" notice shown for a few seconds after each contact is logged. It never takes focus, so keys (Esc to
+     halt) keep going to the window; the pointer resting on it keeps it open. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ft8Client.App.ViewModels"
+             xmlns:v="using:Ft8Client.App.Views"
+             x:Class="Ft8Client.App.Views.LoggedNoticeView"
+             x:DataType="vm:LoggedNoticeViewModel">
+  <Border x:Name="Card" IsVisible="{Binding IsOpen}" Width="300" CornerRadius="8" Padding="14,12,14,10" BorderThickness="1"
+          Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource SuccessBrush}" BoxShadow="0 6 24 0 #55000000"
+          AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="{Binding Call, StringFormat='Logged {0}'}">
+    <StackPanel>
+      <DockPanel>
+        <Border DockPanel.Dock="Left" Width="26" Height="26" CornerRadius="13" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Top" Margin="0,2,10,0">
+          <TextBlock Text="✓" Foreground="White" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <Button DockPanel.Dock="Right" Classes="link" Content="✕" Padding="4,0" VerticalAlignment="Top" Focusable="False"
+                Command="{Binding CloseCommand}" ToolTip.Tip="Close" AutomationProperties.Name="Close the logged notice" />
+        <StackPanel Spacing="2">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Logged" FontWeight="SemiBold" FontSize="14" />
+            <TextBlock Text="{Binding Call}" FontWeight="Bold" FontSize="14" />
+            <TextBlock Text="{Binding Need}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Foreground="{Binding NeedKind, Converter={x:Static v:Converters.KindBrush}}" />
+          </StackPanel>
+          <TextBlock Text="{Binding Subline}" Classes="secondary" FontSize="12" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding Reports}" Classes="secondary num" FontSize="12" />
+        </StackPanel>
+      </DockPanel>
+      <ProgressBar Value="{Binding Remaining}" Maximum="1" Height="3" MinHeight="3" MinWidth="0" Margin="0,10,0,0"
+                   Foreground="{DynamicResource SuccessBrush}" />
+      <TextBlock Text="{Binding Countdown}" Classes="secondary" FontSize="11" HorizontalAlignment="Right" Margin="0,4,0,0" />
+    </StackPanel>
+  </Border>
+</UserControl>
