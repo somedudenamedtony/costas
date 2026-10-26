@@ -13,6 +13,7 @@ using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Stations;
+using Ft8Client.Core.Time;
 using Ft8Client.Core.Transmit;
 
 namespace Ft8Client.App.Engine;
@@ -91,6 +92,16 @@ public sealed record SessionSnapshot
 
     /// <summary>True while transmitting.</summary>
     public bool Transmitting { get; init; }
+
+    /// <summary>Slot start of the latest transmission that went on the air, or null.</summary>
+    public DateTime? LastTxSlotUtc { get; init; }
+
+    /// <summary>
+    /// True for the whole slot a transmission went out in, not just while audio plays (FT8 audio ends about 2 s before
+    /// the slot does), so slot countdowns read transmit slot then receive slot.
+    /// </summary>
+    /// <param name="nowUtc">Now.</param>
+    public bool InTransmitSlot(DateTime nowUtc) => Transmitting || LastTxSlotUtc == SlotMath.SlotStart(nowUtc, Mode);
 
     /// <summary>The message being transmitted now, or null.</summary>
     public string? TransmittingMessage { get; init; }

@@ -125,7 +125,7 @@ public class MiniViewModelTests
         mini.Call.Should().Be("N4OPI");
         mini.Steps.Should().HaveCount(5);
         mini.Message.Should().Be("N4OPI W7LIT R-14");
-        mini.SlotText.Should().Be("Transmitting · 10 s");
+        mini.SlotText.Should().Be("Transmitting · 11 s");
         mini.SlotKind.Should().Be(TextKind.Critical);
     }
 

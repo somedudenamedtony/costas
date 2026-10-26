@@ -420,7 +420,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         SlotProgress = into / len;
         var left = (int)Math.Ceiling((len - into).TotalSeconds);
         SlotRemaining = $"{left} s to next slot";
-        SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+        SlotLabel = _host.Session.Snapshot.InTransmitSlot(now) ? "Transmitting" : "Receiving";
         UpdateTune(_host.Session.Snapshot);
         Operate.Tick();
         Mini.Refresh(SelectedBand, SelectedMode);
