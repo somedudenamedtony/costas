@@ -606,11 +606,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
             place = StationText.Place(entity, lk?.State);
         }
-        var qsoId = _log?.Write(entry, ctx);
+        var row = _log?.Write(entry, ctx);
         lock (_gate)
         {
             _lastLogged = new LoggedContact((_lastLogged?.Id ?? 0) + 1, entry.Call, ctx.Need.Tag, place, ctx.Band,
-                ctx.Mode, entry.ReportSent, entry.ReportReceived, _clock.UtcNow, qsoId);
+                ctx.Mode, entry.ReportSent, entry.ReportReceived, _clock.UtcNow, row?.Id, row?.TxPwr);
         }
     }
 

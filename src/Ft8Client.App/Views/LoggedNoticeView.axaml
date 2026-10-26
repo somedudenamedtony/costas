@@ -49,7 +49,9 @@
           <TextBlock Grid.Row="2" Grid.Column="2" Text="Report received" Classes="secondary" FontSize="12" />
           <TextBox Grid.Row="3" Grid.Column="2" Text="{Binding Received}" Margin="0,2,0,8" AutomationProperties.Name="Report received" />
           <TextBlock Grid.Row="4" Text="Name" Classes="secondary" FontSize="12" />
-          <TextBox Grid.Row="5" Grid.ColumnSpan="3" Text="{Binding Name}" Margin="0,2,0,0" AutomationProperties.Name="Name" />
+          <TextBox Grid.Row="5" Text="{Binding Name}" Margin="0,2,0,0" AutomationProperties.Name="Name" />
+          <TextBlock Grid.Row="4" Grid.Column="2" Text="Power (W)" Classes="secondary" FontSize="12" />
+          <TextBox Grid.Row="5" Grid.Column="2" Text="{Binding Power}" Margin="0,2,0,0" AutomationProperties.Name="Power in watts" />
         </Grid>
         <StackPanel DataContext="{Binding Editing}" x:DataType="vm:QsoEditViewModel" Spacing="2">
           <TextBlock Text="Comment" Classes="secondary" FontSize="12" />

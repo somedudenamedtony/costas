@@ -142,7 +142,8 @@ public static class RemoteStateBuilder
     {
         var left = c is null ? TimeSpan.Zero : c.LoggedUtc + LoggedNoticeViewModel.ShowFor - now;
         return c is null || left <= TimeSpan.Zero ? null
-            : new RemoteLogged(c.Id, c.Call, StationText.Need(c.Need), string.Join(" · ", new[] { LoggedNoticeViewModel.ReportsOf(c, withTime: false), c.Place }
+            : new RemoteLogged(c.Id, c.Call, StationText.Need(c.Need), string.Join(" · ", new[] { LoggedNoticeViewModel.ReportsOf(c, withTime: false), c.Place,
+                LoggedNoticeViewModel.PowerOf(c) }
                 .Where(x => x.Length > 0)), (int)left.TotalMilliseconds);
     }
 

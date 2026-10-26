@@ -42,6 +42,16 @@ public class LoggedNoticeViewModelTests
     }
 
     [Fact]
+    public void Apply_PowerLogged_ShowsWatts()
+    {
+        var n = Notice();
+
+        n.Apply(Logged() with { PowerWatts = "25" });
+
+        n.Subline.Should().Be("Indiana, USA · 20 m FT8 · 25 W");
+    }
+
+    [Fact]
     public void Apply_NoReportReceived_ShowsDashes()
     {
         var n = Notice();

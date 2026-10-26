@@ -82,7 +82,7 @@ public sealed partial class LoggedNoticeViewModel : ObservableObject
     [ObservableProperty]
     public partial TextKind NeedKind { get; set; }
 
-    /// <summary>"Indiana, USA · 20 m FT8".</summary>
+    /// <summary>"Indiana, USA · 20 m FT8 · 25 W".</summary>
     [ObservableProperty]
     public partial string Subline { get; set; } = string.Empty;
 
@@ -212,9 +212,12 @@ public sealed partial class LoggedNoticeViewModel : ObservableObject
         Show(next);
     }
 
-    /// <summary>"Indiana, USA · 20 m FT8".</summary>
+    /// <summary>"Indiana, USA · 20 m FT8 · 25 W".</summary>
     public static string SublineOf(LoggedContact c) =>
-        string.Join(" · ", new[] { c.Place, $"{BandPlan.Display(c.Band)} {ModeInfo.Name(c.Mode)}" }.Where(x => x.Length > 0));
+        string.Join(" · ", new[] { c.Place, $"{BandPlan.Display(c.Band)} {ModeInfo.Name(c.Mode)}", PowerOf(c) }.Where(x => x.Length > 0));
+
+    /// <summary>"25 W", or empty when no power was logged.</summary>
+    public static string PowerOf(LoggedContact c) => string.IsNullOrWhiteSpace(c.PowerWatts) ? string.Empty : $"{c.PowerWatts} W";
 
     /// <summary>"Sent -12 · Received -08 · 14:30 UTC", shared with the phone (which leaves the time off).</summary>
     public static string ReportsOf(LoggedContact c, bool withTime = true) =>

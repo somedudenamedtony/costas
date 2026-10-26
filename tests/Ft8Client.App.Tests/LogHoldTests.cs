@@ -43,7 +43,7 @@ public sealed class LogHoldTests : IDisposable
     {
         var log = new DatabaseSessionLog(_qsos, _queue, () => "home", () => true, eqslUploadEnabled: () => true, hold: _hold);
         return log.Write(new ContactLogEntry("W9TJP", "EN61", -12, -8, T0.AddMinutes(-1), T0),
-            new LogContext("20m", Mode.Ft8, 14_075_500, "W7LIT", "DN40", 25, new NeedResult(NeedTag.NewCall, 1), null, null, null, null, null))!.Value;
+            new LogContext("20m", Mode.Ft8, 14_075_500, "W7LIT", "DN40", 25, new NeedResult(NeedTag.NewCall, 1), null, null, null, null, null))!.Id;
     }
 
     [Fact]
@@ -55,6 +55,14 @@ public sealed class LogHoldTests : IDisposable
         _queue.Due("eqsl", T0).Should().BeEmpty();
         _queue.Due("qrz", T0 + LogHold.Window).Should().HaveCount(1);
         _released.Should().BeEmpty("the UDP message and LoTW wait too");
+    }
+
+    [Fact]
+    public void Write_Contact_ReturnsRowWithPower()
+    {
+        var id = Log();
+
+        _qsos.Get(id)!.TxPwr.Should().Be("25");
     }
 
     [Fact]
