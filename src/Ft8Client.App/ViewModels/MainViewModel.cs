@@ -77,7 +77,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _ = heard.Refresh();
         Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
             () => Shutdown());
-        Logged = new LoggedNoticeViewModel(() => host.Clock.UtcNow);
+        Logged = new LoggedNoticeViewModel(() => host.Clock.UtcNow, new LoggedContactStore(host.Qsos, host.Countries, host.LogHold, host.RebuildLogIndex));
         Mini = new MiniViewModel(Operate, this, () => HaltCommand.Execute(null));
         Mini.HuntDismissed += () => HuntDismissCommand.Execute(null);
         Modes = ["FT8", "FT4"];
@@ -430,6 +430,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         UpdateTune(_host.Session.Snapshot);
         Operate.Tick();
         Logged.Tick();
+        _host.LogHold.Tick();
         Mini.Refresh(SelectedBand, SelectedMode);
     }
 

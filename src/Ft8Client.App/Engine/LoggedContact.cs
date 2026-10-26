@@ -21,5 +21,6 @@ namespace Ft8Client.App.Engine;
 /// <param name="ReportSent">Report sent in dB.</param>
 /// <param name="ReportReceived">Report received in dB, null when none was exchanged.</param>
 /// <param name="LoggedUtc">When it was logged.</param>
+/// <param name="QsoId">Its row in the log, for editing, or null when it could not be stored.</param>
 public sealed record LoggedContact(long Id, string Call, NeedTag Need, string Place, string Band, Mode Mode, int ReportSent, int? ReportReceived,
-                                   DateTime LoggedUtc);
+                                   DateTime LoggedUtc, long? QsoId = null);

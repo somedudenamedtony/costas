@@ -586,6 +586,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private void OnLogged(ContactLogEntry entry)
     {
         LogContext ctx;
+        string place;
         lock (_gate)
         {
             var s = _tracker.Find(entry.Call);
@@ -602,11 +603,15 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag));
             _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
-            _lastLogged = new LoggedContact((_lastLogged?.Id ?? 0) + 1, entry.Call, need.Tag, StationText.Place(entity, lk?.State), _config.Band,
-                _config.Mode, entry.ReportSent, entry.ReportReceived, _clock.UtcNow);
             _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
+            place = StationText.Place(entity, lk?.State);
         }
-        _log?.Write(entry, ctx);
+        var qsoId = _log?.Write(entry, ctx);
+        lock (_gate)
+        {
+            _lastLogged = new LoggedContact((_lastLogged?.Id ?? 0) + 1, entry.Call, ctx.Need.Tag, place, ctx.Band,
+                ctx.Mode, entry.ReportSent, entry.ReportReceived, _clock.UtcNow, qsoId);
+        }
     }
 
     // ---------------------------------------------------------------- commands

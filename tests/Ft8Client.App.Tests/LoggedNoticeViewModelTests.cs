@@ -10,6 +10,7 @@ using Ft8Client.App.Engine;
 using Ft8Client.App.ViewModels;
 using Ft8Client.Core;
 using Ft8Client.Core.Logbook;
+using Ft8Client.Data.Log;
 
 namespace Ft8Client.App.Tests;
 
@@ -113,5 +114,117 @@ public class LoggedNoticeViewModelTests
         _now = Now.AddSeconds(35);
         n.Tick();
         n.IsOpen.Should().BeFalse();
+    }
+
+    private sealed class Store : ILoggedContactStore
+    {
+        public Dictionary<long, QsoRecord> Rows { get; } = new() { [10] = new QsoRecord { Id = 10, Call = "W9TJP", RstSent = "-12" }, [11] = new QsoRecord { Id = 11, Call = "WD8DFW" } };
+
+        public List<string> Calls { get; } = [];
+
+        public QsoRecord? Get(long qsoId) => Rows.GetValueOrDefault(qsoId);
+
+        public void Save(QsoRecord q)
+        {
+            Rows[q.Id] = q;
+            Calls.Add($"save {q.Id} {q.Call}");
+        }
+
+        public void Keep(long qsoId, bool keep) => Calls.Add($"keep {qsoId} {keep}");
+
+        public void Release(long qsoId) => Calls.Add($"release {qsoId}");
+    }
+
+    [Fact]
+    public void Tick_CountdownOver_ReleasesTheContact()
+    {
+        var store = new Store();
+        var n = new LoggedNoticeViewModel(() => _now, store);
+        n.Apply(Logged() with { QsoId = 10 });
+
+        _now = Now.AddSeconds(5);
+        n.Tick();
+
+        n.IsOpen.Should().BeFalse();
+        store.Calls.Should().Equal("release 10");
+    }
+
+    [Fact]
+    public void Edit_Save_SavesThenReleasesAndCloses()
+    {
+        var store = new Store();
+        var n = new LoggedNoticeViewModel(() => _now, store);
+        n.Apply(Logged() with { QsoId = 10 });
+        n.CanEdit.Should().BeTrue();
+
+        n.EditCommand.Execute(null);
+        n.IsEditing.Should().BeTrue();
+        n.Title.Should().Be("Edit");
+        _now = Now.AddMinutes(3);
+        n.Tick();
+        n.IsOpen.Should().BeTrue("an open edit never times out");
+        n.Editing!.Call = "w9tjq";
+        n.SaveEditCommand.Execute(null);
+
+        n.IsOpen.Should().BeFalse();
+        store.Calls.Should().Equal("keep 10 True", "save 10 W9TJQ", "release 10");
+    }
+
+    [Fact]
+    public void Edit_SaveWithNoCall_Refused()
+    {
+        var store = new Store();
+        var n = new LoggedNoticeViewModel(() => _now, store);
+        n.Apply(Logged() with { QsoId = 10 });
+        n.EditCommand.Execute(null);
+        n.Editing!.Call = " ";
+
+        n.SaveEditCommand.Execute(null);
+
+        n.IsEditing.Should().BeTrue();
+        n.EditError.Should().Be("Enter the call.");
+        store.Calls.Should().Equal("keep 10 True");
+    }
+
+    [Fact]
+    public void Apply_WhileEditing_NextContactWaitsHeldThenShows()
+    {
+        var store = new Store();
+        var n = new LoggedNoticeViewModel(() => _now, store);
+        n.Apply(Logged() with { QsoId = 10 });
+        n.EditCommand.Execute(null);
+
+        n.Apply(Logged(2) with { Call = "WD8DFW", QsoId = 11 });
+        n.Call.Should().Be("W9TJP");
+        n.CancelEditCommand.Execute(null);
+
+        n.IsOpen.Should().BeTrue();
+        n.IsEditing.Should().BeFalse();
+        n.Call.Should().Be("WD8DFW");
+        n.Countdown.Should().Be("Closes in 5 s");
+        store.Calls.Should().Equal("keep 10 True", "keep 11 True", "release 10", "keep 11 False");
+    }
+
+    [Fact]
+    public void Apply_NextContactWhileShowing_ReleasesThePrevious()
+    {
+        var store = new Store();
+        var n = new LoggedNoticeViewModel(() => _now, store);
+        n.Apply(Logged() with { QsoId = 10 });
+
+        n.Apply(Logged(2) with { Call = "WD8DFW", QsoId = 11 });
+
+        store.Calls.Should().Equal("release 10");
+    }
+
+    [Fact]
+    public void Apply_NotStored_CannotEdit()
+    {
+        var n = new LoggedNoticeViewModel(() => _now, new Store());
+        n.Apply(Logged());
+
+        n.CanEdit.Should().BeFalse();
+        n.EditCommand.Execute(null);
+        n.IsEditing.Should().BeFalse();
     }
 }

@@ -29,7 +29,7 @@ public class DatabaseSessionLogTests
     {
         var db = new SqliteDatabase(Path.Combine(Directory.CreateTempSubdirectory("ft8log").FullName, "log.db"));
         var qsos = new QsoRepository(db);
-        new DatabaseSessionLog(qsos, new UploadQueueRepository(db), () => "home", () => false, radioPower, parkFor: parkFor).Write(Entry, Context).Should().BeTrue();
+        new DatabaseSessionLog(qsos, new UploadQueueRepository(db), () => "home", () => false, radioPower, parkFor: parkFor).Write(Entry, Context).Should().NotBeNull();
         return qsos.List().Single();
     }
 
@@ -45,7 +45,7 @@ public class DatabaseSessionLogTests
         var qsos = new QsoRepository(db);
         var queue = new UploadQueueRepository(db);
         var log = new DatabaseSessionLog(qsos, queue, () => "home", () => qrz, eqslUploadEnabled: () => eqsl);
-        log.Write(Entry, Context).Should().BeTrue();
+        log.Write(Entry, Context).Should().NotBeNull();
         queue.Count().Should().Be(count);
         queue.All().Any(i => i.Target == "qrz").Should().Be(qrz);
         queue.All().Any(i => i.Target == "eqsl").Should().Be(eqsl);
