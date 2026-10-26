@@ -81,7 +81,7 @@ Mockup: `main-idle`. Shown below the contact card when no contact is in progress
 
 ### Top slot, contact card
 
-Mockup: `main-in-contact`. Always the first card on the Operate view, so the on-air panel (countdown and Call CQ) is always in the same place. From the moment the operator calls a station or answers a caller until the contact is logged or abandoned, it shows the contact and the band summary is hidden. After logging it stays for one slot showing "Logged", then goes idle.
+Mockup: `main-in-contact`. Always the first card on the Operate view, so the on-air panel (countdown and Call CQ) is always in the same place. It is pinned with the band summary above the scrolling area (owner request 2026-10-26): only Next in line, Repeats and Watching scroll. On a short window the pinned cards give way and scroll on their own so the call list keeps at least 220 px. From the moment the operator calls a station or answers a caller until the contact is logged or abandoned, it shows the contact and the band summary is hidden. After logging it stays for one slot showing "Logged", then goes idle.
 
 Idle (no contact): caption "Not in a contact" (or "Calling CQ" with the subline "Waiting for a station to answer." while CQ is running), "—" in place of the call, the subline "Call a station in Next in line, or call CQ.", reports "--", no conversation strip, and Resend, Log now and Abandon disabled. The band summary shows below it.
 
