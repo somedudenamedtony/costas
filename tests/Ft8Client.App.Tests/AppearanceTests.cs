@@ -182,7 +182,25 @@ public class AppearanceTests
                 using var connection = database.Open();
                 SqliteConnection.ClearPool(connection);
             }
-            Directory.Delete(dir, true);
+            DeleteWhenSettled(dir);
+        }
+    }
+
+    // A background save that started before the host stopped can still land a file while the folder is being removed
+    // (CI saw "Directory not empty"). Retry briefly instead of failing on cleanup.
+    private static void DeleteWhenSettled(string dir)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                Directory.Delete(dir, true);
+                return;
+            }
+            catch (IOException) when (attempt < 10)
+            {
+                Thread.Sleep(100);
+            }
         }
     }
 
