@@ -116,6 +116,9 @@ public sealed class ContactEngine
         _settings = settings;
     }
 
+    /// <summary>True once the Tx watchdog time has passed with no operator input.</summary>
+    public bool WatchdogExpired(DateTime nowUtc) => nowUtc - _lastInputUtc >= TimeSpan.FromMinutes(_settings.WatchdogMinutes);
+
     /// <summary>Records operator input (key or click) for the watchdog.</summary>
     public void OperatorActivity(DateTime nowUtc)
     {
@@ -129,12 +132,13 @@ public sealed class ContactEngine
     /// <paramref name="busyWith"/> names another station it is working right now, nothing is sent: the contact ends at
     /// once as <see cref="ContactOutcome.AnsweredOther"/> so the operator sees why. With <paramref name="fox"/> the
     /// station runs Fox/Hound: it is called as a Hound (<see cref="ContactFlow.Hound"/>), and since a Fox is always working
-    /// someone, <paramref name="busyWith"/> is ignored.
+    /// someone, <paramref name="busyWith"/> is ignored. A call Costas starts itself (<paramref name="byOperator"/> false,
+    /// "call when free") does not count as operator input for the watchdog.
     /// </summary>
     public void CallStation(string call, string? grid, int snr, SlotParity dxParity, int dxOffsetHz, DateTime nowUtc, string? busyWith = null,
-                            bool fox = false)
+                            bool fox = false, bool byOperator = true)
     {
-        OperatorActivity(nowUtc);
+        if (byOperator) OperatorActivity(nowUtc);
         call = Callsign.Normalize(call);
         _finished = null;
         _extraMessage = null;
@@ -339,7 +343,7 @@ public sealed class ContactEngine
         var wantsTx = _c is not null || _cqRunning || _extraMessage is not null;
         if (!wantsTx) return null;
 
-        var watchdogExpired = nowUtc - _lastInputUtc >= TimeSpan.FromMinutes(_settings.WatchdogMinutes);
+        var watchdogExpired = WatchdogExpired(nowUtc);
         if (watchdogExpired && (_c is not null ? Answered(_c) : _lastBeforeWatchdog))
         {
             // Owner decision 2026-10-20: a contact the other station is answering runs to its end (still bounded by

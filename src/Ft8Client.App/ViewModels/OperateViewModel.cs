@@ -317,8 +317,11 @@ public sealed partial class OperateViewModel : ObservableObject
         }
 
         Watching.Clear();
-        foreach (var w in s.Rank.Watching.Take(MaxWatching)) Watching.Add(new WatchRowViewModel(w, now, Units));
-        WatchingCanFold = WatchingSummary.CanFold(s.Rank.Watching);
+        var marked = s.CallWhenFree.ToHashSet(StringComparer.Ordinal);
+        // A station marked "call when free" stays listed past the row limit, so its mark can always be seen and cancelled.
+        foreach (var w in s.Rank.Watching.Where((w, i) => i < MaxWatching || marked.Contains(w.Station.Call)))
+            Watching.Add(new WatchRowViewModel(w, now, Units, marked.Contains(w.Station.Call)));
+        WatchingCanFold = WatchingSummary.CanFold(s.Rank.Watching) && !Watching.Any(w => w.CallWhenFree);
         WatchingSummaryText = WatchingSummary.Text(s.Rank.Watching);
         OnPropertyChanged(nameof(WatchingFolded));
         var band = BandPlan.Display(s.Band);
@@ -498,6 +501,10 @@ public sealed partial class OperateViewModel : ObservableObject
         _line.Clicked();
         _commands.Call(row.Call);
     }
+
+    /// <summary>Marks a Watching station to be called once its contact is over, or cancels the mark.</summary>
+    [RelayCommand]
+    private void ToggleCallWhenFree(WatchRowViewModel row) => _commands.CallWhenFree(row.Call, !row.CallWhenFree);
 
     /// <summary>Answers a waiting caller.</summary>
     [RelayCommand]

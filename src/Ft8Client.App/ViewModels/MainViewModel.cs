@@ -498,6 +498,14 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     }
 
     /// <inheritdoc />
+    public void CallWhenFree(string call, bool on)
+    {
+        Activity();
+        if (on) _host.Usage.Track("call_when_free", "mode", SelectedMode);
+        _host.Session.SetCallWhenFree(call, on);
+    }
+
+    /// <inheritdoc />
     public void Answer(string call)
     {
         Activity();

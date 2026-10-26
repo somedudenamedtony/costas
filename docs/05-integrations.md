@@ -285,7 +285,7 @@ Privacy. Owner decision 2026-10-15.
   reports no network. Events wait in memory (at most 500, under 23 hours old) and are sent once a minute; failures
   back off up to 30 minutes; whatever is waiting at exit gets one 3-second attempt and is then dropped.
 - Events: `app_started` (settings snapshot, see `UsageEvents`), `app_running` (once a UTC day for long runs),
-  `band_changed`, `view_opened`, `window_opened`, `cq_started`, `station_called`, `caller_answered`, `tune`,
+  `band_changed`, `view_opened`, `window_opened`, `cq_started`, `station_called`, `caller_answered`, `call_when_free`, `tune`,
   `hunt_go`, `hunt_added`, `contact_logged`. Never a callsign, grid, name, frequency, port, address or log content.
 
 ## 11. eQSL

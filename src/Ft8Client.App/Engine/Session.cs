@@ -50,6 +50,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private readonly Dictionary<string, ServiceStatus> _services = new(StringComparer.Ordinal);
     private readonly Dictionary<string, CallsignCacheEntry> _lookups = new(StringComparer.Ordinal);
     private readonly List<TonightContact> _tonight = [];
+    private readonly List<string> _callWhenFree = []; // Watching rows marked "call when free", oldest first
     private const int MaxNeighbourReports = 50000;
     private IReadOnlyDictionary<string, BandOpening> _openings = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
     private DateTime _openingsUtc;
@@ -421,6 +422,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _tracker.ApplySlot(slot, heard);
             _pileups.ApplySlot(slot, heard);
             FeedEngine(slot, mode, heard, now);
+            CallWhenFreeNow(now);
 
             _slotCounts.Add((slot, result.Decodes.Count));
             _slotCounts.RemoveAll(x => now - x.Slot > TimeSpan.FromHours(1));
@@ -626,6 +628,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             {
                 var s = _tracker.Find(call);
                 if (s is null) return false;
+                _callWhenFree.RemoveAll(c => Callsign.EqualsCall(c, s.Call));
                 // A station heard working someone else (reports or grids exchanged, not signing off) will not hear me:
                 // the contact ends at once and says so rather than calling into its contact.
                 var busyWith = s is { State: StationState.InContact, Partner: { } p } && !Callsign.EqualsCall(p, _config.MyCall) ? p : null;
@@ -638,6 +641,49 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         AfterCommand();
         return true;
     }
+
+    /// <summary>
+    /// Marks or unmarks a Watching station to be called once its current contact is over ("call when free", owner
+    /// request 2026-10-26). Marking is an operator action; the call itself goes out in my next slot after the station
+    /// is heard signing off or calling CQ, and only while I am not in a contact.
+    /// </summary>
+    public void SetCallWhenFree(string call, bool on)
+    {
+        lock (_gate)
+        {
+            var now = _clock.UtcNow;
+            _engine.OperatorActivity(now);
+            call = Callsign.Normalize(call);
+            _callWhenFree.RemoveAll(c => Callsign.EqualsCall(c, call));
+            if (on && _tracker.Find(call) is not null) _callWhenFree.Add(call);
+            CallWhenFreeNow(now); // a station already signing off is called at once
+        }
+        AfterCommand();
+    }
+
+    // Under _gate. Starts a contact with the first marked station whose contact is over, unless I am in one. Marks
+    // lapse with the station (no longer heard) and with the Tx watchdog, so nothing starts after the operator left.
+    private void CallWhenFreeNow(DateTime now)
+    {
+        _callWhenFree.RemoveAll(c => _tracker.Find(c) is null);
+        if (_callWhenFree.Count == 0 || _engine.InContact) return;
+        if (_engine.WatchdogExpired(now))
+        {
+            _callWhenFree.Clear();
+            return;
+        }
+        var input = RankInputAt(_tracker.Stations.ToList(), now);
+        var s = CallWhenFree.Next(_callWhenFree, _tracker.Find, st => Ranker.NotCallableReason(st, input));
+        if (s is null) return;
+        _callWhenFree.Remove(s.Call);
+        if (s.RunsFox) HoundCallOffset(SlotMath.Opposite(s.Parity));
+        _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, fox: s.RunsFox, byOperator: false);
+        _fault = null;
+    }
+
+    private RankInput RankInputAt(List<Station> stations, DateTime now) =>
+        new(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity, _config.Band, ModeInfo.Name(_config.Mode), now,
+            _countries, Lotw: _lotwUsers, Parks: _parks);
 
     // Moves my offset to 1000 Hz or above for calling a Fox: the fixed offset if it is that high, else a clear spot there.
     // Under _gate. The offset then holds until the Hound contact ends.
@@ -731,6 +777,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             _engine.Halt(_clock.UtcNow);
+            _callWhenFree.Clear(); // Halt Tx means nothing new starts on its own
             _rigTuningUntil = null;
             if (reason is not null) _fault = reason;
         }
@@ -826,6 +873,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _config = _config with { Band = band, Mode = mode };
             _dialHz = dialHz ?? _frequencies.Find(band, mode)?.DialHz ?? _dialHz;
             _tracker = new StationTracker(_config.MyCall, _config.MyGrid, _countries, mode);
+            _callWhenFree.Clear();
             _pileups = new PileupTracker(mode);
             foreach (var (call, e) in _lookups) _tracker.SetLookup(call, e.Grid, e.State, e.City);
             _engine.Abandon(_clock.UtcNow);
@@ -1073,8 +1121,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         {
             var now = _clock.UtcNow;
             var stations = _tracker.Stations.ToList();
-            var rank = Ranker.Rank(new RankInput(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity,
-                _config.Band, ModeInfo.Name(_config.Mode), now, _countries, Lotw: _lotwUsers, Parks: _parks));
+            var rank = Ranker.Rank(RankInputAt(stations, now));
             var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, ModeInfo.Name(_config.Mode), now, _slotCounts, _tonight,
                 _config.Ranking);
             snap = new SessionSnapshot
@@ -1112,6 +1159,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 Fault = _fault ?? _engine.StopReason,
                 ClockOffsetSeconds = ClockEstimate.Offset(_sntpOffset, _medianDt),
                 Waiting = _engine.Waiting.ToList(),
+                CallWhenFree = _callWhenFree.ToList(),
                 TxMeters = _txMeters,
                 Activity = _activity.ToList(),
                 Pileups = _pileups.All(now),
