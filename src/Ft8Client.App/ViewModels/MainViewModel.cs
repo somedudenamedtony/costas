@@ -367,7 +367,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         ApplyBandOpenings(s);
         RefreshHuntGo();
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
-        Raw.Apply(s.RawDecodes);
+        Raw.Units = Operate.Units;
+        Raw.Apply(s.RawDecodes, s.Rank, s.Contact?.DxCall);
         Logged.Apply(s.LastLogged);
         Frequency = FormatFrequency(s.DialHz);
         FollowBand(s.Band);
@@ -425,7 +426,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         SlotProgress = into / len;
         var left = (int)Math.Ceiling((len - into).TotalSeconds);
         SlotRemaining = $"{left} s to next slot";
-        SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+        SlotLabel = _host.Session.Snapshot.InTransmitSlot(now) ? "Transmitting" : "Receiving";
         UpdateTune(_host.Session.Snapshot);
         Operate.Tick();
         Logged.Tick();
@@ -501,6 +502,14 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Activity();
         _host.Usage.Track("station_called", "mode", SelectedMode);
         if (!_host.Session.CallStation(call)) StatusText = $"{call} is not in the station list.";
+    }
+
+    /// <inheritdoc />
+    public void CallWhenFree(string call, bool on)
+    {
+        Activity();
+        if (on) _host.Usage.Track("call_when_free", "mode", SelectedMode);
+        _host.Session.SetCallWhenFree(call, on);
     }
 
     /// <inheritdoc />

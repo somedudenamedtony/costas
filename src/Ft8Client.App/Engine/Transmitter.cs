@@ -107,6 +107,12 @@ public sealed class Transmitter
         get { lock (_gate) return _hold is not null && _next is not null; }
     }
 
+    /// <summary>Slot start of the latest transmission that went on the air, or null.</summary>
+    public DateTime? LastStartedSlot
+    {
+        get { lock (_gate) return _lastStartedSlot; }
+    }
+
     /// <summary>True when audio for the slot has started (or the slot's transmission has finished).</summary>
     public bool AudioStarted(DateTime slotStartUtc)
     {

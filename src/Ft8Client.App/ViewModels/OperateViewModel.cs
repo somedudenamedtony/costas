@@ -182,6 +182,14 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial IReadOnlyList<ReceptionBucket> SignalHistory { get; set; } = [];
 
+    /// <summary>"USA 30 · Canada 2": the countries that heard me, most stations first.</summary>
+    [ObservableProperty]
+    public partial string SignalCountries { get; set; } = string.Empty;
+
+    /// <summary>Every country that heard me, with its best report and farthest station.</summary>
+    [ObservableProperty]
+    public partial string SignalCountriesTip { get; set; } = string.Empty;
+
     /// <summary>Farthest.</summary>
     [ObservableProperty]
     public partial string SignalFarthest { get; set; } = "—";
@@ -317,8 +325,11 @@ public sealed partial class OperateViewModel : ObservableObject
         }
 
         Watching.Clear();
-        foreach (var w in s.Rank.Watching.Take(MaxWatching)) Watching.Add(new WatchRowViewModel(w, now, Units));
-        WatchingCanFold = WatchingSummary.CanFold(s.Rank.Watching);
+        var marked = s.CallWhenFree.ToHashSet(StringComparer.Ordinal);
+        // A station marked "call when free" stays listed past the row limit, so its mark can always be seen and cancelled.
+        foreach (var w in s.Rank.Watching.Where((w, i) => i < MaxWatching || marked.Contains(w.Station.Call)))
+            Watching.Add(new WatchRowViewModel(w, now, Units, marked.Contains(w.Station.Call)));
+        WatchingCanFold = WatchingSummary.CanFold(s.Rank.Watching) && !Watching.Any(w => w.CallWhenFree);
         WatchingSummaryText = WatchingSummary.Text(s.Rank.Watching);
         OnPropertyChanged(nameof(WatchingFolded));
         var band = BandPlan.Display(s.Band);
@@ -379,12 +390,12 @@ public sealed partial class OperateViewModel : ObservableObject
     private void UpdateSlot(DateTime now)
     {
         var mode = _snap?.Mode ?? Mode.Ft8;
-        // While transmitting, count down to the end of the transmission (as the conversation strip does), not the slot.
-        var len = Transmitting ? ModeInfo.TxEnd(mode) : ModeInfo.SlotLength(mode);
+        // Count down to the slot boundary, and call the whole slot a transmission went out in the transmit slot.
+        var len = ModeInfo.SlotLength(mode);
         var into = now - SlotMath.SlotStart(now, mode);
         SlotProgress = Math.Clamp(into / len, 0, 1);
         SlotLeft = $"{Math.Max(0, (int)Math.Ceiling((len - into).TotalSeconds))} s";
-        SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+        SlotLabel = (_snap?.InTransmitSlot(now) ?? Transmitting) ? "Transmitting" : "Receiving";
     }
 
     /// <summary>Pointer entered Repeats: hold its order still.</summary>
@@ -498,6 +509,10 @@ public sealed partial class OperateViewModel : ObservableObject
         _line.Clicked();
         _commands.Call(row.Call);
     }
+
+    /// <summary>Marks a Watching station to be called once its contact is over, or cancels the mark.</summary>
+    [RelayCommand]
+    private void ToggleCallWhenFree(WatchRowViewModel row) => _commands.CallWhenFree(row.Call, !row.CallWhenFree);
 
     /// <summary>Answers a waiting caller.</summary>
     [RelayCommand]
@@ -630,10 +645,12 @@ public sealed partial class OperateViewModel : ObservableObject
         };
         if (Countries is null || Log is null) return;
         var points = ReachPoint.From(s.Reports, now, TimeSpan.FromMinutes(15), s.MyGrid, Countries, Log(), s.Band, ModeInfo.Name(s.Mode));
-        var countries = points.Select(p => p.EntityKey).Where(k => k is not null).Distinct().Count();
+        var countries = CountryReach.From(points, Countries, Units);
         SignalHeadline = points.Count == 0
             ? "No reports yet. Reports appear a few minutes after you transmit."
-            : $"{points.Count} stations in {countries} countries heard you in the last 15 minutes.";
+            : $"{points.Count} stations in {countries.Count} countries heard you in the last 15 minutes.";
+        SignalCountries = CountryReach.Summary(countries);
+        SignalCountriesTip = CountryReach.Tip(countries);
         var far = points.MaxBy(p => p.Km);
         SignalFarthest = far is null ? "—" : $"{far.Call} · {StationText.Distance(far.Km, Units)}";
         var best = points.MaxBy(p => p.Snr);

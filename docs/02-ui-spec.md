@@ -81,7 +81,7 @@ Mockup: `main-idle`. Shown below the contact card when no contact is in progress
 
 ### Top slot, contact card
 
-Mockup: `main-in-contact`. Always the first card on the Operate view, so the on-air panel (countdown and Call CQ) is always in the same place. From the moment the operator calls a station or answers a caller until the contact is logged or abandoned, it shows the contact and the band summary is hidden. After logging it stays for one slot showing "Logged", then goes idle.
+Mockup: `main-in-contact`. Always the first card on the Operate view, so the on-air panel (countdown and Call CQ) is always in the same place. It is pinned with the band summary above the scrolling area (owner request 2026-10-26): only Next in line, Repeats and Watching scroll. On a short window the pinned cards give way and scroll on their own so the call list keeps at least 220 px. From the moment the operator calls a station or answers a caller until the contact is logged or abandoned, it shows the contact and the band summary is hidden. After logging it stays for one slot showing "Logged", then goes idle.
 
 Idle (no contact): caption "Not in a contact" (or "Calling CQ" with the subline "Waiting for a station to answer." while CQ is running), "—" in place of the call, the subline "Call a station in Next in line, or call CQ.", reports "--", no conversation strip, and Resend, Log now and Abandon disabled. The band summary shows below it.
 
@@ -97,7 +97,7 @@ Idle (no contact): caption "Not in a contact" (or "Calling CQ" with the subline 
 | Element | Content |
 | --- | --- |
 | You sent / You received | The reports with "dB" after them. Shows "--" until exchanged |
-| Slot | "Transmitting" or "Receiving", the seconds left, and a progress bar (critical while transmitting). While transmitting it counts down to the end of the transmission, otherwise to the next slot |
+| Slot | "Transmitting" or "Receiving", the seconds left, and a progress bar (critical while transmitting). It always counts down to the next slot boundary; the whole slot a transmission went out in reads "Transmitting", even after the audio ends about 2 s early (owner request 2026-10-26) |
 | Call CQ / Stop CQ | The same command as Ctrl+Q and the bottom bar's Call CQ button (shown on other views) |
 | CQ modifier | Owner request 2026-10-12. A dropdown beside Call CQ: CQ, CQ DX, CQ NA, CQ SA, CQ EU, CQ AS, CQ AF, CQ OC, CQ POTA, plus the Settings value if it is another one. Picking saves it as Settings › Transmitting › CQ modifier, so both always agree; it applies from the next CQ sent |
 | Resend | Sends the current step again in my next slot |
@@ -151,7 +151,7 @@ Behaviour:
 
 ### Watching
 
-Stations that are needed but not callable now. Columns: Call, Where, Why, signal sparkline (as in Next in line), reason. Reasons: "Went quiet 45 seconds ago", "In a contact with EA5HVK", "Finishing a contact with K7RGB". Rows are secondary text. Maximum 8 rows. When no row is a new country or new band, the list folds to one line under the title ("12 needed stations busy: 11 new calls, 1 new grid") with a "Show all" link; once opened it stays open ("Fold" link) until the operator folds it (product review 2026-10-12).
+Stations that are needed but not callable now. Columns: Call, Where, Why, signal sparkline (as in Next in line), reason. Reasons: "Went quiet 45 seconds ago", "In a contact with EA5HVK", "Finishing a contact with K7RGB". Rows are secondary text. Maximum 8 rows. Each row ends with a "Call when free" link (owner request 2026-10-26): it marks the station to be called once its current contact is over (rules in 04-domain-logic.md, "Call when free"); a marked row adds "· calling when free" to its reason and its link reads "Cancel". A marked row is always listed, also past 8 rows, and stops the list folding. When no row is a new country or new band, the list folds to one line under the title ("12 needed stations busy: 11 new calls, 1 new grid") with a "Show all" link; once opened it stays open ("Fold" link) until the operator folds it (product review 2026-10-12).
 
 ### Repeats
 
@@ -175,7 +175,7 @@ Below the map, **Band activity, last hour**: one bar per minute with the average
 
 **Calling you** (formerly "Waiting for you"; owner decision 2026-10-11): a bar pinned above the top slot, outside the scrolling area, shown only when someone has called me and I have not answered. Each caller shows callsign, where, need tag, "Called you at HH:MM:SS · SNR", and a button "Answer after this contact" (or "Answer" when idle). Up to 5 callers, oldest first. A station whose contact I abandoned (or that ended with no reply or by the watchdog) and that replies within 5 minutes is also shown, whatever it sent, with "Replied after you stopped: <message>" and a "Resume" button. In the station list, the button of a station calling me reads "Answer" and answers it the same way. An optional chime (Settings, Operating, off by default) plays on the computer's default speakers when a new caller appears; it stays silent if the default device is the radio's audio device or no radio audio device is set.
 
-**Your signal on 20 m**: see Reach, below. Compact form, with no map (owner request 2026-10-12: Heard here's "Who heard you" rings already map these stations): headline counts, farthest, best report, the neighbour summary line when there is one ("7 dB weaker than stations near you into Europe."), the three newest reports (call, where, dB, age), link "Open reach view". Caption "PSK Reporter · live", or "· updated 6 min ago" on the query fallback, or "· unavailable".
+**Your signal on 20 m**: see Reach, below. Compact form, with no map (owner request 2026-10-12: Heard here's "Who heard you" rings already map these stations): headline counts, the countries line under it ("USA 12 · Canada 3 · Japan 1", most stations first, at most six then "+4 more"; tooltip lists every country with best report and farthest station; owner request 2026-10-26), farthest, best report, the neighbour summary line when there is one ("7 dB weaker than stations near you into Europe."), the three newest reports (call, where, dB, age), link "Open reach view". Caption "PSK Reporter · live", or "· updated 6 min ago" on the query fallback, or "· unavailable".
 
 **Worked tonight**: title with count, subline "N new country · N new bands". The three newest contacts: call · where, upload status ("Uploaded to QRZ", "Waiting to upload · retrying", "Upload failed · Retry"), need tag at the time of the contact, time. Link "Show all N in the log".
 
@@ -198,7 +198,14 @@ The strip is outlined in the on-air colour while transmitting, like the main win
 
 ## Raw decodes view
 
-The classic list for operators who want it. Columns: UTC, local time, dB, DT, Hz, message, country. Newest slot at the top (owner request, replacing newest at the bottom), blank line between slots, keeps scroll position when scrolled down away from the newest lines, with a "Jump to live" button. Messages to me in critical colour, CQ in accent. Double-click calls the sender. A filter box matches callsign or text.
+The classic list for operators who want it. Columns: UTC, local time, dB, DT, Hz, message, country, distance, why. Newest slot at the top (owner request, replacing newest at the bottom), blank line between slots, keeps scroll position when scrolled down away from the newest lines, with a "Jump to live" button. Messages to me in critical colour, CQ in accent. Double-click calls the sender. A filter box matches callsign, message text or country.
+
+Owner request 2026-10-26 ("more feature rich"):
+
+- **Distance** and **Why** come from the station list (the same text and colours as its Why column); blank for my own transmissions and for senders the list does not know.
+- **Show** dropdown beside the filter, as in the Log view: All lines (default), CQs, To or from me (messages to me and my own transmissions), New country, band or grid. While the filter or Show hides lines, "5 of 212 lines" and a "Clear filters" link appear.
+- Lines from the contact partner, and my transmissions to them, get the in-contact tint and left bar used on Operate.
+- Right-click a line: Call <call>, Show only <call> (sets the filter), Copy line (`HHMMSS  dB  DT  Hz ~  message`, as WSJT-X prints it).
 
 ## Reach view
 
@@ -210,6 +217,7 @@ Layout (owner request): the map card with the plot and the by-band stats fills t
 - **Plot**: azimuthal equidistant, centred on my grid, north up, rings every 2,000 miles (or 3,000 km), scale to the farthest report rounded up to the next ring. One dot per reporting station at its bearing and distance. Three strength classes by size and shade: strong (-10 or better), fair (-11 to -17), weak (-18 or below). Label dots with callsigns, with collision avoidance: drop labels that would overlap, show them on hover. This fixes the overlap visible in the mockup. When my grid is known, land and country borders (Natural Earth 1:110m, public domain, bundled) are drawn faintly behind the rings in the same projection, on both the full plot and the compact one.
 - **Zoom**: the full plot zooms up to 16×. Mouse wheel zooms about the pointer; +, − and "Show the whole map" buttons sit beside the plot with the zoom factor under them. Drag to move around when zoomed; double-click shows the whole map. The frame, the N marker and line widths stay fixed; the map, rings, dots and labels scale, so more labels fit as you zoom in. The compact plot on Operate does not zoom.
 - **Who heard you**: grid of station, where, miles, bearing, dB, age, "In your log" (Needed in accent, or Worked). Sortable; default by distance. Double-click a row opens that station's details.
+- **By country, last <window>** (owner request 2026-10-26; above By band): country, stations, best report, farthest, for the selected band and window. Most stations first, then farthest. Stations with no known country are left out, as in the headline count. Row tooltip names the best and farthest stations.
 - **By band, last 24 hours**: band, stations that heard you, farthest, median report. Current band highlighted.
 - **Compared with stations near you** (under By band; `04-domain-logic.md` section 13): the summary line, "Compared with 9 stations within 300 miles, last 30 minutes.", and a row per continent: toward, my median, theirs, shared receivers, difference ("7 dB weaker" in caution colour, "Level", "3 dB stronger"). It covers the band and mode I am on: for another band it says "Shown for the band you are on, 20 m."; with too few shared receivers, "Not enough shared reports yet. It needs 3 receivers on one continent that heard both you and a station near you."; with the setting off, "Turned off in Settings, PSK Reporter."
 - Empty state: "No reports yet. Reports appear a few minutes after you transmit."

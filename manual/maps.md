@@ -44,6 +44,7 @@ Press **Reach** in the top bar (++ctrl+3++), or **Open reach view** under *Your 
   better), fair (-11 to -17), weak (-18 or below).
 - **Who heard you**: the reporting stations with where, distance, bearing, dB, age and whether they are in your log.
   Sortable. Double-click a row for that station's details.
+- **By country**: each country that heard you on this band in the selected window, with how many stations, the best report and the farthest distance. Most stations first. Hover over a row for who gave the best report and who was farthest.
 - **By band, last 24 hours**: how many stations heard you on each band, the farthest and the median report.
 - **Compared with stations near you**: is it the band, or your station? PSK Reporter also hears the other stations
   within 300 miles of you. For every receiver that heard both you and one of them in the last 30 minutes, Costas

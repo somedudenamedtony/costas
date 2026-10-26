@@ -67,7 +67,24 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Text="By band, last 24 hours" Classes="title" />
+            <TextBlock Text="{Binding ByCountryTitle}" Classes="title" IsVisible="{Binding !Empty}" />
+            <Grid ColumnDefinitions="*,70,60,100" IsVisible="{Binding !Empty}">
+              <TextBlock Text="Country" Classes="secondary" /><TextBlock Grid.Column="1" Text="Stations" Classes="secondary" />
+              <TextBlock Grid.Column="2" Text="Best" Classes="secondary" /><TextBlock Grid.Column="3" Text="Farthest" Classes="secondary" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding ByCountry}" AutomationProperties.Name="Countries that heard you">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CountryReachRowViewModel">
+                  <Grid ColumnDefinitions="*,70,60,100" MinHeight="28" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                    <TextBlock Text="{Binding Country}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Text="{Binding StationsText}" Classes="num" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding Best}" Classes="num" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="3" Text="{Binding Farthest}" Classes="num" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="By band, last 24 hours" Classes="title" Margin="0,12,0,0" />
             <Grid ColumnDefinitions="70,90,110,*">
               <TextBlock Text="Band" Classes="secondary" /><TextBlock Grid.Column="1" Text="Stations" Classes="secondary" />
               <TextBlock Grid.Column="2" Text="Farthest" Classes="secondary" /><TextBlock Grid.Column="3" Text="Median report" Classes="secondary" />

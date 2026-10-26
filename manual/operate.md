@@ -68,6 +68,9 @@ when you open Costas, or after 2 hours with no contact.
 
 When you call or answer a station, this card becomes the contact panel. See [Making contacts](contacts.md).
 
+The contact card and this summary stay put at the top. Only the call list below them (Next in line, Repeats and
+Watching) scrolls, so the countdown, Call CQ and the contact's progress are always in view.
+
 ## Next in line
 
 The stations you need that you can call right now, best first. At most 12 rows; the rest are counted underneath.
@@ -163,6 +166,26 @@ you change it. A new country or a new band is never folded away: as soon as one 
 
 Stations you have already worked on this band are not in Watching; they are in [Repeats](#repeats).
 
+### Call when free
+
+Each Watching row has a **Call when free** link. Click it on a station you want, and Costas calls that station
+for you as soon as its current contact is over. The row then reads *· calling when free* and the link changes to
+**Cancel**.
+
+Costas calls the station in your next slot after it is heard signing off with someone else (`RR73`, `RRR` or
+`73`), or calling CQ again, the same moment you would tail-end it by hand. There is no extra wait.
+
+Nothing goes out unless you clicked the link, and the usual transmit checks still apply. The mark is dropped when:
+
+- the call starts (it is used once; the contact then runs as if you had clicked **Call**),
+- you click **Cancel**, press **Halt Tx**, or change band or mode,
+- the station is no longer heard, or
+- the Tx watchdog time passes with no click or key from you, so nothing starts after you have walked away.
+
+If you are in a contact of your own when the station comes free, your contact carries on and the station is called
+once yours ends, if it is still free then. You can mark more than one station; the first one marked that comes
+free is called first. A marked station is never folded away, even past the first eight rows.
+
 ## Right column
 
 From top to bottom:
@@ -171,7 +194,7 @@ From top to bottom:
   [Maps and who hears you](maps.md#heard-here).
 - **Band activity, last hour**: a bar per minute of decodes per slot (grey) and needed stations per slot (blue),
   with a sentence saying whether the band is busier or quieter than half an hour ago.
-- **Your signal on 20 m**: how many stations hear you, the farthest and the best report, plus a graph of distinct receivers in five-minute intervals over the last hour. Each receiver counts once per interval. Times are local and the faded final bar is still incomplete. History stays available when you switch back to a band or mode during this session; recent stored reports refill it at start-up, and changing your station clears the in-memory counts. Reports may arrive late, and transmitting less or losing the feed can lower counts even when the band has not changed.
+- **Your signal on 20 m**: how many stations hear you, which countries they are in (*USA 12 · Canada 3 · Japan 1*, most stations first; after six countries it says *+4 more*, and hovering over the line lists every country with its best report and farthest station), the farthest and the best report, plus a graph of distinct receivers in five-minute intervals over the last hour. Each receiver counts once per interval. Times are local and the faded final bar is still incomplete. History stays available when you switch back to a band or mode during this session; recent stored reports refill it at start-up, and changing your station clears the in-memory counts. Reports may arrive late, and transmitting less or losing the feed can lower counts even when the band has not changed.
   **Open reach view** goes to the full view.
 - **Worked tonight**: your latest contacts this session with their QRZ upload state. **Show all in the log** opens
   the Log view.

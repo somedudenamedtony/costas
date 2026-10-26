@@ -14,6 +14,7 @@ using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Stations;
+using Ft8Client.Core.Time;
 using Ft8Client.Core.Transmit;
 
 namespace Ft8Client.App.Tests;
@@ -99,13 +100,22 @@ public class RemoteStateBuilderTests
     }
 
     [Fact]
-    public void Build_Transmitting_CannotChangeBandAndCountsDownTheTransmission()
+    public void Build_Transmitting_CannotChangeBandAndCountsDownTheSlot()
     {
         var s = RemoteStateBuilder.Build(Snap() with { Transmitting = true }, Now, Ctx, "you", null);
 
         s.CanChangeBand.Should().BeFalse();
         s.SlotLabel.Should().Be("Transmitting");
-        s.SlotLengthMs.Should().Be((int)ModeInfo.TxEnd(Mode.Ft8).TotalMilliseconds);
+        s.SlotLengthMs.Should().Be(15_000);
+    }
+
+    [Fact]
+    public void Build_AudioEndedInTransmitSlot_StillTransmitSlot()
+    {
+        var s = RemoteStateBuilder.Build(Snap() with { LastTxSlotUtc = SlotMath.SlotStart(Now, Mode.Ft8) }, Now, Ctx, "you", null);
+
+        s.Transmitting.Should().BeFalse();
+        s.SlotLabel.Should().Be("Transmitting");
     }
 
     [Fact]
