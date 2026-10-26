@@ -1103,6 +1103,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 Services = new Dictionary<string, ServiceStatus>(_services),
                 Contact = _engine.View,
                 Transmitting = _tx.Transmitting,
+                LastTxSlotUtc = _tx.LastStartedSlot,
                 TransmittingMessage = _tx.CurrentMessage,
                 CallingCq = _engine.CallingCq,
                 RigTuningUntilUtc = _rigTuningUntil is { } until && until > now ? until : null,

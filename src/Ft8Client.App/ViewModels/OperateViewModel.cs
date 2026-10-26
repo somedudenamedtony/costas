@@ -379,12 +379,12 @@ public sealed partial class OperateViewModel : ObservableObject
     private void UpdateSlot(DateTime now)
     {
         var mode = _snap?.Mode ?? Mode.Ft8;
-        // While transmitting, count down to the end of the transmission (as the conversation strip does), not the slot.
-        var len = Transmitting ? ModeInfo.TxEnd(mode) : ModeInfo.SlotLength(mode);
+        // Count down to the slot boundary, and call the whole slot a transmission went out in the transmit slot.
+        var len = ModeInfo.SlotLength(mode);
         var into = now - SlotMath.SlotStart(now, mode);
         SlotProgress = Math.Clamp(into / len, 0, 1);
         SlotLeft = $"{Math.Max(0, (int)Math.Ceiling((len - into).TotalSeconds))} s";
-        SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+        SlotLabel = (_snap?.InTransmitSlot(now) ?? Transmitting) ? "Transmitting" : "Receiving";
     }
 
     /// <summary>Pointer entered Repeats: hold its order still.</summary>
