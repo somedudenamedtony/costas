@@ -44,9 +44,11 @@ public sealed class RemoteControlService : IAsyncDisposable
     /// <param name="clock">Clock.</param>
     /// <param name="tuning">Band and Tx offset changes.</param>
     /// <param name="context">The log, QRZ, country file and bands the phone's state is built from.</param>
+    /// <param name="power">The radio's power setting, which the phone shows and can change.</param>
     public RemoteControlService(Session session, AppSettingsAccessor settings, ISecretStore secrets, IClock clock, IRemoteTuning? tuning = null,
-                                Func<RemoteContext>? context = null)
+                                Func<RemoteContext>? context = null, RadioPowerService? power = null)
     {
+        if (power is not null) power.Changed += () => _dirty = true;
         _session = session;
         _settings = settings;
         _clock = clock;
@@ -55,7 +57,7 @@ public sealed class RemoteControlService : IAsyncDisposable
         {
             if (t.Length == 0) secrets.Delete(SecretNames.RemoteDevices);
             else secrets.Set(SecretNames.RemoteDevices, t);
-        }, tuning: tuning);
+        }, tuning: tuning, power: power);
         Control.Changed += () =>
         {
             _dirty = true;
@@ -156,7 +158,7 @@ public sealed class RemoteControlService : IAsyncDisposable
     }
 
     private RemoteState StateFor(string deviceId) =>
-        RemoteStateBuilder.Build(_session.Snapshot, _clock.UtcNow, _context(), Control.ControlFor(deviceId), Control.ViewingFor(deviceId));
+        RemoteStateBuilder.Build(_session.Snapshot, _clock.UtcNow, _context(), Control.ControlFor(deviceId), Control.ViewingFor(deviceId)) with { Power = Control.PowerFor() };
 
     private async Task LoopAsync()
     {

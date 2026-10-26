@@ -82,7 +82,7 @@ public sealed class RemoteServer : IAsyncDisposable
         app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(10) });
         app.MapGet("/", (Delegate)ServePage);
         foreach (var (path, type) in Files) app.MapGet("/" + path, () => ServeFile(path, type));
-        app.MapPost("/api/pair", (Delegate)PairAsync);
+        app.MapPost("/api/pair", (Delegate)Pair);
         app.Map("/ws", AcceptAsync);
         try
         {
@@ -154,25 +154,12 @@ public sealed class RemoteServer : IAsyncDisposable
         return Results.Text(html, "text/html; charset=utf-8");
     }
 
-    private async Task<IResult> PairAsync(HttpContext ctx)
+    // No code (owner decision, 2026-10-25): any device on the home network is given a token, which only identifies it
+    // so control stays with that phone. Addresses outside the local network are still refused.
+    private IResult Pair(HttpContext ctx)
     {
-        PairRequest? req;
-        try
-        {
-            req = await ctx.Request.ReadFromJsonAsync<PairRequest>(Json, ctx.RequestAborted).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException or BadHttpRequestException)
-        {
-            return Results.BadRequest();
-        }
-        var token = _control.Pair(req?.Code);
-        if (token is null)
-        {
-            Log.Information("Remote pairing refused from {Address}", ctx.Connection.RemoteIpAddress);
-            return Results.Json(new { error = "That code is wrong or has expired. Open Settings, Mobile connection, on the station computer for a new one." },
-                statusCode: StatusCodes.Status403Forbidden);
-        }
-        Log.Information("Phone paired from {Address}", ctx.Connection.RemoteIpAddress);
+        var token = _control.Pair();
+        Log.Information("Phone connected for the first time from {Address}", ctx.Connection.RemoteIpAddress);
         return Results.Json(new { token });
     }
 
@@ -335,7 +322,6 @@ public sealed class RemoteServer : IAsyncDisposable
         }
     }
 
-    private sealed record PairRequest(string? Code);
 
     private sealed record HelloMessage(string? Type, string? Token);
 

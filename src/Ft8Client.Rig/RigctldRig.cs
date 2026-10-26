@@ -275,6 +275,71 @@ public sealed class RigctldRig : IRig
         }
     }
 
+    /// <summary>Hamlib model number of the Yaesu FT-710.</summary>
+    public const int Ft710Model = 1049;
+
+    /// <summary>
+    /// False when this Hamlib release is known to scale the power setting wrongly for the radio, so setting it in watts
+    /// would send a different power: Hamlib before 4.6 reads and sets the FT-710's <c>PC</c> (watts, 5 to 100) as a
+    /// fraction of 255, so asking for 25 W would send <c>PC064</c>. An unknown version counts as wrong for the FT-710.
+    /// </summary>
+    public static bool PowerScaleTrusted(int model, Version? hamlib) => model != Ft710Model || hamlib >= new Version(4, 6);
+
+    /// <inheritdoc />
+    public async Task<RigPower?> ReadPowerAsync(CancellationToken ct)
+    {
+        // The meter connection, as ReadPowerWattsAsync. The most the radio can be set to is power2mW of a full-scale 1.0.
+        var m = _meters;
+        if (m is null || !ProcessRunning || !PowerScaleTrusted(_options.Model, HamlibVersion.Of(_options.ExecutablePath))) return null;
+        try
+        {
+            var level = await m.GetLevelAsync("RFPOWER", ct).ConfigureAwait(false);
+            if (level is not (>= 0 and <= 1)) return null;
+            var (hz, mode) = await TuningAsync(m, ct).ConfigureAwait(false);
+            if (mode is null) return null;
+            var max = TxPower.Watts(await m.PowerToMilliwattsAsync(1.0, hz, mode, ct).ConfigureAwait(false));
+            var now = TxPower.Watts(await m.PowerToMilliwattsAsync(level.Value, hz, mode, ct).ConfigureAwait(false));
+            return max is { } mx && now is { } w ? new RigPower(Math.Min(w, mx), mx) : null;
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<RigPower?> SetPowerWattsAsync(int watts, CancellationToken ct)
+    {
+        // RFPOWER is a fraction of the radio's maximum on this band and mode, which power2mW of 1.0 gives in milliwatts.
+        // Hamlib's drivers scale it linearly, so the fraction is watts over that maximum. The radio rounds or clamps it
+        // (the FT-710 accepts 5 to 100 W in steps of 1), so the setting is read back rather than assumed. Sent on the
+        // meter connection so a PTT command never waits behind it; a refusal or no answer is not a radio fault.
+        var m = _meters;
+        if (m is null || !ProcessRunning || watts < TxPower.MinWatts || !PowerScaleTrusted(_options.Model, HamlibVersion.Of(_options.ExecutablePath))) return null;
+        try
+        {
+            var (hz, mode) = await TuningAsync(m, ct).ConfigureAwait(false);
+            if (mode is null) return null;
+            var maxMw = await m.PowerToMilliwattsAsync(1.0, hz, mode, ct).ConfigureAwait(false);
+            if (maxMw is not > 0) return null;
+            var level = Math.Clamp(watts * 1000.0 / maxMw.Value, 0, 1);
+            var r = await m.SendAsync(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"L RFPOWER {level:0.####}"), ct).ConfigureAwait(false);
+            if (!r.Ok) return null;
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return null;
+        }
+        return await ReadPowerAsync(ct).ConfigureAwait(false);
+    }
+
+    private static async Task<(long Hz, string? Mode)> TuningAsync(RigctldClient m, CancellationToken ct)
+    {
+        var hz = await m.GetFrequencyAsync(ct).ConfigureAwait(false);
+        var mode = (await m.SendAsync("m", ct).ConfigureAwait(false))["Mode"];
+        return (hz, string.IsNullOrEmpty(mode) ? null : mode);
+    }
+
     /// <inheritdoc />
     public async Task<bool> StartTunerAsync(CancellationToken ct)
     {

@@ -111,7 +111,6 @@ public sealed partial class SettingsViewModel : ObservableObject
         RefreshRemote();
         host.Remote.Changed += OnRemoteChanged;
         _remoteLoaded = true;
-        if (host.Remote.Running && host.Remote.Control.Tokens.Count == 0) PairPhone();
         SaveWav = s.Files.SaveWav;
         Retention = s.Files.RetentionDays.ToString(CultureInfo.InvariantCulture);
         Theme = s.Appearance.Theme;
@@ -718,52 +717,25 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string RemoteStatus { get; set; } = string.Empty;
 
-    /// <summary>The pairing code, "314 159", or blank when none is shown.</summary>
+    /// <summary>The address to open on the phone, shown large.</summary>
     [ObservableProperty]
-    public partial string PairingCode { get; set; } = string.Empty;
-
-    /// <summary>The address to open on the phone, shown large beside the code.</summary>
-    [ObservableProperty]
-    public partial string PairingUrl { get; set; } = string.Empty;
+    public partial string PhoneUrl { get; set; } = string.Empty;
 
     /// <summary>The other addresses of this computer, in case the first is a virtual adapter; blank when there are none.</summary>
     [ObservableProperty]
-    public partial string PairingOtherUrls { get; set; } = string.Empty;
+    public partial string PhoneOtherUrls { get; set; } = string.Empty;
 
-    /// <summary>"Works once, until 15:02."</summary>
-    [ObservableProperty]
-    public partial string PairingExpiry { get; set; } = string.Empty;
-
-    /// <summary>True while a pairing code is shown.</summary>
-    [ObservableProperty]
-    public partial bool HasPairingCode { get; set; }
-
-    /// <summary>A line after forgetting the paired phones, or blank.</summary>
-    [ObservableProperty]
-    public partial string PairingNote { get; set; } = string.Empty;
-
-    /// <summary>True while the page is served (pairing works).</summary>
+    /// <summary>True while the page is served.</summary>
     [ObservableProperty]
     public partial bool RemoteRunning { get; set; }
 
-    /// <summary>"Forget 2 paired phones".</summary>
-    [ObservableProperty]
-    public partial string ForgetPhonesText { get; set; } = string.Empty;
-
-    /// <summary>True when any phone is paired.</summary>
-    [ObservableProperty]
-    public partial bool HasPairedPhones { get; set; }
-
     private bool _remoteLoaded;
-    private bool _pairWhenRunning;
 
-    // Turning the mobile connection on or off takes effect at once, so the address and a pairing code appear without
-    // saving and reopening Settings.
+    // Turning the mobile connection on or off takes effect at once, so the address appears without saving and
+    // reopening Settings.
     partial void OnRemoteEnabledChanged(bool value)
     {
         if (!_remoteLoaded) return;
-        _pairWhenRunning = value;
-        if (!value) ClosePairing();
         var port = int.TryParse(RemotePort, NumberStyles.Integer, CultureInfo.InvariantCulture, out var p) ? Math.Clamp(p, 1024, 65535) : 8073;
         _host.Settings.Update(s =>
         {
@@ -773,69 +745,22 @@ public sealed partial class SettingsViewModel : ObservableObject
         RefreshRemote();
     }
 
-    private void OnRemoteChanged() => MainViewModel.Dispatch(() =>
-    {
-        RefreshRemote();
-        if (_pairWhenRunning && _host.Remote.Running)
-        {
-            _pairWhenRunning = false;
-            PairPhone();
-        }
-    });
+    private void OnRemoteChanged() => MainViewModel.Dispatch(RefreshRemote);
 
-    /// <summary>Shows a new pairing code for a phone.</summary>
-    [RelayCommand]
-    private void PairPhone()
-    {
-        var code = _host.Remote.Control.Pairing.Open(_host.Clock.UtcNow);
-        PairingCode = $"{code[..3]} {code[3..]}";
-        PairingExpiry = $"Works once, until {_host.Remote.Control.Pairing.ExpiresUtc.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}.";
-        PairingNote = string.Empty;
-        HasPairingCode = true;
-        RefreshRemote();
-    }
-
-    /// <summary>Forgets every paired phone: each must be paired again.</summary>
-    [RelayCommand]
-    private void ForgetPhones()
-    {
-        _host.Remote.Control.ForgetPhones();
-        PairingNote = "Paired phones forgotten. Each phone must be paired again.";
-        RefreshRemote();
-    }
-
-    /// <summary>
-    /// Called when the window closes: a pairing code only works while it is on screen, and this view model stops
-    /// following the mobile connection.
-    /// </summary>
-    public void Detach()
-    {
-        _host.Remote.Changed -= OnRemoteChanged;
-        ClosePairing();
-    }
-
-    private void ClosePairing()
-    {
-        _host.Remote.Control.Pairing.Close();
-        HasPairingCode = false;
-        PairingCode = string.Empty;
-    }
+    /// <summary>Called when the window closes: this view model stops following the mobile connection.</summary>
+    public void Detach() => _host.Remote.Changed -= OnRemoteChanged;
 
     private void RefreshRemote()
     {
         var r = _host.Remote;
         RemoteRunning = r.Running;
         var urls = r.Urls();
-        PairingUrl = urls.Count > 0 ? urls[0] : $"this computer's address, port {_host.Settings.Current.Remote.Port}";
-        PairingOtherUrls = urls.Count > 1 ? "If that does not open, try " + string.Join(" or ", urls.Skip(1)) : string.Empty;
+        PhoneUrl = urls.Count > 0 ? urls[0] : $"this computer's address, port {_host.Settings.Current.Remote.Port}";
+        PhoneOtherUrls = urls.Count > 1 ? "If that does not open, try " + string.Join(" or ", urls.Skip(1)) : string.Empty;
         RemoteStatus = r.Problem is { } p ? p
             : !r.Running ? (RemoteEnabled ? "Starting…" : "Off.")
             : urls.Count == 0 ? "On, but this computer has no address on a home network."
             : $"On. Phones open {string.Join(" or ", urls)}" + (r.Connected > 0 ? $" · {r.Connected} connected now" : string.Empty);
-        if (!r.Running && HasPairingCode) ClosePairing();
-        var n = r.Control.Tokens.Count;
-        HasPairedPhones = n > 0;
-        ForgetPhonesText = n == 1 ? "Forget the paired phone" : $"Forget {n} paired phones";
     }
 
     /// <summary>Check for newer builds.</summary>

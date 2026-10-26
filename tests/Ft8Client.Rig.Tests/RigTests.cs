@@ -160,6 +160,45 @@ public class RigTests
     }
 
     [Fact]
+    public async Task SetPowerWatts_Simulated_ClampsToItsRangeAndReadsBack()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var rig = new SimulatedRig(SystemClock.Instance) { PowerWatts = 40 };
+        (await rig.ReadPowerAsync(ct)).Should().Be(new RigPower(40, 100));
+        (await rig.SetPowerWattsAsync(2, ct)).Should().Be(new RigPower(5, 100), "the radio's minimum is 5 W");
+        (await rig.SetPowerWattsAsync(150, ct)).Should().Be(new RigPower(100, 100));
+        rig.Ptt.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("rigctl Hamlib 4.5.5 Apr 05 11:43:08Z 2023 SHA=6eecd3", "4.5.5")]
+    [InlineData("rigctld Hamlib 4.6.5 2025-09-01T00:00:00Z SHA=abcdef", "4.6.5")]
+    [InlineData("rigctld, Hamlib 4.7", "4.7")]
+    public void Parse_VersionLine_HamlibRelease(string line, string expected) =>
+        HamlibVersion.Parse(line).Should().Be(Version.Parse(expected));
+
+    [Fact]
+    public void Parse_NoVersion_Null() => HamlibVersion.Parse("command not found").Should().BeNull();
+
+    [Theory]
+    [InlineData(1049, "4.5.5", false)]
+    [InlineData(1049, null, false)]
+    [InlineData(1049, "4.6.5", true)]
+    [InlineData(1049, "4.6", true)]
+    [InlineData(3073, "4.5.5", true)]
+    [InlineData(1, null, true)]
+    public void PowerScaleTrusted_Ft710NeedsHamlib46(int model, string? version, bool trusted) =>
+        RigctldRig.PowerScaleTrusted(model, version is null ? null : Version.Parse(version)).Should().Be(trusted);
+
+    [Fact]
+    public async Task SetPowerWatts_AudioOnly_Null()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        (await new VoxRig(14_074_000).ReadPowerAsync(ct)).Should().BeNull();
+        (await new VoxRig(14_074_000).SetPowerWattsAsync(50, ct)).Should().BeNull();
+    }
+
+    [Fact]
     public async Task SimulatedRig_TxMeters_ReadOnlyWhileKeyed()
     {
         var rig = new SimulatedRig(new ManualClock(new DateTime(2026, 1, 4, 2, 54, 0, DateTimeKind.Utc)))
@@ -454,6 +493,55 @@ public class RigTests
             sent.Should().Contain("MD0C;", "DATA-U is the FT-710's data mode");
             sent.Should().ContainInOrder("TX1;", "RM4;", "RM6;", "TX0;");
             sent.Should().NotContain(l => l.StartsWith("SH0", StringComparison.Ordinal) && l.Length > 4, "the operator's receive filter is left alone");
+        }
+        finally
+        {
+            emu.Kill();
+            File.Delete(log);
+        }
+    }
+
+    // The power setting through Hamlib's FT-710 backend: PC reads and sets it in watts (5 to 100), and power2mW of 1.0
+    // gives the 100 W maximum that the RFPOWER fraction is scaled against. Hamlib before 4.6 scales PC by 255 (25 W
+    // would go out as PC064), so with that rigctld (Ubuntu's 4.5.5) power control must stay off and send nothing.
+    [Fact]
+    public async Task SetPowerWatts_Ft710Emulator_SendsPcAndReadsBack()
+    {
+        var exe = HamlibModels.Find("rigctld", null);
+        var python = HamlibModels.Find("python3", null);
+        Assert.SkipWhen(exe is null || python is null || !OperatingSystem.IsLinux(), "Needs Linux with rigctld and python3.");
+        var ct = TestContext.Current.CancellationToken;
+        var trusted = RigctldRig.PowerScaleTrusted(RigctldRig.Ft710Model, HamlibVersion.Of(exe!));
+        var log = Path.Combine(Path.GetTempPath(), $"ft710-{Guid.NewGuid():N}.log");
+        using var emu = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(python!,
+            [Path.Combine(AppContext.BaseDirectory, "Emulators", "ft710.py"), log]) { RedirectStandardOutput = true })!;
+        try
+        {
+            var pty = (await emu.StandardOutput.ReadLineAsync(ct))!.Trim();
+            await using (var rig = await RigctldRig.StartAsync(new RigctldOptions(exe!, 1049, pty, 38400), NullProcessGuard.Instance, SystemClock.Instance, ct))
+            {
+                var faults = new List<RigFault>();
+                rig.Faulted += (_, f) => faults.Add(f);
+                await rig.SetFrequencyAsync(14_074_000, ct);
+                await rig.SetModeAsync(RigMode.PktUsb, ct);
+                if (trusted)
+                {
+                    (await rig.ReadPowerAsync(ct)).Should().Be(new RigPower(50, 100), "the emulator starts at PC050");
+                    (await rig.SetPowerWattsAsync(25, ct)).Should().Be(new RigPower(25, 100));
+                    (await rig.ReadPowerWattsAsync(ct)).Should().Be(25);
+                }
+                else
+                {
+                    (await rig.ReadPowerAsync(ct)).Should().BeNull();
+                    (await rig.SetPowerWattsAsync(25, ct)).Should().BeNull();
+                }
+                (await rig.GetStateAsync(ct)).Ptt.Should().BeFalse();
+                faults.Should().BeEmpty();
+            }
+            var sent = File.ReadAllLines(log);
+            if (trusted) sent.Should().Contain("PC025;");
+            else sent.Should().NotContain(l => l.StartsWith("PC", StringComparison.Ordinal) && l.Length > 3, "a wrongly scaled power is never sent");
+            sent.Should().NotContain("TX1;", "changing the power never keys the radio");
         }
         finally
         {

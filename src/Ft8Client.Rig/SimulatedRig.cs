@@ -98,6 +98,28 @@ public sealed class SimulatedRig(IClock clock, long frequencyHz = 14_074_000) : 
     /// <inheritdoc />
     public Task<int?> ReadPowerWattsAsync(CancellationToken ct) => Task.FromResult(PowerWatts);
 
+    /// <summary>The most the simulated radio can be set to. 100 W by default.</summary>
+    public int MaxPowerWatts { get; set; } = 100;
+
+    /// <summary>Lowest power the simulated radio accepts; a lower setting reads back as this. 5 W by default, as the FT-710.</summary>
+    public int MinPowerWatts { get; set; } = 5;
+
+    /// <inheritdoc />
+    public Task<RigPower?> ReadPowerAsync(CancellationToken ct)
+    {
+        lock (_gate) return Task.FromResult(PowerWatts is { } w ? new RigPower(w, MaxPowerWatts) : null);
+    }
+
+    /// <inheritdoc />
+    public Task<RigPower?> SetPowerWattsAsync(int watts, CancellationToken ct)
+    {
+        lock (_gate)
+        {
+            PowerWatts = Math.Clamp(watts, MinPowerWatts, MaxPowerWatts);
+            return Task.FromResult<RigPower?>(new RigPower(PowerWatts.Value, MaxPowerWatts));
+        }
+    }
+
     /// <summary>True to act as a radio with its own antenna tuner. Off by default.</summary>
     public bool HasTuner { get; set; }
 
