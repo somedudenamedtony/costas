@@ -32,11 +32,12 @@ public sealed class UpdateServiceTests
     }
 
     [Fact]
-    public void VelopackSetupCommand_PathsWithSpaces_RunsSetupSilentlyAndReopensClassicAppOnlyOnFailure()
+    public void VelopackSetupCommand_PathsWithSpaces_RunsSetupSilentlyThenStartsNewAppOrReopensClassicApp()
     {
         var psi = UpdateService.VelopackSetupCommand(
             @"C:\Users\A & B\AppData\Local\Costas\tmp\updates\CostasApp-win-Setup.exe",
             @"C:\Users\A & B\AppData\Local\Costas\logs\update-20261026-150000.log",
+            @"C:\Users\A & B\AppData\Local\CostasApp\current\Costas.exe",
             @"C:\Users\A & B\AppData\Local\Programs\Costas\Costas.exe",
             @"C:\Users\A & B\AppData\Local\Costas\tmp\updates");
 
@@ -44,6 +45,7 @@ public sealed class UpdateServiceTests
         psi.Arguments.Should().Be(
             "/d /s /c \"start \"\" /wait \"C:\\Users\\A & B\\AppData\\Local\\Costas\\tmp\\updates\\CostasApp-win-Setup.exe\" " +
             "--silent --log \"C:\\Users\\A & B\\AppData\\Local\\Costas\\logs\\update-20261026-150000.log\" " +
+            "&& start \"\" \"C:\\Users\\A & B\\AppData\\Local\\CostasApp\\current\\Costas.exe\" " +
             "|| start \"\" \"C:\\Users\\A & B\\AppData\\Local\\Programs\\Costas\\Costas.exe\"\"");
         psi.UseShellExecute.Should().BeFalse();
         psi.CreateNoWindow.Should().BeTrue();

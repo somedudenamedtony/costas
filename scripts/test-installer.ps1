@@ -123,14 +123,16 @@ $vpApp = Join-Path $vpDir 'current\Costas.exe'
 Assert-File $vpApp
 Assert-File (Join-Path $vpDir 'current\third_party\wsjtx\bin\jt9.exe')
 Assert-File (Join-Path $vpDir 'current\third_party\hamlib\bin\rigctld.exe')
-# Velopack starts the new Costas, which removes the classic install and puts the Start menu shortcut back.
+# A silent Velopack install does not start the app; the update's cmd starts it, as here. The new Costas removes the
+# classic install and puts the Start menu shortcut back.
+Start-Process $vpApp | Out-Null
 $deadline = (Get-Date).AddSeconds(120)
 while ((Get-Date) -lt $deadline -and ((Test-Path $uninstallKey) -or (Test-Path (Join-Path $dir 'Costas.exe')))) { Start-Sleep -Seconds 2 }
 $running = Get-Process -Name 'Costas' -ErrorAction SilentlyContinue
 $appLog = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Costas\logs') -Filter 'app-*.log' -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime | Select-Object -Last 1
 if ($appLog) { Get-Content $appLog.FullName -Tail 30 | Out-Host }
-if (-not ($running | Where-Object Path -eq $vpApp)) { throw 'Velopack setup did not start Costas from its install' }
+if (-not ($running | Where-Object Path -eq $vpApp)) { throw 'Costas from the Velopack install is not running' }
 if (Test-Path $uninstallKey) { throw 'The classic install was not removed' }
 Assert-File (Join-Path $dir 'Costas.exe') $false
 $deadline = (Get-Date).AddSeconds(30)

@@ -216,8 +216,8 @@ public sealed class UpdateService : IDisposable
         else StartInstallerAndReopen(path);
     }
 
-    // A classic install moving to Velopack: Velopack's installer puts Costas in the user's own folder and starts it from
-    // there; the new Costas then removes the classic install (ClassicInstallCleanup). It runs once this app has shut
+    // A classic install moving to Velopack: Velopack's installer puts Costas in the user's own folder and it is started
+    // from there; the new Costas then removes the classic install (ClassicInstallCleanup). It runs once this app has shut
     // down (Program.Main), so the two never hold the radio, ports or log at once. If it fails, the classic install is
     // reopened.
     private void StartVelopackSetup(string setupPath)
@@ -226,20 +226,24 @@ public sealed class UpdateService : IDisposable
         Directory.CreateDirectory(_logFolder);
         var log = Path.Combine(_logFolder, $"update-{DateTime.UtcNow:yyyyMMdd-HHmmss}.log");
         Log.Information("Moving to Velopack updates once Costas has closed: {Setup}, log {Log}", setupPath, log);
-        RunAfterExit = VelopackSetupCommand(setupPath, log, app, _downloadFolder);
+        var installed = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), VelopackPackId, "current", "Costas.exe");
+        RunAfterExit = VelopackSetupCommand(setupPath, log, installed, app, _downloadFolder);
     }
 
     /// <summary>Started by Program.Main after the app has shut down, or null.</summary>
     public static ProcessStartInfo? RunAfterExit { get; private set; }
 
+    // Velopack's pack id (scripts/build-installer.ps1): it installs to %LocalAppData%\CostasApp\current.
+    private const string VelopackPackId = "CostasApp";
+
     /// <summary>
-    /// The hidden <c>cmd</c> that runs Velopack's installer silently (it starts the new Costas itself) and reopens the
-    /// classic install only when the installer fails.
+    /// The hidden <c>cmd</c> that runs Velopack's installer silently, then starts the new Costas (a silent Velopack
+    /// install does not start the app itself), or reopens the classic install when the installer fails.
     /// </summary>
-    internal static ProcessStartInfo VelopackSetupCommand(string setup, string log, string app, string workingDirectory)
+    internal static ProcessStartInfo VelopackSetupCommand(string setup, string log, string installed, string classic, string workingDirectory)
     {
         var cmd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe");
-        var script = $"start \"\" /wait \"{setup}\" --silent --log \"{log}\" || start \"\" \"{app}\"";
+        var script = $"start \"\" /wait \"{setup}\" --silent --log \"{log}\" && start \"\" \"{installed}\" || start \"\" \"{classic}\"";
         return new ProcessStartInfo(cmd, $"/d /s /c \"{script}\"")
         {
             UseShellExecute = false,
