@@ -195,6 +195,8 @@
       <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
       <v:LogView DataContext="{Binding LogView}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}" />
       <v:AwardsView DataContext="{Binding Awards}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}" />
+      <!-- "Logged" notice: over the right-hand column, clear of the contact card and Next in line. -->
+      <v:LoggedNoticeView DataContext="{Binding Logged}" Margin="0,0,16,12" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
     </Panel>
 
     <!-- Bottom bar -->

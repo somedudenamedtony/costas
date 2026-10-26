@@ -155,4 +155,26 @@ public class RemoteStateBuilderTests
     {
         RemoteStateBuilder.Build(Snap(), Now, Ctx, "you", null).Details.Should().BeNull();
     }
+
+    [Fact]
+    public void Build_JustLogged_SendsNoticeWithTimeLeft()
+    {
+        var logged = new LoggedContact(3, "W9TJP", NeedTag.NewCall, "Indiana, USA", "20m", Mode.Ft8, -12, -8, Now.AddSeconds(-2));
+
+        var l = RemoteStateBuilder.Build(Snap() with { LastLogged = logged }, Now, Ctx, "you", null).Logged!;
+
+        l.Id.Should().Be(3);
+        l.Call.Should().Be("W9TJP");
+        l.Need.Should().Be("New call");
+        l.Line.Should().Be("Sent -12 · Received -08 · Indiana, USA");
+        l.MsLeft.Should().Be(3000);
+    }
+
+    [Fact]
+    public void Build_LoggedLongAgo_SendsNoNotice()
+    {
+        var logged = new LoggedContact(3, "W9TJP", NeedTag.NewCall, "", "20m", Mode.Ft8, -12, -8, Now.AddSeconds(-6));
+
+        RemoteStateBuilder.Build(Snap() with { LastLogged = logged }, Now, Ctx, "you", null).Logged.Should().BeNull();
+    }
 }

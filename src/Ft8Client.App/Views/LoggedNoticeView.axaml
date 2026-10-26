@@ -1,0 +1,68 @@
+<!-- The "Logged" notice shown for a few seconds after each contact is logged. Until clicked it never takes focus, so keys
+     (Esc to halt) keep going to the window; the pointer resting on it keeps it open. A click opens the editor in place. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ft8Client.App.ViewModels"
+             xmlns:v="using:Ft8Client.App.Views"
+             x:Class="Ft8Client.App.Views.LoggedNoticeView"
+             x:DataType="vm:LoggedNoticeViewModel">
+  <Border x:Name="Card" IsVisible="{Binding IsOpen}" Width="300" CornerRadius="8" Padding="14,12,14,10" BorderThickness="1"
+          Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource SuccessBrush}" BoxShadow="0 6 24 0 #55000000"
+          AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="{Binding Call, StringFormat='Logged {0}'}">
+    <StackPanel>
+      <DockPanel>
+        <Border DockPanel.Dock="Left" Width="26" Height="26" CornerRadius="13" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Top" Margin="0,2,10,0">
+          <TextBlock Text="✓" Foreground="White" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <Button DockPanel.Dock="Right" Classes="link" Content="✕" Padding="4,0" VerticalAlignment="Top" Focusable="False"
+                Command="{Binding CloseCommand}" ToolTip.Tip="Close" AutomationProperties.Name="Close the logged notice" />
+        <StackPanel x:Name="Summary" Spacing="2" Background="Transparent" Cursor="Hand"
+                    ToolTip.Tip="Click to correct this contact before it is uploaded">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14" />
+            <TextBlock Text="{Binding Call}" FontWeight="Bold" FontSize="14" />
+            <TextBlock Text="{Binding Need}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" IsVisible="{Binding ShowSummary}"
+                       Foreground="{Binding NeedKind, Converter={x:Static v:Converters.KindBrush}}" />
+          </StackPanel>
+          <TextBlock Text="{Binding Subline}" Classes="secondary" FontSize="12" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding Reports}" Classes="secondary num" FontSize="12" IsVisible="{Binding ShowSummary}" />
+        </StackPanel>
+      </DockPanel>
+
+      <StackPanel IsVisible="{Binding ShowSummary}">
+        <ProgressBar Value="{Binding Remaining}" Maximum="1" Height="3" MinHeight="3" MinWidth="0" Margin="0,10,0,0"
+                     Foreground="{DynamicResource SuccessBrush}" />
+        <DockPanel Margin="0,4,0,0">
+          <TextBlock DockPanel.Dock="Right" Text="{Binding Countdown}" Classes="secondary" FontSize="11" />
+          <TextBlock Text="Click to edit" Classes="secondary" FontSize="11" IsVisible="{Binding CanEdit}" />
+        </DockPanel>
+      </StackPanel>
+
+      <StackPanel IsVisible="{Binding IsEditing}" Margin="0,10,0,0" Spacing="8">
+        <Grid DataContext="{Binding Editing}" x:DataType="vm:QsoEditViewModel" ColumnDefinitions="*,10,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+          <TextBlock Text="Call" Classes="secondary" FontSize="12" />
+          <TextBox x:Name="CallBox" Grid.Row="1" Text="{Binding Call}" Margin="0,2,0,8" AutomationProperties.Name="Call" />
+          <TextBlock Grid.Column="2" Text="Grid" Classes="secondary" FontSize="12" />
+          <TextBox Grid.Row="1" Grid.Column="2" Text="{Binding Grid}" Margin="0,2,0,8" AutomationProperties.Name="Grid" />
+          <TextBlock Grid.Row="2" Text="Report sent" Classes="secondary" FontSize="12" />
+          <TextBox Grid.Row="3" Text="{Binding Sent}" Margin="0,2,0,8" AutomationProperties.Name="Report sent" />
+          <TextBlock Grid.Row="2" Grid.Column="2" Text="Report received" Classes="secondary" FontSize="12" />
+          <TextBox Grid.Row="3" Grid.Column="2" Text="{Binding Received}" Margin="0,2,0,8" AutomationProperties.Name="Report received" />
+          <TextBlock Grid.Row="4" Text="Name" Classes="secondary" FontSize="12" />
+          <TextBox Grid.Row="5" Grid.ColumnSpan="3" Text="{Binding Name}" Margin="0,2,0,0" AutomationProperties.Name="Name" />
+        </Grid>
+        <StackPanel DataContext="{Binding Editing}" x:DataType="vm:QsoEditViewModel" Spacing="2">
+          <TextBlock Text="Comment" Classes="secondary" FontSize="12" />
+          <TextBox Text="{Binding Comment}" AutomationProperties.Name="Comment" />
+        </StackPanel>
+        <TextBlock Text="{Binding EditError}" Foreground="{DynamicResource CriticalBrush}" FontSize="12"
+                   IsVisible="{Binding EditError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        <TextBlock Text="Uploads to QRZ, eQSL and LoTW wait until you save or cancel." Classes="secondary" FontSize="11" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+          <Button Content="Cancel" Command="{Binding CancelEditCommand}" />
+          <Button Content="Save" Classes="accent" Command="{Binding SaveEditCommand}" IsDefault="True" />
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</UserControl>

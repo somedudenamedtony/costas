@@ -86,6 +86,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private DateTime? _quickSlot;
     private readonly Dictionary<DateTime, HashSet<string>> _fedToEngine = [];
     private DateTime? _finishedShownAt;
+    private LoggedContact? _lastLogged;
     private DateTime _lastContactUtc = DateTime.MinValue;
     private SessionSnapshot _snapshot = new();
     private int? _watchdogCap;
@@ -585,6 +586,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private void OnLogged(ContactLogEntry entry)
     {
         LogContext ctx;
+        string place;
         lock (_gate)
         {
             var s = _tracker.Find(entry.Call);
@@ -602,8 +604,14 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
             _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
+            place = StationText.Place(entity, lk?.State);
         }
-        _log?.Write(entry, ctx);
+        var qsoId = _log?.Write(entry, ctx);
+        lock (_gate)
+        {
+            _lastLogged = new LoggedContact((_lastLogged?.Id ?? 0) + 1, entry.Call, ctx.Need.Tag, place, ctx.Band,
+                ctx.Mode, entry.ReportSent, entry.ReportReceived, _clock.UtcNow, qsoId);
+        }
     }
 
     // ---------------------------------------------------------------- commands
@@ -1157,6 +1165,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 TxOffsetHz = _txOffset,
                 TxOffsetClear = _txOffsetClear,
                 TxOffsetAuto = _config.FixedTxOffsetHz is null,
+                LastLogged = _lastLogged,
                 Fault = _fault ?? _engine.StopReason,
                 ClockOffsetSeconds = ClockEstimate.Offset(_sntpOffset, _medianDt),
                 Waiting = _engine.Waiting.ToList(),

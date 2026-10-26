@@ -47,6 +47,10 @@ shows. **HALT TX** is always at the bottom of the screen.
 | **Signal** | Who hears you, from PSK Reporter: how many stations and countries in the last 15 minutes, the farthest and best reports, the latest reports, and the last hour of distinct receivers in five-minute intervals (the final interval is incomplete) |
 | **Log** | The contacts you made tonight |
 
+When a contact is logged, a one-line **Logged** notice with the call, the reports and where it is shows just above
+**HALT TX** on any tab, with a 5-second countdown; **✕** closes it sooner. The phone cannot alert you while the page is in
+the background or the screen is locked.
+
 Under the top bar the page also shows the radio's SWR or ALC warning after a transmission that read outside limits,
 a line when QRZ, PSK Reporter or the audio device is not working, and the latest [Hunt list](hunt.md) alert of the
 last 15 minutes.

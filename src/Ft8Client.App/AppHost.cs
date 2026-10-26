@@ -124,6 +124,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Upload queue.</summary>
     public UploadQueueRepository Uploads { get; }
 
+    /// <summary>Holds just-logged contacts back from QRZ, eQSL, LoTW and UDP while they can still be corrected.</summary>
+    public LogHold LogHold { get; private set; } = null!;
+
     /// <summary>Persisted incoming eQSL cards.</summary>
     public EqslInboxRepository EqslInbox { get; }
 
@@ -335,9 +338,11 @@ public sealed class AppHost : IAsyncDisposable
         // The Linux build is a receive-only preview until its transmit audio has been checked on a real radio.
         if (OperatingSystem.IsLinux() && !Simulating) Transmitter.DisabledReason = LinuxPreview.TransmitRefusal;
         TxLevel = new TxLevelController(Transmitter, Settings);
+        LogHold = new LogHold(Uploads, Qsos, () => Clock.UtcNow);
         var log = new DatabaseSessionLog(Qsos, Uploads, () => Settings.Current.Profile.Id,
             () => !Simulating && Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
-            () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band));
+            () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band),
+            LogHold);
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
         TxMeters = new TxMeterMonitor(Transmitter, () => _rig);
         TxMeters.Measured += r => Session.SetTxMeters(TxLevel.OnMeasured(r));
@@ -372,7 +377,7 @@ public sealed class AppHost : IAsyncDisposable
         Lotw = new LotwService(Session, Settings, Secrets, Qsos, SyncState, Countries, Paths, Clock, Guard, allowed: !Simulating);
         Lotw.LogChanged += RebuildLogIndex;
         Lotw.UsersChanged += Session.SetLotwUsers;
-        log.Stored += Lotw.OnLogged;
+        LogHold.Released += Lotw.OnLogged;
         Lotw.Start();
 
         Hunt = new HuntService(Session, Settings, Countries, ReferenceData.LoadAdifTable(), Psk, Clock);
@@ -398,7 +403,7 @@ public sealed class AppHost : IAsyncDisposable
         StartUsage(log);
 
         Udp = new UdpInteropService(Session, Settings, offAir: Simulating);
-        log.Stored += Udp.OnLogged;
+        LogHold.Released += Udp.OnLogged;
         Udp.Start();
 
         RadioPower = new RadioPowerService(() => _rig, () => Transmitter.Transmitting || Session.Snapshot.Transmitting);
@@ -1063,6 +1068,7 @@ public sealed class AppHost : IAsyncDisposable
         _input?.Dispose();
         _output?.Dispose();
         _mutedOutput?.Dispose();
+        LogHold?.ReleaseAll(); // before the services that send a released contact on stop
         Qrz?.Dispose();
         Lotw?.Dispose();
         if (Eqsl is not null) await Eqsl.DisposeAsync().ConfigureAwait(false);
