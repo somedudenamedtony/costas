@@ -480,6 +480,9 @@
                 <TextBlock Text="{Binding SignalSource}" Classes="secondary" FontSize="12" Margin="0,-4,0,0" />
                 <!-- No map here: Heard here's "Who heard you" rings already show these stations on a map. -->
                 <TextBlock Text="{Binding SignalHeadline}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SignalCountries}" TextWrapping="Wrap" Margin="0,-2,0,0"
+                           IsVisible="{Binding SignalCountries, Converter={x:Static v:Converters.NotEmpty}}"
+                           ToolTip.Tip="{Binding SignalCountriesTip}" AutomationProperties.Name="Countries that heard you" />
                 <TextBlock Text="Stations hearing you · every 5 minutes" Classes="secondary" FontSize="12" />
                 <v:ReceptionChart History="{Binding SignalHistory}" Height="100"
                                   AutomationProperties.Name="Distinct stations hearing you in five-minute intervals over the last hour"
