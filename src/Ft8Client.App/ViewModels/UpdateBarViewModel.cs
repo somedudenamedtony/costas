@@ -52,8 +52,14 @@ public sealed partial class UpdateBarViewModel : ObservableObject
     {
         var r = _updates.Available;
         Visible = r is not null;
-        if (r is not null) Text = $"{AppInfo.ProductName} {r.Version} is available (you have {AppInfo.Version}).";
+        if (r is not null) Text = $"{AppInfo.ProductName} {r.Version} is available (you have {AppInfo.Version}; {DownloadSize(r.InstallerSize)} download).";
     }
+
+    /// <summary>"2.4 MB" or "95 MB": a delta update is a few MB, a full one about a hundred.</summary>
+    internal static string DownloadSize(long bytes) =>
+        bytes <= 0 ? "full" : bytes < 10 * 1_048_576
+            ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{bytes / 1_048_576.0:0.0} MB")
+            : string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{bytes / 1_048_576.0:0} MB");
 
     /// <summary>
     /// Downloads and verifies the installer, starts the unattended upgrade (a progress window, nothing to click) and
@@ -86,7 +92,7 @@ public sealed partial class UpdateBarViewModel : ObservableObject
                 return;
             }
             Detail = "Updating; Costas will reopen when the update has installed…";
-            _updates.StartInstallerAndReopen(path);
+            _updates.ApplyAndReopen(path);
             _shutdown();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or InvalidDataException

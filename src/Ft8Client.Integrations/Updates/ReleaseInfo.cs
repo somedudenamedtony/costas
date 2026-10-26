@@ -9,11 +9,15 @@
 namespace Ft8Client.Integrations.Updates;
 
 /// <summary>A published build.</summary>
-/// <param name="Version">Build version, from the release tag (<c>v0.1.0.123</c>).</param>
+/// <param name="Version">Build version, from the release tag (<c>v0.1.123</c>; <c>v0.1.0.123</c> before the move to Velopack).</param>
 /// <param name="Tag">Release tag.</param>
 /// <param name="PageUrl">Release page, for the release notes.</param>
 /// <param name="InstallerName">Installer file name.</param>
 /// <param name="InstallerUrl">Installer download URL.</param>
 /// <param name="InstallerSize">Installer size in bytes.</param>
 /// <param name="Sha256">Installer SHA-256 (lower-case hex), or null when the release does not publish one.</param>
-public sealed record ReleaseInfo(Version Version, string Tag, string PageUrl, string InstallerName, string InstallerUrl, long InstallerSize, string? Sha256);
+public sealed record ReleaseInfo(Version Version, string Tag, string PageUrl, string InstallerName, string InstallerUrl, long InstallerSize, string? Sha256)
+{
+    /// <summary>The installer is Velopack's (a classic install moving to delta updates), not the classic Inno Setup one.</summary>
+    public bool IsVelopackSetup => string.Equals(InstallerName, UpdateChecker.VelopackSetupName, StringComparison.OrdinalIgnoreCase);
+}

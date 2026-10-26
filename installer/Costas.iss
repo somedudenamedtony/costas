@@ -57,6 +57,8 @@ RestartApplications=no
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [InstallDelete]
+; Earlier builds installed all of WSJT-X's bin folder; only jt9 and its DLLs are installed now.
+Type: filesandordirs; Name: "{app}\third_party\wsjtx\bin"
 ; Left by builds named "FT8 Client".
 Type: files; Name: "{app}\Ft8Client.App.*"
 Type: files; Name: "{autoprograms}\FT8 Client.lnk"

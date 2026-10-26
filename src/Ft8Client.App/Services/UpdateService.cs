@@ -11,13 +11,20 @@ using Ft8Client.Core;
 using Ft8Client.Integrations.Net;
 using Ft8Client.Integrations.Updates;
 using Serilog;
+using Velopack;
+using Velopack.Sources;
 
 namespace Ft8Client.App.Services;
 
 /// <summary>
-/// Checks GitHub for a newer Costas build at start and then daily (when enabled in Settings), and downloads
-/// and verifies its installer on request. Failures are logged and otherwise ignored: updates are optional.
+/// Checks GitHub for a newer Costas build at start and then daily (when enabled in Settings), and downloads and applies it
+/// on request. Failures are logged and otherwise ignored: updates are optional.
 /// </summary>
+/// <remarks>
+/// A Velopack install (Windows, since the move to delta updates) downloads only what changed and lets Velopack swap the
+/// files once the app has closed. A classic Inno Setup install downloads a full installer: Velopack's, which moves it to
+/// a Velopack install, or (for releases from before the move) the classic one. Linux opens the release page instead.
+/// </remarks>
 public sealed class UpdateService : IDisposable
 {
     private static readonly TimeSpan Interval = TimeSpan.FromHours(24);
@@ -29,6 +36,8 @@ public sealed class UpdateService : IDisposable
     private readonly Uri? _apiBase;
     private readonly Timer _timer;
     private readonly SemaphoreSlim _checking = new(1, 1);
+    private readonly UpdateManager? _velopack;
+    private UpdateInfo? _delta;
 
     /// <summary>
     /// Creates the service. The installer writes its log to <paramref name="logFolder"/> (kept, unlike downloads).
@@ -42,7 +51,17 @@ public sealed class UpdateService : IDisposable
         _handler = handler;
         _apiBase = apiBase;
         _timer = new Timer(_ => _ = CheckAsync(CancellationToken.None));
+        // Tests replace the network (handler); Velopack has its own downloads, so they use the classic path.
+        if (OperatingSystem.IsWindows() && handler is null)
+        {
+            var downloader = new IdentifiedDownloader(() => settings.Current.Profile.Callsign);
+            var manager = new UpdateManager(new GithubSource($"https://github.com/{UpdateChecker.DefaultRepository}", null, false, downloader));
+            if (manager.IsInstalled) _velopack = manager;
+        }
     }
+
+    /// <summary>Installed by Velopack, so updates download only what changed.</summary>
+    public bool DeltaUpdates => _velopack is not null;
 
     /// <summary>Raised when <see cref="Available"/> or the check status changes.</summary>
     public event Action? Changed;
@@ -74,6 +93,13 @@ public sealed class UpdateService : IDisposable
             }
         }
         _timer.Change(TimeSpan.Zero, Interval);
+        if (_velopack is not null)
+        {
+            _ = Task.Run(() =>
+            {
+                if (OperatingSystem.IsWindows()) ClassicInstallCleanup.Run(AppContext.BaseDirectory);
+            });
+        }
     }
 
     /// <summary>
@@ -87,8 +113,7 @@ public sealed class UpdateService : IDisposable
         if (!await _checking.WaitAsync(0, ct).ConfigureAwait(false)) return Available;
         try
         {
-            using var http = HttpFactory.Create(_settings.Current.Profile.Callsign, _handler);
-            var latest = await new UpdateChecker(http, UpdateChecker.DefaultRepository, _apiBase).LatestAsync(ct).ConfigureAwait(false);
+            var latest = _velopack is not null ? await CheckVelopackAsync(_velopack).ConfigureAwait(false) : await CheckClassicAsync(ct).ConfigureAwait(false);
             Available = latest is not null && UpdateChecker.IsNewer(latest, AppInfo.Version) &&
                         !string.Equals(latest.Tag, options.SkippedTag, StringComparison.Ordinal)
                 ? latest
@@ -97,7 +122,7 @@ public sealed class UpdateService : IDisposable
             if (Available is not null) Log.Information("Update available: {Release}", UpdateChecker.Describe(Available));
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or InvalidOperationException
-                                       or KeyNotFoundException)
+                                       or KeyNotFoundException or IOException or ArgumentException)
         {
             LastError = ex.Message;
             Log.Information("Update check failed: {Error}", ex.Message);
@@ -111,12 +136,109 @@ public sealed class UpdateService : IDisposable
         return Available;
     }
 
-    /// <summary>Downloads and verifies the available installer; returns its path.</summary>
-    public async Task<string> DownloadAsync(IProgress<double>? progress, CancellationToken ct)
+    private async Task<ReleaseInfo?> CheckClassicAsync(CancellationToken ct)
+    {
+        using var http = HttpFactory.Create(_settings.Current.Profile.Callsign, _handler);
+        return await new UpdateChecker(http, UpdateChecker.DefaultRepository, _apiBase).LatestAsync(ct).ConfigureAwait(false);
+    }
+
+    // Velopack compares versions itself; the release is described like a classic one for the bar, Skip and the notes.
+    private async Task<ReleaseInfo?> CheckVelopackAsync(UpdateManager manager)
+    {
+        var info = await Velopack(() => manager.CheckForUpdatesAsync()).ConfigureAwait(false);
+        _delta = info;
+        if (info is null || !Version.TryParse(info.TargetFullRelease.Version.ToString(), out var version)) return null;
+        var tag = $"v{version}";
+        var size = info.DeltasToTarget.Length > 0 ? info.DeltasToTarget.Sum(d => d.Size) : info.TargetFullRelease.Size;
+        return new ReleaseInfo(version, tag, $"https://github.com/{UpdateChecker.DefaultRepository}/releases/tag/{tag}",
+            info.TargetFullRelease.FileName, string.Empty, size, info.TargetFullRelease.SHA256);
+    }
+
+    // Velopack reports some failures (a feed it cannot read, a package that fails its checksum) as plain exceptions; they
+    // are shown like any other update failure, not left to end the app.
+    private static async Task<T> Velopack<T>(Func<Task<T>> call)
+    {
+        try
+        {
+            return await call().ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not (OperationCanceledException or HttpRequestException or IOException or OutOfMemoryException))
+        {
+            throw new InvalidOperationException(ex.Message, ex);
+        }
+    }
+
+    /// <summary>
+    /// Downloads and verifies the available update. A Velopack install downloads the changes into Velopack's own
+    /// folder and returns null; otherwise it returns the downloaded installer's path.
+    /// </summary>
+    public async Task<string?> DownloadAsync(IProgress<double>? progress, CancellationToken ct)
     {
         var release = Available ?? throw new InvalidOperationException("No update is available.");
+        if (_velopack is not null)
+        {
+            var info = _delta ?? throw new InvalidOperationException("No update is available.");
+            var manager = _velopack;
+            await Velopack(async () =>
+            {
+                await manager.DownloadUpdatesAsync(info, p => progress?.Report(p / 100.0), ct).ConfigureAwait(false);
+                return true;
+            }).ConfigureAwait(false);
+            return null;
+        }
         using var http = HttpFactory.Create(_settings.Current.Profile.Callsign, _handler, TimeSpan.FromMinutes(15));
         return await new UpdateDownloader(http).DownloadAsync(release, _downloadFolder, progress, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Starts applying what <see cref="DownloadAsync"/> fetched once the app has closed, and then reopens Costas; the caller
+    /// closes the app straight after. <paramref name="installerPath"/> is what <see cref="DownloadAsync"/> returned.
+    /// </summary>
+    public void ApplyAndReopen(string? installerPath)
+    {
+        if (_velopack is not null)
+        {
+            var target = _delta?.TargetFullRelease ?? throw new InvalidOperationException("No update has been downloaded.");
+            Log.Information("Updating to {Version} with Velopack once Costas has closed", target.Version);
+            // Velopack's updater waits for this process to exit (jt9 and rigctld stop with it), swaps the files and restarts.
+            _velopack.WaitExitThenApplyUpdates(target, silent: true, restart: true);
+            return;
+        }
+        var path = installerPath ?? throw new InvalidOperationException("No installer has been downloaded.");
+        if (Available is { IsVelopackSetup: true }) StartVelopackSetup(path);
+        else StartInstallerAndReopen(path);
+    }
+
+    // A classic install moving to Velopack: Velopack's installer puts Costas in the user's own folder and starts it from
+    // there; the new Costas then removes the classic install (ClassicInstallCleanup). It runs once this app has shut
+    // down (Program.Main), so the two never hold the radio, ports or log at once. If it fails, the classic install is
+    // reopened.
+    private void StartVelopackSetup(string setupPath)
+    {
+        var app = Environment.ProcessPath ?? throw new InvalidOperationException("The app's own path is unknown.");
+        Directory.CreateDirectory(_logFolder);
+        var log = Path.Combine(_logFolder, $"update-{DateTime.UtcNow:yyyyMMdd-HHmmss}.log");
+        Log.Information("Moving to Velopack updates once Costas has closed: {Setup}, log {Log}", setupPath, log);
+        RunAfterExit = VelopackSetupCommand(setupPath, log, app, _downloadFolder);
+    }
+
+    /// <summary>Started by Program.Main after the app has shut down, or null.</summary>
+    public static ProcessStartInfo? RunAfterExit { get; private set; }
+
+    /// <summary>
+    /// The hidden <c>cmd</c> that runs Velopack's installer silently (it starts the new Costas itself) and reopens the
+    /// classic install only when the installer fails.
+    /// </summary>
+    internal static ProcessStartInfo VelopackSetupCommand(string setup, string log, string app, string workingDirectory)
+    {
+        var cmd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe");
+        var script = $"start \"\" /wait \"{setup}\" --silent --log \"{log}\" || start \"\" \"{app}\"";
+        return new ProcessStartInfo(cmd, $"/d /s /c \"{script}\"")
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            WorkingDirectory = workingDirectory,
+        };
     }
 
     /// <summary>
@@ -125,7 +247,7 @@ public sealed class UpdateService : IDisposable
     /// (<c>/SILENT</c>): no pages, questions or buttons. Reopening is done by a hidden <c>cmd</c> that waits for the
     /// installer rather than by the installer itself, so the app comes back even when the upgrade fails.
     /// </summary>
-    public void StartInstallerAndReopen(string installerPath)
+    private void StartInstallerAndReopen(string installerPath)
     {
         var app = Environment.ProcessPath ?? throw new InvalidOperationException("The app's own path is unknown.");
         Directory.CreateDirectory(_logFolder);
@@ -165,6 +287,19 @@ public sealed class UpdateService : IDisposable
         _settings.Update(s => s.Updates.SkippedTag = r.Tag);
         Available = null;
         Changed?.Invoke();
+    }
+
+    // Velopack's downloads (the GitHub feed and the packages) carry the app's User-Agent like every other request.
+    private sealed class IdentifiedDownloader(Func<string> callsign) : HttpClientFileDownloader
+    {
+        protected override HttpClient CreateHttpClient(IDictionary<string, string>? headers, double timeout)
+        {
+            var client = base.CreateHttpClient(headers, timeout);
+            // Only the User-Agent: the Accept header Velopack sets for GitHub's API stays.
+            client.DefaultRequestHeaders.UserAgent.Clear();
+            client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", AppInfo.UserAgent(callsign()));
+            return client;
+        }
     }
 
     /// <inheritdoc />

@@ -3,14 +3,18 @@
 #
 # Builds the Windows installer: publishes the app self-contained for win-x64, stages jt9 (WSJT-X) and rigctld (Hamlib)
 # with their licences, smoke-tests both from the staged folder, then compiles installer/Costas.iss with Inno Setup.
-# Output: artifacts/Costas-Setup-<version>.exe
+# Then packs the same staged folder with Velopack (delta updates). Set VELOPACK_PREVIOUS=1 to download the latest
+# published release first, so the pack includes a delta from it (release runs).
+# Output: artifacts/Costas-Setup-<version>.exe and artifacts/velopack/ (Velopack installer, packages, feed)
 param([string]$BuildNumber = '')
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $root
 
 $version = (Select-Xml -Path (Join-Path $root 'Directory.Build.props') -XPath '//Version').Node.InnerText
-if ($BuildNumber) { $version = "$version.$BuildNumber" }
+# Release builds are <major>.<minor>.<CI run number>: three parts, as Velopack requires (SemVer). Builds before the move
+# to Velopack were 0.1.0.<run>; 0.1.<run> still compares newer for them.
+if ($BuildNumber) { $p = $version.Split('.'); $version = "$($p[0]).$($p[1]).$BuildNumber" }
 $art = Join-Path $root 'artifacts'
 $stage = Join-Path $art 'stage'
 Remove-Item -Recurse -Force $art -ErrorAction SilentlyContinue
@@ -31,7 +35,13 @@ if (-not (Test-Path (Join-Path $stage 'Costas.exe'))) { throw 'Costas.exe missin
 
 # jt9 and Hamlib in the layout the app searches (third_party/... beside the exe), with their licences.
 $stp = Join-Path $stage 'third_party'
-Copy-Item -Recurse (Join-Path $tp 'wsjtx/bin') (Join-Path $stp 'wsjtx/bin')
+# Only jt9 and the DLLs it loads, not all of WSJT-X's bin folder (about 60 MB instead of 300 MB). The list is jt9.exe's
+# import closure in WSJT-X 3.0.1; a DLL missing after a WSJT-X upgrade makes the staged decode check below fail.
+$jt9Files = 'jt9.exe', 'libdouble-conversion.dll', 'libfftw3f-3.dll', 'libfftw3f_threads-3.dll', 'libgcc_s_seh-1.dll',
+    'libgfortran-5.dll', 'libgomp-1.dll', 'libicudt78.dll', 'libicuin78.dll', 'libicuuc78.dll', 'libpcre2-16-0.dll',
+    'libquadmath-0.dll', 'libstdc++-6.dll', 'libwinpthread-1.dll', 'libzstd.dll', 'Qt5Core.dll', 'zlib1.dll'
+New-Item -ItemType Directory -Force -Path (Join-Path $stp 'wsjtx/bin') | Out-Null
+foreach ($f in $jt9Files) { Copy-Item (Join-Path $tp "wsjtx/bin/$f") (Join-Path $stp "wsjtx/bin/$f") }
 Copy-Item -Recurse (Join-Path $tp 'hamlib/bin') (Join-Path $stp 'hamlib/bin')
 foreach ($name in 'wsjtx', 'hamlib') {
     $dest = Join-Path $stp "licences/$name"
@@ -76,3 +86,23 @@ if (-not (Test-Path $iscc)) {
 & $iscc "/DAppVersion=$version" "/DStageDir=$stage" "/DOutputDir=$art" (Join-Path $root 'installer/Costas.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed' }
 Get-ChildItem $art -Filter 'Costas-Setup-*.exe' | ForEach-Object { Write-Host "Installer: $($_.FullName) ($([math]::Round($_.Length / 1MB)) MB)" }
+
+# Velopack: the installer for new installs and for classic installs moving over (CostasApp-win-Setup.exe), the full
+# package and, when the previous release's package was downloaded, the delta from it. The pack id is CostasApp, not
+# Costas: Velopack installs to %LocalAppData%\<id>, and %LocalAppData%\Costas is the data folder.
+$vp = Join-Path $art 'velopack'
+New-Item -ItemType Directory -Force -Path $vp | Out-Null
+dotnet tool restore
+if ($LASTEXITCODE -ne 0) { throw 'dotnet tool restore failed' }
+if ($env:VELOPACK_PREVIOUS -eq '1') {
+    dotnet vpk download github --repoUrl 'https://github.com/somedudenamedtony/costas' --outputDir $vp
+    # The first Velopack release has nothing to download; it ships without a delta.
+    if ($LASTEXITCODE -ne 0) { Write-Warning 'No earlier Velopack release to make a delta from' }
+}
+dotnet vpk pack --packId CostasApp --packVersion $version --packDir $stage --mainExe Costas.exe --packTitle Costas `
+    --packAuthors 'Costas contributors' --icon (Join-Path $root 'src/Ft8Client.App/Assets/costas.ico') `
+    --runtime win-x64 --shortcuts StartMenuRoot --noPortable --outputDir $vp
+if ($LASTEXITCODE -ne 0) { throw 'Velopack pack failed' }
+# Only this version's packages are published; an earlier one downloaded for the delta is already on its own release.
+Get-ChildItem $vp -Filter '*.nupkg' | Where-Object { $_.Name -notlike "*-$version-*" } | Remove-Item
+Get-ChildItem $vp | ForEach-Object { Write-Host "Velopack: $($_.Name) ($([math]::Round($_.Length / 1MB, 1)) MB)" }

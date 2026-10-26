@@ -106,3 +106,35 @@ Assert-File (Join-Path $dir 'Costas.exe') $false
 Assert-File (Join-Path $startMenu 'Costas.lnk') $false
 if (Test-Path $uninstallKey) { throw 'Uninstall entry still present' }
 Write-Host 'Installer checks passed'
+
+Write-Host 'Velopack: a classic install moves over'
+$vpSetup = Join-Path $root 'artifacts\velopack\CostasApp-win-Setup.exe'
+Assert-File $vpSetup
+Start-Process $setup.FullName -ArgumentList $silent -Wait
+Assert-File (Join-Path $dir 'Costas.exe')
+$vpDir = Join-Path $env:LOCALAPPDATA 'CostasApp'
+$vpLog = Join-Path $env:RUNNER_TEMP 'costas-velopack.log'
+$p = Start-Process $vpSetup -ArgumentList '--silent', '--log', $vpLog -PassThru -Wait
+if ($p.ExitCode -ne 0) {
+    if (Test-Path $vpLog) { Get-Content $vpLog -Tail 40 | Out-Host }
+    throw "Velopack setup failed (code $($p.ExitCode))"
+}
+$vpApp = Join-Path $vpDir 'current\Costas.exe'
+Assert-File $vpApp
+Assert-File (Join-Path $vpDir 'current\third_party\wsjtx\bin\jt9.exe')
+Assert-File (Join-Path $vpDir 'current\third_party\hamlib\bin\rigctld.exe')
+# Velopack starts the new Costas, which removes the classic install and puts the Start menu shortcut back.
+$deadline = (Get-Date).AddSeconds(120)
+while ((Get-Date) -lt $deadline -and ((Test-Path $uninstallKey) -or (Test-Path (Join-Path $dir 'Costas.exe')))) { Start-Sleep -Seconds 2 }
+$running = Get-Process -Name 'Costas' -ErrorAction SilentlyContinue
+$appLog = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Costas\logs') -Filter 'app-*.log' -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime | Select-Object -Last 1
+if ($appLog) { Get-Content $appLog.FullName -Tail 30 | Out-Host }
+if (-not ($running | Where-Object Path -eq $vpApp)) { throw 'Velopack setup did not start Costas from its install' }
+if (Test-Path $uninstallKey) { throw 'The classic install was not removed' }
+Assert-File (Join-Path $dir 'Costas.exe') $false
+$deadline = (Get-Date).AddSeconds(30)
+while ((Get-Date) -lt $deadline -and -not (Test-Path (Join-Path $startMenu 'Costas.lnk'))) { Start-Sleep -Seconds 1 }
+Assert-File (Join-Path $startMenu 'Costas.lnk')
+$running | Stop-Process -Force
+Write-Host 'The classic install moved to Velopack'
