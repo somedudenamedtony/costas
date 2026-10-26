@@ -54,9 +54,16 @@ public sealed class UpdateService : IDisposable
         // Tests replace the network (handler); Velopack has its own downloads, so they use the classic path.
         if (OperatingSystem.IsWindows() && handler is null)
         {
-            var downloader = new IdentifiedDownloader(() => settings.Current.Profile.Callsign);
-            var manager = new UpdateManager(new GithubSource($"https://github.com/{UpdateChecker.DefaultRepository}", null, false, downloader));
-            if (manager.IsInstalled) _velopack = manager;
+            try
+            {
+                var downloader = new IdentifiedDownloader(() => settings.Current.Profile.Callsign);
+                var manager = new UpdateManager(new GithubSource($"https://github.com/{UpdateChecker.DefaultRepository}", null, false, downloader));
+                if (manager.IsInstalled) _velopack = manager;
+            }
+            catch (InvalidOperationException)
+            {
+                // Velopack was not started (VelopackApp.Run in Program.Main): a host made by tests. Not a Velopack install.
+            }
         }
     }
 
