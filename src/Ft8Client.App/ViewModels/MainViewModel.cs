@@ -363,7 +363,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         ApplyBandOpenings(s);
         RefreshHuntGo();
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
-        Raw.Apply(s.RawDecodes);
+        Raw.Units = Operate.Units;
+        Raw.Apply(s.RawDecodes, s.Rank, s.Contact?.DxCall);
         Frequency = FormatFrequency(s.DialHz);
         FollowBand(s.Band);
         Transmitting = s.Transmitting;
