@@ -30,7 +30,7 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
     public event Action<QsoRecord>? Stored;
 
     /// <inheritdoc />
-    public long? Write(ContactLogEntry e, LogContext c)
+    public QsoRecord? Write(ContactLogEntry e, LogContext c)
     {
         var (mode, submode) = ModeInfo.Adif(c.Mode);
         var q = new QsoRecord
@@ -66,6 +66,6 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
         if (uploadEnabled()) queue.Enqueue(id, "qrz", due);
         if (eqslUploadEnabled?.Invoke() == true) queue.Enqueue(id, "eqsl", due);
         Stored?.Invoke(q);
-        return id;
+        return q;
     }
 }

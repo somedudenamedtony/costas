@@ -43,6 +43,10 @@ public sealed partial class QsoEditViewModel(QsoRecord q) : ObservableObject
     [ObservableProperty]
     public partial string Comment { get; set; } = q.Comment ?? string.Empty;
 
+    /// <summary>Transmit power in watts, as logged (ADIF TX_PWR).</summary>
+    [ObservableProperty]
+    public partial string Power { get; set; } = q.TxPwr ?? string.Empty;
+
     /// <summary>Writes the fields back.</summary>
     public QsoRecord Apply()
     {
@@ -52,6 +56,7 @@ public sealed partial class QsoEditViewModel(QsoRecord q) : ObservableObject
         q.RstRcvd = Blank(Received);
         q.Name = Blank(Name);
         q.Comment = Blank(Comment);
+        q.TxPwr = Blank(Power);
         return q;
     }
 
