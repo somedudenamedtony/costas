@@ -8,15 +8,36 @@
 
 using Ft8Client.App.Engine;
 using Ft8Client.App.ViewModels;
+using Ft8Client.Core;
 using Ft8Client.Core.Decoding;
+using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
+using Ft8Client.Core.Ranking;
+using Ft8Client.Core.Stations;
 
 namespace Ft8Client.App.Tests;
 
 public class RawDecodesTests
 {
-    private static RawDecodeLine Line(DateTime slot, string text, int hz = 1000) =>
-        new(new Decode(slot, -10, 0.1, hz, text, false), MessageParser.Parse(text), null, false);
+    private static readonly DateTime T0 = new(2026, 10, 11, 2, 54, 0, DateTimeKind.Utc);
+
+    private static RawDecodeLine Line(DateTime slot, string text, int hz = 1000, string? country = null, bool toMe = false, bool tx = false) =>
+        new(new Decode(slot, -10, 0.1, hz, text, false), MessageParser.Parse(text), country, toMe, tx);
+
+    private static RankedStation Ranked(string call, NeedTag tag, double? km = null) =>
+        new(new Station { Call = call, DistanceKm = km }, new NeedResult(tag, 1), new HearsYou(HearsYouKind.None), Chance.Good, true, null);
+
+    private static RankResult Rank(params RankedStation[] line) => new(line, [], [], []);
+
+    private static IReadOnlyList<RawDecodeLine> Mixed() =>
+    [
+        Line(T0, "CQ JA1XYZ PM95", country: "Japan"),
+        Line(T0, "W7LIT K1ABC FN42", toMe: true),
+        Line(T0, "K1ABC W7LIT -12", tx: true),
+        Line(T0, "VE3AAA W9XYZ R-05", country: "United States"),
+    ];
+
+    private static IEnumerable<string> Messages(RawDecodesViewModel vm) => vm.Lines.Where(l => !l.IsBlank).Select(l => l.Message);
 
     [Fact]
     public void RawLine_LocalZone_ShowsUtcAndLocalTimes()
@@ -36,5 +57,101 @@ public class RawDecodesTests
         vm.Apply([Line(t0, "CQ K1ABC FN42", 900), Line(t0, "CQ W9XYZ EN52", 1200), Line(t1, "CQ N0CALL EM12", 500), Line(t1, "CQ G4AAA IO91", 2000)]);
         vm.Lines.Select(l => l.IsBlank ? "-" : l.Message).Should().Equal(
             "CQ N0CALL EM12", "CQ G4AAA IO91", "-", "CQ K1ABC FN42", "CQ W9XYZ EN52");
+    }
+
+    [Fact]
+    public void Show_Cq_ShowsOnlyCqLines()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed());
+        vm.Show = RawDecodesViewModel.ShowCq;
+        Messages(vm).Should().Equal("CQ JA1XYZ PM95");
+        vm.Filtered.Should().BeTrue();
+        vm.Count.Should().Be("1 of 4 lines");
+    }
+
+    [Fact]
+    public void Show_Mine_ShowsLinesToMeAndMyTransmissions()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed());
+        vm.Show = RawDecodesViewModel.ShowMine;
+        Messages(vm).Should().Equal("W7LIT K1ABC FN42", "K1ABC W7LIT -12");
+    }
+
+    [Fact]
+    public void Show_Needed_ShowsNewCountryBandOrGridOnly()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed(), Rank(Ranked("JA1XYZ", NeedTag.NewCountry), Ranked("W9XYZ", NeedTag.Worked), Ranked("K1ABC", NeedTag.NewCall)));
+        vm.Show = RawDecodesViewModel.ShowNeeded;
+        Messages(vm).Should().Equal("CQ JA1XYZ PM95");
+    }
+
+    [Fact]
+    public void Filter_CountryName_MatchesLinesFromThatCountry()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed());
+        vm.Filter = "japan";
+        Messages(vm).Should().Equal("CQ JA1XYZ PM95");
+    }
+
+    [Fact]
+    public void ClearFilters_AfterFiltering_ShowsEveryLine()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed());
+        vm.Filter = "JA1";
+        vm.Show = RawDecodesViewModel.ShowCq;
+        vm.ClearFiltersCommand.Execute(null);
+        Messages(vm).Should().HaveCount(4);
+        vm.Filtered.Should().BeFalse();
+        vm.Count.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Apply_KnownSender_ShowsNeedAndDistance()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed(), Rank(Ranked("JA1XYZ", NeedTag.NewCountry, 8000)));
+        var line = vm.Lines.First(l => l.Message == "CQ JA1XYZ PM95");
+        line.Need.Should().Be("New country");
+        line.NeedKind.Should().Be(TextKind.Caution);
+        line.Distance.Should().Be("4,971 mi");
+    }
+
+    [Fact]
+    public void Apply_Partner_MarksTheirLinesAndMine()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed(), partner: "K1ABC");
+        vm.Lines.Where(l => l.IsPartner).Select(l => l.Message).Should().Equal("W7LIT K1ABC FN42", "K1ABC W7LIT -12");
+    }
+
+    [Fact]
+    public void Apply_PartnerChangesWithSameLines_Rebuilds()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        var lines = Mixed();
+        vm.Apply(lines);
+        vm.Apply(lines, partner: "JA1XYZ");
+        vm.Lines.Single(l => l.IsPartner).Message.Should().Be("CQ JA1XYZ PM95");
+    }
+
+    [Fact]
+    public void ShowOnly_LineWithSender_FiltersToTheSender()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed());
+        vm.ShowOnly(vm.Lines.First(l => l.Message == "VE3AAA W9XYZ R-05"));
+        vm.Filter.Should().Be("W9XYZ");
+    }
+
+    [Fact]
+    public void RawLine_Copy_LaysOutLikeWsjtx()
+    {
+        var line = new RawLineViewModel(Line(T0.AddSeconds(15), "CQ K1ABC FN42", 1234), TimeZoneInfo.Utc);
+        line.Copy.Should().Be("025415 -10  0.1 1234 ~  CQ K1ABC FN42");
     }
 }

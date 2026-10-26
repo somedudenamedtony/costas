@@ -33,9 +33,10 @@ public static class Converters
     public static readonly IValueConverter RawForeground = new FuncValueConverter<RawLineViewModel, IBrush?>(l =>
         l?.Foreground is { } c ? new SolidColorBrush(Color.FromArgb(c.A, c.R, c.G, c.B)) : KindBrush.Convert(l?.Kind ?? TextKind.Normal, typeof(IBrush), null, CultureInfo.InvariantCulture) as IBrush);
 
-    /// <summary>Raw decodes line background: another program's highlight colour, or none.</summary>
+    /// <summary>Raw decodes line background: another program's highlight colour, the in-contact tint, or none.</summary>
     public static readonly IValueConverter RawBackground = new FuncValueConverter<RawLineViewModel, IBrush?>(l =>
-        l?.Background is { } c ? new SolidColorBrush(Color.FromArgb(c.A, c.R, c.G, c.B)) : Brushes.Transparent);
+        l?.Background is { } c ? new SolidColorBrush(Color.FromArgb(c.A, c.R, c.G, c.B))
+        : l is { IsPartner: true } ? Brush("SelectedRowBrush") : Brushes.Transparent);
 
     /// <summary>Legend dot fill: the kind's colour, or none for a ring.</summary>
     public static readonly IValueConverter LegendFill = new FuncValueConverter<LegendItem, IBrush?>(l => l is null || l.Ring ? null : Brush(StationMap.DotBrushKey(l.Kind)));

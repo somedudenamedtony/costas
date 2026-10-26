@@ -198,7 +198,14 @@ The strip is outlined in the on-air colour while transmitting, like the main win
 
 ## Raw decodes view
 
-The classic list for operators who want it. Columns: UTC, local time, dB, DT, Hz, message, country. Newest slot at the top (owner request, replacing newest at the bottom), blank line between slots, keeps scroll position when scrolled down away from the newest lines, with a "Jump to live" button. Messages to me in critical colour, CQ in accent. Double-click calls the sender. A filter box matches callsign or text.
+The classic list for operators who want it. Columns: UTC, local time, dB, DT, Hz, message, country, distance, why. Newest slot at the top (owner request, replacing newest at the bottom), blank line between slots, keeps scroll position when scrolled down away from the newest lines, with a "Jump to live" button. Messages to me in critical colour, CQ in accent. Double-click calls the sender. A filter box matches callsign, message text or country.
+
+Owner request 2026-10-26 ("more feature rich"):
+
+- **Distance** and **Why** come from the station list (the same text and colours as its Why column); blank for my own transmissions and for senders the list does not know.
+- **Show** dropdown beside the filter, as in the Log view: All lines (default), CQs, To or from me (messages to me and my own transmissions), New country, band or grid. While the filter or Show hides lines, "5 of 212 lines" and a "Clear filters" link appear.
+- Lines from the contact partner, and my transmissions to them, get the in-contact tint and left bar used on Operate.
+- Right-click a line: Call <call>, Show only <call> (sets the filter), Copy line (`HHMMSS  dB  DT  Hz ~  message`, as WSJT-X prints it).
 
 ## Reach view
 
