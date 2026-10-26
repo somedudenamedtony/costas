@@ -89,7 +89,7 @@ const
 function RunningFrom(const Dir: String): String;
 var
   Locator, Service, Procs, Proc: Variant;
-  Prefix: String;
+  Prefix, Path: String;
   I: Integer;
 begin
   Result := '';
@@ -102,11 +102,15 @@ begin
     begin
       Proc := Procs.ItemIndex(I);
       if not VarIsNull(Proc.ExecutablePath) then
-        if Pos(Prefix, Lowercase(Proc.ExecutablePath)) = 1 then
+      begin
+        // A COM value is copied into a String before string functions take it (Pascal Script does not convert it there).
+        Path := Proc.ExecutablePath;
+        if Pos(Prefix, Lowercase(Path)) = 1 then
         begin
           Result := Proc.Name;
           Exit;
         end;
+      end;
     end;
   except
     Log('Could not list running programs: ' + GetExceptionMessage);
