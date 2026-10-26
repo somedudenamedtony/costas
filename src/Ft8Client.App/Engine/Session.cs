@@ -714,7 +714,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             if (_engine.CallingCq) _engine.StopCq(_clock.UtcNow);
-            else _engine.CallCq(_config.CqParity, _clock.UtcNow);
+            else
+            {
+                _engine.CallCq(_config.CqParity, _clock.UtcNow);
+                if (_engine.View is null) _finishedShownAt = null;
+            }
             _fault = null;
         }
         AfterCommand();

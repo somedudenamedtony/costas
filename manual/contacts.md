@@ -79,7 +79,9 @@ time out. If Costas closes while a contact is held, it is sent on exit.
 ## Calling CQ
 
 Click **Call CQ** (or press ++ctrl+q++). Costas calls CQ in the parity set in **Settings › Transmitting › Call CQ in**
-(even or odd slots) until you click **Stop CQ**.
+(even or odd slots) until you click **Stop CQ**. A contact that has just ended (*Logged*, *No reply* and so on) leaves
+the panel as soon as you click, so the boxes are clear for your CQ. A contact still in progress is kept and finished
+first.
 
 To call a part of the world, pick it in the dropdown beside **Call CQ**: **CQ** for everyone, **CQ DX** for stations
 outside your country, **CQ NA**, **CQ EU** and the other continents, or **CQ POTA**. It applies from your next CQ,
@@ -156,6 +158,11 @@ Before both reports have been exchanged, ++esc++ abandons the contact at once. A
 transmitting: Costas keeps the contact and keeps listening, so if the other station's RR73 or 73 arrives the contact is
 logged (with automatic logging on) and nothing more is sent. ++ctrl+r++ carries on transmitting where you left off, and a
 second ++esc++ abandons the contact. A stray key press does not lose a nearly complete contact.
+
+Clicking **Call CQ** after the first ++esc++ clears that contact from the panel and starts your CQ. Costas still listens
+for the other station for 5 minutes: if their RR73 or 73 arrives, the contact is logged (with automatic logging on) and
+the **Logged** notice appears, with nothing sent to them and your CQ carrying on. If they send their report again
+instead, Costas answers it like any caller to your CQ.
 
 ## Safety guards
 
