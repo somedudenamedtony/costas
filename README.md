@@ -63,7 +63,7 @@ log, whether the station is free to call, and whether it can hear you.
 
 ## Install
 
-1. Download `Costas-Setup-<version>.exe` from the
+1. Download `CostasApp-win-Setup.exe` from the
    [latest release](https://github.com/somedudenamedtony/costas/releases/latest).
 2. Run it. If Windows SmartScreen warns you (the installer is not code-signed yet), click **More info**, then
    **Run anyway**.
@@ -72,7 +72,7 @@ log, whether the station is free to call, and whether it can hear you.
 
 Requires 64-bit Windows 10 (1809) or later. The decoder (`jt9` from WSJT-X) and radio control (Hamlib) are
 bundled; you do not need WSJT-X installed. Costas checks for new builds at start and daily and offers to install them, keeping
-your log and settings.
+your log and settings; an update downloads only what changed, usually a few MB.
 
 ### Linux (preview, receive only)
 

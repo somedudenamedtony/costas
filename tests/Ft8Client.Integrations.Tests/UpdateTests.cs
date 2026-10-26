@@ -62,6 +62,25 @@ public class UpdateTests
         UpdateChecker.Parse("""{ "tag_name": "nightly", "assets": [] }""").Should().BeNull();
     }
 
+    [Fact]
+    public void Parse_ReleaseWithVelopackSetup_PrefersVelopackSetupForClassicInstalls()
+    {
+        var json = Release("v0.1.408").Replace("""{ "name": "notes.txt", "size": 3, "browser_download_url": "https://example.invalid/notes.txt" },""",
+            """{ "name": "CostasApp-win-Setup.exe", "size": 70000000, "browser_download_url": "https://example.invalid/vp.exe", "digest": "sha256:ab" },""",
+            StringComparison.Ordinal);
+        var r = UpdateChecker.Parse(json)!;
+        r.InstallerName.Should().Be(UpdateChecker.VelopackSetupName);
+        r.IsVelopackSetup.Should().BeTrue();
+        r.Sha256.Should().Be("ab");
+        UpdateChecker.Parse(Release("v0.1.408"))!.IsVelopackSetup.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("0.1.0.407", true)]
+    [InlineData("0.1.408", false)]
+    public void IsNewer_ThreePartReleaseAfterFourPartBuilds_IsNewer(string running, bool newer) =>
+        UpdateChecker.IsNewer(UpdateChecker.Parse(Release("v0.1.408"))!, running).Should().Be(newer);
+
     [Theory]
     [InlineData("0.1.0", true)]
     [InlineData("0.1.0.41", true)]

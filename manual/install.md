@@ -3,9 +3,9 @@
 ## Download
 
 1. Open the [Releases page](https://github.com/somedudenamedtony/costas/releases/latest).
-2. Under **Assets**, download `Costas-Setup-<version>.exe`.
-3. Run it. The installer does not need administrator rights: by default it installs for your user only. It can
-   add a desktop shortcut if you tick the box.
+2. Under **Assets**, download `CostasApp-win-Setup.exe`.
+3. Run it. There is nothing to choose: it installs Costas for your user only (no administrator rights needed), adds it
+   to the Start menu and opens it.
 
 Everything Costas needs is in the installer: the WSJT-X `jt9` decoder and Hamlib's `rigctld` for radio control are
 bundled. You do not need WSJT-X installed.
@@ -23,15 +23,22 @@ appears at the top of the main window:
 
 ![The update bar](images/update-bar.png)
 
-- **Update** downloads the new installer, checks its SHA-256 checksum, closes Costas, and upgrades it. A small
-  *Setup - Costas* window shows the progress; there is nothing to click. Costas opens again when it has finished. If you installed for all users, Windows asks for administrator
-  permission first. It is refused while you are transmitting or in a contact: finish or halt first.
+- **Update** downloads only what changed since your build (usually a few MB; the bar shows the size), checks it,
+  closes Costas, swaps in the new files and opens Costas again, all within a few seconds. There is nothing to click.
+  It is refused while you are transmitting or in a contact: finish or halt first.
 - **Release notes** opens the release on GitHub.
 - **Skip this version** hides the bar until a newer build comes out.
 
 You can turn the daily check off, or check by hand, in **Settings › Updates**. **☰ › About** also has a **Check for updates** button, which checks even when the daily check is off.
 
-Upgrading keeps your log and settings. An install from before the rename (when the app was called "FT8 Client") is
+Upgrading keeps your log and settings.
+
+!!! note "Installed before October 2026?"
+    Builds up to 0.1.0.407 used a different installer, which downloaded the whole program (about 100 MB) on every
+    update. The first update after that downloads the full program once more and moves Costas to the new location
+    below; it removes the old copy and keeps your Start menu entry, log and settings. From then on updates are small.
+    If you had installed for all users (in `C:\Program Files\Costas\`), remove that old copy yourself from
+    **Settings › Apps** after the move. An install from before the rename (when the app was called "FT8 Client") is
 upgraded too, and its data is moved to the Costas data folder on first start.
 
 ## Where your data lives
@@ -40,7 +47,7 @@ upgraded too, and its data is moved to the Costas data folder on first start.
 | --- | --- |
 | Log, settings, decode journal, saved audio | `%LOCALAPPDATA%\Costas\` (for example `C:\Users\you\AppData\Local\Costas\`) |
 | QRZ API key and password | Windows Credential Manager, never in a file |
-| The program | `%LOCALAPPDATA%\Programs\Costas\` for a per-user install (the default), `C:\Program Files\Costas\` if you chose to install for all users |
+| The program | `%LOCALAPPDATA%\CostasApp\` (`%LOCALAPPDATA%\Programs\Costas\` or `C:\Program Files\Costas\` for installs from before October 2026) |
 
 Uninstalling removes the program but keeps your data folder, so a reinstall picks up where you left off.
 

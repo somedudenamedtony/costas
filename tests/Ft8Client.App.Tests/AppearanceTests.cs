@@ -187,19 +187,20 @@ public class AppearanceTests
     }
 
     // A background save that started before the host stopped can still land a file while the folder is being removed
-    // (CI saw "Directory not empty"). Retry briefly instead of failing on cleanup.
+    // (CI saw "Directory not empty"), and the LoTW user-list download can still hold its .part file on Windows. Retry for
+    // a few seconds, then leave the temp folder: cleanup is not what this test checks.
     private static void DeleteWhenSettled(string dir)
     {
-        for (var attempt = 1; ; attempt++)
+        for (var attempt = 1; attempt <= 30; attempt++)
         {
             try
             {
                 Directory.Delete(dir, true);
                 return;
             }
-            catch (IOException) when (attempt < 10)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                Thread.Sleep(100);
+                Thread.Sleep(200);
             }
         }
     }
