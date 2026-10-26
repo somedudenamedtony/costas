@@ -34,6 +34,12 @@ public partial class OperateView : UserControl
             if (Vm?.Selected is { } row) Vm.CallSelected();
         };
         SizeChanged += (_, e) => Relayout(e.NewSize.Width);
+        LeftPane.SizeChanged += (_, _) => FitPinned();
+        CallingYou.SizeChanged += (_, _) => FitPinned();
+        CallingYou.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == IsVisibleProperty) FitPinned();
+        };
     }
 
     private OperateViewModel? Vm => DataContext as OperateViewModel;
@@ -54,5 +60,14 @@ public partial class OperateView : UserControl
         Grid.SetRow(RightColumn, narrow ? 1 : 0);
         // Leave room to operate when a faceplate or status banner takes vertical space from a small window.
         RightColumn.MaxHeight = narrow ? Math.Min(320, Math.Max(100, Bounds.Height / 3)) : double.PositiveInfinity;
+    }
+
+    // The contact card stays pinned above the call list. On a short window it gives way (and scrolls on its own)
+    // so the call list always keeps enough height to show a few rows.
+    private void FitPinned()
+    {
+        const double listRoom = 220;
+        var calling = CallingYou.IsVisible ? CallingYou.Bounds.Height + CallingYou.Margin.Bottom : 0;
+        PinnedScroll.MaxHeight = Math.Max(120, LeftPane.Bounds.Height - calling - listRoom);
     }
 }

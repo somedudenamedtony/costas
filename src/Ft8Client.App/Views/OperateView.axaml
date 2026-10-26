@@ -5,9 +5,9 @@
              x:Class="Ft8Client.App.Views.OperateView"
              x:DataType="vm:OperateViewModel">
   <Grid x:Name="Root" ColumnDefinitions="*,300" RowDefinitions="*,Auto" Margin="16,0,16,12">
-    <DockPanel Grid.Column="0" Grid.Row="0">
+    <DockPanel x:Name="LeftPane" Grid.Column="0" Grid.Row="0">
     <!-- Calling you: pinned above everything else whenever a station is calling me, so it is never scrolled away. -->
-    <Border DockPanel.Dock="Top" Classes="card" Padding="14,10" Margin="0,0,12,12" IsVisible="{Binding HasWaiting}"
+    <Border x:Name="CallingYou" DockPanel.Dock="Top" Classes="card" Padding="14,10" Margin="0,0,12,12" IsVisible="{Binding HasWaiting}"
             BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2" AutomationProperties.Name="Calling you">
       <StackPanel Spacing="6">
         <TextBlock Text="{Binding WaitingTitle}" Classes="title" />
@@ -30,8 +30,10 @@
         </ItemsControl>
       </StackPanel>
     </Border>
-    <ScrollViewer x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
-      <StackPanel Spacing="12" Margin="0,0,12,0">
+    <!-- Pinned: the contact card (and the band summary when idle) stays put while the call list below scrolls.
+         On a short window it scrolls on its own so the call list keeps room (see OperateView.FitPinned). -->
+    <ScrollViewer x:Name="PinnedScroll" DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="12" Margin="0,0,12,12">
 
         <!-- Top slot: the contact card, always shown. With no contact it is idle: no call, empty reports, the countdown and Call CQ. -->
         <Border Classes="card" Padding="18,12">
@@ -197,7 +199,12 @@
             </Grid>
           </Grid>
         </Border>
+      </StackPanel>
+    </ScrollViewer>
 
+    <!-- The call list: Next in line, Repeats and Watching. Only this part scrolls. -->
+    <ScrollViewer x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="12" Margin="0,0,12,0">
 
         <!-- Next in line -->
         <Border Classes="card">
