@@ -49,12 +49,22 @@ $psi = [System.Diagnostics.ProcessStartInfo]::new((Join-Path $env:SystemRoot 'Sy
 $psi.UseShellExecute = $false
 $psi.CreateNoWindow = $true
 $psi.WorkingDirectory = $env:RUNNER_TEMP
+# The app takes a few seconds to close after starting the installer (it stops jt9, rigctld and its services). A rigctld
+# from the install folder that outlives the app by 8 s stands in for that; the installer must wait for it, not fail.
+$helper = Start-Process (Join-Path $dir 'third_party\hamlib\bin\rigctld.exe') -ArgumentList '-m', '1', '-t', '4599' -PassThru -WindowStyle Hidden
 $waiter = [System.Diagnostics.Process]::Start($psi)
 Stop-Process -Id $running.Id
+Start-Sleep -Seconds 8
+if ($waiter.HasExited) { throw 'The installer finished while rigctld from the install folder was still running' }
+Stop-Process -Id $helper.Id
 if (-not $waiter.WaitForExit(300000)) { throw 'The update did not finish within 5 minutes' }
 if (-not (Select-String -Path $updateLog -Pattern 'Installation process succeeded' -Quiet)) {
     Get-Content $updateLog -Tail 40 | Out-Host
     throw 'The update did not install'
+}
+if (-not (Select-String -Path $updateLog -Pattern 'Waiting for .* to exit before installing' -Quiet)) {
+    Get-Content $updateLog -Tail 40 | Out-Host
+    throw 'The installer did not wait for programs from the install folder to exit'
 }
 $deadline = (Get-Date).AddSeconds(30)
 $reopened = $null
