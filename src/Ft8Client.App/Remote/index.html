@@ -641,7 +641,7 @@ function renderDetails(s) {
     [["Grid", d.grid], ["Bearing", d.bearing], ["Local time", d.localTime], ["Licence", d.licenseClass], ["QSL", d.qsl], ["Zones", d.zones]]
       .filter(([, v]) => v).forEach(([k, v]) => kv.append(el("span", null, k), el("span", null, v)));
     box.append(kv);
-    if (d.pileup) box.append(el("div", "sub", d.pileup));
+    if (d.pileup) box.append(el("div", "banner warnline", d.pileup));
     if (d.lookupNote) box.append(el("div", "s", d.lookupNote));
     box.append(el("b", null, "Your contacts"));
     if (d.past.length === 0) box.append(el("div", "s", "No contacts with this call yet."));

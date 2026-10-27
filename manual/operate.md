@@ -112,7 +112,7 @@ location, grid, bearing and your past contacts with that call. For a station at 
 
 ### Who else is calling
 
-When other stations are calling the one you selected, the details card adds a **Who else is calling** section:
+When other stations are calling the one you selected, the details card adds a **Who else is calling** section, shaded yellow so it stands out (the same box shows under your contact when you call a busy station, and on the phone's station sheet):
 
 - how many stations called it in its latest answer slot, with each caller's signal at your station and audio offset;
 - whether your transmit offset is clear of them, or which caller is sitting on top of it;
