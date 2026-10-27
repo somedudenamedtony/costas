@@ -155,12 +155,22 @@ public sealed class ContactEngine
         }
     }
 
-    /// <summary>Starts calling CQ in slots of the given parity.</summary>
+    /// <summary>
+    /// Starts calling CQ in slots of the given parity. The contact that just ended leaves the top slot at once. A contact
+    /// kept after Esc (<see cref="Hold"/>) is set aside: it leaves the top slot too, but its sign-off is still logged if
+    /// it arrives while it could be resumed (nothing is sent for it).
+    /// </summary>
     public void CallCq(SlotParity parity, DateTime nowUtc)
     {
         OperatorActivity(nowUtc);
         _cqRunning = true;
         _cqParity = parity;
+        if (_c is { Held: true })
+        {
+            End(ContactOutcome.Abandoned, nowUtc, resume: false);
+            _stopped = _stopped! with { ListenForSignoff = true };
+        }
+        if (_c is null) _finished = null;
     }
 
     /// <summary>Stops calling CQ. A contact in progress continues.</summary>
@@ -324,6 +334,11 @@ public sealed class ContactEngine
             if (_lastLogged is { } l && Callsign.EqualsCall(m.SenderCall, l.DxCall) && nowUtc - l.LoggedUtc < LateWindow) continue;
             if (_stopped is { } s && Callsign.EqualsCall(m.SenderCall, s.Contact.DxCall))
             {
+                if (s.ListenForSignoff && _settings.AutoLog && CompletesHeld(s.Contact, m))
+                {
+                    LogSetAside(s.Contact, m, slotStartUtc, nowUtc);
+                    continue;
+                }
                 s.Late.Add((m, slotStartUtc, h));
                 AddWaiting(h, m, parity, slotStartUtc, afterStop: true);
                 continue;
@@ -427,6 +442,21 @@ public sealed class ContactEngine
 
     /// <summary>Clears the ended contact from the top slot (one slot after it ended).</summary>
     public void ClearFinished() => _finished = null;
+
+    // The DX station's sign-off that would have logged a held contact (see Advance and AdvanceHound).
+    private static bool CompletesHeld(Contact c, ParsedMessage m) => c.Phase == 2 && (c.Flow == ContactFlow.Hound
+        ? m.Kind == MessageKind.RogerBye
+        : c.Flow != ContactFlow.CalledCq && m.Kind is MessageKind.RogerBye or MessageKind.Roger or MessageKind.Bye);
+
+    // Logs a held contact that calling CQ set aside, without showing it in the top slot again or sending anything.
+    private void LogSetAside(Contact c, ParsedMessage m, DateTime slotUtc, DateTime nowUtc)
+    {
+        MarkReceived(c, 3, m.Text, slotUtc);
+        c.Outcome = ContactOutcome.Logged;
+        DoLog(c, nowUtc);
+        ForgetStopped();
+        RemoveWaiting(c.DxCall);
+    }
 
     private static bool IsFinalCourtesy(Contact c, int phase) => c.Flow != ContactFlow.CalledCq && phase == 4;
 
@@ -863,7 +893,9 @@ public sealed class ContactEngine
 
     private sealed record Finished(string DxCall, ContactFlow Flow, SlotParity MyParity, DateTime LoggedUtc, Contact Contact);
 
-    private sealed record Stopped(Contact Contact, DateTime EndedUtc, List<(ParsedMessage Message, DateTime SlotUtc, HeardMessage Heard)> Late);
+    // ListenForSignoff: a held contact set aside by calling CQ, logged if the DX station's sign-off arrives.
+    private sealed record Stopped(Contact Contact, DateTime EndedUtc, List<(ParsedMessage Message, DateTime SlotUtc, HeardMessage Heard)> Late,
+                                  bool ListenForSignoff = false);
 
     private string Format(Finished f, int index) => Format(f.Contact, index);
 }

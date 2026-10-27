@@ -560,6 +560,98 @@ public class ContactEngineTests
     }
 
     [Fact]
+    public void CallCq_AfterContactEnded_ClearsTopSlotAtOnce()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step();
+        s.Step("W7LIT ZL2RPA RR73");
+        s.Step().Should().Be("ZL2RPA W7LIT 73");
+        s.E.View!.Outcome.Should().Be(ContactOutcome.Logged);
+
+        s.E.CallCq(SlotParity.Even, s.Now);
+
+        s.E.View.Should().BeNull();
+        s.Logs.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void CallCq_DuringContact_KeepsContact()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.E.CallCq(SlotParity.Even, s.Now);
+        s.E.InContact.Should().BeTrue();
+        s.E.View!.DxCall.Should().Be("ZL2RPA");
+    }
+
+    [Fact]
+    public void CallCq_WhileHeld_ClearsTopSlotAndCallsCq()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step();
+        s.E.Hold(s.Now);
+        s.Step();
+
+        s.E.CallCq(SlotParity.Even, s.Now);
+
+        s.E.View.Should().BeNull();
+        s.E.InContact.Should().BeFalse();
+        s.Step().Should().StartWith("CQ W7LIT");
+    }
+
+    [Fact]
+    public void CallCq_WhileHeld_LateRr73StillLoggedWithoutTransmitting()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step();
+        s.E.Hold(s.Now);
+        s.Step();
+        s.E.CallCq(SlotParity.Even, s.Now);
+        s.Step().Should().StartWith("CQ W7LIT");
+
+        s.Step("W7LIT ZL2RPA RR73");
+
+        s.Logs.Should().ContainSingle().Which.Call.Should().Be("ZL2RPA");
+        s.E.View.Should().BeNull();
+        s.E.Waiting.Should().BeEmpty();
+        s.Step().Should().StartWith("CQ W7LIT");
+        s.Step("W7LIT ZL2RPA RR73");
+        s.Logs.Should().ContainSingle();
+        s.Steps(4);
+        s.Sent.Select(x => x.Message).Should().NotContain("ZL2RPA W7LIT 73");
+    }
+
+    [Fact]
+    public void CallCq_WhileHeld_LaterReportIsAnsweredAsCqCaller()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.Step();
+        s.E.Hold(s.Now);
+        s.Step();
+        s.E.CallCq(SlotParity.Even, s.Now);
+        s.Step();
+
+        s.Step("W7LIT ZL2RPA -22");
+
+        s.Logs.Should().BeEmpty();
+        s.E.DxCall.Should().Be("ZL2RPA");
+        s.Step().Should().Be("ZL2RPA W7LIT R-12");
+    }
+
+    [Fact]
     public void NoReply_DxRepliesLate_IsFlaggedAfterStop()
     {
         var s = new Sim(new ContactSettings { RetryLimit = 1 });
