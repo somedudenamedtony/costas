@@ -222,7 +222,10 @@ public sealed class RigctldRig : IRig
         {
             var alc = await m.GetLevelAsync("ALC", ct).ConfigureAwait(false);
             var swr = await m.GetLevelAsync("SWR", ct).ConfigureAwait(false);
-            return new TxMeterReading(alc, swr);
+            // Power output in watts from the radio's PO meter (Hamlib 4.6 and later; older releases answer RPRT -1 at
+            // once, without asking the radio).
+            var watts = await m.GetLevelAsync("RFPOWER_METER_WATTS", ct).ConfigureAwait(false);
+            return new TxMeterReading(alc, swr, watts);
         }
         catch (Exception ex) when (ex is RigException or ObjectDisposedException)
         {

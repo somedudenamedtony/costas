@@ -176,7 +176,7 @@ These are always on:
 | **Faults** | Any radio or audio error releases PTT at once |
 | **No radio** | With no radio set up, transmit is refused and the radio indicator says why |
 | **Exact messages** | If a message cannot be encoded exactly as shown (for example an unusual callsign or a free text with characters FT8 cannot carry), Costas refuses to send it and says why, rather than changing it |
-| **Meters** | After each transmission, a high SWR (2 or more, red at 3) or ALC reading shows a warning in the bottom bar with advice |
+| **Meters** | Power out, ALC and SWR from the radio show in the bottom bar while you transmit and stay after it. A high SWR (orange at 2, red at 3) or ALC reading is coloured, with advice when you hover |
 
 ## Logging
 

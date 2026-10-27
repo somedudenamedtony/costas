@@ -12,13 +12,15 @@
             </StackPanel>
           </Border>
           <Border Grid.Column="1" BorderBrush="#39627D" BorderThickness="0,0,1,0" Padding="20,10">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
               <StackPanel><TextBlock Text="DIAL / MHz" Foreground="#6995AD" FontSize="10" FontFamily="{StaticResource MessageFont}" LetterSpacing="2" />
                 <Button Classes="instrument-dial" IsEnabled="{Binding CanChangeBand}" ToolTip.Tip="Edit dial frequency" AutomationProperties.Name="Dial frequency">
                   <TextBlock Text="{Binding Frequency}" Foreground="#80EDFA" FontFamily="{StaticResource MessageFont}" FontSize="40" FontWeight="SemiBold" />
                 </Button>
               </StackPanel>
-              <Button Grid.Column="1" Classes="instrument-dial" Content="SET DIAL" IsEnabled="{Binding CanChangeBand}" VerticalAlignment="Center" Foreground="#8DDAEE" BorderBrush="#39627D" BorderThickness="1" Padding="10,6" FontFamily="{StaticResource MessageFont}" FontSize="10" ToolTip.Tip="Open the dial frequency editor" />
+              <v:TxFaceMeters Grid.Column="1" LabelBrush="#6995AD" ValueBrush="#B9DCEC" MeterBrush="#58D9EA" CautionBrush="#F0A64B"
+                              TrackBrush="#243F52" FontFamily="{StaticResource MessageFont}" />
+              <Button Grid.Column="2" Classes="instrument-dial" Content="SET DIAL" IsEnabled="{Binding CanChangeBand}" VerticalAlignment="Center" Foreground="#8DDAEE" BorderBrush="#39627D" BorderThickness="1" Padding="10,6" FontFamily="{StaticResource MessageFont}" FontSize="10" ToolTip.Tip="Open the dial frequency editor" />
             </Grid>
           </Border>
           <StackPanel Grid.Column="2" Margin="18,12" Spacing="8" VerticalAlignment="Center">

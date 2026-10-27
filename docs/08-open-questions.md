@@ -108,6 +108,13 @@ reads 0.50 and power2mW gives 50 W. Hamlib 4.5.5 divides by 255 instead, so the 
 yet tried on the real radio or the IC-7300. The app reads power once per transmission on the meter connection and
 logs it; a radio that reports nothing (or a value outside 1 to 2000 W) falls back to the power in Settings.
 
+Power output meter (2026-10-27, from the Hamlib 4.6.5 source, `rigs/yaesu/ft710.h` and `newcat.c`): the FT-710
+backend lists `RFPOWER_METER_WATTS`, `COMP_METER`, `ID_METER` and `VD_METER` as readable alongside `ALC` and `SWR`.
+`l RFPOWER_METER_WATTS` sends `RM5;` and converts with a table borrowed from FLRig (raw 27 = 5 W, 94 = 25 W, 147 =
+50 W, 176 = 75 W, 205 = 100 W). SWR uses `RM6;` with a table from G3VPX tests (raw 89 = 2.0, 126 = 3.0). The voltage
+table is marked "TBC" in the source, so Costas does not show Vd or Id. Not yet tried on the real radio: compare PO
+with the radio's own meter on Tony's first transmission.
+
 Setting the power from the phone (2026-10-25): `+L RFPOWER x` with x = watts / (power2mW of 1.0), then read back. Against
 the FT-710 CAT emulator with Hamlib 4.5.5, `L RFPOWER 0.25` sent `PC064;` and 0.5 sent `PC128;` (the same /255 scale),
 so 25 W would really go out as 64 W. Costas therefore refuses to read or set power on model 1049 unless

@@ -79,6 +79,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private double? _sntpOffset;
     private string? _fault;
     private TxMeterResult? _txMeters;
+    private TxMeterReading? _txMetersLive;
     private Task _decodeTask = Task.CompletedTask;
     private Task _earlyTask = Task.CompletedTask;
     private (DateTime Slot, HashSet<string> Texts) _rawShown = (DateTime.MinValue, new HashSet<string>(StringComparer.Ordinal));
@@ -113,7 +114,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         _engine.Logged += OnLogged;
         _engine.IsFox = call => _tracker.Find(call)?.RunsFox == true; // read under _gate, as every engine call is
         _tx.Started += OnTxStarted;
-        _tx.Ended += (_, _) => Publish();
+        _tx.Ended += (_, _) =>
+        {
+            lock (_gate) _txMetersLive = null;
+            Publish();
+        };
         _tx.Fault += OnTxFault;
         foreach (var name in new[] { ServiceNames.Radio, ServiceNames.Audio, ServiceNames.Decoder, ServiceNames.Qrz, ServiceNames.Psk })
             _services[name] = ServiceStatus.Off("Not started");
@@ -903,6 +908,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _slotCounts.Clear();
             _activity.Clear();
             _txMeters = null; // SWR belongs to the antenna on the old band
+            _txMetersLive = null;
         }
         BandChanged?.Invoke();
         Publish();
@@ -978,10 +984,21 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
-    /// <summary>Records the ALC and SWR meters from the latest transmission.</summary>
+    /// <summary>Records the transmit meters from the latest transmission, which replace the live reading.</summary>
     public void SetTxMeters(TxMeterResult result)
     {
-        lock (_gate) _txMeters = result;
+        lock (_gate)
+        {
+            _txMeters = result;
+            _txMetersLive = null;
+        }
+        Publish();
+    }
+
+    /// <summary>Records one live reading of the transmit meters, while a transmission or tone is on the air.</summary>
+    public void SetTxMetersLive(TxMeterReading reading)
+    {
+        lock (_gate) _txMetersLive = reading;
         Publish();
     }
 
@@ -1175,6 +1192,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 Waiting = _engine.Waiting.ToList(),
                 CallWhenFree = _callWhenFree.ToList(),
                 TxMeters = _txMeters,
+                TxMetersLive = _txMetersLive,
                 Activity = _activity.ToList(),
                 Pileups = _pileups.All(now),
             };

@@ -152,6 +152,14 @@ public class AppearanceTests
                         dials.Should().OnlyContain(b => !b.IsEnabled, "frequency editing is locked out while transmitting");
                         vm.CanChangeBand = true;
                         SlotReadouts(window).Should().BeEmpty("the faceplate meter is the only slot countdown on Operate");
+                        vm.HasMeters = true;
+                        vm.SwrBar = 0.15;
+                        window.UpdateLayout();
+                        var faceMeters = face.GetVisualDescendants().OfType<TxFaceMeters>().Single();
+                        faceMeters.GetVisualDescendants().OfType<TxMeterBar>().Should().Contain(b => b.Value == 0.15);
+                        faceMeters.IsEffectivelyVisible.Should().BeTrue();
+                        window.FindControl<StackPanel>("BarMeters")!.IsEffectivelyVisible.Should().BeFalse("the faceplate is the only meter display");
+                        vm.HasMeters = false;
                         vm.Tab = 3;
                         window.UpdateLayout();
                         SlotReadouts(window).Should().BeEmpty("the faceplate meter is the only slot countdown on other tabs");
@@ -165,6 +173,9 @@ public class AppearanceTests
                     vm.Tab = 3;
                     window.UpdateLayout();
                     SlotReadouts(window).Should().Equal("BarSlot");
+                    vm.HasMeters = true;
+                    window.UpdateLayout();
+                    window.FindControl<StackPanel>("BarMeters")!.IsEffectivelyVisible.Should().BeTrue("standard skins show the meters in the bottom bar");
                 }
                 finally
                 {

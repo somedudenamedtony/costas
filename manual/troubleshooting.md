@@ -71,7 +71,8 @@ Use [Station setup › Transmit test](setup.md#4-transmit-test) into a dummy loa
 
 ### SWR or ALC warning after a transmission
 
-The bottom bar shows, for example, *SWR 3.4 · ALC 70%*. Hover for advice.
+The meters in the bottom bar (or on an instrument skin's faceplate) show SWR in orange or red, or ALC as *High*. Hover
+for advice.
 
 - **SWR 2 or more**: check the antenna and tuner. At 3 or more, fix it before sending again.
 - **ALC 50% or more**: the audio is overdriving the radio and the signal will be distorted. With automatic

@@ -26,6 +26,7 @@ public class TxMeterMonitorTests
         public readonly Transmitter Tx;
         public readonly TxMeterMonitor Monitor;
         public readonly List<TxMeterResult> Measured = [];
+        public readonly List<TxMeterReading> Live = [];
 
         public Station(TxMeterReading meters)
         {
@@ -39,6 +40,7 @@ public class TxMeterMonitorTests
                 StopBeforeEnd = TimeSpan.FromMilliseconds(100),
             };
             Monitor.Measured += Measured.Add;
+            Monitor.Read += r => { lock (Live) Live.Add(r); };
         }
 
         public Task<string?> Tone() => Tx.TuneAsync(1500, 0.4, new TxGuardInput("20m", 14_074_000, 0.0, 2.0, null, true));
@@ -64,6 +66,53 @@ public class TxMeterMonitorTests
         await s.Tone();
         (await s.Monitor.Idle).Should().BeNull();
         s.Measured.Should().BeEmpty();
+        s.Live.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Tone_PowerMeter_ReportsEachReadingLiveThenTheMedian()
+    {
+        var s = new Station(new TxMeterReading(0.05, 1.3, 24));
+        await s.Tone();
+        var result = await s.Monitor.Idle;
+        lock (s.Live) s.Live.Should().NotBeEmpty().And.OnlyContain(r => r == new TxMeterReading(0.05, 1.3, 24));
+        result!.Watts.Should().Be(24);
+    }
+
+    [Fact]
+    public void Strip_Live_ShowsTheReadingNotTheLastResult()
+    {
+        var held = new TxMeterResult(0.8, 3.5, TxMeterLevel.Critical, "SWR 3.5 on the last transmission.", 90);
+        var m = TxMeterText.Strip(new TxMeterReading(0.06, 1.3, 24.4), held, 100)!;
+        m.Live.Should().BeTrue();
+        m.Caption.Should().Be("TX");
+        (m.Watts, m.Alc, m.AlcKind, m.Swr, m.SwrKind).Should().Be(("24 W", "OK", TextKind.Normal, "1.3", TextKind.Normal));
+        m.WattsBar.Should().BeApproximately(0.244, 1e-9);
+        m.SwrBar.Should().BeApproximately(0.15, 1e-9);
+        m.Tip.Should().NotContain("SWR 3.5", "a warning about the last transmission does not label live readings");
+    }
+
+    [Fact]
+    public void Strip_AfterTransmission_HoldsTheResultWithItsWarning()
+    {
+        var held = new TxMeterResult(0.6, 2.6, TxMeterLevel.Caution, "SWR 2.6 on the last transmission. Check the antenna or tuner.", 24);
+        var m = TxMeterText.Strip(null, held, 50)!;
+        m.Live.Should().BeFalse();
+        m.Caption.Should().Be("Last TX");
+        (m.Alc, m.AlcKind, m.Swr, m.SwrKind).Should().Be(("High", TextKind.Caution, "2.6", TextKind.Caution));
+        m.WattsBar.Should().BeApproximately(0.48, 1e-9, "the power bar is a share of the radio's most");
+        m.Tip.Should().Be(held.Warning);
+        TxMeterText.Strip(null, held with { Swr = 3.2 }, null)!.SwrKind.Should().Be(TextKind.Critical);
+    }
+
+    [Fact]
+    public void Strip_NothingReportedOrImpossibleValues_HidesThoseMeters()
+    {
+        TxMeterText.Strip(null, null, null).Should().BeNull();
+        TxMeterText.Strip(TxMeterReading.None, TxMeterResult.None, null).Should().BeNull();
+        // ALC outside 0 to 1 is not an ALC reading (an SWR value read out of step); SWR below 1 means no forward power.
+        var m = TxMeterText.Strip(new TxMeterReading(1.7, 0, 5), null, null)!;
+        (m.Alc, m.Swr, m.Watts).Should().Be(((string?)null, (string?)null, "5 W"));
     }
 
     [Fact]

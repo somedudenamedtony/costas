@@ -160,7 +160,8 @@ See [Operating from a phone](phone.md).
   faceplate, lime green seven-segment LCD digits and a black tuning dial; **Vintage Receiver** has warm dial lighting,
   brass trim, rounded controls and a sweeping slot needle; **SDR Console** has square modules, monospace readouts
   and a segmented slot strip. Their meters show progress through the current FT8 or FT4 slot; with one of these skins the faceplate is the
-  only slot countdown, so the contact card and bottom bar leave theirs out. Click the large
+  only slot countdown, so the contact card and bottom bar leave theirs out. The display also carries the radio's
+  power out, ALC and SWR meters (in place of the bottom bar's) once the radio has reported them. Click the large
   frequency display or **DIAL** button to open the same frequency editor used by Classic.
   Light and dark swatches preview your choice. Press **Save** to apply it to all desktop windows; it is remembered
   the next time you start Costas. Transmit and warning colors stay the same.

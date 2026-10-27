@@ -29,6 +29,21 @@ public static class Converters
         _ => "TextPrimaryBrush",
     }));
 
+    /// <summary>
+    /// Meter value text on an instrument faceplate: the skin's value colour, its caution colour, or the critical colour.
+    /// Values: the <see cref="TextKind"/>, then the value and caution brushes.
+    /// </summary>
+    public static readonly IMultiValueConverter FaceKindBrush = new FuncMultiValueConverter<object?, IBrush?>(v =>
+    {
+        var a = v.ToArray();
+        return (a.ElementAtOrDefault(0) as TextKind?) switch
+        {
+            TextKind.Critical => Brush("CriticalBrush"),
+            TextKind.Caution => a.ElementAtOrDefault(2) as IBrush,
+            _ => a.ElementAtOrDefault(1) as IBrush,
+        };
+    });
+
     /// <summary>Raw decodes line text: another program's highlight colour, or the line's own colour.</summary>
     public static readonly IValueConverter RawForeground = new FuncValueConverter<RawLineViewModel, IBrush?>(l =>
         l?.Foreground is { } c ? new SolidColorBrush(Color.FromArgb(c.A, c.R, c.G, c.B)) : KindBrush.Convert(l?.Kind ?? TextKind.Normal, typeof(IBrush), null, CultureInfo.InvariantCulture) as IBrush);

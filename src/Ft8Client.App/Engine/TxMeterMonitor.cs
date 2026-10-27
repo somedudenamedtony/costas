@@ -13,9 +13,9 @@ using Ft8Client.Rig;
 namespace Ft8Client.App.Engine;
 
 /// <summary>
-/// Reads the radio's ALC and SWR meters while a transmission or test tone is on the air and reports the result when
-/// it ends. Readings start once the radio has settled and stop shortly before the audio ends, so no meter command is
-/// in flight when PTT is released. Display only (owner decision D13): it never stops, refuses or changes a transmission.
+/// Reads the radio's ALC, SWR and power output meters while a transmission or test tone is on the air, reports each
+/// reading as it comes for the live display, and reports the result when it ends. Readings start once the radio has
+/// settled and stop shortly before the audio ends, so no meter command is in flight when PTT is released. Display only (owner decision D13): it never stops, refuses or changes a transmission.
 /// It also reads the radio's power setting once per transmission, for the log.
 /// </summary>
 public sealed class TxMeterMonitor
@@ -43,6 +43,9 @@ public sealed class TxMeterMonitor
 
     /// <summary>No reading starts later than this before the audio ends.</summary>
     public TimeSpan StopBeforeEnd { get; init; } = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>Raised with each reading that has at least one meter value, while the transmission is on the air.</summary>
+    public event Action<TxMeterReading>? Read;
 
     /// <summary>
     /// Raised after each transmission that produced at least one meter value. Not raised when the radio reports no
@@ -87,7 +90,9 @@ public sealed class TxMeterMonitor
             Volatile.Write(ref _powerWatts, await _rig().ReadPowerWattsAsync(ct).ConfigureAwait(false) ?? 0);
             while (sw.Elapsed <= last)
             {
-                readings.Add(await _rig().ReadTxMetersAsync(ct).ConfigureAwait(false));
+                var reading = await _rig().ReadTxMetersAsync(ct).ConfigureAwait(false);
+                readings.Add(reading);
+                if (reading.Any && !ct.IsCancellationRequested) Read?.Invoke(reading);
                 await Task.Delay(Interval, ct).ConfigureAwait(false);
             }
         }
@@ -95,7 +100,7 @@ public sealed class TxMeterMonitor
         {
         }
         var result = TxMeterCheck.Evaluate(readings);
-        if (result.Alc is null && result.Swr is null) return null;
+        if (result.Alc is null && result.Swr is null && result.Watts is null) return null;
         Measured?.Invoke(result);
         return result;
     }
