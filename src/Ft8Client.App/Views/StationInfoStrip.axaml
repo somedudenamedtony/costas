@@ -41,23 +41,25 @@
       </WrapPanel>
       <TextBlock Text="{Binding LookupNote}" Classes="secondary" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding HasLookupNote}" />
     <!-- Who else is calling: the pileup on this station, from my own decodes. -->
-    <StackPanel Spacing="4" Margin="0,8,0,0" IsVisible="{Binding HasPileup}" AutomationProperties.Name="Who else is calling">
-      <TextBlock Text="Who else is calling" FontWeight="SemiBold" />
-      <TextBlock Text="{Binding PileupHeadline}" Classes="secondary" TextWrapping="Wrap" IsVisible="{Binding HasPileupHeadline}" />
-      <ItemsControl ItemsSource="{Binding PileupCallers}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:PileupCallerViewModel">
-            <Grid ColumnDefinitions="90,50,*">
-              <TextBlock Text="{Binding Call}" FontWeight="SemiBold" />
-              <TextBlock Grid.Column="1" Text="{Binding Snr}" Classes="num" />
-              <TextBlock Grid.Column="2" Text="{Binding Offset}" Classes="secondary num" />
-            </Grid>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-      <TextBlock Text="{Binding PileupOffset}" Classes="secondary" TextWrapping="Wrap" IsVisible="{Binding HasPileupOffset}" />
-      <TextBlock Text="{Binding PileupPicks}" Classes="secondary" TextWrapping="Wrap" IsVisible="{Binding HasPileupPicks}" />
-    </StackPanel>
+    <Border Classes="attention" Margin="0,8,0,0" IsVisible="{Binding HasPileup}" AutomationProperties.Name="Who else is calling">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Who else is calling" FontWeight="SemiBold" Foreground="{DynamicResource CautionBrush}" />
+        <TextBlock Text="{Binding PileupHeadline}" Classes="secondary" TextWrapping="Wrap" IsVisible="{Binding HasPileupHeadline}" />
+        <ItemsControl ItemsSource="{Binding PileupCallers}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PileupCallerViewModel">
+              <Grid ColumnDefinitions="90,50,*">
+                <TextBlock Text="{Binding Call}" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="1" Text="{Binding Snr}" Classes="num" />
+                <TextBlock Grid.Column="2" Text="{Binding Offset}" Classes="secondary num" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Text="{Binding PileupOffset}" Classes="secondary" TextWrapping="Wrap" IsVisible="{Binding HasPileupOffset}" />
+        <TextBlock Text="{Binding PileupPicks}" Classes="secondary" TextWrapping="Wrap" IsVisible="{Binding HasPileupPicks}" />
+      </StackPanel>
+    </Border>
     </StackPanel>
   </Border>
 </UserControl>

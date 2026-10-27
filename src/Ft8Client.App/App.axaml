@@ -15,6 +15,8 @@
           <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource SystemAccentColor}" />
           <SolidColorBrush x:Key="AccentTextBrush" Color="{DynamicResource SystemAccentColorDark1}" />
           <SolidColorBrush x:Key="CautionBrush" Color="#8A4B00" />
+          <SolidColorBrush x:Key="CautionBackgroundBrush" Color="#FFF4CE" />
+          <SolidColorBrush x:Key="CautionBorderBrush" Color="#E8C27A" />
           <SolidColorBrush x:Key="CriticalBrush" Color="#C42B1C" />
           <SolidColorBrush x:Key="SuccessBrush" Color="#0F7B0F" />
           <SolidColorBrush x:Key="SelectedRowBrush" Color="#E5F1FB" />
@@ -32,6 +34,8 @@
           <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource SystemAccentColor}" />
           <SolidColorBrush x:Key="AccentTextBrush" Color="{DynamicResource SystemAccentColorLight2}" />
           <SolidColorBrush x:Key="CautionBrush" Color="#F0A64B" />
+          <SolidColorBrush x:Key="CautionBackgroundBrush" Color="#3B2A12" />
+          <SolidColorBrush x:Key="CautionBorderBrush" Color="#6B4A1A" />
           <SolidColorBrush x:Key="CriticalBrush" Color="#E5584A" />
           <SolidColorBrush x:Key="SuccessBrush" Color="#6CCB5F" />
           <SolidColorBrush x:Key="SelectedRowBrush" Color="#1F3A55" />
@@ -59,6 +63,14 @@
       <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <!-- Something the operator should look at now, such as other stations calling the one I'm calling. -->
+    <Style Selector="Border.attention">
+      <Setter Property="Background" Value="{DynamicResource CautionBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CautionBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="12,8" />
     </Style>
     <Style Selector="TextBlock.title">
       <Setter Property="FontSize" Value="15" />
