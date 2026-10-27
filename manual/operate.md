@@ -168,8 +168,8 @@ Stations you have already worked on this band are not in Watching; they are in [
 
 ### Call when free
 
-Each Watching row has a **Call when free** link. Click it on a station you want, and Costas calls that station
-for you as soon as its current contact is over. The row then reads *· calling when free* and the link changes to
+Each Watching row has a **Call when free** button. Click it on a station you want, and Costas calls that station
+for you as soon as its current contact is over. The row then reads *· calling when free* and the button changes to
 **Cancel**.
 
 Costas calls the station in your next slot after it is heard signing off with someone else (`RR73`, `RRR` or
