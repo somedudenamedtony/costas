@@ -252,17 +252,65 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial string TxOffsetText { get; set; } = string.Empty;
 
-    /// <summary>ALC or SWR warning from the last transmission ("SWR 3.4 · ALC 70%"), or empty.</summary>
+    /// <summary>True once the radio has reported a transmit meter, so the meter strip shows.</summary>
     [ObservableProperty]
-    public partial string MeterText { get; set; } = string.Empty;
+    public partial bool HasMeters { get; set; }
 
-    /// <summary>The full ALC or SWR advice, for the tooltip.</summary>
+    /// <summary>"TX" while the readings are live, "Last TX" while they hold after the transmission.</summary>
+    [ObservableProperty]
+    public partial string MeterCaption { get; set; } = string.Empty;
+
+    /// <summary>True while the meters are live, for the caption's colour.</summary>
+    [ObservableProperty]
+    public partial bool MetersLive { get; set; }
+
+    /// <summary>What the strip shows and, after a transmission outside limits, what to do about it.</summary>
     [ObservableProperty]
     public partial string MeterTip { get; set; } = string.Empty;
 
-    /// <summary>Colour of the meter warning.</summary>
+    /// <summary>True when the radio reports its power output.</summary>
     [ObservableProperty]
-    public partial TextKind MeterKind { get; set; }
+    public partial bool HasPowerOut { get; set; }
+
+    /// <summary>Power output, "24 W".</summary>
+    [ObservableProperty]
+    public partial string PowerOutText { get; set; } = string.Empty;
+
+    /// <summary>Power output on the faceplate bar, 0 to 1 of the radio's maximum.</summary>
+    [ObservableProperty]
+    public partial double PowerOutBar { get; set; }
+
+    /// <summary>True when the radio reports ALC.</summary>
+    [ObservableProperty]
+    public partial bool HasAlc { get; set; }
+
+    /// <summary>ALC on the bar, 0 to 1.</summary>
+    [ObservableProperty]
+    public partial double AlcBar { get; set; }
+
+    /// <summary>"OK" or "High".</summary>
+    [ObservableProperty]
+    public partial string AlcText { get; set; } = string.Empty;
+
+    /// <summary>Colour of <see cref="AlcText"/>.</summary>
+    [ObservableProperty]
+    public partial TextKind AlcKind { get; set; }
+
+    /// <summary>True when the radio reports SWR.</summary>
+    [ObservableProperty]
+    public partial bool HasSwr { get; set; }
+
+    /// <summary>SWR, "1.3".</summary>
+    [ObservableProperty]
+    public partial string SwrText { get; set; } = string.Empty;
+
+    /// <summary>SWR on the faceplate bar: 1.0 empty, 3.0 and above full, caution from 2.0 at the middle.</summary>
+    [ObservableProperty]
+    public partial double SwrBar { get; set; }
+
+    /// <summary>Colour of <see cref="SwrText"/>.</summary>
+    [ObservableProperty]
+    public partial TextKind SwrKind { get; set; }
 
     /// <summary>Manual offset entry.</summary>
     [ObservableProperty]
@@ -390,7 +438,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             (StatusText, StatusKind) = (statusText, statusKind);
             _applyingStatus = false;
         }
-        (MeterText, MeterTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
+        ApplyMeters(TxMeterText.Strip(s.TxMetersLive, s.TxMeters, _host.RadioPower.Power?.MaxWatts));
         Indicators.Clear();
         Indicators.Add(Indicator("Radio", s, ServiceNames.Radio));
         Indicators.Add(Indicator("Audio", s, ServiceNames.Audio));
@@ -767,6 +815,26 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         PowerMessage = await _host.RadioPower.SetAsync(watts) ?? string.Empty;
         UpdatePower();
+    }
+
+    private void ApplyMeters(TxMeterStrip? m)
+    {
+        HasMeters = m is not null;
+        if (m is null) return;
+        MetersLive = m.Live;
+        MeterCaption = m.Caption;
+        MeterTip = m.Tip;
+        HasPowerOut = m.Watts is not null;
+        PowerOutText = m.Watts ?? string.Empty;
+        PowerOutBar = m.WattsBar;
+        HasAlc = m.Alc is not null;
+        AlcText = m.Alc ?? string.Empty;
+        AlcBar = m.AlcBar;
+        AlcKind = m.AlcKind;
+        HasSwr = m.Swr is not null;
+        SwrText = m.Swr ?? string.Empty;
+        SwrBar = m.SwrBar;
+        SwrKind = m.SwrKind;
     }
 
     private void UpdatePower()

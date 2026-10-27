@@ -135,6 +135,9 @@ public sealed record SessionSnapshot
     /// <summary>ALC and SWR from the latest transmission that reported them on this band, with any warning; null before then.</summary>
     public TxMeterResult? TxMeters { get; init; }
 
+    /// <summary>The latest meter reading while a transmission or tone is on the air; null otherwise.</summary>
+    public TxMeterReading? TxMetersLive { get; init; }
+
     /// <summary>Stations waiting for me (called me), oldest first.</summary>
     public IReadOnlyList<WaitingCaller> Waiting { get; init; } = [];
 

@@ -29,7 +29,7 @@ public interface IRig : IAsyncDisposable
     Task SetPttAsync(bool on, CancellationToken ct);
 
     /// <summary>
-    /// Reads the ALC and SWR meters, for use while transmitting. A meter the radio does not report reads as null. Never
+    /// Reads the ALC, SWR and power output meters, for use while transmitting. A meter the radio does not report reads as null. Never
     /// raises <see cref="Faulted"/> and never throws <see cref="RigException"/>: a meter that cannot be read is not a
     /// reason to stop a transmission.
     /// </summary>

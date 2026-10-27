@@ -14,12 +14,16 @@
             <Border.Background><LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%"><GradientStop Color="#D9B774" Offset="0" /><GradientStop Color="#FFF0C6" Offset="0.45" /><GradientStop Color="#E6CB8D" Offset="1" /></LinearGradientBrush></Border.Background>
             <StackPanel Spacing="0">
               <TextBlock Text="D I A L   F R E Q U E N C Y" Foreground="#77512B" FontSize="9" HorizontalAlignment="Center" />
-              <Button Classes="instrument-dial" IsEnabled="{Binding CanChangeBand}" ToolTip.Tip="Edit dial frequency" AutomationProperties.Name="Dial frequency" HorizontalAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <TextBlock Text="{Binding Frequency}" Foreground="#573817" FontSize="36" FontFamily="{StaticResource MessageFont}" />
-                  <TextBlock Text="MHz" Foreground="#77512B" FontSize="11" VerticalAlignment="Bottom" Margin="0,0,0,7" />
-                </StackPanel>
-              </Button>
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                <Button Classes="instrument-dial" IsEnabled="{Binding CanChangeBand}" ToolTip.Tip="Edit dial frequency" AutomationProperties.Name="Dial frequency" HorizontalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="{Binding Frequency}" Foreground="#573817" FontSize="36" FontFamily="{StaticResource MessageFont}" />
+                    <TextBlock Text="MHz" Foreground="#77512B" FontSize="11" VerticalAlignment="Bottom" Margin="0,0,0,7" />
+                  </StackPanel>
+                </Button>
+                <v:TxFaceMeters Grid.Column="1" LabelBrush="#77512B" ValueBrush="#573817" MeterBrush="#7A4D1B" CautionBrush="#C0571B"
+                                TrackBrush="#D2B57A" FontFamily="Georgia, Liberation Serif, DejaVu Serif" />
+              </Grid>
               <Border Height="9" BorderBrush="#9C7138" BorderThickness="0,1,0,1"><Rectangle Width="2" Fill="#7A4D1B" HorizontalAlignment="Center" /></Border>
             </StackPanel>
           </Border>

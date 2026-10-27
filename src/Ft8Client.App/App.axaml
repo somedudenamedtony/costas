@@ -67,6 +67,10 @@
     <Style Selector="TextBlock.secondary">
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
+    <Style Selector="TextBlock.secondary.live">
+      <Setter Property="Foreground" Value="{DynamicResource CriticalBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
     <Style Selector="TextBlock.num">
       <Setter Property="FontFeatures" Value="+tnum" />
     </Style>

@@ -33,6 +33,15 @@ public class TxMeterCheckTests
     }
 
     [Fact]
+    public void Evaluate_PowerOutput_MedianWattsIncludingZero()
+    {
+        var r = TxMeterCheck.Evaluate([new(0.1, 1.2, 0), new(0.1, 1.2, 0), new(0.1, 1.2, 24), new(null, null, null)]);
+        r.Watts.Should().Be(0, "a keyed radio putting out 0 W is a real reading");
+        r.Level.Should().Be(TxMeterLevel.Ok);
+        TxMeterCheck.Evaluate([new(0.1, 1.2)]).Watts.Should().BeNull();
+    }
+
+    [Fact]
     public void Evaluate_SwrTwoPointThree_CautionToCheckAntenna()
     {
         var r = Eval((0.0, 2.3), (0.0, 2.3));

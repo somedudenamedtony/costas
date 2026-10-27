@@ -16,6 +16,10 @@
             </StackPanel>
           </StackPanel>
           <Border Grid.Column="1" Background="#07151C" BorderBrush="#091015" BorderThickness="3" CornerRadius="4" Padding="16,8">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+            <!-- Transmit meters from the radio over CAT, as on the radio's own display; held after a transmission. -->
+            <v:TxFaceMeters Grid.Column="1" LabelBrush="#64A8BB" ValueBrush="#C8E9F2" MeterBrush="#5DD2ED" CautionBrush="#F0A64B"
+                            TrackBrush="#152832" FontFamily="{StaticResource MessageFont}" />
             <StackPanel Spacing="1">
               <TextBlock Text="DIAL FREQUENCY" Foreground="#64A8BB" FontSize="9" LetterSpacing="2" />
               <Button Classes="instrument-dial" IsEnabled="{Binding CanChangeBand}" ToolTip.Tip="Edit dial frequency" AutomationProperties.Name="Dial frequency">
@@ -25,6 +29,7 @@
                 </StackPanel>
               </Button>
             </StackPanel>
+            </Grid>
           </Border>
           <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="8">
             <DockPanel><TextBlock Classes="instrument-phase" Classes.transmitting="{Binding Transmitting}" Text="{Binding SlotLabel}" /><TextBlock Text="{Binding SlotRemaining}" HorizontalAlignment="Right" Foreground="#C8E9F2" FontFamily="{StaticResource MessageFont}" /></DockPanel>

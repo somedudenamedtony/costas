@@ -422,10 +422,11 @@ public class RigTests
         await rig.SetSplitAsync(true, 14_075_000, ct);
         (await rig.GetStateAsync(ct)).Split.Should().BeTrue();
 
-        // The dummy rig reports both meters (as 0); reading them never faults.
+        // The dummy rig reports ALC and SWR (as 0); reading them never faults.
         var meterFaults = new List<RigFault>();
         rig.Faulted += (_, f) => meterFaults.Add(f);
-        (await rig.ReadTxMetersAsync(ct)).Should().Be(new Core.Transmit.TxMeterReading(0, 0));
+        var dummyMeters = await rig.ReadTxMetersAsync(ct);
+        (dummyMeters.Alc, dummyMeters.Swr).Should().Be((0.0, 0.0));
         // The dummy rig's power setting starts at 0, which is no reading; still no fault.
         (await rig.ReadPowerWattsAsync(ct)).Should().BeNull();
         meterFaults.Should().BeEmpty();
@@ -485,6 +486,8 @@ public class RigTests
                 var meters = await rig.ReadTxMetersAsync(ct);
                 meters.Alc.Should().BeInRange(0.01, 1.0, "the emulator's ALC meter reads 32 of 255");
                 meters.Swr.Should().BeGreaterThan(1.0, "the emulator's SWR meter reads 32 of 255");
+                // Hamlib releases without RFPOWER_METER_WATTS report no power; 4.6's FT-710 table reads raw 94 as 25 W.
+                if (meters.Watts is { } watts) watts.Should().BeApproximately(25, 1);
                 await rig.SetPttAsync(false, ct);
                 (await rig.GetStateAsync(ct)).Ptt.Should().BeFalse();
             }

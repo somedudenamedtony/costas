@@ -13,6 +13,9 @@
             </StackPanel>
           </StackPanel>
           <Border Grid.Column="1" Background="#111A0B" BorderBrush="#1A2014" BorderThickness="5" CornerRadius="3" Padding="14,6">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+            <v:TxFaceMeters Grid.Column="1" LabelBrush="#819D54" ValueBrush="#C3E391" MeterBrush="#BDF462" CautionBrush="#F0A64B"
+                            TrackBrush="#263B17" FontFamily="{StaticResource MessageFont}" />
             <StackPanel Spacing="5">
               <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="12"><TextBlock Text="{Binding SelectedMode}" Foreground="#A8CF68" FontFamily="{StaticResource MessageFont}" FontSize="10" /><TextBlock Text="{Binding SelectedBandChoice.Name}" Foreground="#A8CF68" FontFamily="{StaticResource MessageFont}" FontSize="10" /></StackPanel>
@@ -25,6 +28,7 @@
                 </StackPanel>
               </Button>
             </StackPanel>
+            </Grid>
           </Border>
           <Border Grid.Column="2" Background="#22291B" BorderBrush="#747F62" BorderThickness="1" CornerRadius="2" Padding="12,10">
             <StackPanel VerticalAlignment="Center" Spacing="7">
