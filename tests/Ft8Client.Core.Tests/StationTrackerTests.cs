@@ -135,6 +135,38 @@ public class StationTrackerTests
         t.Find("K1ABC")!.State.Should().Be(StationState.CallingMe);
     }
 
+    [Theory]
+    [InlineData("W7LIT K1ABC RR73")]
+    [InlineData("W7LIT K1ABC RRR")]
+    [InlineData("W7LIT K1ABC 73")]
+    public void ApplySlot_SignOffToMe_IsFinishingNotCallingMe(string text)
+    {
+        var t = NewTracker();
+        t.ApplySlot(S(1), [H(S(1), text)]);
+        var s = t.Find("K1ABC")!;
+        s.State.Should().Be(StationState.Finishing, "a station signing off with me is not calling me");
+        s.Partner.Should().Be("W7LIT");
+        s.PartnerStage.Should().Be(PartnerStage.SignOff);
+    }
+
+    [Fact]
+    public void ApplySlot_ReportRepeatedToMeAfterSignOff_IsCallingMeAgain()
+    {
+        var t = NewTracker();
+        t.ApplySlot(S(1), [H(S(1), "W7LIT K1ABC RR73")]);
+        t.ApplySlot(S(3), [H(S(3), "W7LIT K1ABC R-12")]);
+        t.Find("K1ABC")!.State.Should().Be(StationState.CallingMe, "a repeated report still wants an answer");
+    }
+
+    [Fact]
+    public void ApplySlot_SignOffToMeThenSilentOwnSlot_IsJustFinished()
+    {
+        var t = NewTracker();
+        t.ApplySlot(S(1), [H(S(1), "W7LIT K1ABC RR73")]);
+        t.ApplySlot(S(3), []);
+        t.Find("K1ABC")!.JustFinished.Should().BeTrue();
+    }
+
     [Fact]
     public void ApplySlot_TwoMissedOwnSlots_IsQuiet_AndOppositeParityDoesNotCount()
     {
