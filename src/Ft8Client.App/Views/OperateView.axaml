@@ -411,8 +411,9 @@
                       <v:SignalSparkline Grid.Column="3" Values="{Binding History}" Width="52" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" Opacity="0.7"
                                          ToolTip.Tip="{Binding HistoryTip}" AutomationProperties.Name="{Binding HistoryTip}" />
                       <TextBlock Grid.Column="4" Text="{Binding Reason}" Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                      <!-- Call when free: the station is called in my next slot once its current contact is over. -->
-                      <Button Grid.Column="5" Classes="link" Content="{Binding CallWhenFreeText}" VerticalAlignment="Center"
+                      <!-- Call when free: the station is called in my next slot once its current contact is over. A button like
+                           the Call buttons in Next in line (owner request 2026-10-27), not a link. -->
+                      <Button Grid.Column="5" Content="{Binding CallWhenFreeText}" VerticalAlignment="Center" Margin="8,3,0,3" MinWidth="112" HorizontalContentAlignment="Center"
                               Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ToggleCallWhenFreeCommand}" CommandParameter="{Binding}"
                               ToolTip.Tip="{Binding CallWhenFreeTip}" AutomationProperties.Name="{Binding CallWhenFreeTip}" />
                     </Grid>
