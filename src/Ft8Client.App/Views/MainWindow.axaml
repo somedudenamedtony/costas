@@ -140,6 +140,43 @@
       <DockPanel>
         <Button DockPanel.Dock="Right" Content="Halt (Esc)" Command="{Binding HaltCommand}" Background="White" Foreground="#D11F1F"
                 FontWeight="SemiBold" Padding="14,4" />
+        <!-- The radio's transmit meters over CAT, live while on the air (display only, owner decision D13). Instrument
+             skins show them on the faceplate instead. -->
+        <Panel DockPanel.Dock="Right" IsVisible="{DynamicResource StandardSkin}" Margin="16,0,20,0">
+          <StackPanel x:Name="BarMeters" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center" IsVisible="{Binding HasMeters}"
+                      Background="Transparent" ToolTip.Tip="{Binding MeterTip}" AutomationProperties.Name="{Binding MeterTip}">
+            <StackPanel.Styles>
+              <Style Selector="TextBlock.onair-label"><Setter Property="Foreground" Value="#E6FFFFFF" /><Setter Property="FontSize" Value="13" /><Setter Property="VerticalAlignment" Value="Center" /></Style>
+              <Style Selector="TextBlock.onair-value"><Setter Property="FontSize" Value="16" /><Setter Property="FontWeight" Value="Bold" /><Setter Property="FontFeatures" Value="+tnum" /><Setter Property="VerticalAlignment" Value="Center" /></Style>
+            </StackPanel.Styles>
+            <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding HasPowerOut}">
+              <TextBlock Text="PO" Classes="onair-label" />
+              <TextBlock Text="{Binding PowerOutText}" Classes="onair-value" Foreground="White" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasAlc}">
+              <TextBlock Text="ALC" Classes="onair-label" />
+              <v:TxMeterBar Value="{Binding AlcBar}" CautionAt="0.5" Segments="10" Width="60" Height="10" VerticalAlignment="Center"
+                            MeterBrush="White" CautionBrush="#FFD27A" TrackBrush="#55FFFFFF" />
+              <TextBlock Text="{Binding AlcText}" Classes="onair-value">
+                <TextBlock.Foreground>
+                  <MultiBinding Converter="{x:Static v:Converters.FaceKindBrush}">
+                    <Binding Path="AlcKind" /><Binding Source="{x:Static Brushes.White}" /><Binding Source="#FFD27A" /><Binding Source="#FFD27A" />
+                  </MultiBinding>
+                </TextBlock.Foreground>
+              </TextBlock>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding HasSwr}">
+              <TextBlock Text="SWR" Classes="onair-label" />
+              <TextBlock Text="{Binding SwrText}" Classes="onair-value">
+                <TextBlock.Foreground>
+                  <MultiBinding Converter="{x:Static v:Converters.FaceKindBrush}">
+                    <Binding Path="SwrKind" /><Binding Source="{x:Static Brushes.White}" /><Binding Source="#FFD27A" /><Binding Source="#FFD27A" />
+                  </MultiBinding>
+                </TextBlock.Foreground>
+              </TextBlock>
+            </StackPanel>
+          </StackPanel>
+        </Panel>
         <TextBlock Text="{Binding OnAirText}" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis" />
       </DockPanel>
@@ -204,32 +241,11 @@
       <Grid x:Name="BottomGrid" RowDefinitions="Auto,Auto,52" Margin="16,6">
       <DockPanel Margin="0,0,0,4">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <!-- The radio's transmit meters over CAT: live while transmitting, then held from the last transmission.
-               Display only (owner decision D13). Instrument skins show them on the faceplate instead. -->
-          <Panel IsVisible="{DynamicResource StandardSkin}">
-            <StackPanel x:Name="BarMeters" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" IsVisible="{Binding HasMeters}" Background="Transparent"
-                        ToolTip.Tip="{Binding MeterTip}" AutomationProperties.Name="{Binding MeterTip}" AutomationProperties.LiveSetting="Polite">
-              <TextBlock Text="{Binding MeterCaption}" Classes="secondary" VerticalAlignment="Center"
-                         Classes.live="{Binding MetersLive}" />
-              <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasPowerOut}">
-                <TextBlock Text="PO" Classes="secondary" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding PowerOutText}" Classes="num" FontWeight="SemiBold" VerticalAlignment="Center" />
-              </StackPanel>
-              <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding HasAlc}">
-                <TextBlock Text="ALC" Classes="secondary" VerticalAlignment="Center" />
-                <v:TxMeterBar Value="{Binding AlcBar}" CautionAt="0.5" Segments="10" Width="50" Height="8" VerticalAlignment="Center"
-                              MeterBrush="{DynamicResource SuccessBrush}" CautionBrush="{DynamicResource CautionBrush}"
-                              TrackBrush="{DynamicResource CardBorderBrush}" />
-                <TextBlock Text="{Binding AlcText}" FontWeight="SemiBold" VerticalAlignment="Center"
-                           Foreground="{Binding AlcKind, Converter={x:Static v:Converters.KindBrush}}" />
-              </StackPanel>
-              <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasSwr}">
-                <TextBlock Text="SWR" Classes="secondary" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding SwrText}" Classes="num" FontWeight="SemiBold" VerticalAlignment="Center"
-                           Foreground="{Binding SwrKind, Converter={x:Static v:Converters.KindBrush}}" />
-              </StackPanel>
-            </StackPanel>
-          </Panel>
+          <!-- After a transmission whose SWR or ALC was outside limits: what to check. The live meters are in the on-air bar. -->
+          <TextBlock Text="{Binding MeterText}" FontWeight="SemiBold" VerticalAlignment="Center" ToolTip.Tip="{Binding MeterWarningTip}"
+                     Foreground="{Binding MeterKind, Converter={x:Static v:Converters.KindBrush}}"
+                     IsVisible="{Binding MeterText, Converter={x:Static v:Converters.NotEmpty}}"
+                     AutomationProperties.Name="{Binding MeterWarningTip}" AutomationProperties.LiveSetting="Assertive" />
           <Button Classes="link" AutomationProperties.Name="Transmit offset" VerticalAlignment="Center">
             <TextBlock Text="{Binding TxOffsetText}" Classes="secondary num" TextDecorations="{x:Null}" />
             <Button.Flyout>

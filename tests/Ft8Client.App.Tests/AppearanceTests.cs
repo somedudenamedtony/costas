@@ -153,6 +153,7 @@ public class AppearanceTests
                         vm.CanChangeBand = true;
                         SlotReadouts(window).Should().BeEmpty("the faceplate meter is the only slot countdown on Operate");
                         vm.HasMeters = true;
+                        vm.Transmitting = true;
                         vm.SwrBar = 0.15;
                         window.UpdateLayout();
                         var faceMeters = face.GetVisualDescendants().OfType<TxFaceMeters>().Single();
@@ -160,6 +161,7 @@ public class AppearanceTests
                         faceMeters.IsEffectivelyVisible.Should().BeTrue();
                         window.FindControl<StackPanel>("BarMeters")!.IsEffectivelyVisible.Should().BeFalse("the faceplate is the only meter display");
                         vm.HasMeters = false;
+                        vm.Transmitting = false;
                         vm.Tab = 3;
                         window.UpdateLayout();
                         SlotReadouts(window).Should().BeEmpty("the faceplate meter is the only slot countdown on other tabs");
@@ -174,8 +176,10 @@ public class AppearanceTests
                     window.UpdateLayout();
                     SlotReadouts(window).Should().Equal("BarSlot");
                     vm.HasMeters = true;
+                    vm.Transmitting = true;
                     window.UpdateLayout();
-                    window.FindControl<StackPanel>("BarMeters")!.IsEffectivelyVisible.Should().BeTrue("standard skins show the meters in the bottom bar");
+                    window.FindControl<StackPanel>("BarMeters")!.IsEffectivelyVisible.Should().BeTrue("standard skins show the meters in the on-air bar");
+                    vm.Transmitting = false;
                 }
                 finally
                 {
