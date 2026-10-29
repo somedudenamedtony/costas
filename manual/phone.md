@@ -6,21 +6,30 @@ you turn it on.
 
 ![The phone page in a contact](images/phone-contact.png){ width="320" }
 
-## Turning it on and pairing a phone
+## Turning it on and connecting a phone
 
-1. On the station computer, open **Settings › Mobile connection** and tick **Let a paired phone on this network
-   operate the station**. It starts at once; there is no need to save first.
+1. On the station computer, open **Settings › Mobile connection** and tick **Let a phone on this network operate the
+   station**. It starts at once; there is no need to save first.
 2. If Windows asks whether Costas may use the network, choose **Allow** for private networks. Phones cannot connect
    until you do.
-3. A **Pair a phone** card appears with the address to open on the phone, for example `http://192.168.1.20:8073/`,
-   and a large six-digit code.
-4. On the phone, open the address and type the code.
+3. Settings shows the address to open on the phone, for example `http://192.168.1.20:8073/`.
+4. On the phone, open the address. There is no code to type: the page connects straight away.
 
-![Pairing a phone](images/phone-pair.png){ width="320" }
+Any phone or tablet on your home network can open the page and operate the station, so turn it off when you are not
+using it if others share your Wi-Fi.
 
-The code works once, only while the Settings window is open, for up to 10 minutes, and five wrong tries cancel it.
-Press **New code** for another. The phone stays paired until you press **Forget paired phones**; to pair another
-phone, open **Settings › Mobile connection** again and press **Pair a phone**.
+## Adding it to your home screen
+
+The page can sit on your home screen with the Costas icon, like an app.
+
+- **iPhone or iPad:** in Safari, tap **Share**, then **Add to Home Screen**. It opens full screen, without Safari's
+  address bar.
+- **Android:** in Chrome, open the menu and tap **Add to Home screen**. The icon opens the page in Chrome. Chrome only
+  installs full-screen apps from secure (HTTPS) addresses, and Costas serves the page over plain HTTP on your home
+  network.
+
+If the station computer's address changes (for example, your router hands it a new one), add the page again from the
+new address.
 
 ## What the phone can do
 
@@ -32,11 +41,15 @@ shows. **HALT TX** is always at the bottom of the screen.
 
 | Tab | What it shows |
 |---|---|
-| **Operate** | The contact on the same five-step strip as the desk (tap one of your upcoming steps to send it next), with **Resend**, **Log now** and **Abandon**; **Call CQ** or **Stop CQ**; **Calling you**; and **Next in line** with the same columns as the desk: what each station is doing, where it is, its signal, whether it hears you, your chance, and when you last worked it. In PSK and RTTY the macro keys take the place of Resend and Call CQ, and the last lines of the conversation show under the strip ([PSK and RTTY](keyboard-modes.md#away-from-the-desk)) |
+| **Operate** | The contact on the same five-step strip as the desk (tap one of your upcoming steps to send it next), with **Resend**, **Log now** and **Abandon**; **Call CQ** or **Stop CQ**; **Calling you**; and **Next in line** with the same columns as the desk: what each station is doing, where it is, its signal, your chance, and when you last worked it. In PSK and RTTY the macro keys take the place of Resend and Call CQ, and the last lines of the conversation show under the strip ([PSK and RTTY](keyboard-modes.md#away-from-the-desk)) |
 | **Stations** | The band summary (stations heard, countries, calling CQ, you need), **Repeats** (stations already in your log on this band and mode) and **Watching** (needed, but not callable right now, and why) |
 | **Decodes** | Band activity, newest first. Messages to you are highlighted, CQs are blue and your own transmissions are grey |
 | **Signal** | Who hears you, from PSK Reporter: how many stations and countries in the last 15 minutes, the farthest and best reports, the latest reports, and the last hour of distinct receivers in five-minute intervals (the final interval is incomplete) |
 | **Log** | The contacts you made tonight |
+
+When a contact is logged, a one-line **Logged** notice with the call, the reports and where it is shows just above
+**HALT TX** on any tab, with a 5-second countdown; **✕** closes it sooner. The phone cannot alert you while the page is in
+the background or the screen is locked.
 
 Under the top bar the page also shows the radio's SWR or ALC warning after a transmission that read outside limits,
 a line when QRZ, PSK Reporter or the audio device is not working, and the latest [Hunt list](hunt.md) alert of the
@@ -68,10 +81,25 @@ offset box on the desk: band changes wait until the current transmission ends, c
 (the phone asks first), and a fixed offset must be between 200 and 2900 Hz. Changes are saved, so the desk shows
 them too.
 
-![Band and offset on the phone](images/phone-band.png){ width="320" }
+![Band, offset and power on the phone](images/phone-band.png){ width="320" }
+
+### Radio power
+
+The same sheet shows the radio's power setting under **Radio power**, the same as the power in the desk's bottom bar.
+Type a power and press **Use**, or step it with **−5** and **+5**. Anything from 1 W up to the radio's maximum is
+accepted; anything outside that is refused, not rounded. If the radio has its own minimum (5 W on the FT-710), it
+keeps that and the phone says what it set.
+
+- It only changes the power setting. It never keys the radio, and it is not allowed while a transmission is on the
+  air (as with band changes).
+- It needs a radio connected by CAT that reports its power. With an audio-only (VOX) radio the section does not show.
+- On the FT-710 it needs Hamlib 4.6 or newer, which the Windows installer includes. Older Hamlib releases (such as
+  the one many Linux distributions package) scale the FT-710's power wrongly, so Costas leaves power control off
+  there rather than send the wrong power.
+
 
 Settings, editing the log and the waterfall stay on the desk. Opening a station's details or switching tabs does not
-take control; calling, answering, band and offset changes do.
+take control; calling, answering, band, offset and power changes do.
 
 ## Who is in control
 
@@ -86,7 +114,9 @@ While the phone has control:
 - **Transmit stops if the phone goes quiet for 15 seconds.** The page checks in every 5 seconds. Locking the phone,
   closing the browser, switching apps or losing Wi-Fi all count as going quiet. Receiving and logging carry on, and
   nothing is sent again until you press **Call** or **Call CQ**.
-- **The Tx watchdog is at most 3 minutes**, whatever it is set to in **Settings › Transmitting**.
+- **The Tx watchdog is at most 3 minutes**, whatever it is set to in **Settings › Transmitting**. It counts from your last
+  tap. A contact the other station is already answering is finished first, then nothing more is sent until you tap
+  **Call** or **Call CQ**.
 
 Keep the page open on the screen while you operate.
 
@@ -103,5 +133,6 @@ as it does when you are at the desk.
 ## Security
 
 - The page only answers addresses on your home network (and Tailscale's). Do not forward the port on your router.
-- Only paired phones can see or operate the station.
+- There is no pairing code: any device on your home network can open the page and operate the station. Turn the
+  mobile connection off when you are not using it if you share your network.
 - The page uses plain HTTP inside your network, like most home devices. Use it on a network you trust.

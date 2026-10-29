@@ -26,7 +26,9 @@ using Ft8Client.Data.Reference;
 using Ft8Client.Data.Secrets;
 using Ft8Client.Data.Settings;
 using Ft8Client.Decoding;
+using Ft8Client.Integrations.Net;
 using Ft8Client.Integrations.Time;
+using Ft8Client.Integrations.Usage;
 using Ft8Client.Rig;
 using Serilog;
 
@@ -40,7 +42,17 @@ public sealed class AppHost : IAsyncDisposable
 {
     private readonly CancellationTokenSource _cts = new();
     private readonly List<IDisposable> _disposables = [];
+    private static readonly TimeSpan RecoveryInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan RecoveryRetry = TimeSpan.FromSeconds(10);
+    private readonly SemaphoreSlim _deviceLock = new(1, 1);
     private IAudioInput? _input;
+    private volatile bool _inputDown;
+    private SlotRecorder? _recorder;
+    private DateTime _inputRetryUtc;
+    private DateTime _outputRetryUtc;
+    private DateTime _rigRetryUtc;
+    // The radio is set up but could not be opened (switched off at start, say): retried until it opens.
+    private volatile bool _rigRetry;
     private IAudioOutput? _output;
     private Jt9PersistentDecoder? _decoder;
     private NullAudioOutput? _mutedOutput;
@@ -53,16 +65,23 @@ public sealed class AppHost : IAsyncDisposable
     private SlotLoop? _loop;
     private IRig _rig;
     private string? _rigKey;
+    // Costas's own retunes running, and how many have finished: a poll that read the radio before or during one of them
+    // must not take the old frequency for the operator changing band by hand.
+    private int _retunesRunning;
+    private int _retunesDone;
     private string? _inputId;
     private string? _outputId;
     private string? _audioProblem;
+    private DateTime _usageDay;
+    private TaskCompletionSource _clockRecheck = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private AppHost(CommandLine args, AppPaths paths, AppSettingsAccessor settings)
     {
         Args = args;
         Paths = paths;
         Settings = settings;
-        Clock = SystemClock.Instance;
+        CorrectedClock = new CorrectedClock(SystemClock.Instance);
+        Clock = CorrectedClock;
         Guard = new ChildProcessGuard();
         Secrets = SecretStoreFactory.Create();
         Database = new SqliteDatabase(paths.Database);
@@ -87,8 +106,11 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Settings.</summary>
     public AppSettingsAccessor Settings { get; }
 
-    /// <summary>Clock.</summary>
+    /// <summary>Clock: the PC clock plus the correction from internet time, when that is on.</summary>
     public IClock Clock { get; }
+
+    /// <summary>The same clock, for its correction.</summary>
+    public CorrectedClock CorrectedClock { get; }
 
     /// <summary>Child process guard.</summary>
     public ChildProcessGuard Guard { get; }
@@ -104,6 +126,9 @@ public sealed class AppHost : IAsyncDisposable
 
     /// <summary>Upload queue.</summary>
     public UploadQueueRepository Uploads { get; }
+
+    /// <summary>Holds just-logged contacts back from QRZ, eQSL, LoTW and UDP while they can still be corrected.</summary>
+    public LogHold LogHold { get; private set; } = null!;
 
     /// <summary>Persisted incoming eQSL cards.</summary>
     public EqslInboxRepository EqslInbox { get; }
@@ -176,8 +201,20 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Update checks.</summary>
     public UpdateService Updates { get; private set; } = null!;
 
+    /// <summary>Anonymous usage statistics (Aptabase): off in simulation and when turned off in Settings, Privacy.</summary>
+    public UsageReporter Usage { get; private set; } = null!;
+
+    /// <summary>The Aptabase app key this build was made with (from CI), or null: then no statistics are sent.</summary>
+    public static string? UsageAppKey { get; } =
+        typeof(AppHost).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+            .OfType<System.Reflection.AssemblyMetadataAttribute>()
+            .FirstOrDefault(a => a.Key == "AptabaseAppKey")?.Value is { Length: > 0 } k && AptabaseClient.HostFor(k) is not null ? k.Trim() : null;
+
     /// <summary>WSJT-X UDP interop.</summary>
     public UdpInteropService Udp { get; private set; } = null!;
+
+    /// <summary>The radio's transmit power setting, for the desk and the phone.</summary>
+    public RadioPowerService RadioPower { get; private set; } = null!;
 
     /// <summary>Remote control from a phone on the home network.</summary>
     public RemoteControlService Remote { get; private set; } = null!;
@@ -309,11 +346,15 @@ public sealed class AppHost : IAsyncDisposable
         // The Linux build is a receive-only preview until its transmit audio has been checked on a real radio.
         if (OperatingSystem.IsLinux() && !Simulating) Transmitter.DisabledReason = LinuxPreview.TransmitRefusal;
         TxLevel = new TxLevelController(Transmitter, Settings);
-        var log = new DatabaseSessionLog(Qsos, Uploads, s.Profile.Id, () => Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
-            () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band));
+        LogHold = new LogHold(Uploads, Qsos, () => Clock.UtcNow);
+        var log = new DatabaseSessionLog(Qsos, Uploads, () => Settings.Current.Profile.Id,
+            () => !Simulating && Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
+            () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band),
+            LogHold);
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
         TxMeters = new TxMeterMonitor(Transmitter, () => _rig);
         TxMeters.Measured += r => Session.SetTxMeters(TxLevel.OnMeasured(r));
+        TxMeters.Read += Session.SetTxMetersLive;
         if (partner is not null) Session.Transmitting += partner.OnTransmitted;
         Session.SlotDecoded += (slot, mode, decodes) => BandStats.Add(slot, Settings.Current.Operating.Band, ModeInfo.Name(mode), decodes.Count);
         Session.SetLogIndex(LogIndexBuilder.Build(Qsos, config.MyCall, Countries, SettingsMapper.ConfirmationSource(s)));
@@ -350,13 +391,13 @@ public sealed class AppHost : IAsyncDisposable
         Eqsl.LogChanged += RebuildLogIndex;
         Eqsl.Start();
 
-        Psk = new PskReporterService(Session, Settings, Spots, Countries, Clock, uploadsAllowed: !Simulating);
+        Psk = new PskReporterService(Session, Settings, Spots, Countries, Frequencies, Clock, uploadsAllowed: !Simulating);
         Psk.Start();
 
         Lotw = new LotwService(Session, Settings, Secrets, Qsos, SyncState, Countries, Paths, Clock, Guard, allowed: !Simulating);
         Lotw.LogChanged += RebuildLogIndex;
         Lotw.UsersChanged += Session.SetLotwUsers;
-        log.Stored += Lotw.OnLogged;
+        LogHold.Released += Lotw.OnLogged;
         Lotw.Start();
 
         Hunt = new HuntService(Session, Settings, Countries, ReferenceData.LoadAdifTable(), Psk, Clock);
@@ -371,6 +412,7 @@ public sealed class AppHost : IAsyncDisposable
         Session.Changed += NeighbourHistory.OnSnapshot;
         Pota = new PotaService(() => Settings.Current.Pota.SpotsEnabled, () => Settings.Current.Profile.Callsign, Clock,
             st => Session.SetService(ServiceNames.Pota, st));
+        Pota.Changed += Session.SetParks;
         Pota.SetWorked(WorkedParksFromLog());
         log.Stored += Pota.OnLogged;
         Pota.Start();
@@ -378,10 +420,14 @@ public sealed class AppHost : IAsyncDisposable
         Updates = new UpdateService(Settings, Path.Combine(Paths.Temp, "updates"), Paths.Logs);
         Updates.Start();
 
+        StartUsage(log);
+
         Udp = new UdpInteropService(Session, Settings, offAir: Simulating);
-        log.Stored += Udp.OnLogged;
+        LogHold.Released += Udp.OnLogged;
         Udp.Start();
 
+        RadioPower = new RadioPowerService(() => _rig, () => Transmitter.Transmitting || Session.Snapshot.Transmitting);
+        RadioPower.Start();
         Remote = new RemoteControlService(Session, Settings, Secrets, Clock, new HostTuning(this), () => new RemoteContext
         {
             Units = SettingsMapper.Units(Settings.Current),
@@ -392,7 +438,7 @@ public sealed class AppHost : IAsyncDisposable
             MostWantedRank = MostWanted.Current.RankOf,
             Bands = Frequencies.Bands,
             Hunt = () => this.Hunt.Recent().FirstOrDefault() is { } h ? Core.Hunting.HuntText.Alert(h, Countries, SettingsMapper.Units(Settings.Current)) : null,
-        });
+        }, RadioPower);
         Remote.Start();
 
         if (!Simulating)
@@ -403,8 +449,10 @@ public sealed class AppHost : IAsyncDisposable
 
         _ = Task.Run(ClockCheckLoopAsync);
         _ = Task.Run(RigPollLoopAsync);
+        _ = Task.Run(DeviceRecoveryLoopAsync);
         var confirmedBy = SettingsMapper.ConfirmationSource(s);
         var rttyPower = s.Operating.RttyPowerPercent;
+        var correctClock = s.Operating.CorrectClock;
         Settings.Changed += _ =>
         {
             if (SettingsMapper.ConfirmationSource(Settings.Current) != confirmedBy)
@@ -414,6 +462,11 @@ public sealed class AppHost : IAsyncDisposable
             }
             TxLevel.Apply();
             Pota.Wake();
+            if (Settings.Current.Operating.CorrectClock != correctClock)
+            {
+                correctClock = Settings.Current.Operating.CorrectClock;
+                _clockRecheck.TrySetResult();
+            }
             Session.Reconfigure(SettingsMapper.ToConfig(Settings.Current));
             Keyboard.SetRtty(SettingsMapper.Rtty(Settings.Current), Settings.Current.Operating.RttyUnshiftOnSpace);
             Keyboard.SetAfc(Settings.Current.Operating.KeyboardAfc);
@@ -423,6 +476,36 @@ public sealed class AppHost : IAsyncDisposable
                 Task.Run(ApplyKeyboardRadioAsync);
             }
         };
+    }
+
+    // Anonymous statistics. The User-Agent leaves the callsign out on purpose: these requests must not identify the station.
+    private void StartUsage(DatabaseSessionLog log)
+    {
+        AptabaseClient? client = null;
+        // Never from a build server: CI starts the installed app to test it.
+        if (UsageAppKey is { } key && !string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            var http = HttpFactory.Create(string.Empty, timeout: TimeSpan.FromSeconds(10));
+            _disposables.Add(http);
+            client = new AptabaseClient(http, key);
+        }
+        Usage = new UsageReporter(client, () => !Simulating && Settings.Current.Usage.Enabled, () => Clock.UtcNow);
+        Usage.Start();
+        _usageDay = Clock.UtcNow.Date;
+        TrackStarted();
+        log.Stored += q => Usage.Track("contact_logged", UsageEvents.BandMode(q.Band, q.Mode));
+    }
+
+    /// <summary>Records the start of this run.</summary>
+    private void TrackStarted() => Usage.Track("app_started", UsageEvents.Started(Settings.Current, Jt9Path is not null));
+
+    // One "app_running" a day for runs left open across midnight UTC, so they still count as active that day.
+    private void TrackDay()
+    {
+        var today = Clock.UtcNow.Date;
+        if (today == _usageDay) return;
+        _usageDay = today;
+        Usage.Track("app_running", UsageEvents.BandMode(Settings.Current.Operating.Band, Settings.Current.Operating.Mode));
     }
 
     /// <summary>Rebuilds the log index from the database (after sync, import or edit).</summary>
@@ -481,6 +564,20 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Changes band and mode: sets the dial through the radio.</summary>
     public async Task SetBandAsync(string band, Mode mode)
     {
+        Interlocked.Increment(ref _retunesRunning);
+        try
+        {
+            await SetBandCoreAsync(band, mode).ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.Increment(ref _retunesDone);
+            Interlocked.Decrement(ref _retunesRunning);
+        }
+    }
+
+    private async Task SetBandCoreAsync(string band, Mode mode)
+    {
         var oldMode = Session.Config.Mode;
         var modeChanged = mode != oldMode;
         // Held from before the session changes mode until the RTTY cap is on, so no over can key the radio between.
@@ -494,6 +591,8 @@ public sealed class AppHost : IAsyncDisposable
             });
             SlotClock.SetMode(mode);
             Session.SetBand(band, mode);
+            Usage?.Track("band_changed", UsageEvents.BandMode(band, ModeInfo.Name(mode)));
+            await StopTransmitterForRetuneAsync().ConfigureAwait(false);
             if (Frequencies.Find(band, mode) is { } e)
             {
                 try
@@ -516,11 +615,33 @@ public sealed class AppHost : IAsyncDisposable
         }
     }
 
+    // The radio must never change frequency with PTT keyed, and a transmission prepared for the old dial (checked
+    // against the old band edges) must not start after it.
+    private async Task StopTransmitterForRetuneAsync()
+    {
+        if (Transmitter.Transmitting) await Transmitter.HaltAsync().ConfigureAwait(false);
+        else Transmitter.CancelPending();
+    }
+
     /// <summary>
     /// Tunes to a dial frequency the operator typed or saved, on the band it belongs to (changing band if needed).
     /// The band-edge guard still applies to every transmission. Returns why it could not, or null.
     /// </summary>
     public async Task<string?> TuneDialAsync(long hz)
+    {
+        Interlocked.Increment(ref _retunesRunning);
+        try
+        {
+            return await TuneDialCoreAsync(hz).ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.Increment(ref _retunesDone);
+            Interlocked.Decrement(ref _retunesRunning);
+        }
+    }
+
+    private async Task<string?> TuneDialCoreAsync(long hz)
     {
         var mode = Session.Config.Mode;
         if (Transmitter.Transmitting) return "Wait until this transmission ends to change frequency.";
@@ -532,6 +653,7 @@ public sealed class AppHost : IAsyncDisposable
             Settings.Update(s => s.Operating.Band = band);
             Session.SetBand(band, mode);
         }
+        await StopTransmitterForRetuneAsync().ConfigureAwait(false);
         try
         {
             await _rig.SetFrequencyAsync(hz, _cts.Token).ConfigureAwait(false);
@@ -553,9 +675,23 @@ public sealed class AppHost : IAsyncDisposable
     /// </summary>
     public async Task ReopenDevicesAsync()
     {
+        await _deviceLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await ReopenDevicesCoreAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _deviceLock.Release();
+        }
+    }
+
+    private async Task ReopenDevicesCoreAsync()
+    {
         var a = Settings.Current.Profile.Audio;
         IAudioOutput? closed = null;
-        if (!Simulating && AudioBackend is not NullAudioBackend && !string.Equals(a.OutputId, _outputId, StringComparison.Ordinal))
+        if (!Simulating && AudioBackend is not NullAudioBackend
+            && (!string.Equals(a.OutputId, _outputId, StringComparison.Ordinal) || Transmitter.OutputFault is not null))
         {
             if (Transmitter.Transmitting) await Transmitter.HaltAsync().ConfigureAwait(false);
             closed = _output;
@@ -592,6 +728,20 @@ public sealed class AppHost : IAsyncDisposable
     /// </summary>
     public async Task ReleaseRigAsync()
     {
+        await _deviceLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await ReleaseRigCoreAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _deviceLock.Release();
+        }
+    }
+
+    private async Task ReleaseRigCoreAsync()
+    {
+        _rigRetry = false; // Setup's port scan needs the port: no retry may take it back
         if (Transmitter.Transmitting) await Transmitter.HaltAsync().ConfigureAwait(false);
         var old = _rig;
         var rig = new VoxRig(Session.Snapshot.DialHz);
@@ -627,30 +777,181 @@ public sealed class AppHost : IAsyncDisposable
     private void OpenAudio(SlotRecorder recorder)
     {
         var a = Settings.Current.Profile.Audio;
+        // Each device on its own: an output that fails must not drop an input that is already capturing (the status
+        // then said "No input device configured" while receive worked), and the reason is shown, not only logged.
+        _recorder = recorder;
+        if (a.InputId is not null && AudioBackend is not NullAudioBackend && StartInput(a.InputId) is { } why)
+        {
+            _audioProblem = $"The input device could not be opened: {why}";
+        }
+        if (a.OutputId is not null && AudioBackend is not NullAudioBackend)
+        {
+            try
+            {
+                _output = AudioBackend.OpenOutput(a.OutputId, 48_000);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+            {
+                Log.Warning(ex, "Audio output could not be opened");
+                _audioProblem ??= $"The output device could not be opened: {ex.Message}";
+            }
+        }
+        _inputId = a.InputId;
+        _outputId = a.OutputId;
+    }
+
+    // Opens the capture device and its pump; the previous ones must be closed already. Returns why it failed, or null.
+    private string? StartInput(string id)
+    {
+        IAudioInput? input = null;
         try
         {
-            if (a.InputId is not null && AudioBackend is not NullAudioBackend)
-            {
-                _input = AudioBackend.OpenInput(a.InputId, 48_000);
-                _pump = new CapturePump(_input, recorder);
-                _input.Stopped += (_, why) => Session?.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down, why, Clock.UtcNow));
-                _input.Start();
-                _pump.Start();
-            }
-            if (a.OutputId is not null && AudioBackend is not NullAudioBackend) _output = AudioBackend.OpenOutput(a.OutputId, 48_000);
-            _inputId = a.InputId;
-            _outputId = a.OutputId;
+            input = AudioBackend.OpenInput(id, 48_000);
+            var pump = new CapturePump(input, _recorder!);
+            input.Stopped += OnInputStopped;
+            // Current before it starts: a device that stops at once must find itself the one in use.
+            (_input, _pump) = (input, pump);
+            _inputDown = false;
+            input.Start();
+            pump.Start();
+            return null;
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
         {
-            Log.Warning(ex, "Audio device could not be opened");
-            _input = null;
-            _output = null;
+            Log.Warning(ex, "Audio input could not be opened");
+            if (ReferenceEquals(_input, input)) (_input, _pump) = (null, null);
+            if (input is not null) CloseQuietly(input);
+            return ex.Message;
         }
     }
 
+    private void OnInputStopped(object? sender, string why)
+    {
+        // A closed input reports its own stop too; only the one in use matters.
+        if (!ReferenceEquals(sender, _input)) return;
+        _inputDown = true;
+        Log.Warning("Audio input stopped: {Why}", why);
+        Session?.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down,
+            $"{why.TrimEnd('.')}. Costas opens it again when the device is back.", Clock.UtcNow));
+    }
+
+    // A device that has gone away can fail on the way out too; it is being dropped either way.
+    private static void CloseQuietly(IDisposable device)
+    {
+        try
+        {
+            device.Dispose();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ObjectDisposedException)
+        {
+            Log.Debug(ex, "Closing a lost audio device failed");
+        }
+    }
+
+    // Brings back what went away while Costas was open, typically a radio switched off with its USB audio and serial
+    // port: the audio input and output are reopened as soon as their device is listed again, and a radio that could not
+    // be opened is retried. Nothing waits for Station setup or a restart. rigctld restarts itself for a radio that was
+    // open (RigctldRig), so only a radio that never opened is retried here.
+    private async Task DeviceRecoveryLoopAsync()
+    {
+        while (!_cts.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(RecoveryInterval, _cts.Token).ConfigureAwait(false);
+                if (Simulating) continue;
+                await _deviceLock.WaitAsync(_cts.Token).ConfigureAwait(false);
+                try
+                {
+                    if (AudioBackend is not NullAudioBackend)
+                    {
+                        RecoverInput();
+                        RecoverOutput();
+                    }
+                    if (_rigRetry && DateTime.UtcNow >= _rigRetryUtc) await RecoverRigAsync().ConfigureAwait(false);
+                }
+                finally
+                {
+                    _deviceLock.Release();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ObjectDisposedException)
+            {
+                // Listing devices can fail while Windows is still setting one up; the next pass tries again.
+                Log.Debug(ex, "Device recovery pass failed");
+            }
+        }
+    }
+
+    private void RecoverInput()
+    {
+        var id = Settings.Current.Profile.Audio.InputId;
+        // An input changed in Station setup waits for a restart (the status says so); only the device in use comes back.
+        if (id is null || !string.Equals(id, _inputId, StringComparison.Ordinal)) return;
+        if ((_input is not null && !_inputDown) || DateTime.UtcNow < _inputRetryUtc) return;
+        if (!AudioBackend.ListInputs().Any(d => string.Equals(d.Id, id, StringComparison.Ordinal))) return;
+        var (oldPump, oldInput) = (_pump, _input);
+        (_pump, _input) = (null, null);
+        oldPump?.Dispose();
+        if (oldInput is not null) CloseQuietly(oldInput);
+        if (StartInput(id) is { } why)
+        {
+            _inputRetryUtc = DateTime.UtcNow + RecoveryRetry;
+            Session.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down, $"The input device could not be opened: {why}", Clock.UtcNow));
+            return;
+        }
+        Log.Information("Audio input is back; receiving again");
+        Session.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Ok, "Receiving", Clock.UtcNow));
+    }
+
+    private void RecoverOutput()
+    {
+        var id = Settings.Current.Profile.Audio.OutputId;
+        if (id is null || !string.Equals(id, _outputId, StringComparison.Ordinal)) return;
+        var lost = Transmitter.OutputFault;
+        if ((_output is not null && lost is null) || DateTime.UtcNow < _outputRetryUtc) return;
+        // A fault mid-transmission halts it; the swap waits until PTT is down.
+        if (Transmitter.Transmitting) return;
+        if (!AudioBackend.ListOutputs().Any(d => string.Equals(d.Id, id, StringComparison.Ordinal))) return;
+        IAudioOutput fresh;
+        try
+        {
+            fresh = AudioBackend.OpenOutput(id, 48_000);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+        {
+            Log.Warning(ex, "Audio output could not be reopened");
+            _outputRetryUtc = DateTime.UtcNow + RecoveryRetry;
+            return;
+        }
+        var old = _output;
+        _output = fresh;
+        Transmitter.SetOutput(Plan.MutesTransmitAudio(Settings.Current.Profile.Rig) ? _mutedOutput ??= new NullAudioOutput() : _output);
+        if (old is not null) CloseQuietly(old); // after the transmitter has let go of it
+        if (lost is not null) Session.ClearFault(lost);
+        Log.Information("Audio output is back");
+    }
+
+    private async Task RecoverRigAsync()
+    {
+        _rigRetryUtc = DateTime.UtcNow + RecoveryRetry;
+        // A serial port that is not there yet would only start rigctld to fail; wait for Windows to list it.
+        var port = RigctldRig.CleanSerialPort(Settings.Current.Profile.Rig.Port, OperatingSystem.IsWindows());
+        if (port is not null && IsSerialPortName(port) && !RigctldRig.SerialPorts().Contains(port, StringComparer.OrdinalIgnoreCase)) return;
+        await OpenRigAsync().ConfigureAwait(false);
+        if (!_rigRetry) Log.Information("Radio is back: {Radio}", _rig.Name);
+    }
+
+    private static bool IsSerialPortName(string port) =>
+        port.StartsWith("COM", StringComparison.OrdinalIgnoreCase) || port.StartsWith("/dev/", StringComparison.Ordinal);
+
     private async Task OpenRigAsync()
     {
+        _rigRetry = false;
         var r = Settings.Current.Profile.Rig;
         var old = _rig;
         IRig rig;
@@ -686,6 +987,17 @@ public sealed class AppHost : IAsyncDisposable
             }
             else
             {
+                if (old is RigctldRig)
+                {
+                    // The old rigctld may hold the same serial port (a new baud rate or PTT setting): on Windows the new
+                    // one could not open it. Let go of the old radio first.
+                    if (Transmitter is { Transmitting: true }) await Transmitter.HaltAsync().ConfigureAwait(false);
+                    var placeholder = new VoxRig(dialHz);
+                    _rig = placeholder;
+                    Transmitter?.SetRig(placeholder);
+                    await old.DisposeAsync().ConfigureAwait(false);
+                    old = placeholder;
+                }
                 try
                 {
                     var port = RigctldRig.CleanSerialPort(r.Port, OperatingSystem.IsWindows());
@@ -696,13 +1008,18 @@ public sealed class AppHost : IAsyncDisposable
                 }
                 catch (RigException ex)
                 {
-                    rig = new VoxRig(14_074_000);
+                    rig = new VoxRig(dialHz);
                     status = new ServiceStatus(ServiceHealth.Down, ex.Message, Clock.UtcNow);
+                    _rigRetry = true;
                 }
             }
         }
         _rigKey = RigKey(r);
-        rig.Faulted += (_, f) => Session?.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, f.Message, f.TimeUtc));
+        rig.Faulted += (sender, f) =>
+        {
+            // A radio already replaced can still report a late fault while it shuts down; that is not this radio's state.
+            if (ReferenceEquals(sender, _rig)) Session?.SetService(ServiceNames.Radio, new ServiceStatus(ServiceHealth.Down, f.Message, f.TimeUtc));
+        };
         _rig = rig;
         Transmitter?.SetRig(rig);
         if (Plan.MutesTransmitAudio(r))
@@ -729,15 +1046,21 @@ public sealed class AppHost : IAsyncDisposable
             {
                 await Task.Delay(1000, _cts.Token).ConfigureAwait(false);
                 if (Transmitter.Transmitting) continue; // never poll during a transmission
+                var retunes = Volatile.Read(ref _retunesDone);
+                if (Volatile.Read(ref _retunesRunning) > 0) continue;
                 var st = await _rig.GetStateAsync(_cts.Token).ConfigureAwait(false);
-                if (st.FrequencyHz != Session.Snapshot.DialHz) Session.SetDial(st.FrequencyHz);
+                // Costas retuned while this poll was out: what it read may be the old frequency.
+                if (Volatile.Read(ref _retunesRunning) > 0 || Volatile.Read(ref _retunesDone) != retunes) continue;
+                if (BandPlan.BandChange(Session.Config.Band, st.FrequencyHz) is { } band) await FollowRadioBandAsync(band, st.FrequencyHz).ConfigureAwait(false);
+                else if (st.FrequencyHz != Session.Snapshot.DialHz) Session.SetDial(st.FrequencyHz);
                 // Recovery after a fault, only for a radio that opened properly: a placeholder for a missing or
                 // failed radio answers polls too, and must not turn the indicator green (that would allow transmit).
                 if (_rigOpenStatus is { } ok && Session.Snapshot.Services[ServiceNames.Radio].Health != ServiceHealth.Ok)
                     Session.SetService(ServiceNames.Radio, ok with { SinceUtc = Clock.UtcNow });
             }
-            catch (RigException)
+            catch (Exception ex) when (ex is RigException or ObjectDisposedException)
             {
+                // ObjectDisposedException: the radio was replaced or restarted mid-poll. Keep polling the new one.
             }
             catch (OperationCanceledException)
             {
@@ -746,21 +1069,58 @@ public sealed class AppHost : IAsyncDisposable
         }
     }
 
+    // The operator changed band on the radio itself: the radio is right, so Costas moves to that band (menu, station list,
+    // per-band transmit level, saved band) without retuning it. A transmission prepared for the old band never starts.
+    private async Task FollowRadioBandAsync(string band, long dialHz)
+    {
+        var mode = Session.Config.Mode;
+        Log.Information("Radio changed band to {Band} ({Dial} Hz); following it", band, dialHz);
+        Settings.Update(s => s.Operating.Band = band);
+        Session.SetBand(band, mode, dialHz);
+        Usage?.Track("band_changed", UsageEvents.BandMode(band, ModeInfo.Name(mode)));
+        await StopTransmitterForRetuneAsync().ConfigureAwait(false);
+    }
+
+    // Measures the PC clock against internet time at start and then hourly, every 15 minutes while correcting (a PC
+    // clock that is off usually drifts too), and 5 minutes after no server answered.
     private async Task ClockCheckLoopAsync()
     {
         while (!_cts.IsCancellationRequested)
         {
             try
             {
-                Sntp = await new SntpClient().MeasureAsync(_cts.Token).ConfigureAwait(false);
-                if (Sntp is not null) Session.SetClockOffset(Sntp.Offset.TotalSeconds);
-                await Task.Delay(TimeSpan.FromHours(1), _cts.Token).ConfigureAwait(false);
+                var recheck = _clockRecheck = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var r = await new SntpClient().MeasureAsync(_cts.Token).ConfigureAwait(false);
+                if (r is not null) Sntp = r;
+                await ApplyClockCorrectionAsync().ConfigureAwait(false);
+                TrackDay();
+                var wait = r is null ? TimeSpan.FromMinutes(5)
+                    : Settings.Current.Operating.CorrectClock ? TimeSpan.FromMinutes(15) : TimeSpan.FromHours(1);
+                await Task.WhenAny(Task.Delay(wait, _cts.Token), recheck.Task).ConfigureAwait(false);
+                _cts.Token.ThrowIfCancellationRequested();
             }
             catch (OperationCanceledException)
             {
                 return;
             }
         }
+    }
+
+    // Sets the correction from the latest measurement and the setting, and tells the session the offset that remains.
+    // A change waits for a transmission in progress to end; the slot clock then takes it at the next slot boundary.
+    private async Task ApplyClockCorrectionAsync()
+    {
+        var r = Sntp;
+        var current = CorrectedClock.Correction;
+        var next = ClockCorrection.Next(Settings.Current.Operating.CorrectClock, r?.Offset, r?.RoundTrip ?? TimeSpan.Zero, current);
+        if (next != current)
+        {
+            for (var i = 0; i < 30 && Transmitter.Transmitting; i++) await Task.Delay(TimeSpan.FromSeconds(1), _cts.Token).ConfigureAwait(false);
+            CorrectedClock.SetCorrection(next);
+            Log.Information("Clock correction {Old:+0.000;-0.000} s -> {New:+0.000;-0.000} s (SNTP {Offset:+0.000;-0.000} s, round trip {Rtt:0} ms)",
+                current.TotalSeconds, next.TotalSeconds, r?.Offset.TotalSeconds ?? 0, r?.RoundTrip.TotalMilliseconds ?? 0);
+        }
+        if (r is not null) Session.SetClockOffset((r.Offset - next).TotalSeconds, stepped: next != current);
     }
 
     /// <summary>The repository's or app's samples folder.</summary>
@@ -799,6 +1159,7 @@ public sealed class AppHost : IAsyncDisposable
         }
         _cts.Cancel();
         if (Remote is not null) await Remote.DisposeAsync().ConfigureAwait(false);
+        if (RadioPower is not null) await RadioPower.DisposeAsync().ConfigureAwait(false);
         _loop?.Dispose();
         _pump?.Dispose();
         _keyboardSim?.Dispose();
@@ -806,11 +1167,13 @@ public sealed class AppHost : IAsyncDisposable
         _input?.Dispose();
         _output?.Dispose();
         _mutedOutput?.Dispose();
+        LogHold?.ReleaseAll(); // before the services that send a released contact on stop
         Qrz?.Dispose();
         Lotw?.Dispose();
         if (Eqsl is not null) await Eqsl.DisposeAsync().ConfigureAwait(false);
         Udp?.Dispose();
         Updates?.Dispose();
+        if (Usage is not null) await Usage.DisposeAsync().ConfigureAwait(false);
         Pota?.Dispose();
         Recording?.Dispose();
         NeighbourHistory?.Flush();

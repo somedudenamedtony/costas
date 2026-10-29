@@ -1,0 +1,54 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ft8Client.App.ViewModels" xmlns:v="using:Ft8Client.App.Views">
+  <Styles.Resources>
+    <DataTemplate x:Key="InstrumentFaceTemplate" x:DataType="vm:MainViewModel">
+      <Border CornerRadius="12" BorderBrush="#977548" BorderThickness="3,2,3,5" Padding="20,12" BoxShadow="0 3 5 0 #50000000">
+        <Border.Background><LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%"><GradientStop Color="#64472D" Offset="0" /><GradientStop Color="#32251C" Offset="0.5" /><GradientStop Color="#4F3824" Offset="1" /></LinearGradientBrush></Border.Background>
+        <Grid ColumnDefinitions="170,*,190,94" ColumnSpacing="24">
+          <StackPanel VerticalAlignment="Center" Spacing="4">
+            <TextBlock Text="Costas" FontFamily="Georgia, Liberation Serif, DejaVu Serif" FontSize="32" FontStyle="Italic" Foreground="#F1D4A0" />
+            <TextBlock Text="SHORTWAVE STATION" FontSize="9" LetterSpacing="2" Foreground="#C7A46B" />
+            <TextBlock Text="{Binding SelectedMode}" FontFamily="{StaticResource MessageFont}" FontSize="11" Foreground="#E1C99E" Margin="0,8,0,0" />
+          </StackPanel>
+          <Border Grid.Column="1" BorderBrush="#B38D4F" BorderThickness="2" CornerRadius="10" Padding="16,7">
+            <Border.Background><LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%"><GradientStop Color="#D9B774" Offset="0" /><GradientStop Color="#FFF0C6" Offset="0.45" /><GradientStop Color="#E6CB8D" Offset="1" /></LinearGradientBrush></Border.Background>
+            <StackPanel Spacing="0">
+              <TextBlock Text="D I A L   F R E Q U E N C Y" Foreground="#77512B" FontSize="9" HorizontalAlignment="Center" />
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                <Button Classes="instrument-dial" IsEnabled="{Binding CanChangeBand}" ToolTip.Tip="Edit dial frequency" AutomationProperties.Name="Dial frequency" HorizontalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="{Binding Frequency}" Foreground="#573817" FontSize="36" FontFamily="{StaticResource MessageFont}" />
+                    <TextBlock Text="MHz" Foreground="#77512B" FontSize="11" VerticalAlignment="Bottom" Margin="0,0,0,7" />
+                  </StackPanel>
+                </Button>
+                <v:TxFaceMeters Grid.Column="1" LabelBrush="#77512B" ValueBrush="#573817" MeterBrush="#7A4D1B" CautionBrush="#C0571B"
+                                TrackBrush="#D2B57A" FontFamily="Georgia, Liberation Serif, DejaVu Serif" />
+              </Grid>
+              <Border Height="9" BorderBrush="#9C7138" BorderThickness="0,1,0,1"><Rectangle Width="2" Fill="#7A4D1B" HorizontalAlignment="Center" /></Border>
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="2" Background="#EFE0BA" BorderBrush="#9D7E4B" BorderThickness="2" CornerRadius="26,26,5,5" Padding="12,3">
+            <StackPanel><v:SlotMeter Value="{Binding SlotProgress}" Analog="True" Height="51" MeterBrush="#5C3918" TrackBrush="#947A50" AutomationProperties.Name="Slot progress" />
+              <DockPanel Margin="0,3,0,0"><TextBlock Text="SLOT" FontFamily="Georgia, Liberation Serif, DejaVu Serif" FontSize="11" FontWeight="Bold" Foreground="#70512A" /><TextBlock Text="{Binding SlotRemaining}" FontSize="10" HorizontalAlignment="Right" Foreground="#70512A" /></DockPanel>
+              <TextBlock Classes="instrument-phase" Classes.transmitting="{Binding Transmitting}" Text="{Binding SlotLabel}" FontSize="10" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <Button Grid.Column="3" Classes="instrument-dial tuning-knob" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" IsEnabled="{Binding CanChangeBand}" Width="80" Height="80" CornerRadius="40" BorderBrush="#BE985B" BorderThickness="2" ToolTip.Tip="Open the dial frequency editor" AutomationProperties.Name="Edit dial frequency">
+            <Button.Background><RadialGradientBrush Center="35%,30%" RadiusX="80%" RadiusY="80%"><GradientStop Color="#6A5540" Offset="0" /><GradientStop Color="#30251B" Offset="0.7" /><GradientStop Color="#160F0A" Offset="1" /></RadialGradientBrush></Button.Background>
+            <StackPanel Spacing="12"><Border Width="3" Height="12" Background="#ECD6A9" /><TextBlock Text="DIAL" Foreground="#E2C58E" FontSize="10" FontFamily="Georgia, Liberation Serif, DejaVu Serif" /></StackPanel>
+          </Button>
+        </Grid>
+      </Border>
+    </DataTemplate>
+  </Styles.Resources>
+  <Style Selector="Border.card"><Setter Property="CornerRadius" Value="14" /><Setter Property="BorderThickness" Value="1,1,1,3" /><Setter Property="BoxShadow" Value="0 2 4 0 #20000000" /></Style>
+  <Style Selector="TextBlock.title"><Setter Property="FontFamily" Value="Georgia, Liberation Serif, DejaVu Serif" /><Setter Property="FontSize" Value="17" /><Setter Property="FontWeight" Value="Bold" /></Style>
+  <Style Selector="Button:not(.link):not(.wfoverlay):not(.instrument-dial)"><Setter Property="CornerRadius" Value="14" /><Setter Property="BorderThickness" Value="1,1,1,2" /><Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" /></Style>
+  <Style Selector="ComboBox, TextBox"><Setter Property="CornerRadius" Value="8" /></Style>
+  <Style Selector="Button.tab"><Setter Property="FontFamily" Value="Georgia, Liberation Serif, DejaVu Serif" /><Setter Property="FontSize" Value="14" /></Style>
+  <Style Selector="TextBlock.instrument-phase"><Setter Property="Foreground" Value="#70512A" /></Style>
+  <Style Selector="TextBlock.instrument-phase.transmitting"><Setter Property="Foreground" Value="{DynamicResource CriticalBrush}" /></Style>
+  <Style Selector="Button.instrument-dial"><Setter Property="Padding" Value="0" /><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /></Style>
+  <Style Selector="Button.instrument-dial:not(.tuning-knob) /template/ ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
+  <Style Selector="Button.instrument-dial:pointerover /template/ ContentPresenter"><Setter Property="Opacity" Value="0.85" /></Style>
+</Styles>

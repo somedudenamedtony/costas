@@ -64,10 +64,24 @@ of Next in line (it is now worked on this band) and your tallies update:
 
 ![After logging](images/after-logging.png)
 
+A **Logged** notice also appears in the bottom-right corner of the window, over the right-hand column so it never
+covers the contact panel or Next in line. It names the call, what it was new for, where it is, the band and mode, the
+power logged and the reports, and closes itself after 5 seconds with a bar counting down. Resting the pointer on it keeps it open;
+**✕** closes it at once. It never takes the keyboard, so ++esc++ still halts. When you are running CQ and the next
+caller takes over the panel straight away, the notice is how you see the last contact went in the log.
+
+Click the notice to correct the contact before it leaves your PC: it opens in place with the call, grid, reports, name,
+power and comment. **Save** stores the change and then sends it; **Cancel** sends it as logged. The contact is in your local
+log from the start, but the upload to QRZ, eQSL and LoTW and the WSJT-X UDP "logged" message (GridTracker, other
+loggers) wait until the notice closes, about 5 seconds, or for as long as the editor is open. An open editor does not
+time out. If Costas closes while a contact is held, it is sent on exit.
+
 ## Calling CQ
 
 Click **Call CQ** (or press ++ctrl+q++). Costas calls CQ in the parity set in **Settings › Transmitting › Call CQ in**
-(even or odd slots) until you click **Stop CQ**.
+(even or odd slots) until you click **Stop CQ**. A contact that has just ended (*Logged*, *No reply* and so on) leaves
+the panel as soon as you click, so the boxes are clear for your CQ. A contact still in progress is kept and finished
+first.
 
 To call a part of the world, pick it in the dropdown beside **Call CQ**: **CQ** for everyone, **CQ DX** for stations
 outside your country, **CQ NA**, **CQ EU** and the other continents, or **CQ POTA**. It applies from your next CQ,
@@ -140,8 +154,15 @@ shows it in Next in line as *DXpedition (Fox/Hound), working Hounds*. There is n
 **Halt Tx** in the bottom bar, **Halt (Esc)** in the ON AIR banner, and the ++esc++ key all drop PTT immediately and
 stop the sequence.
 
-In a contact, the first ++esc++ stops transmitting. Once both reports have been exchanged, Costas asks you to press
-++esc++ a second time before it abandons the contact, so a stray key press does not lose a nearly complete contact.
+Before both reports have been exchanged, ++esc++ abandons the contact at once. After that, the first ++esc++ only stops
+transmitting: Costas keeps the contact and keeps listening, so if the other station's RR73 or 73 arrives the contact is
+logged (with automatic logging on) and nothing more is sent. ++ctrl+r++ carries on transmitting where you left off, and a
+second ++esc++ abandons the contact. A stray key press does not lose a nearly complete contact.
+
+Clicking **Call CQ** after the first ++esc++ clears that contact from the panel and starts your CQ. Costas still listens
+for the other station for 5 minutes: if their RR73 or 73 arrives, the contact is logged (with automatic logging on) and
+the **Logged** notice appears, with nothing sent to them and your CQ carrying on. If they send their report again
+instead, Costas answers it like any caller to your CQ.
 
 ## Safety guards
 
@@ -149,13 +170,13 @@ These are always on:
 
 | Guard | What happens |
 | --- | --- |
-| **Watchdog** | If you have not touched the app (key or click) for 6 minutes (**Settings › Transmitting › Watchdog**), transmitting stops: *Stopped by watchdog* |
+| **Watchdog** | If you have not touched the app (key or click) for 6 minutes (**Settings › Transmitting › Watchdog**), transmitting stops: *Stopped by watchdog*. A contact the other station is already answering is finished first; CQ does not start again after it |
 | **Clock** | Transmitting is refused while your clock is off by more than 2 s (**Clock limit**) |
 | **Band edge** | Costas will not transmit outside the band's limits for the dial frequency and offset |
 | **Faults** | Any radio or audio error releases PTT at once |
 | **No radio** | With no radio set up, transmit is refused and the radio indicator says why |
 | **Exact messages** | If a message cannot be encoded exactly as shown (for example an unusual callsign or a free text with characters FT8 cannot carry), Costas refuses to send it and says why, rather than changing it |
-| **Meters** | After each transmission, a high SWR (2 or more, red at 3) or ALC reading shows a warning in the bottom bar with advice |
+| **Meters** | Power out, ALC and SWR from the radio show in the bottom bar while you transmit and stay after it. A high SWR (orange at 2, red at 3) or ALC reading is coloured, with advice when you hover |
 
 ## Logging
 

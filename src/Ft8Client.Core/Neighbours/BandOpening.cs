@@ -11,9 +11,17 @@ namespace Ft8Client.Core.Neighbours;
 
 /// <summary>What PSK Reporter shows of stations near me on one band (docs/04-domain-logic.md, section 14).</summary>
 /// <param name="Band">ADIF band, lower case ("20m").</param>
-/// <param name="Spots">Reports of stations near me on this band in the window.</param>
+/// <param name="Spots">Reports of stations near me on this band in the window (estimated when <paramref name="SampledFor"/> is set).</param>
 /// <param name="Senders">Distinct stations near me that were heard.</param>
 /// <param name="SpotsByContinent">Spots per receiver continent ("EU"); continents with none are absent.</param>
 /// <param name="NeededEntities">Names of the receivers' countries I have no contact with on this band, most spots first.</param>
+/// <param name="SampledFor">
+/// Null when the band is followed all the time; otherwise how long it was listened to in the window, and the spots are
+/// scaled up from that to the whole window.
+/// </param>
 public sealed record BandOpening(string Band, int Spots, int Senders, IReadOnlyDictionary<string, int> SpotsByContinent,
-                                 IReadOnlyList<string> NeededEntities);
+                                 IReadOnlyList<string> NeededEntities, TimeSpan? SampledFor = null)
+{
+    /// <summary>True when the spots are estimated from samples.</summary>
+    public bool Estimated => SampledFor is not null;
+}

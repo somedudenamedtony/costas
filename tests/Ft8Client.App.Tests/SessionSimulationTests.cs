@@ -86,7 +86,7 @@ public class SessionSimulationTests
         var db = new SqliteDatabase(Path.Combine(Directory.CreateTempSubdirectory("ft8partner").FullName, "log.db"));
         var qsos = new QsoRepository(db);
         var queue = new UploadQueueRepository(db);
-        var log = new DatabaseSessionLog(qsos, queue, "home", () => true);
+        var log = new DatabaseSessionLog(qsos, queue, () => "home", () => true);
         var config = Config() with { Contact = new ContactSettings { WatchdogMinutes = 60 } };
         var d = new SimDriver(source, config, log);
         d.Session.Transmitting += partner.OnTransmitted;
@@ -107,6 +107,9 @@ public class SessionSimulationTests
         queue.Count().Should().Be(logged.Count);
         logged.Should().OnlyContain(q => q.UploadState == UploadState.Queued);
         d.Session.Snapshot.Tonight.Should().HaveCount(logged.Count);
+        d.Session.Snapshot.LastLogged.Should().NotBeNull();
+        d.Session.Snapshot.LastLogged!.Id.Should().Be(logged.Count, "each logged contact gets the next id, so its notice shows once");
+        d.Session.Snapshot.LastLogged.Call.Should().Be(logged.OrderBy(q => q.Id).Last().Call);
         txSlots.Should().NotBeEmpty();
         txSlots.Intersect(decodedSlots).Should().BeEmpty("nothing is recorded or decoded in a slot we transmit in");
         // PTT was only ever asserted for our planned transmissions, each released.

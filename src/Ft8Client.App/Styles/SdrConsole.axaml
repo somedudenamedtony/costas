@@ -1,0 +1,45 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ft8Client.App.ViewModels" xmlns:v="using:Ft8Client.App.Views">
+  <Styles.Resources>
+    <DataTemplate x:Key="InstrumentFaceTemplate" x:DataType="vm:MainViewModel">
+      <Border Background="#0C1C29" BorderBrush="#39627D" BorderThickness="1" Padding="0">
+        <Grid ColumnDefinitions="170,*,260" ColumnSpacing="0">
+          <Border BorderBrush="#39627D" BorderThickness="0,0,1,0" Padding="18,14">
+            <StackPanel Spacing="4" VerticalAlignment="Center">
+              <TextBlock Text="COSTAS" FontFamily="{StaticResource MessageFont}" FontSize="22" FontWeight="Bold" LetterSpacing="3" Foreground="#C2F3FF" />
+              <TextBlock Text="SIGNAL WORKSTATION" FontSize="9" LetterSpacing="1" Foreground="#7BABC5" />
+              <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0"><TextBlock Text="{Binding SelectedMode}" Foreground="#69D6E8" FontFamily="{StaticResource MessageFont}" FontSize="11" /><TextBlock Text="{Binding SelectedBandChoice.Name}" Foreground="#7BABC5" FontFamily="{StaticResource MessageFont}" FontSize="11" /></StackPanel>
+            </StackPanel>
+          </Border>
+          <Border Grid.Column="1" BorderBrush="#39627D" BorderThickness="0,0,1,0" Padding="20,10">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+              <StackPanel><TextBlock Text="DIAL / MHz" Foreground="#6995AD" FontSize="10" FontFamily="{StaticResource MessageFont}" LetterSpacing="2" />
+                <Button Classes="instrument-dial" IsEnabled="{Binding CanChangeBand}" ToolTip.Tip="Edit dial frequency" AutomationProperties.Name="Dial frequency">
+                  <TextBlock Text="{Binding Frequency}" Foreground="#80EDFA" FontFamily="{StaticResource MessageFont}" FontSize="40" FontWeight="SemiBold" />
+                </Button>
+              </StackPanel>
+              <v:TxFaceMeters Grid.Column="1" LabelBrush="#6995AD" ValueBrush="#B9DCEC" MeterBrush="#58D9EA" CautionBrush="#F0A64B"
+                              TrackBrush="#243F52" FontFamily="{StaticResource MessageFont}" />
+              <Button Grid.Column="2" Classes="instrument-dial" Content="SET DIAL" IsEnabled="{Binding CanChangeBand}" VerticalAlignment="Center" Foreground="#8DDAEE" BorderBrush="#39627D" BorderThickness="1" Padding="10,6" FontFamily="{StaticResource MessageFont}" FontSize="10" ToolTip.Tip="Open the dial frequency editor" />
+            </Grid>
+          </Border>
+          <StackPanel Grid.Column="2" Margin="18,12" Spacing="8" VerticalAlignment="Center">
+            <DockPanel><TextBlock Text="SLOT" Foreground="#6995AD" FontFamily="{StaticResource MessageFont}" FontSize="10" /><TextBlock Text="{Binding SlotRemaining}" Foreground="#B9DCEC" HorizontalAlignment="Right" FontFamily="{StaticResource MessageFont}" FontSize="12" /></DockPanel>
+            <v:SlotMeter Value="{Binding SlotProgress}" Height="10" MeterBrush="#58D9EA" TrackBrush="#243F52" AutomationProperties.Name="Slot progress" />
+            <TextBlock Classes="instrument-phase" Classes.transmitting="{Binding Transmitting}" Text="{Binding SlotLabel}" FontFamily="{StaticResource MessageFont}" FontSize="11" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </DataTemplate>
+  </Styles.Resources>
+  <Style Selector="Border.card"><Setter Property="CornerRadius" Value="0" /><Setter Property="BorderThickness" Value="3,1,1,1" /></Style>
+  <Style Selector="Button:not(.link):not(.wfoverlay), ComboBox, TextBox"><Setter Property="CornerRadius" Value="0" /></Style>
+  <Style Selector="TextBlock.title"><Setter Property="FontFamily" Value="{StaticResource MessageFont}" /><Setter Property="FontSize" Value="12" /><Setter Property="LetterSpacing" Value="1" /><Setter Property="FontWeight" Value="Bold" /></Style>
+  <Style Selector="Button.tab"><Setter Property="FontFamily" Value="{StaticResource MessageFont}" /><Setter Property="FontSize" Value="11" /><Setter Property="BorderThickness" Value="0,0,0,2" /></Style>
+  <Style Selector="TextBlock.num"><Setter Property="FontFamily" Value="{StaticResource MessageFont}" /></Style>
+  <Style Selector="TextBlock.instrument-phase"><Setter Property="Foreground" Value="#8FE8F4" /></Style>
+  <Style Selector="TextBlock.instrument-phase.transmitting"><Setter Property="Foreground" Value="{DynamicResource CriticalBrush}" /></Style>
+  <Style Selector="Button.instrument-dial"><Setter Property="Padding" Value="0" /><Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /></Style>
+  <Style Selector="Button.instrument-dial /template/ ContentPresenter"><Setter Property="Background" Value="Transparent" /></Style>
+  <Style Selector="Button.instrument-dial:pointerover /template/ ContentPresenter"><Setter Property="Opacity" Value="0.85" /></Style>
+</Styles>

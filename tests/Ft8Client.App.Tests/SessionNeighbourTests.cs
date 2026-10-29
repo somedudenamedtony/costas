@@ -68,7 +68,7 @@ public class SessionNeighbourTests
         var db = new SqliteDatabase(Path.Combine(Directory.CreateTempSubdirectory("ft8sessionlog").FullName, "log.db"));
         var qsos = new QsoRepository(db);
         var queue = new UploadQueueRepository(db);
-        var d = new Driver(new DatabaseSessionLog(qsos, queue, "home", () => true));
+        var d = new Driver(new DatabaseSessionLog(qsos, queue, () => "home", () => true));
         d.Session.SetLookups([new CallsignCacheEntry { Call = "K1ABC", Grid = lookupGrid, Found = true }]);
         // Exercise the engine's log event without transmitting or requiring a decoder binary.
         var engine = (ContactEngine)typeof(Session).GetField("_engine", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(d.Session)!;
@@ -167,5 +167,50 @@ public class SessionNeighbourTests
         d.Session.Publish();
 
         d.Session.Snapshot.BandOpenings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AddBandSample_NearbyReports_ShownAsEstimatedOpenings()
+    {
+        var d = new Driver();
+        var end = d.Clock.UtcNow.AddMinutes(-2);
+        d.Session.AddBandSample(new BandSample("15m", "FT8", end.AddSeconds(-30), end,
+            [new NeighbourReport("K7BBB", "DN41", "PY2ABC", "15m", "FT8", -15, end), new NeighbourReport("W1AW", "FN31", "PY2ABC", "15m", "FT8", -15, end)]));
+
+        var o = d.Session.Snapshot.SampledBandOpenings;
+        o["15m"].Spots.Should().Be(30);
+        o["15m"].Estimated.Should().BeTrue();
+        d.Session.Snapshot.BandOpenings.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("DN41")]
+    [InlineData("FN42")]
+    public void Reconfigure_GridChanges_ClearsActivityAndSamplesFromPreviousLocation(string grid)
+    {
+        var d = new Driver();
+        var end = d.Clock.UtcNow.AddMinutes(-2);
+        var report = new NeighbourReport("K7AAA", "DN41", "DL1ABC", "20m", "FT8", -12, end);
+        d.Session.AddNeighbourReport(report);
+        d.Session.AddBandSample(new BandSample("15m", "FT8", end.AddSeconds(-30), end, [report with { Band = "15m" }]));
+        d.Session.Snapshot.BandOpenings.Should().NotBeEmpty();
+        d.Session.Snapshot.SampledBandOpenings.Should().NotBeEmpty();
+
+        d.Session.Reconfigure(d.Session.Config with { MyGrid = grid });
+
+        d.Session.Snapshot.BandOpenings.Should().BeEmpty();
+        d.Session.Snapshot.SampledBandOpenings.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SetBand_OtherMode_ClearsSamples()
+    {
+        var d = new Driver();
+        var end = d.Clock.UtcNow.AddMinutes(-2);
+        d.Session.AddBandSample(new BandSample("15m", "FT8", end.AddSeconds(-30), end, []));
+        d.Session.SetBand("20m", Mode.Ft4);
+        d.Session.Publish();
+
+        d.Session.Snapshot.SampledBandOpenings.Should().BeEmpty();
     }
 }

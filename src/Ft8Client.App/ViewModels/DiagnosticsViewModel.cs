@@ -53,7 +53,8 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
         }
         Add("Decode time, last slot", $"{s.LastDecodeTime.TotalSeconds:0.00} s");
         Add("Median DT, last slot", s.MedianDt is { } dt ? $"{dt:+0.00;-0.00} s" : "—");
-        Add("Clock offset (SNTP)", _host.Sntp is { } n ? $"{n.Offset.TotalSeconds:+0.000;-0.000} s (round trip {n.RoundTrip.TotalMilliseconds:0} ms)" : "not measured");
+        Add("Clock correction", Core.Time.ClockCorrection.Text(_host.CorrectedClock.Correction));
+        Add("PC clock offset (SNTP)", _host.Sntp is { } n ? $"{n.Offset.TotalSeconds:+0.000;-0.000} s (round trip {n.RoundTrip.TotalMilliseconds:0} ms)" : "not measured");
         Add("Audio dropouts", _host.Pump?.Dropouts.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—");
         Add("Input level", _host.Pump is { } p ? $"{p.LevelDbfs:0} dBFS" : "—");
         if (_host.Rig is RigctldRig r)
@@ -79,7 +80,7 @@ public sealed partial class DiagnosticsViewModel : ObservableObject
     private void SaveBundle()
     {
         var path = Path.Combine(_host.Paths.Root, $"diagnostics-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip");
-        var secrets = new[] { SecretNames.QrzLogbookKey(_host.Settings.Current.Profile.Id), SecretNames.QrzUsername, SecretNames.QrzPassword }
+        var secrets = SecretNames.All(_host.Settings.Current.Profiles.Select(p => p.Id))
             .Select(_host.Secrets.Get).Where(v => v is not null).Select(v => v!).ToList();
         DiagnosticsBundle.Write(path, _host.Paths.Settings, _host.Paths.Logs, Rows.Select(r => (r.Key, r.Value)), secrets);
         Message = $"Saved {path}";

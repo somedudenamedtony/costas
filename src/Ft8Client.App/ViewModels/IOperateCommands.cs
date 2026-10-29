@@ -27,6 +27,11 @@ public interface IOperateCommands
     /// <summary>Call a station.</summary>
     void Call(string call);
 
+    /// <summary>Marks or unmarks a Watching station to be called once its current contact is over.</summary>
+    void CallWhenFree(string call, bool on)
+    {
+    }
+
     /// <summary>Answer a waiting caller now.</summary>
     void Answer(string call);
 

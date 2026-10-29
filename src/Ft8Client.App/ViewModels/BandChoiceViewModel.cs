@@ -42,7 +42,8 @@ public sealed partial class BandChoiceViewModel : ObservableObject
     public partial bool HasActivity { get; set; }
 
     /// <summary>
-    /// "1,240 spots", "No spots" when the feed is live but nobody near me is heard here, or why this band is not followed.
+    /// "1,240 spots" ("~1,240 spots" when estimated from samples), "No spots" when the feed is live but nobody near me is
+    /// heard here, or why this band has nothing to show yet.
     /// </summary>
     [ObservableProperty]
     public partial string SpotsText { get; set; } = string.Empty;
@@ -113,20 +114,21 @@ public sealed partial class BandChoiceViewModel : ObservableObject
             return;
         }
         var spots = opening?.Spots ?? 0;
-        SpotsText = spots == 0 ? "No spots" : BandOpeningText.Spots(spots);
+        var estimated = opening?.Estimated == true;
+        SpotsText = spots == 0 ? "No spots" : BandOpeningText.Spots(spots, estimated);
         BarWidth = maxSpots <= 0 ? 0 : Math.Max(spots > 0 ? 2 : 0, MaxBar * spots / maxSpots);
         Continents = [.. BandOpenings.Continents.Select(c =>
         {
             var n = opening?.SpotsByContinent.GetValueOrDefault(c) ?? 0;
-            return new ContinentChip(c, BandOpenings.Level(n), $"{c} · {BandOpeningText.Spots(n)}");
+            return new ContinentChip(c, BandOpenings.Level(n), $"{c} · {BandOpeningText.Spots(n, estimated)}");
         })];
         NeedText = opening is null ? string.Empty : BandOpeningText.Need(opening.NeededEntities);
         NeedTip = opening is null ? string.Empty : BandOpeningText.NeedTip(opening.NeededEntities);
-        Tip = BandOpeningText.Basis(units);
+        Tip = BandOpeningText.Basis(units, opening?.SampledFor);
     }
 
-    /// <summary>Says why this band's reports are not being received, in place of its numbers.</summary>
-    /// <param name="text">"Too busy to follow".</param>
+    /// <summary>Says why this band has no numbers yet, in place of them.</summary>
+    /// <param name="text">"Checking soon".</param>
     /// <param name="tip">The longer reason.</param>
     public void ApplyNotFollowed(string text, string tip)
     {

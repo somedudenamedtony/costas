@@ -104,6 +104,23 @@ public class TransmitterTests
     }
 
     [Fact]
+    public async Task Prepare_AudioOutputDiedWhileIdle_RefusedWithoutKeyingUntilNewOutput()
+    {
+        var r = new Rig();
+        r.Out.RaiseFault("device removed");
+        r.Faults.Should().ContainSingle().Which.Should().Contain("device removed");
+
+        r.Tx.Prepare(new TxPlan(Slot, "CQ W7LIT DN40", null, null), Mode.Ft8, 1500, Guard(), out var why).Should().BeNull();
+        why.Should().Contain("audio output stopped");
+        (await r.Tx.TuneAsync(1500, 2.0, Guard())).Should().Contain("audio output stopped");
+        r.Run(TimeSpan.FromSeconds(16));
+        r.Radio.PttLog.Should().BeEmpty();
+
+        r.Tx.SetOutput(new NullAudioOutput { Now = () => r.Clock.UtcNow });
+        r.Tx.OutputFault.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Disabled_TransmitTuneAndTuner_RefusedWithoutKeying()
     {
         var r = new Rig();

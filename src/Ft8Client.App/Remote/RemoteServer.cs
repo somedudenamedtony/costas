@@ -75,12 +75,14 @@ public sealed class RemoteServer : IAsyncDisposable
             ctx.Response.Headers["X-Frame-Options"] = "DENY";
             ctx.Response.Headers["Referrer-Policy"] = "no-referrer";
             ctx.Response.Headers["Content-Security-Policy"] =
-                "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' ws: wss:; frame-ancestors 'none'";
+                "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self' ws: wss:; " +
+                "manifest-src 'self'; img-src 'self'; frame-ancestors 'none'";
             await next(ctx).ConfigureAwait(false);
         });
         app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(10) });
         app.MapGet("/", (Delegate)ServePage);
-        app.MapPost("/api/pair", (Delegate)PairAsync);
+        foreach (var (path, type) in Files) app.MapGet("/" + path, () => ServeFile(path, type));
+        app.MapPost("/api/pair", (Delegate)Pair);
         app.Map("/ws", AcceptAsync);
         try
         {
@@ -100,6 +102,12 @@ public sealed class RemoteServer : IAsyncDisposable
     {
         foreach (var c in _clients.Values)
         {
+            // "Forget paired phones" must cut off a phone that is already connected, not only stop it signing in again.
+            if (_control.SignIn(c.Token) is null)
+            {
+                await CloseAsync(c, "unpaired").ConfigureAwait(false);
+                continue;
+            }
             await SendAsync(c, new { type = "state", state = _state(c.DeviceId) }).ConfigureAwait(false);
         }
     }
@@ -119,6 +127,24 @@ public sealed class RemoteServer : IAsyncDisposable
         }
     }
 
+    // What a phone needs to add the page to its home screen as an app.
+    private static readonly (string Path, string Type)[] Files =
+    [
+        ("manifest.webmanifest", "application/manifest+json"),
+        ("icon-180.png", "image/png"),
+        ("icon-192.png", "image/png"),
+        ("icon-512.png", "image/png"),
+    ];
+
+    private static IResult ServeFile(string path, string type)
+    {
+        using var s = typeof(RemoteServer).Assembly.GetManifestResourceStream("Ft8Client.App.Remote." + path);
+        if (s is null) return Results.NotFound();
+        using var m = new MemoryStream();
+        s.CopyTo(m);
+        return Results.Bytes(m.ToArray(), type);
+    }
+
     private static IResult ServePage()
     {
         using var s = typeof(RemoteServer).Assembly.GetManifestResourceStream("Ft8Client.App.Remote.index.html");
@@ -128,25 +154,12 @@ public sealed class RemoteServer : IAsyncDisposable
         return Results.Text(html, "text/html; charset=utf-8");
     }
 
-    private async Task<IResult> PairAsync(HttpContext ctx)
+    // No code (owner decision, 2026-10-25): any device on the home network is given a token, which only identifies it
+    // so control stays with that phone. Addresses outside the local network are still refused.
+    private IResult Pair(HttpContext ctx)
     {
-        PairRequest? req;
-        try
-        {
-            req = await ctx.Request.ReadFromJsonAsync<PairRequest>(Json, ctx.RequestAborted).ConfigureAwait(false);
-        }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException or BadHttpRequestException)
-        {
-            return Results.BadRequest();
-        }
-        var token = _control.Pair(req?.Code);
-        if (token is null)
-        {
-            Log.Information("Remote pairing refused from {Address}", ctx.Connection.RemoteIpAddress);
-            return Results.Json(new { error = "That code is wrong or has expired. Open Settings, Mobile connection, on the station computer for a new one." },
-                statusCode: StatusCodes.Status403Forbidden);
-        }
-        Log.Information("Phone paired from {Address}", ctx.Connection.RemoteIpAddress);
+        var token = _control.Pair();
+        Log.Information("Phone connected for the first time from {Address}", ctx.Connection.RemoteIpAddress);
         return Results.Json(new { token });
     }
 
@@ -164,13 +177,14 @@ public sealed class RemoteServer : IAsyncDisposable
         using var helloCts = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted);
         helloCts.CancelAfter(HelloTimeout);
         var hello = await ReceiveAsync(socket, buffer, helloCts.Token).ConfigureAwait(false);
-        var deviceId = hello is null ? null : _control.SignIn(Parse<HelloMessage>(hello)?.Token);
+        var token = hello is null ? null : Parse<HelloMessage>(hello)?.Token;
+        var deviceId = _control.SignIn(token);
         if (deviceId is null)
         {
             await CloseAsync(socket, "unpaired").ConfigureAwait(false);
             return;
         }
-        var client = new Client(socket, deviceId);
+        var client = new Client(socket, deviceId, token!);
         var id = Guid.NewGuid();
         _clients[id] = client;
         try
@@ -183,18 +197,27 @@ public sealed class RemoteServer : IAsyncDisposable
                 if (text is null) break;
                 var cmd = Parse<RemoteCommand>(text);
                 if (cmd is null || string.IsNullOrEmpty(cmd.Type)) continue;
+                if (_control.SignIn(token) is null)
+                {
+                    await CloseAsync(client, "unpaired").ConfigureAwait(false);
+                    break;
+                }
                 string? note;
+                RemoteState? state = null;
                 try
                 {
                     note = await _control.HandleAsync(deviceId, cmd).ConfigureAwait(false);
+                    if (cmd.Type != "ping") state = _state(deviceId);
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
                 {
+                    // Also covers reading the log while a contact is being written: the next broadcast catches up.
                     Log.Warning(ex, "Remote command {Type} failed", cmd.Type);
                     note = "That did not work at the station.";
                 }
                 if (cmd.Type == "ping") await SendAsync(client, new { type = "pong" }).ConfigureAwait(false);
-                else await SendAsync(client, new { type = "state", state = _state(deviceId), note }).ConfigureAwait(false);
+                else if (state is not null) await SendAsync(client, new { type = "state", state, note }).ConfigureAwait(false);
+                else await SendAsync(client, new { type = "note", note }).ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (ex is WebSocketException or OperationCanceledException or IOException)
@@ -267,6 +290,26 @@ public sealed class RemoteServer : IAsyncDisposable
         }
     }
 
+    private static async Task CloseAsync(Client c, string why)
+    {
+        // Only the closing frame is sent here: the phone's receive loop may be waiting on this socket and sees the reply.
+        await c.SendLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            if (c.Socket.State == WebSocketState.Open)
+                await c.Socket.CloseOutputAsync(WebSocketCloseStatus.PolicyViolation, why, cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is WebSocketException or OperationCanceledException or IOException or ObjectDisposedException)
+        {
+            c.Socket.Abort();
+        }
+        finally
+        {
+            c.SendLock.Release();
+        }
+    }
+
     private static async Task CloseAsync(WebSocket socket, string why)
     {
         try
@@ -279,15 +322,16 @@ public sealed class RemoteServer : IAsyncDisposable
         }
     }
 
-    private sealed record PairRequest(string? Code);
 
     private sealed record HelloMessage(string? Type, string? Token);
 
-    private sealed class Client(WebSocket socket, string deviceId)
+    private sealed class Client(WebSocket socket, string deviceId, string token)
     {
         public WebSocket Socket { get; } = socket;
 
         public string DeviceId { get; } = deviceId;
+
+        public string Token { get; } = token;
 
         public SemaphoreSlim SendLock { get; } = new(1, 1);
     }

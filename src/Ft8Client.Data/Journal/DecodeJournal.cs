@@ -20,7 +20,7 @@ public sealed class DecodeJournal(string folder)
     private readonly Lock _gate = new();
 
     /// <summary>The file a time belongs in.</summary>
-    public string PathFor(DateTime utc) => Path.Combine(folder, $"decodes-{utc:yyyy-MM}.txt");
+    public string PathFor(DateTime utc) => Path.Combine(folder, string.Create(System.Globalization.CultureInfo.InvariantCulture, $"decodes-{utc:yyyy-MM}.txt"));
 
     /// <summary>Formats one line: <c>260104_025345    14.074 Rx FT8     -8  0.1 1234 CQ JA1QRS PM95</c>.</summary>
     public static string Format(DateTime utc, long dialHz, bool transmit, string mode, int snr, double dt, int offsetHz, string message) =>

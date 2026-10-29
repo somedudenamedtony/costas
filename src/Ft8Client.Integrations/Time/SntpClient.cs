@@ -81,6 +81,14 @@ public sealed class SntpClient(string server = "pool.ntp.org", int port = 123)
         }
         var t4 = t1 + sw.Elapsed;
         if (res.Buffer.Length < 48) throw new TimeoutException();
+        // A refusal ("kiss-o'-death", stratum 0), an unsynchronised server (leap indicator 3) or a reply that is not
+        // from a server (mode 4) carries no usable time: zero timestamps would read as a clock 126 years off and
+        // block transmitting.
+        var b = res.Buffer;
+        var leap = b[0] >> 6;
+        var mode = b[0] & 7;
+        var stratum = b[1];
+        if (leap == 3 || mode != 4 || stratum is 0 or > 15 || BitConverter.ToUInt64(b, 40) == 0) throw new TimeoutException();
         var t2 = ReadTimestamp(res.Buffer.AsSpan(32));
         var t3 = ReadTimestamp(res.Buffer.AsSpan(40));
         var (offset, delay) = Compute(t1, t2, t3, t4);

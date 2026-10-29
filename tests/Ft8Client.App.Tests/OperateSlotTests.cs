@@ -22,20 +22,38 @@ public class OperateSlotTests
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) => null;
     }
 
-    private static OperateViewModel Apply(bool transmitting, bool callingCq, DateTime now)
+    private static OperateViewModel Apply(bool transmitting, bool callingCq, DateTime now, DateTime? lastTxSlot = null)
     {
         var vm = new OperateViewModel(DispatchProxy.Create<IOperateCommands, NoCommands>(), () => now);
-        vm.Apply(new SessionSnapshot { Mode = Mode.Ft8, Transmitting = transmitting, CallingCq = callingCq }, [], 0);
+        vm.Apply(new SessionSnapshot { Mode = Mode.Ft8, Transmitting = transmitting, CallingCq = callingCq, LastTxSlotUtc = lastTxSlot }, [], 0);
         return vm;
     }
 
     [Fact]
-    public void Apply_Transmitting_CountsDownToEndOfTransmission()
+    public void Apply_Transmitting_CountsDownToNextSlot()
     {
-        var vm = Apply(true, false, Slot.AddSeconds(4));
+        var vm = Apply(true, false, Slot.AddSeconds(4), Slot);
 
         vm.SlotLabel.Should().Be("Transmitting");
-        vm.SlotLeft.Should().Be("10 s");
+        vm.SlotLeft.Should().Be("11 s");
+    }
+
+    [Fact]
+    public void Apply_AudioEndedInTransmitSlot_StaysTransmittingToSlotEnd()
+    {
+        var vm = Apply(false, false, Slot.AddSeconds(13.5), Slot);
+
+        vm.SlotLabel.Should().Be("Transmitting");
+        vm.SlotLeft.Should().Be("2 s");
+    }
+
+    [Fact]
+    public void Apply_SlotAfterTransmitting_Receiving()
+    {
+        var vm = Apply(false, false, Slot.AddSeconds(15.5), Slot);
+
+        vm.SlotLabel.Should().Be("Receiving");
+        vm.SlotLeft.Should().Be("15 s");
     }
 
     [Fact]
@@ -45,15 +63,6 @@ public class OperateSlotTests
 
         vm.SlotLabel.Should().Be("Receiving");
         vm.SlotLeft.Should().Be("11 s");
-    }
-
-    [Fact]
-    public void Apply_TransmittingAfterAudioEnds_ShowsZeroAndFullBar()
-    {
-        var vm = Apply(true, false, Slot.AddSeconds(14));
-
-        vm.SlotLeft.Should().Be("0 s");
-        vm.SlotProgress.Should().Be(1);
     }
 
     [Fact]

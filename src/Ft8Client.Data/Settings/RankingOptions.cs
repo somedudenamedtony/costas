@@ -26,6 +26,9 @@ public sealed class RankingOptions
     /// <summary>Skip long shots.</summary>
     public bool SkipLongShots { get; set; }
 
+    /// <summary>Rank activators at parks not in the log higher.</summary>
+    public bool PreferNewParks { get; set; } = true;
+
     /// <summary>Count only confirmed contacts.</summary>
     public bool ConfirmedOnly { get; set; }
 

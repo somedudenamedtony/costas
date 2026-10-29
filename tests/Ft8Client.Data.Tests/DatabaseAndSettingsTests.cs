@@ -78,6 +78,25 @@ public class DatabaseAndSettingsTests
     }
 
     [Fact]
+    public void SettingsStore_OldPskCountryCache_UsesConfiguredGridAndDropsCacheOnSave()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("ft8set").FullName, "settings.json");
+        File.WriteAllText(path, """
+            { "schema": 2, "profiles": [ { "id": "home", "callsign": "W7LIT", "grid": "JO62" } ],
+              "pskReporter": { "myDxcc": 291, "myDxccCall": "W7LIT", "bandActivity": true } }
+            """);
+        var store = new SettingsStore(path);
+        var settings = store.Load();
+        settings.Profile.Grid.Should().Be("JO62");
+        settings.PskReporter.BandActivity.Should().BeTrue();
+
+        store.Save(settings);
+
+        File.ReadAllText(path).Should().NotContain("myDxcc");
+        store.Load().Profile.Grid.Should().Be("JO62");
+    }
+
+    [Fact]
     public void SettingsStore_SchemaZero_MigratesCallAndDropsSecrets()
     {
         var path = Path.Combine(Directory.CreateTempSubdirectory("ft8set").FullName, "settings.json");
@@ -88,6 +107,29 @@ public class DatabaseAndSettingsTests
         s.Operating.Band.Should().Be("15m");
         new SettingsStore(path).Save(s);
         File.ReadAllText(path).Should().NotContain("hunter2");
+    }
+
+    [Fact]
+    public void SettingsStore_SchemaOne_DropsBandLevelsWalkedDownToSilence()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("ft8set").FullName, "settings.json");
+        File.WriteAllText(path, """
+            { "schema": 1, "profiles": [ { "id": "home", "audio": { "txGainDb": -8,
+              "txGainByBand": { "20m": -40, "40m": -12.5, "17m": -28.5 } } },
+              { "id": "away", "audio": { "txGainByBand": { "20m": -40 } } } ] }
+            """);
+        var s = new SettingsStore(path).Load();
+        s.Schema.Should().Be(AppSettings.CurrentSchema);
+        s.Profiles[0].Audio.TxGainByBand.Should().Equal(new Dictionary<string, double> { ["40m"] = -12.5 });
+        s.Profiles[1].Audio.TxGainByBand.Should().BeEmpty(); // no level of its own: measured from the default
+    }
+
+    [Fact]
+    public void SettingsStore_SchemaTwo_KeepsLowBandLevels()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("ft8set").FullName, "settings.json");
+        File.WriteAllText(path, """{ "schema": 2, "profiles": [ { "id": "home", "audio": { "txGainByBand": { "20m": -40 } } } ] }""");
+        new SettingsStore(path).Load().Profile.Audio.TxGainByBand.Should().ContainKey("20m");
     }
 
     [Fact]

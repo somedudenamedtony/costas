@@ -36,6 +36,20 @@ public class LogIndexTests
     }
 
     [Fact]
+    public void StateWorked_AlaskaAndHawaii_CountAsStates()
+    {
+        var log = LogIndex.Build(
+        [
+            new LogContact("KL7AA", "20m", "FT8", "BP51", "KL", null, true, D),
+            new LogContact("KH6AA", "20m", "FT8", "BL11", "KH6", null, false, D),
+        ]);
+
+        log.StateWorked("AK", confirmedOnly: true).Should().BeTrue();
+        log.StateWorked("HI").Should().BeTrue();
+        log.StatesWorkedOnBand("20m").Should().BeEquivalentTo(["AK", "HI"]);
+    }
+
+    [Fact]
     public void Need_TiersOneToThreeIgnoreMode()
     {
         // Australia was worked on SSB on 20 m, so it is not a new band for FT8.

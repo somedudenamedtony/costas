@@ -61,16 +61,23 @@ internal static class MapGeometry
         return (land, lines);
     }
 
-    /// <summary>Orthographic globe coordinates; depth hides the far hemisphere.</summary>
-    internal static (double X, double Y, double Depth) GlobePoint(LatLon p, double longitude)
+    /// <summary>
+    /// Orthographic globe coordinates for a globe facing <paramref name="longitude"/>, tilted so
+    /// <paramref name="latitude"/> is at the middle; depth hides the far hemisphere.
+    /// </summary>
+    internal static (double X, double Y, double Depth) GlobePoint(LatLon p, double longitude, double latitude = 0)
     {
         var lat = p.Lat * Math.PI / 180;
         var lon = (p.Lon - longitude) * Math.PI / 180;
-        return (Math.Cos(lat) * Math.Sin(lon), Math.Sin(lat), Math.Cos(lat) * Math.Cos(lon));
+        var tilt = latitude * Math.PI / 180;
+        var x = Math.Cos(lat) * Math.Sin(lon);
+        var y = Math.Cos(tilt) * Math.Sin(lat) - Math.Sin(tilt) * Math.Cos(lat) * Math.Cos(lon);
+        var depth = Math.Sin(tilt) * Math.Sin(lat) + Math.Cos(tilt) * Math.Cos(lat) * Math.Cos(lon);
+        return (x, y, depth);
     }
 
     /// <summary>Visible coastlines and borders, clipped at the globe's horizon.</summary>
-    internal static Geometry GlobeLines(Point centre, double radius, double longitude)
+    internal static Geometry GlobeLines(Point centre, double radius, double longitude, double latitude = 0)
     {
         var geometry = new StreamGeometry();
         using var g = geometry.Open();
@@ -78,8 +85,8 @@ internal static class MapGeometry
         {
             for (var i = 1; i < shape.Count; i++)
             {
-                var a = GlobePoint(shape[i - 1], longitude);
-                var b = GlobePoint(shape[i], longitude);
+                var a = GlobePoint(shape[i - 1], longitude, latitude);
+                var b = GlobePoint(shape[i], longitude, latitude);
                 if (a.Depth < 0 && b.Depth < 0) continue;
                 if (a.Depth < 0 || b.Depth < 0)
                 {
@@ -99,9 +106,9 @@ internal static class MapGeometry
     }
 
     /// <summary>Night shading in screen space, clipped by the caller to the globe.</summary>
-    internal static Geometry GlobeNight(Point centre, double radius, double longitude, DateTime utc)
+    internal static Geometry GlobeNight(Point centre, double radius, double longitude, double latitude, DateTime utc)
     {
-        var sun = GlobePoint(SolarPosition.Subsolar(utc), longitude);
+        var sun = GlobePoint(SolarPosition.Subsolar(utc), longitude, latitude);
         var geometry = new StreamGeometry();
         using var g = geometry.Open();
         const int cells = 100;

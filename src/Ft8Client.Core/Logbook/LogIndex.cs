@@ -72,7 +72,8 @@ public sealed class LogIndex
                 _entitiesConfirmed.Add(e);
                 Set(_entitiesConfirmedByBand, band).Add(e);
             }
-            if (e == Geo.Entity.UsaKey && UsStates.Normalize(c.Region) is { } st)
+            // Alaska and Hawaii are their own DXCC entities but count as states, as on the Awards page.
+            if (Awards.AwardBuilder.StateOf(e, c.Region) is { } st)
             {
                 Set(_statesByBand, band).Add(st);
                 _states.Add(st);

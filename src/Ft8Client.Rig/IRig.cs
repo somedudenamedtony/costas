@@ -29,7 +29,7 @@ public interface IRig : IAsyncDisposable
     Task SetPttAsync(bool on, CancellationToken ct);
 
     /// <summary>
-    /// Reads the ALC and SWR meters, for use while transmitting. A meter the radio does not report reads as null. Never
+    /// Reads the ALC, SWR and power output meters, for use while transmitting. A meter the radio does not report reads as null. Never
     /// raises <see cref="Faulted"/> and never throws <see cref="RigException"/>: a meter that cannot be read is not a
     /// reason to stop a transmission.
     /// </summary>
@@ -48,6 +48,20 @@ public interface IRig : IAsyncDisposable
     /// throws <see cref="RigException"/>.
     /// </summary>
     Task<int?> ReadPowerWattsAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Reads the radio's transmit power setting and the most it can be set to on the current band and mode, in whole
+    /// watts. Null when the radio or its Hamlib driver cannot report them in watts. Like <see cref="ReadTxMetersAsync"/>,
+    /// never raises <see cref="Faulted"/> and never throws <see cref="RigException"/>.
+    /// </summary>
+    Task<RigPower?> ReadPowerAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Changes the radio's transmit power setting to about <paramref name="watts"/> and reads it back. Only the setting
+    /// changes: this never keys the radio. Null when the radio cannot be set in watts, refused the change or did not
+    /// answer. Never raises <see cref="Faulted"/> and never throws <see cref="RigException"/>.
+    /// </summary>
+    Task<RigPower?> SetPowerWattsAsync(int watts, CancellationToken ct);
 
     /// <summary>
     /// Starts the radio's own antenna tuner (Hamlib's TUNE operation; on the FT-710 it sends <c>AC003</c>). True when the

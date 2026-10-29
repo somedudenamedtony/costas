@@ -7,6 +7,7 @@
 // see the GNU General Public License in LICENSE for details.
 
 using FluentAssertions;
+using Ft8Client.Data.Log;
 using Ft8Client.App.Engine;
 using Ft8Client.Audio.Backends;
 using Ft8Client.Audio.Timing;
@@ -44,7 +45,7 @@ public sealed class KeyboardEnterSessionTests : IDisposable
 
     private sealed class NoLog : ISessionLog
     {
-        public bool Write(ContactLogEntry entry, LogContext context) => true;
+        public QsoRecord? Write(ContactLogEntry entry, LogContext context) => null;
     }
 
     private readonly ManualClock _clock = new(new DateTime(2026, 10, 13, 18, 0, 0, DateTimeKind.Utc));

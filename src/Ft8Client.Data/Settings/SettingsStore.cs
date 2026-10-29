@@ -57,7 +57,8 @@ public sealed class SettingsStore(string path)
 
     /// <summary>
     /// Brings older files up to <see cref="AppSettings.CurrentSchema"/>. Schema 0 (pre-release) had the profile's
-    /// call and grid at the top level and no schema field.
+    /// call and grid at the top level and no schema field. Schema 1 could hold band transmit levels walked down to
+    /// silence by a misread ALC.
     /// </summary>
     public static void Migrate(JsonObject node)
     {
@@ -81,6 +82,28 @@ public sealed class SettingsStore(string path)
             // Secrets must never live in settings; drop any a hand edit put there.
             foreach (var key in new[] { "qrzKey", "qrzPassword", "apiKey", "password" }) node.Remove(key);
             node["schema"] = 1;
+        }
+        if (schema < 2)
+        {
+            DropRunawayBandLevels(node);
+            node["schema"] = 2;
+        }
+    }
+
+    // Schema 2: before 0.1.0.336 a stale rigctld reply could read SWR as ALC, and automatic level walked a band's level
+    // down to -40 dBFS, where the radio sends almost nothing. The fix does not lift a level already saved, so a band
+    // level further below the operator's own than automatic level may now go is dropped: the band uses the operator's.
+    private static void DropRunawayBandLevels(JsonObject node)
+    {
+        if (node["profiles"] is not JsonArray profiles) return;
+        foreach (var p in profiles)
+        {
+            if (p?["audio"] is not JsonObject audio || audio["txGainByBand"] is not JsonObject bands) continue;
+            var own = audio["txGainDb"] is JsonValue v && v.TryGetValue<double>(out var g) ? g : new AudioSettings().TxGainDb;
+            var lowest = own - AudioSettings.AutoLowestBelowDb;
+            foreach (var band in bands.Where(b => b.Value is JsonValue x && x.TryGetValue<double>(out var level) && level < lowest)
+                         .Select(b => b.Key).ToList())
+                bands.Remove(band);
         }
     }
 }

@@ -38,6 +38,35 @@ public static class BandPlan
         return null;
     }
 
+    /// <summary>
+    /// The band to follow when the radio reports <paramref name="dialHz"/> while on <paramref name="currentBand"/>: the
+    /// dial's band when it is a different amateur band, or null when the dial is on the current band or outside every band
+    /// (then the current band is kept).
+    /// </summary>
+    public static string? BandChange(string currentBand, long dialHz) =>
+        BandOf(dialHz) is { } band && !string.Equals(band, currentBand, StringComparison.OrdinalIgnoreCase) ? band : null;
+
+    /// <summary>
+    /// <paramref name="bands"/> with <paramref name="band"/> added in band-plan order when it is missing (null adds
+    /// nothing). Comparison ignores case; the added band is lower case.
+    /// </summary>
+    public static IReadOnlyList<string> WithBand(IReadOnlyList<string> bands, string? band)
+    {
+        ArgumentNullException.ThrowIfNull(bands);
+        if (band is null || bands.Any(b => string.Equals(b, band, StringComparison.OrdinalIgnoreCase))) return bands;
+        var added = band.ToLowerInvariant();
+        var order = Bands.Select(b => b.Band).ToList();
+        int Rank(string b)
+        {
+            var i = order.FindIndex(x => string.Equals(x, b, StringComparison.OrdinalIgnoreCase));
+            return i < 0 ? int.MaxValue : i;
+        }
+        var list = bands.ToList();
+        var at = list.FindIndex(b => Rank(b) > Rank(added));
+        list.Insert(at < 0 ? list.Count : at, added);
+        return list;
+    }
+
     /// <summary>Display form of a band: "20 m".</summary>
     public static string Display(string band) => band.EndsWith('m') ? $"{band[..^1]} m" : band;
 }

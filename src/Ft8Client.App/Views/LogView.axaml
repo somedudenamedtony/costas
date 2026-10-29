@@ -71,6 +71,7 @@
           <TextBlock Text="Report sent" /><TextBox Text="{Binding Sent}" />
           <TextBlock Text="Report received" /><TextBox Text="{Binding Received}" />
           <TextBlock Text="Name" /><TextBox Text="{Binding Name}" />
+          <TextBlock Text="Power (W)" /><TextBox Text="{Binding Power}" />
           <TextBlock Text="Comment" /><TextBox Text="{Binding Comment}" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <Button Content="Save" Command="{Binding $parent[UserControl].((vm:LogViewModel)DataContext).SaveEditCommand}" />

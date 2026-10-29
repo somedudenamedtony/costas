@@ -9,10 +9,10 @@
 namespace Ft8Client.Core.Transmit;
 
 /// <summary>
-/// The transmit meters over one transmission: the median ALC and SWR (null when not reported), how serious they are,
-/// and the warning to show, or null when there is nothing to say.
+/// The transmit meters over one transmission: the median ALC, SWR and power output in watts (null when not reported),
+/// how serious they are, and the warning to show, or null when there is nothing to say.
 /// </summary>
-public sealed record TxMeterResult(double? Alc, double? Swr, TxMeterLevel Level, string? Warning)
+public sealed record TxMeterResult(double? Alc, double? Swr, TxMeterLevel Level, string? Warning, double? Watts = null)
 {
     /// <summary>No readings.</summary>
     public static TxMeterResult None { get; } = new(null, null, TxMeterLevel.Ok, null);

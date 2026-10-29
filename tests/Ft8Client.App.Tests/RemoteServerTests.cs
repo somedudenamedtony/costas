@@ -34,7 +34,7 @@ public sealed class RemoteServerTests : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        _control = new RemoteControl(_target, _clock, new DeviceTokens(), _ => { }, new PairingGate(() => 271828));
+        _control = new RemoteControl(_target, _clock, new DeviceTokens(), _ => { });
         _server = new RemoteServer(_control, id => RemoteStateBuilder.Build(_target.Snapshot, _clock.UtcNow, new RemoteContext { Units = DistanceUnit.Miles },
             _control.ControlFor(id), _control.ViewingFor(id)));
         _port = FreePort();
@@ -58,11 +58,32 @@ public sealed class RemoteServerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Pair_WrongCode_Forbidden()
+    public async Task Get_Manifest_ServesTheHomeScreenAppAndItsIcons()
     {
-        _control.Pairing.Open(_clock.UtcNow);
-        var r = await _http.PostAsJsonAsync("/api/pair", new { code = "000000" }, TestContext.Current.CancellationToken);
-        r.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var page = await _http.GetAsync("/", TestContext.Current.CancellationToken);
+        page.Headers.GetValues("Content-Security-Policy").Single().Should().Contain("manifest-src 'self'").And.Contain("img-src 'self'");
+
+        var m = await _http.GetAsync("/manifest.webmanifest", TestContext.Current.CancellationToken);
+        m.StatusCode.Should().Be(HttpStatusCode.OK);
+        m.Content.Headers.ContentType!.MediaType.Should().Be("application/manifest+json");
+        var j = await m.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        j.GetProperty("display").GetString().Should().Be("standalone");
+
+        foreach (var icon in j.GetProperty("icons").EnumerateArray().Select(i => i.GetProperty("src").GetString()).Append("/icon-180.png"))
+        {
+            var r = await _http.GetAsync(icon, TestContext.Current.CancellationToken);
+            r.StatusCode.Should().Be(HttpStatusCode.OK, icon);
+            r.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
+        }
+    }
+
+    [Fact]
+    public async Task Pair_NoCode_EachPhoneGetsItsOwnToken()
+    {
+        var a = await PairAsync();
+        var b = await PairAsync();
+        a.Should().NotBe(b);
+        _control.SignIn(a).Should().NotBe(_control.SignIn(b));
     }
 
     [Fact]
@@ -113,6 +134,42 @@ public sealed class RemoteServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public void Page_Script_Parses()
+    {
+        // A syntax error leaves phones on a blank page, and the server tests above never run the script.
+        var node = FindNode();
+        Assert.SkipWhen(node is null, "node is not installed.");
+        using var s = typeof(RemoteServer).Assembly.GetManifestResourceStream("Ft8Client.App.Remote.index.html")!;
+        var html = new StreamReader(s).ReadToEnd();
+        var start = html.LastIndexOf("<script>", StringComparison.Ordinal) + "<script>".Length;
+        var end = html.LastIndexOf("</script>", StringComparison.Ordinal);
+        var file = Path.Combine(Path.GetTempPath(), $"costas-remote-{Guid.NewGuid():N}.js");
+        File.WriteAllText(file, html[start..end]);
+        try
+        {
+            using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(node!, ["--check", file])
+            {
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            })!;
+            var err = p.StandardError.ReadToEnd();
+            p.WaitForExit(30_000).Should().BeTrue();
+            p.ExitCode.Should().Be(0, err);
+        }
+        finally
+        {
+            File.Delete(file);
+        }
+    }
+
+    private static string? FindNode()
+    {
+        var name = OperatingSystem.IsWindows() ? "node.exe" : "node";
+        return (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(Path.PathSeparator)
+            .Select(d => Path.Combine(d, name)).FirstOrDefault(File.Exists);
+    }
+
+    [Fact]
     public async Task Socket_OtherSiteOrigin_Refused()
     {
         using var ws = new ClientWebSocket();
@@ -123,8 +180,7 @@ public sealed class RemoteServerTests : IAsyncLifetime
 
     private async Task<string> PairAsync()
     {
-        _control.Pairing.Open(_clock.UtcNow);
-        var r = await _http.PostAsJsonAsync("/api/pair", new { code = "271828" }, TestContext.Current.CancellationToken);
+        var r = await _http.PostAsJsonAsync("/api/pair", new { }, TestContext.Current.CancellationToken);
         r.StatusCode.Should().Be(HttpStatusCode.OK);
         var j = await r.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         return j.GetProperty("token").GetString()!;

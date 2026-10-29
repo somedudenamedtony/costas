@@ -16,6 +16,12 @@ namespace Ft8Client.Core.Remote;
 /// </summary>
 public sealed class DeviceTokens
 {
+    /// <summary>
+    /// Most devices remembered. Pairing again after that forgets the oldest one. Sixteen hashes fit well inside the Windows
+    /// credential store's 2,560-byte limit; with no cap every pairing grew the list until saving it failed.
+    /// </summary>
+    public const int MaxDevices = 16;
+
     private readonly object _gate = new();
     private readonly List<string> _hashes = [];
 
@@ -36,6 +42,7 @@ public sealed class DeviceTokens
         {
             if (h.Length == 64 && h.All(Uri.IsHexDigit)) t._hashes.Add(h.ToUpperInvariant());
         }
+        if (t._hashes.Count > MaxDevices) t._hashes.RemoveRange(0, t._hashes.Count - MaxDevices);
         return t;
     }
 
@@ -45,11 +52,18 @@ public sealed class DeviceTokens
         lock (_gate) return string.Join(',', _hashes);
     }
 
-    /// <summary>Makes a new token for a device and remembers its hash. The token is shown to the device once.</summary>
+    /// <summary>
+    /// Makes a new token for a device and remembers its hash, forgetting the oldest device past <see cref="MaxDevices"/>.
+    /// The token is shown to the device once.
+    /// </summary>
     public string Issue()
     {
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        lock (_gate) _hashes.Add(Hash(token));
+        lock (_gate)
+        {
+            _hashes.Add(Hash(token));
+            if (_hashes.Count > MaxDevices) _hashes.RemoveAt(0);
+        }
         return token;
     }
 

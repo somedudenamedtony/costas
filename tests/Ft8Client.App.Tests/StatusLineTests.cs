@@ -48,4 +48,27 @@ public class StatusLineTests
         MainViewModel.Status(new SessionSnapshot { Mode = Mode.Rtty }, format).Item1
             .Should().StartWith("Reading RTTY 45.45 Bd, 170 Hz shift, reversed.");
     }
+
+    [Fact]
+    public void Status_DialOutsideAmateurBands_SaysSoAsCaution()
+    {
+        var (text, kind) = MainViewModel.Status(new SessionSnapshot { DialHz = 15_000_000 });
+        text.Should().Be("The radio is on 15.000 MHz, outside the amateur bands. Costas will not transmit there.");
+        kind.Should().Be(TextKind.Caution);
+    }
+
+    [Fact]
+    public void Status_DialOffStandardFrequencyInBand_SaysNothingAboutIt()
+    {
+        MainViewModel.Status(new SessionSnapshot { DialHz = 14_090_000 }).Item1.Should().Be("Not in a contact.");
+    }
+
+    [Fact]
+    public void ClockTipText_Corrected_SaysHowFarThePcClockIsOff()
+    {
+        MainViewModel.ClockTipText(0.02, TimeSpan.Zero).Should().Be("Clock offset +0.02 s.");
+        MainViewModel.ClockTipText(null, TimeSpan.Zero).Should().Be("Clock offset not measured yet.");
+        MainViewModel.ClockTipText(0.0, TimeSpan.FromSeconds(1.5)).Should().Be("Clock offset +0.00 s. Your PC clock is 1.50 s slow; Costas corrects for it from internet time.");
+        MainViewModel.ClockTipText(0.0, TimeSpan.FromSeconds(-0.8)).Should().EndWith("0.80 s fast; Costas corrects for it from internet time.");
+    }
 }

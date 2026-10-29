@@ -76,6 +76,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         LoadMacros(SettingsMapper.Macros(s.Operating));
         CqParity = s.Operating.CqParity;
         ClockBlock = s.Operating.ClockBlockSeconds.ToString("0.0", CultureInfo.InvariantCulture);
+        CorrectClock = s.Operating.CorrectClock;
         foreach (var t in SettingsMapper.ToRanking(s.Ranking).TierOrder) TierOrder.Add(new TierItem(t, StationText.Need(t)));
         PreferHearsMe = s.Ranking.PreferHearsMe;
         OnlyCallingCq = s.Ranking.OnlyCallingCq;
@@ -110,6 +111,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         RefreshEqslInbox();
         FeedEnabled = s.PskReporter.FeedEnabled;
         PotaSpots = s.Pota.SpotsEnabled;
+        PreferNewParks = s.Ranking.PreferNewParks;
         CompareNeighbours = s.PskReporter.CompareNeighbours;
         BandActivity = s.PskReporter.BandActivity;
         UploadSpots = s.PskReporter.UploadSpots;
@@ -121,14 +123,15 @@ public sealed partial class SettingsViewModel : ObservableObject
         RefreshRemote();
         host.Remote.Changed += OnRemoteChanged;
         _remoteLoaded = true;
-        if (host.Remote.Running && host.Remote.Control.Tokens.Count == 0) PairPhone();
         SaveWav = s.Files.SaveWav;
         Retention = s.Files.RetentionDays.ToString(CultureInfo.InvariantCulture);
         Theme = s.Appearance.Theme;
+        Skin = AppSkin.Find(s.Appearance.Skin);
         Units = s.Appearance.Units;
         Jt9Path = s.Paths.Jt9 ?? string.Empty;
         HamlibDir = s.Paths.HamlibDir ?? string.Empty;
         CheckUpdates = s.Updates.CheckEnabled;
+        UsageEnabled = s.Usage.Enabled;
         ShowDeveloper = s.Developer.Enabled;
         DeveloperMode = s.Developer.Enabled;
         ReplaySamples = s.Developer.ReplaySamples;
@@ -547,6 +550,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string CqParity { get; set; }
 
+    /// <summary>Correct Costas's clock from internet time.</summary>
+    [ObservableProperty]
+    public partial bool CorrectClock { get; set; }
+
     /// <summary>Clock block seconds.</summary>
     [ObservableProperty]
     public partial string ClockBlock { get; set; }
@@ -810,6 +817,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool PotaSpots { get; set; }
 
+    /// <summary>Rank activators at parks not in the log higher.</summary>
+    [ObservableProperty]
+    public partial bool PreferNewParks { get; set; }
+
     /// <summary>Compare my signal with stations near me.</summary>
     [ObservableProperty]
     public partial bool CompareNeighbours { get; set; }
@@ -846,52 +857,25 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string RemoteStatus { get; set; } = string.Empty;
 
-    /// <summary>The pairing code, "314 159", or blank when none is shown.</summary>
+    /// <summary>The address to open on the phone, shown large.</summary>
     [ObservableProperty]
-    public partial string PairingCode { get; set; } = string.Empty;
-
-    /// <summary>The address to open on the phone, shown large beside the code.</summary>
-    [ObservableProperty]
-    public partial string PairingUrl { get; set; } = string.Empty;
+    public partial string PhoneUrl { get; set; } = string.Empty;
 
     /// <summary>The other addresses of this computer, in case the first is a virtual adapter; blank when there are none.</summary>
     [ObservableProperty]
-    public partial string PairingOtherUrls { get; set; } = string.Empty;
+    public partial string PhoneOtherUrls { get; set; } = string.Empty;
 
-    /// <summary>"Works once, until 15:02."</summary>
-    [ObservableProperty]
-    public partial string PairingExpiry { get; set; } = string.Empty;
-
-    /// <summary>True while a pairing code is shown.</summary>
-    [ObservableProperty]
-    public partial bool HasPairingCode { get; set; }
-
-    /// <summary>A line after forgetting the paired phones, or blank.</summary>
-    [ObservableProperty]
-    public partial string PairingNote { get; set; } = string.Empty;
-
-    /// <summary>True while the page is served (pairing works).</summary>
+    /// <summary>True while the page is served.</summary>
     [ObservableProperty]
     public partial bool RemoteRunning { get; set; }
 
-    /// <summary>"Forget 2 paired phones".</summary>
-    [ObservableProperty]
-    public partial string ForgetPhonesText { get; set; } = string.Empty;
-
-    /// <summary>True when any phone is paired.</summary>
-    [ObservableProperty]
-    public partial bool HasPairedPhones { get; set; }
-
     private bool _remoteLoaded;
-    private bool _pairWhenRunning;
 
-    // Turning the mobile connection on or off takes effect at once, so the address and a pairing code appear without
-    // saving and reopening Settings.
+    // Turning the mobile connection on or off takes effect at once, so the address appears without saving and
+    // reopening Settings.
     partial void OnRemoteEnabledChanged(bool value)
     {
         if (!_remoteLoaded) return;
-        _pairWhenRunning = value;
-        if (!value) ClosePairing();
         var port = int.TryParse(RemotePort, NumberStyles.Integer, CultureInfo.InvariantCulture, out var p) ? Math.Clamp(p, 1024, 65535) : 8073;
         _host.Settings.Update(s =>
         {
@@ -901,74 +885,34 @@ public sealed partial class SettingsViewModel : ObservableObject
         RefreshRemote();
     }
 
-    private void OnRemoteChanged() => MainViewModel.Dispatch(() =>
-    {
-        RefreshRemote();
-        if (_pairWhenRunning && _host.Remote.Running)
-        {
-            _pairWhenRunning = false;
-            PairPhone();
-        }
-    });
+    private void OnRemoteChanged() => MainViewModel.Dispatch(RefreshRemote);
 
-    /// <summary>Shows a new pairing code for a phone.</summary>
-    [RelayCommand]
-    private void PairPhone()
-    {
-        var code = _host.Remote.Control.Pairing.Open(_host.Clock.UtcNow);
-        PairingCode = $"{code[..3]} {code[3..]}";
-        PairingExpiry = $"Works once, until {_host.Remote.Control.Pairing.ExpiresUtc.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)}.";
-        PairingNote = string.Empty;
-        HasPairingCode = true;
-        RefreshRemote();
-    }
-
-    /// <summary>Forgets every paired phone: each must be paired again.</summary>
-    [RelayCommand]
-    private void ForgetPhones()
-    {
-        _host.Remote.Control.ForgetPhones();
-        PairingNote = "Paired phones forgotten. Each phone must be paired again.";
-        RefreshRemote();
-    }
-
-    /// <summary>
-    /// Called when the window closes: a pairing code only works while it is on screen, and this view model stops
-    /// following the mobile connection.
-    /// </summary>
-    public void Detach()
-    {
-        _host.Remote.Changed -= OnRemoteChanged;
-        ClosePairing();
-    }
-
-    private void ClosePairing()
-    {
-        _host.Remote.Control.Pairing.Close();
-        HasPairingCode = false;
-        PairingCode = string.Empty;
-    }
+    /// <summary>Called when the window closes: this view model stops following the mobile connection.</summary>
+    public void Detach() => _host.Remote.Changed -= OnRemoteChanged;
 
     private void RefreshRemote()
     {
         var r = _host.Remote;
         RemoteRunning = r.Running;
         var urls = r.Urls();
-        PairingUrl = urls.Count > 0 ? urls[0] : $"this computer's address, port {_host.Settings.Current.Remote.Port}";
-        PairingOtherUrls = urls.Count > 1 ? "If that does not open, try " + string.Join(" or ", urls.Skip(1)) : string.Empty;
+        PhoneUrl = urls.Count > 0 ? urls[0] : $"this computer's address, port {_host.Settings.Current.Remote.Port}";
+        PhoneOtherUrls = urls.Count > 1 ? "If that does not open, try " + string.Join(" or ", urls.Skip(1)) : string.Empty;
         RemoteStatus = r.Problem is { } p ? p
             : !r.Running ? (RemoteEnabled ? "Starting…" : "Off.")
             : urls.Count == 0 ? "On, but this computer has no address on a home network."
             : $"On. Phones open {string.Join(" or ", urls)}" + (r.Connected > 0 ? $" · {r.Connected} connected now" : string.Empty);
-        if (!r.Running && HasPairingCode) ClosePairing();
-        var n = r.Control.Tokens.Count;
-        HasPairedPhones = n > 0;
-        ForgetPhonesText = n == 1 ? "Forget the paired phone" : $"Forget {n} paired phones";
     }
 
     /// <summary>Check for newer builds.</summary>
     [ObservableProperty]
     public partial bool CheckUpdates { get; set; }
+
+    /// <summary>Send anonymous usage statistics.</summary>
+    [ObservableProperty]
+    public partial bool UsageEnabled { get; set; }
+
+    /// <summary>Says when this build sends nothing at all (a build made without the statistics key, such as a local one).</summary>
+    public string UsageBuildNote => _host.Usage.Available ? string.Empty : "This build was made without statistics, so it sends nothing whatever this is set to.";
 
     /// <summary>Result of "Check now".</summary>
     [ObservableProperty]
@@ -979,12 +923,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     private async Task CheckNow()
     {
         UpdateStatus = "Checking…";
-        if (MessageProblem is { Length: > 0 } problem)
-        {
-            Message = problem;
-            SelectedPage = 1;
-            return;
-        }
         _host.Settings.Update(s =>
         {
             s.Updates.CheckEnabled = true;
@@ -1030,6 +968,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string Theme { get; set; }
 
+    /// <summary>Desktop skin choices, each with light and dark palettes.</summary>
+    public IReadOnlyList<AppSkin> Skins => AppSkin.All;
+
+    /// <summary>The skin to apply when settings are saved.</summary>
+    [ObservableProperty]
+    public partial AppSkin Skin { get; set; }
+
     /// <summary>Unit choices.</summary>
     public IReadOnlyList<string> UnitChoices { get; } = ["miles", "km"];
 
@@ -1069,6 +1014,14 @@ public sealed partial class SettingsViewModel : ObservableObject
             int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v, min, max) : fallback;
         static double Dbl(string s, double min, double max, double fallback) =>
             double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v, min, max) : fallback;
+        // A message that cannot be sent exactly as shown is not saved: the operator is shown why on its page.
+        if (MessageProblem is { Length: > 0 } problem)
+        {
+            Message = problem;
+            SelectedPage = 1;
+            return;
+        }
+        var oldHamlibDir = _host.Settings.Current.Paths.HamlibDir;
 
         StoreFields();
         if (Profiles.FirstOrDefault(d => !Core.Messages.Callsign.IsValid(d.Callsign.Trim().ToUpperInvariant())) is { } bad)
@@ -1139,12 +1092,14 @@ public sealed partial class SettingsViewModel : ObservableObject
                 .Select(m => new MacroOptions { Key = m.Key, Label = m.Label.Trim(), Text = m.Text.Trim() })];
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
+            s.Operating.CorrectClock = CorrectClock;
             s.Qrz.LogbookEnabled = LogbookEnabled;
             s.Qrz.LookupEnabled = !string.IsNullOrWhiteSpace(QrzUser) && !string.IsNullOrEmpty(QrzPassword);
             s.Qrz.UploadOnComplete = UploadOnComplete;
             s.Qrz.SyncMinutes = Int(SyncMinutes, 5, 1440, 15);
             s.PskReporter.FeedEnabled = FeedEnabled;
             s.Pota.SpotsEnabled = PotaSpots;
+            s.Ranking.PreferNewParks = PreferNewParks;
             s.PskReporter.CompareNeighbours = CompareNeighbours;
             s.PskReporter.BandActivity = BandActivity;
             s.PskReporter.UploadSpots = UploadSpots;
@@ -1156,10 +1111,12 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Files.SaveWav = SaveWav;
             s.Files.RetentionDays = Int(Retention, 1, 3650, 30);
             s.Appearance.Theme = Theme;
+            s.Appearance.Skin = Skin.Id;
             s.Appearance.Units = Units;
             s.Paths.Jt9 = string.IsNullOrWhiteSpace(Jt9Path) ? null : Jt9Path.Trim();
             s.Paths.HamlibDir = string.IsNullOrWhiteSpace(HamlibDir) ? null : HamlibDir.Trim();
             s.Updates.CheckEnabled = CheckUpdates;
+            s.Usage.Enabled = UsageEnabled;
             if (ShowDeveloper)
             {
                 s.Developer.Enabled = DeveloperMode;
@@ -1184,8 +1141,10 @@ public sealed partial class SettingsViewModel : ObservableObject
         Set(SecretNames.LotwPassword, LotwPassword);
         _host.TxLevel.Apply();
         _host.RebuildLogIndex();
-        // Another profile may use another radio or audio device.
-        if (activeId != _loadedProfile) _ = _host.ReopenDevicesAsync();
+        // Another profile may use another radio or audio device. A new Hamlib folder is where rigctld is found: Setup
+        // tells the operator to set it here when rigctld is missing, so it must take effect without a restart.
+        if (activeId != _loadedProfile || !string.Equals(oldHamlibDir, _host.Settings.Current.Paths.HamlibDir, StringComparison.Ordinal))
+            _ = _host.ReopenDevicesAsync();
         Close?.Invoke();
     }
 

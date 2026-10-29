@@ -24,6 +24,8 @@ PipeWire or PulseAudio holds it, pick "pulse" or "pipewire" instead and choose t
 desktop's sound settings.
 
 Updates: Costas tells you when a newer build is out and opens the release page; download the new tarball and unpack
-it over this folder. Your log and settings are kept in ~/.local/share/Costas and are not touched.
+it. It unpacks into a new folder named for its version: run ./Costas from there, then delete this folder. If you added
+Costas to your desktop's menu, change Exec= in ~/.local/share/applications/costas.desktop to the new folder. Your log
+and settings are kept in ~/.local/share/Costas and are not touched.
 
 Licence: GNU GPL v3 or later (see LICENSE). User manual: https://somedudenamedtony.github.io/costas/

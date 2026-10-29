@@ -12,7 +12,7 @@ namespace Ft8Client.Data.Settings;
 public sealed class AppSettings
 {
     /// <summary>Current schema version.</summary>
-    public const int CurrentSchema = 1;
+    public const int CurrentSchema = 2;
 
     /// <summary>Schema version of the file.</summary>
     public int Schema { get; set; } = CurrentSchema;
@@ -64,6 +64,9 @@ public sealed class AppSettings
 
     /// <summary>Update checks.</summary>
     public UpdateOptions Updates { get; set; } = new();
+
+    /// <summary>Anonymous usage statistics.</summary>
+    public UsageOptions Usage { get; set; } = new();
 
     /// <summary>Developer mode (hidden).</summary>
     public DeveloperOptions Developer { get; set; } = new();

@@ -11,7 +11,7 @@ namespace Ft8Client.App.Remote;
 /// <summary>A message from the remote page.</summary>
 /// <param name="Type">
 /// "ping", "call", "answer", "answerAfter", "cq", "resend", "logNow", "jump", "abandon", "halt", "band", "offset",
-/// "offsetAuto", "macro" (PSK and RTTY), or "show" (open a station's details; blank call closes them).
+/// "offsetAuto", "macro" (PSK and RTTY), "power", or "show" (open a station's details; blank call closes them).
 /// </param>
 /// <param name="Call">The station, for call, answer and show.</param>
 /// <param name="Step">The step index, for jump.</param>
@@ -19,4 +19,6 @@ namespace Ft8Client.App.Remote;
 /// <param name="Mode">The mode, "FT8" or "FT4", for band.</param>
 /// <param name="Hz">The Tx offset in hertz, for offset.</param>
 /// <param name="Key">The function key, 1 for F1, for macro.</param>
-public sealed record RemoteCommand(string Type, string? Call = null, int? Step = null, string? Band = null, string? Mode = null, int? Hz = null, int? Key = null);
+/// <param name="Watts">The radio's power setting in watts, for power.</param>
+public sealed record RemoteCommand(string Type, string? Call = null, int? Step = null, string? Band = null, string? Mode = null, int? Hz = null,
+                                   int? Key = null, int? Watts = null);

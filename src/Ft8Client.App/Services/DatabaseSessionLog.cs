@@ -19,21 +19,23 @@ namespace Ft8Client.App.Services;
 /// Writes finished contacts to the local log first, then queues them for QRZ and eQSL upload when enabled. The power logged is
 /// what <paramref name="radioPowerWatts"/> reports from the radio, or the power in Settings when it reports nothing. When
 /// <paramref name="parkFor"/> (call, band) names a spotted POTA park, the contact gets ADIF SIG=POTA and SIG_INFO.
+/// <paramref name="profileId"/> is read for each contact, so a profile switched to while running gets its own contacts.
+/// With <paramref name="hold"/>, uploads wait while the operator can still correct the contact from the Logged notice.
 /// </summary>
-public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository queue, string profileId, Func<bool> uploadEnabled,
+public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository queue, Func<string> profileId, Func<bool> uploadEnabled,
                                        Func<int?>? radioPowerWatts = null, Func<bool>? eqslUploadEnabled = null,
-                                       Func<string, string, string?>? parkFor = null) : ISessionLog
+                                       Func<string, string, string?>? parkFor = null, LogHold? hold = null) : ISessionLog
 {
     /// <summary>Raised after a contact is stored, with its row.</summary>
     public event Action<QsoRecord>? Stored;
 
     /// <inheritdoc />
-    public bool Write(ContactLogEntry e, LogContext c)
+    public QsoRecord? Write(ContactLogEntry e, LogContext c)
     {
         var (mode, submode) = ModeInfo.Adif(c.Mode);
         var q = new QsoRecord
         {
-            ProfileId = profileId,
+            ProfileId = profileId(),
             Call = e.Call,
             QsoDateOn = e.TimeOnUtc,
             QsoDateOff = e.TimeOffUtc,
@@ -60,9 +62,10 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
         if (parkFor?.Invoke(e.Call, c.Band) is { } park) PotaAdif.Tag(q, park);
         var (id, _) = qsos.Upsert(q);
         q.Id = id;
-        if (uploadEnabled()) queue.Enqueue(id, "qrz", DateTime.UtcNow);
-        if (eqslUploadEnabled?.Invoke() == true) queue.Enqueue(id, "eqsl", DateTime.UtcNow);
+        var due = hold?.Add(id) ?? DateTime.UtcNow;
+        if (uploadEnabled()) queue.Enqueue(id, "qrz", due);
+        if (eqslUploadEnabled?.Invoke() == true) queue.Enqueue(id, "eqsl", due);
         Stored?.Invoke(q);
-        return true;
+        return q;
     }
 }

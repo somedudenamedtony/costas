@@ -58,10 +58,10 @@ public static class RemoteStateBuilder
         var log = ctx.Log();
         var band = BandPlan.Display(s.Band);
 
-        // Same countdown as the contact card: while transmitting, to the end of the transmission.
+        // Same countdown as the contact card: to the slot boundary, the whole slot a transmission went out in counting as transmit.
         // A keyboard mode has no slots: a zero length hides the countdown.
         var slotted = ModeInfo.IsSlotted(s.Mode);
-        var slotLen = !slotted ? TimeSpan.Zero : s.Transmitting ? ModeInfo.TxEnd(s.Mode) : ModeInfo.SlotLength(s.Mode);
+        var slotLen = slotted ? ModeInfo.SlotLength(s.Mode) : TimeSpan.Zero;
         var into = slotted ? nowUtc - SlotMath.SlotStart(nowUtc, s.Mode) : TimeSpan.Zero;
         var (meter, meterTip, meterKind) = TxMeterText.Warning(s.TxMeters);
         var summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty, ModeInfo.IsSlotted(s.Mode) ? null : s.Activity);
@@ -90,7 +90,7 @@ public static class RemoteStateBuilder
             Mode = ModeInfo.Name(s.Mode),
             Bands = [.. ctx.Bands(s.Mode).Select(b => new RemoteBand(b, BandPlan.Display(b)))],
             CanChangeBand = !s.Transmitting,
-            SlotLabel = s.Transmitting ? "Transmitting" : "Receiving",
+            SlotLabel = s.InTransmitSlot(nowUtc) ? "Transmitting" : "Receiving",
             SlotIntoMs = (int)Math.Clamp(into.TotalMilliseconds, 0, slotLen.TotalMilliseconds),
             SlotLengthMs = (int)slotLen.TotalMilliseconds,
             Offset = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear)),
@@ -108,6 +108,7 @@ public static class RemoteStateBuilder
             TonightTitle = $"Worked tonight · {s.Tonight.Count}",
             Tonight = [.. s.Tonight.OrderByDescending(t => t.TimeUtc).Take(MaxRecent).Select(t => new RemoteTonight(t.Call,
                 StationText.Place(ctx.Countries?.Lookup(t.Call), null), $"{BandPlan.Display(t.Band)} {t.ModeKey}", StationText.Need(t.Need), OperateViewModel.Hm(t.TimeUtc)))],
+            Logged = Logged(s.LastLogged, nowUtc),
             Decodes = [.. s.RawDecodes.Reverse().Take(MaxDecodes).Select(Decode)],
             Details = viewing is null ? null : Details(viewing, s, nowUtc, ctx, log, inContact),
         };
@@ -145,6 +146,15 @@ public static class RemoteStateBuilder
     }
 
     // Same figures as "Your signal" on the Operate view.
+    private static RemoteLogged? Logged(LoggedContact? c, DateTime now)
+    {
+        var left = c is null ? TimeSpan.Zero : c.LoggedUtc + LoggedNoticeViewModel.ShowFor - now;
+        return c is null || left <= TimeSpan.Zero ? null
+            : new RemoteLogged(c.Id, c.Call, StationText.Need(c.Need), string.Join(" · ", new[] { LoggedNoticeViewModel.ReportsOf(c, withTime: false), c.Place,
+                LoggedNoticeViewModel.PowerOf(c) }
+                .Where(x => x.Length > 0)), (int)left.TotalMilliseconds);
+    }
+
     private static RemoteSignal Signal(SessionSnapshot s, DateTime now, RemoteContext ctx, LogIndex? log, string band)
     {
         var psk = s.Services.TryGetValue(ServiceNames.Psk, out var p) ? p : null;

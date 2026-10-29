@@ -49,12 +49,22 @@ $psi = [System.Diagnostics.ProcessStartInfo]::new((Join-Path $env:SystemRoot 'Sy
 $psi.UseShellExecute = $false
 $psi.CreateNoWindow = $true
 $psi.WorkingDirectory = $env:RUNNER_TEMP
+# The app takes a few seconds to close after starting the installer (it stops jt9, rigctld and its services). A rigctld
+# from the install folder that outlives the app by 8 s stands in for that; the installer must wait for it, not fail.
+$helper = Start-Process (Join-Path $dir 'third_party\hamlib\bin\rigctld.exe') -ArgumentList '-m', '1', '-t', '4599' -PassThru -WindowStyle Hidden
 $waiter = [System.Diagnostics.Process]::Start($psi)
 Stop-Process -Id $running.Id
+Start-Sleep -Seconds 8
+if ($waiter.HasExited) { throw 'The installer finished while rigctld from the install folder was still running' }
+Stop-Process -Id $helper.Id
 if (-not $waiter.WaitForExit(300000)) { throw 'The update did not finish within 5 minutes' }
 if (-not (Select-String -Path $updateLog -Pattern 'Installation process succeeded' -Quiet)) {
     Get-Content $updateLog -Tail 40 | Out-Host
     throw 'The update did not install'
+}
+if (-not (Select-String -Path $updateLog -Pattern 'Waiting for .* to exit before installing' -Quiet)) {
+    Get-Content $updateLog -Tail 40 | Out-Host
+    throw 'The installer did not wait for programs from the install folder to exit'
 }
 $deadline = (Get-Date).AddSeconds(30)
 $reopened = $null
@@ -96,3 +106,37 @@ Assert-File (Join-Path $dir 'Costas.exe') $false
 Assert-File (Join-Path $startMenu 'Costas.lnk') $false
 if (Test-Path $uninstallKey) { throw 'Uninstall entry still present' }
 Write-Host 'Installer checks passed'
+
+Write-Host 'Velopack: a classic install moves over'
+$vpSetup = Join-Path $root 'artifacts\velopack\CostasApp-win-Setup.exe'
+Assert-File $vpSetup
+Start-Process $setup.FullName -ArgumentList $silent -Wait
+Assert-File (Join-Path $dir 'Costas.exe')
+$vpDir = Join-Path $env:LOCALAPPDATA 'CostasApp'
+$vpLog = Join-Path $env:RUNNER_TEMP 'costas-velopack.log'
+$p = Start-Process $vpSetup -ArgumentList '--silent', '--log', $vpLog -PassThru -Wait
+if ($p.ExitCode -ne 0) {
+    if (Test-Path $vpLog) { Get-Content $vpLog -Tail 40 | Out-Host }
+    throw "Velopack setup failed (code $($p.ExitCode))"
+}
+$vpApp = Join-Path $vpDir 'current\Costas.exe'
+Assert-File $vpApp
+Assert-File (Join-Path $vpDir 'current\third_party\wsjtx\bin\jt9.exe')
+Assert-File (Join-Path $vpDir 'current\third_party\hamlib\bin\rigctld.exe')
+# A silent Velopack install does not start the app; the update's cmd starts it, as here. The new Costas removes the
+# classic install and puts the Start menu shortcut back.
+Start-Process $vpApp | Out-Null
+$deadline = (Get-Date).AddSeconds(120)
+while ((Get-Date) -lt $deadline -and ((Test-Path $uninstallKey) -or (Test-Path (Join-Path $dir 'Costas.exe')))) { Start-Sleep -Seconds 2 }
+$running = Get-Process -Name 'Costas' -ErrorAction SilentlyContinue
+$appLog = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Costas\logs') -Filter 'app-*.log' -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime | Select-Object -Last 1
+if ($appLog) { Get-Content $appLog.FullName -Tail 30 | Out-Host }
+if (-not ($running | Where-Object Path -eq $vpApp)) { throw 'Costas from the Velopack install is not running' }
+if (Test-Path $uninstallKey) { throw 'The classic install was not removed' }
+Assert-File (Join-Path $dir 'Costas.exe') $false
+$deadline = (Get-Date).AddSeconds(30)
+while ((Get-Date) -lt $deadline -and -not (Test-Path (Join-Path $startMenu 'Costas.lnk'))) { Start-Sleep -Seconds 1 }
+Assert-File (Join-Path $startMenu 'Costas.lnk')
+$running | Stop-Process -Force
+Write-Host 'The classic install moved to Velopack'

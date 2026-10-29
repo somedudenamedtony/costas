@@ -12,7 +12,7 @@ using Ft8Client.Core.Ranking;
 namespace Ft8Client.App.ViewModels;
 
 /// <summary>One row of Watching.</summary>
-public sealed class WatchRowViewModel(RankedStation r, DateTime nowUtc, DistanceUnit units)
+public sealed class WatchRowViewModel(RankedStation r, DateTime nowUtc, DistanceUnit units, bool callWhenFree = false)
 {
     /// <summary>Call.</summary>
     public string Call { get; } = r.Station.Call;
@@ -32,6 +32,18 @@ public sealed class WatchRowViewModel(RankedStation r, DateTime nowUtc, Distance
     /// <summary>The sparkline in words.</summary>
     public string HistoryTip { get; } = StationRowViewModel.HistoryText(r.Station.SnrHistory);
 
-    /// <summary>Why it is not callable.</summary>
-    public string Reason { get; } = r.Reason is null ? string.Empty : StationText.Watch(r.Reason, nowUtc);
+    /// <summary>Why it is not callable, and that it will be called once free when marked.</summary>
+    public string Reason { get; } = (r.Reason is null ? string.Empty : StationText.Watch(r.Reason, nowUtc))
+        + (callWhenFree ? " · calling when free" : string.Empty);
+
+    /// <summary>True when marked to be called once its current contact is over.</summary>
+    public bool CallWhenFree { get; } = callWhenFree;
+
+    /// <summary>The mark's button: "Call when free", or "Cancel" once marked.</summary>
+    public string CallWhenFreeText => CallWhenFree ? "Cancel" : "Call when free";
+
+    /// <summary>The mark's tooltip.</summary>
+    public string CallWhenFreeTip => CallWhenFree
+        ? $"Costas calls {Call} in your next slot once it signs off or calls CQ, unless you are in a contact. Click to cancel."
+        : $"Call {Call} in your next slot once its current contact is over.";
 }

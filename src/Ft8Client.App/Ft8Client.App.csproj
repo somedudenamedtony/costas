@@ -21,6 +21,9 @@
   <ItemGroup>
     <AvaloniaResource Include="Assets\costas.ico" />
     <EmbeddedResource Include="Remote\index.html" LogicalName="Ft8Client.App.Remote.index.html" />
+    <!-- Home-screen app: the manifest and icons (drawn by scripts/make-icon.py). -->
+    <EmbeddedResource Include="Remote\manifest.webmanifest" LogicalName="Ft8Client.App.Remote.manifest.webmanifest" />
+    <EmbeddedResource Include="Remote\icon-*.png" LogicalName="Ft8Client.App.Remote.%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>
     <!-- Kestrel serves the remote page; HttpListener would need an admin URL reservation to listen beyond localhost. -->
@@ -29,6 +32,10 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Ft8Client.App.Tests" />
   </ItemGroup>
+  <ItemGroup Condition="'$(APTABASE_APP_KEY)' != ''">
+    <!-- Anonymous usage statistics: CI passes the Aptabase app key (set in .github/workflows/ci.yml) to release builds. Builds without it send nothing. -->
+    <AssemblyMetadata Include="AptabaseAppKey" Value="$(APTABASE_APP_KEY)" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.3" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />
@@ -36,5 +43,6 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Serilog" Version="4.4.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
   </ItemGroup>
 </Project>

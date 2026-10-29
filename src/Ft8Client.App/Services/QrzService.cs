@@ -238,7 +238,20 @@ public sealed class QrzService : IDisposable
     {
         while (!ct.IsCancellationRequested)
         {
-            await SyncNowAsync(ct).ConfigureAwait(false);
+            try
+            {
+                await SyncNowAsync(ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                // Anything but a QRZ answer (the database busy, a network error): say so and keep the loop alive.
+                Log.Error(ex, "QRZ sync failed");
+                _session.SetService(ServiceNames.Qrz, new ServiceStatus(ServiceHealth.Degraded, $"Sync failed: {ex.Message}", _clock.UtcNow));
+            }
             try
             {
                 await Task.Delay(TimeSpan.FromMinutes(Math.Max(1, _settings.Current.Qrz.SyncMinutes)), ct).ConfigureAwait(false);
@@ -252,15 +265,22 @@ public sealed class QrzService : IDisposable
 
     private async Task UploadLoopAsync(CancellationToken ct)
     {
-        var svc = new QrzUploadService(new QrzLogbookClient(Client()), _qsos, _queue, _clock);
+        var http = Client();
+        var svc = new QrzUploadService(new QrzLogbookClient(http), _qsos, _queue, _clock);
         while (!ct.IsCancellationRequested)
         {
             try
             {
+                // A new station callsign gets a new client (its User-Agent names the call): upload through that one.
+                if (!ReferenceEquals(http, Client()))
+                {
+                    http = Client();
+                    svc = new QrzUploadService(new QrzLogbookClient(http), _qsos, _queue, _clock);
+                }
                 var key = Key;
                 if (key is not null && _settings.Current.Qrz.LogbookEnabled && _settings.Current.Qrz.UploadOnComplete && _queue.Count() > 0)
                 {
-                    if (await svc.ProcessDueAsync(key, ct).ConfigureAwait(false) > 0) LogChanged?.Invoke();
+                    if (await svc.ProcessDueAsync(key, ct, ProfileId).ConfigureAwait(false) > 0) LogChanged?.Invoke();
                     if (svc.Status.Health is ServiceHealth.Down or ServiceHealth.Degraded) _session.SetService(ServiceNames.Qrz, svc.Status);
                 }
                 await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
@@ -279,15 +299,21 @@ public sealed class QrzService : IDisposable
 
     private HttpClient Client()
     {
-        var call = _settings.Current.Profile.Callsign;
-        if (call != _agentCall)
+        lock (_clientGate)
         {
-            _agentCall = call;
-            _http.Dispose();
-            _http = MakeClient();
+            var call = _settings.Current.Profile.Callsign;
+            if (call != _agentCall)
+            {
+                // The old client is not disposed: another loop may be mid-request with it, and disposing it made every
+                // later upload fail for the rest of the run (the first run starts with no callsign, so it always changed).
+                _agentCall = call;
+                _http = MakeClient();
+            }
+            return _http;
         }
-        return _http;
     }
+
+    private readonly object _clientGate = new();
 
     // One XML client per login, so its session key is reused rather than logging in for every lookup.
     private QrzXmlClient XmlClient(string user, string password)

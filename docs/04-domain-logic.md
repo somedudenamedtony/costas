@@ -122,14 +122,17 @@ A station is **callable** when all hold: state is `CallingCq` (or, with "Only st
 
 A **Fox** (a station heard sending a multi-answer message `CALL1 RR73; CALL2 <FOX> ±NN`) is callable whenever it was decoded in its latest own slot, whatever it is doing, and Doing now reads "DXpedition (Fox/Hound), working Hounds". Calling it starts a Hound contact (flow H).
 
-- **Next in line**: callable, tier 1 to 4, passing the filters. Order by tier (ascending), then calling me first, then stations decoded in their latest own slot before CQ callers kept after a miss, then chance (Good, Fair, Long shot), then report strength (direct or regional, stronger first, none last), then S's SNR (stronger first), then callsign.
+- **Next in line**: callable, tier 1 to 4 (or tier 5 at a new park, below), passing the filters. Order first by bucket: tier 1, then new parks, then the rest (owner decision 2026-10-20; with "Rank stations at a park I have not worked higher" off, there are no new parks). Within a bucket, order by tier (ascending), then calling me first, then stations decoded in their latest own slot before CQ callers kept after a miss, then chance (Good, Fair, Long shot), then report strength (direct or regional, stronger first, none last), then S's SNR (stronger first), then callsign.
 - **Watching**: tier 1 to 4 and not callable. Order by tier, then most recently heard. Reason text from state.
-- **Already worked**: tier 5, kept out of Next in line and Watching and shown in the Repeats panel (callable first, then not confirmed on this band and mode).
+
+**Call when free** (owner request 2026-10-26). The operator can mark a Watching station; Costas then starts flow A with it (as if Call were clicked) once it is free, so the call goes out in my next slot with no extra wait. `CallWhenFree` (Core) decides: free when callable, when heard in its latest own slot signing off (`Finishing`: RR73, RRR or 73 to someone else, the usual tail-end), or "Just finished" (signed off, then one missed slot). Checked after each full decode, and at once when marked. Nothing starts while I am in a contact; marks wait for it to end. Marks are used once, in the order made, and are dropped on Halt Tx, a band or mode change, when the station is no longer tracked, and when the Tx watchdog time has passed with no operator input. The automatic call does not count as operator input for the watchdog.
+- **New park**: a POTA spot (docs/05, section 7c) puts the station at a park not in the log. Such a station is listed in Next in line even at tier 5, since a new park is a new contact for park hunters. A `CQ POTA` with no spot is not a new park.
+- **Already worked**: tier 5 and not at a new park, kept out of Next in line and Watching and shown in the Repeats panel (callable first, then not confirmed on this band and mode).
 - **Calling me**: stations in state `CallingMe` go to "Waiting for you" and are shown in the line with "Calling you" in Doing now, ranked first within their tier.
 
 Filters (ranking settings): prefer stations that hear me (when off, chance is ignored in ordering), only stations calling CQ, hide stations worked on this band, skip long shots.
 
-The ranker is a pure function: `(stations, logIndex, hearsMe, settings, myEntity) -> (line, watching, workedCount)`. Test it with table-driven cases; the sample data in the mockups is one such case.
+The ranker is a pure function: `(stations, logIndex, hearsMe, settings, myEntity, parks) -> (line, watching, workedCount)`. Test it with table-driven cases; the sample data in the mockups is one such case.
 
 ## 7. Contact engine
 
@@ -196,7 +199,7 @@ A Fox/Hound DXpedition is worked as a Hound with no mode to switch (owner decisi
 - While a contact is in progress, other stations calling me are added to `WaitingForMe` (maximum 5, oldest first) and are never answered automatically unless the operator pressed "Answer after this contact" for that caller.
 - When a contact ends without being logged (`Abandoned`, `NoReply`, `Watchdog`), the engine remembers it for 5 minutes. Anything its station sends to me in that time, including RR73, RRR or 73, puts it in `WaitingForMe` flagged as a reply after stopping (not counted against the maximum). Nothing is sent until the operator answers it; answering resumes the stopped contact and applies the late messages as if they had arrived in time (a late RR73 logs and sends 73, a late report gets the R-report). Calling or answering that station afresh, or stopping another contact, forgets it.
 - The engine never starts a contact by itself. `CallStation`, `CallCq` and `AnswerCaller` are operator commands.
-- Tx watchdog: if no operator input (key, click) has occurred for `WatchdogMinutes` (default 6), stop transmitting and show "Stopped by watchdog".
+- Tx watchdog: if no operator input (key, click) has occurred for `WatchdogMinutes` (default 6), stop transmitting and show "Stopped by watchdog". Owner decision 2026-10-20: a contact in which the other station has already sent me a message runs to its end first (still bounded by the retry limit, including a free text queued after it); CQ and queued "answer after this contact" callers do not start after it.
 
 ### Logged fields
 
@@ -231,9 +234,11 @@ After each received slot, estimate occupancy across 200 to 2800 Hz from the last
 
 `SlotClock` derives slot boundaries from system UTC, driven by a monotonic timer so that system time adjustments do not cause double or missed slots mid-slot. Offset is measured against SNTP at start and hourly, and estimated continuously as the median DT of the decodes in each slot (`jt9` reports DT relative to the nominal start, so a correct clock gives a median near zero). Warn above 0.5 s, block transmit above 2 s (overridable in settings). The app never sets the system clock.
 
-## 11. Transmit meters (ALC and SWR)
+**Clock correction** (owner decision 2026-10-20, D18; Settings › Transmitting › Clock correction, on by default). The app's clock (`CorrectedClock`) is system UTC plus a correction; every part of the app (slot clock, capture, transmit, log times) reads it. `ClockCorrection.Next` sets the correction to the SNTP offset when the measurement's round trip is at most 500 ms, the change from the current correction is at least 100 ms, and the offset is at most 60 s (a larger one means the PC clock or its time zone is wrong, so nothing is corrected and transmit stays blocked). No answer, or a slow round trip, keeps the current correction; turning the setting off removes it. While correcting, SNTP is measured every 15 minutes; after no server answered, 5 minutes later. A change waits for a transmission in progress to end (up to 30 s). Monotonic ticks are not corrected, so `SlotClock` sees the change as a wall-clock step and applies it at the next slot boundary without a double or missed slot. The offset the transmit guard checks is the SNTP offset left after the correction, and the median DT of decodes made before a change is dropped. The decodes' median DT is not used to correct the clock: it includes the audio path's latency and would hide a real clock error.
 
-While a transmission or test tone is on the air, the app reads the radio's ALC and SWR meters through Hamlib (`l ALC`, `l SWR`) every 0.5 s, starting 0.5 s after the audio starts and stopping 0.5 s before it ends, over a second `rigctld` connection so a meter read never delays a PTT command. A meter that cannot be read is not a fault: it never stops a transmission. `TxMeterCheck` (Core) summarises one transmission by the median of each meter, ignoring SWR below 1 (the radio reports 0 when it measured no forward power):
+## 11. Transmit meters (ALC, SWR and power out)
+
+While a transmission or test tone is on the air, the app reads the radio's ALC, SWR and power output meters through Hamlib (`l ALC`, `l SWR`, `l RFPOWER_METER_WATTS`) every 0.5 s, starting 0.5 s after the audio starts and stopping 0.5 s before it ends, over a second `rigctld` connection so a meter read never delays a PTT command. A meter that cannot be read is not a fault: it never stops a transmission. Each reading is shown live (`02-ui-spec.md`, Radio meters). `TxMeterCheck` (Core) summarises one transmission by the median of each meter, ignoring SWR below 1 (the radio reports 0 when it measured no forward power) but keeping 0 W (keyed with no output):
 
 | Condition | Level | Text |
 | --- | --- | --- |
@@ -253,9 +258,11 @@ On by default (Settings › Transmitting), owner request 2026-10-12. After each 
 | 0.02 to 0.25 | none |
 | 0.25 to 0.5 | down 1 dB |
 | 0.5 to 0.75 | down 3 dB |
-| 0.75 or more | down 6 dB, never below -40 dBFS |
+| 0.75 or more | down 6 dB |
 
-The lowest level that made ALC act is kept for the session per band, so the level does not swing back and forth; after 10 quiet transmissions held just below it (the radio's power may have been turned up) it is forgotten and the level probes upward again. The level is saved per band (`TxGainByBand` in the station profile); a band with no level of its own uses the level in Settings. Typing a level in Settings sets the current band's level and the base for the 6 dB cap. A radio that reports no ALC, or automatic level turned off, leaves the level alone. When it lowered the level, the ALC warning says so instead of telling the operator to lower it. **VERIFY** the 0.02 and 0.25 thresholds on the FT-710 and IC-7300 (where the radio's own ALC meter sits at each).
+The level never goes below the level the operator set less 20 dB, nor below -40 dBFS. A reading outside 0 to 1 is not an ALC reading (SWR read from a rigctld reply out of step is 1 or more) and leaves the level alone.
+
+The lowest level that made ALC act is kept for the session per band, so the level does not swing back and forth; after 10 quiet transmissions held just below it (the radio's power may have been turned up) it is forgotten and the level probes upward again. The level is saved per band (`TxGainByBand` in the station profile); a band with no level of its own uses the level in Settings. Typing a level in Settings sets the current band's level and the base for the 6 dB cap. A radio that reports no ALC, or automatic level turned off, leaves the level alone. When it lowered the level, the ALC warning says so instead of telling the operator to lower it; at the lowest level it keeps telling the operator. Settings schema 2 drops any saved band level more than 20 dB below the operator's: before 0.1.0.336 a reply out of step walked levels down to -40 dBFS, where the radio sends almost nothing. **VERIFY** the 0.02 and 0.25 thresholds on the FT-710 and IC-7300 (where the radio's own ALC meter sits at each).
 
 ## 12. Pileup (who else is calling)
 
@@ -281,15 +288,16 @@ Texts (`PileupText`): "3 stations called JA6VQA at 20:29:30." (or "W7XQ called J
 
 ## 14. Band openings from my area
 
-The band menu shows, for each band, whether stations near me are being heard right now and where. Source: PSK Reporter reports of senders in my DXCC entity on every band in my mode (`05-integrations.md` section 7), the same reports the neighbour comparison uses for the current band.
+The band menu shows, for each band, whether stations near me are being heard right now and where. Source: PSK Reporter reports of senders around the grid square currently configured in Settings on every band in my mode (`05-integrations.md` section 5), the same reports the neighbour comparison uses for the current band.
 
 - A report counts when its sender is within 300 miles (482.8 km) of my grid, it is in my mode, it is not my own call, and it is no older than 15 minutes.
 - Per band: the number of reports (spots), the distinct senders, and the spots per receiver continent (from the country file).
 - Each continent chip is shaded by its spots: none 0, 1 to 9 light, 10 to 49 medium, 50 or more full.
 - The activity bar is scaled to the busiest band. A band with no spots says "No spots" while any band has spots; with no spots anywhere, or with the feed or setting off, the menu shows band names only.
-- A band whose reports are not being received never says "No spots", which would read as a closed band. Before my DXCC code is known every row says "Needs a spot of you". After the all-band subscription falls back to the current band, every other row says "Too busy to follow"; after following stops altogether, every row does. The tooltip gives the reason. Reports already held for a band that is no longer followed are not shown.
+- A band whose reports are not being received never says "No spots", which would read as a closed band. Without a valid configured grid every row says "Set your grid in Settings". With a valid grid, subscriptions start immediately without needing a report of my signal or a saved country. Reports already held for a band that is no longer followed are not shown.
+- **Sampling** (owner request 2026-10-20: "Too busy to follow" left the menu empty most evenings). After the all-band subscription falls back to the current band, the other bands in the menu are sampled one at a time (`BandSampler`): each is subscribed for 30 seconds, or until 1,000 reports of nearby stations have arrived, and the next starts no sooner than 30 seconds after the last began (at most 2,000 extra reports a minute). After following stops altogether, every band is sampled, the current one included. A sample counts what arrived while it ran, not report times, because senders upload in batches every few minutes. `BandOpenings.BuildSampled` keeps samples that ended in the last 15 minutes and scales their spots and continent counts by 15 minutes over the time listened ("40 spots in 1 minute" reads as 600). These rows show "~600 spots"; the tooltip says the numbers are estimated and how long the band was listened to. A sampled band with nothing near me says "No spots"; one not sampled yet says "Checking soon", with a tooltip explaining the turns. A sample cut short by a mode change is dropped.
 - "You need": the receivers' countries with no contact in my log on that band, most spots first: "You need Mongolia", "You need Brazil +2". The tooltip lists them all. An empty log shows nothing here rather than every country.
-- Rebuilt at most once a slot while reports arrive; changing band keeps the reports, changing mode clears them.
+- Rebuilt at most once a slot while reports arrive; changing band keeps the reports, changing mode clears them. Changing the station grid or call clears reports and samples immediately; grid changes replace subscriptions and drop any running sample of the old area.
 
 This shows where the band is open from my area, not who I can hear: a receiver hearing my neighbour is a station listening on that band.
 

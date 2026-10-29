@@ -67,6 +67,13 @@ public sealed class RigctldClient : IAsyncDisposable
                 Disconnect();
                 throw new RigException(ex is OperationCanceledException ? "rigctld did not answer in time." : $"rigctld connection failed: {ex.Message}", ex);
             }
+            catch (OperationCanceledException)
+            {
+                // The caller gave up mid-command: the reply may still arrive, and the next command would read it as its
+                // own. Start the next command on a fresh connection.
+                Disconnect();
+                throw;
+            }
         }
         finally
         {
@@ -78,7 +85,7 @@ public sealed class RigctldClient : IAsyncDisposable
     public async Task SetAsync(string command, CancellationToken ct)
     {
         var r = await SendAsync(command, ct).ConfigureAwait(false);
-        if (!r.Ok) throw new RigException($"The radio refused '{command.Split(' ')[0]}' (RPRT {r.Code}).");
+        if (!r.Ok) throw new RigException($"The radio refused '{command.Split(' ')[0]}' (RPRT {r.Code}).") { Refused = true };
     }
 
     /// <summary>Reads the frequency.</summary>

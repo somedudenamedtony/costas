@@ -7,12 +7,13 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Ft8Client.Core.Contacts;
+using Ft8Client.Data.Log;
 
 namespace Ft8Client.App.Engine;
 
 /// <summary>Where the session writes finished contacts (database, upload queue, interop).</summary>
 public interface ISessionLog
 {
-    /// <summary>Writes a contact. Returns false if it could not be stored.</summary>
-    bool Write(ContactLogEntry entry, LogContext context);
+    /// <summary>Writes a contact. Returns its row in the log, or null if it could not be stored.</summary>
+    QsoRecord? Write(ContactLogEntry entry, LogContext context);
 }

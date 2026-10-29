@@ -16,6 +16,7 @@ public sealed class SlotLoop(SlotClock clock, Transmitter tx) : IDisposable
 {
     private Thread? _thread;
     private volatile bool _run;
+    private long _lastErrorTicks = long.MinValue;
 
     /// <summary>Starts the thread.</summary>
     public void Start()
@@ -25,13 +26,31 @@ public sealed class SlotLoop(SlotClock clock, Transmitter tx) : IDisposable
         {
             while (_run)
             {
-                clock.Poll();
-                tx.Poll();
+                Guarded(clock.Poll);
+                Guarded(tx.Poll);
                 Thread.Sleep(1);
             }
         })
         { IsBackground = true, Priority = ThreadPriority.Highest, Name = "SlotLoop" };
         _thread.Start();
+    }
+
+    // An exception on this thread would end the process, possibly with PTT keyed over CAT. Stop transmitting instead,
+    // say why in the log (at most every 10 s, as a fault can repeat every millisecond), and keep the slots running.
+    private void Guarded(Action poll)
+    {
+        try
+        {
+            poll();
+        }
+        catch (Exception ex)
+        {
+            var now = Environment.TickCount64;
+            if (now - Interlocked.Read(ref _lastErrorTicks) < 10_000) return;
+            Interlocked.Exchange(ref _lastErrorTicks, now);
+            Serilog.Log.Error(ex, "Slot thread error; transmit halted");
+            _ = tx.HaltAsync();
+        }
     }
 
     /// <inheritdoc />

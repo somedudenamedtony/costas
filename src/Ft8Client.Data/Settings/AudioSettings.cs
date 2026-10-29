@@ -23,6 +23,13 @@ public sealed class AudioSettings
     /// </summary>
     public double TxGainDb { get; set; } = -6.0;
 
+    /// <summary>
+    /// Automatic level goes at most this far below <see cref="TxGainDb"/>. Further down, the radio is overdriven by
+    /// something a level change cannot fix, or the ALC reading is wrong (a stale rigctld reply once read SWR as ALC and
+    /// walked the level down to silence); the ALC warning then asks the operator to act.
+    /// </summary>
+    public const double AutoLowestBelowDb = 20;
+
     /// <summary>Transmit level per band in dBFS ("20m" → -7.5), set by the operator or by automatic level.</summary>
     public Dictionary<string, double> TxGainByBand { get; set; } = [];
 

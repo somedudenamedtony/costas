@@ -29,6 +29,17 @@ it when you report a problem on [GitHub Issues](https://github.com/somedudenamed
 Costas has no radio configured, so it receives nothing and refuses to transmit. Click **Station setup** in the
 banner and go through the [Radio step](setup.md#2-radio-cat-and-ptt).
 
+### The radio was switched off while Costas was open
+
+Many radios (the FT-710, FT-991A, IC-7300 and others) take their USB audio and serial port with them when they are
+switched off. Costas shows **Radio** and **Audio** red, and may say "The audio output stopped (The audio device has been
+disconnected…)". Leave Costas open and switch the radio back on: within about 15 seconds of Windows finding the radio
+again, Costas reopens the audio input and output and reconnects to the radio by itself, and the message goes away.
+This also works when Costas was started with the radio off. Nothing is sent when the radio comes back.
+
+If it does not come back, the radio may now be on a different USB socket or COM port (Windows gives it a new name):
+open **Station setup** and pick the radio's devices again.
+
 ### Test connection says "No serial ports were found"
 
 Windows does not see the radio's USB serial port. Check the USB cable, that the radio is on, and that the radio's USB
@@ -60,7 +71,8 @@ Use [Station setup › Transmit test](setup.md#4-transmit-test) into a dummy loa
 
 ### SWR or ALC warning after a transmission
 
-The bottom bar shows, for example, *SWR 3.4 · ALC 70%*. Hover for advice.
+The meters in the bottom bar (or on an instrument skin's faceplate) show SWR in orange or red, or ALC as *High*. Hover
+for advice.
 
 - **SWR 2 or more**: check the antenna and tuner. At 3 or more, fix it before sending again.
 - **ALC 50% or more**: the audio is overdriving the radio and the signal will be distorted. With automatic
@@ -73,6 +85,13 @@ The bottom bar shows, for example, *SWR 3.4 · ALC 70%*. Hover for advice.
 Automatic level stops 6 dB above the level you typed in Settings. If ALC still reads nothing there, the audio may not
 be reaching the radio: check the audio output device in Station setup, that the radio takes its transmit audio from
 USB in data mode, and the radio's USB audio input level. The app log notes when the level reaches its highest.
+
+### The radio keys but sends no audio (no power out)
+
+Look at **Settings › Transmitting › Audio level**. If it reads -40 dB or close to it, automatic level was walked down by a
+fault in versions before 0.1.0.336 that sometimes read the SWR meter as ALC. Later versions clear such levels when
+they start; you can also type your usual level (for example -6) there and press Save. If the level looks normal, check the
+audio output device in Station setup and that the radio takes its transmit audio from USB in data mode.
 
 ## Receiving
 
@@ -96,8 +115,8 @@ Costas does not know your log yet. Add your QRZ logbook API key in [Settings ›
 
 | Message | Cause and fix |
 | --- | --- |
-| *Your clock is off by 2.4 s. Transmitting is blocked above 2 s.* | Sync the Windows clock. The limit is in Settings › Transmitting › Clock limit |
-| *Stopped by watchdog* | You had not touched the app for 6 minutes. Click Call or Call CQ again |
+| *Your clock is off by 2.4 s. Transmitting is blocked above 2 s.* | Sync the Windows clock. With **Clock correction** on, Costas fixes this itself once a time server answers; if it cannot reach one, or the clock is off by more than a minute, it can't. The limit is in Settings › Transmitting › Clock limit |
+| *Stopped by watchdog* | You had not touched the app for 6 minutes (3 from the phone). Any contact being answered was finished first. Click Call or Call CQ again |
 | *… cannot be sent …* | The message cannot be encoded exactly as shown, for example a callsign or free text FT8 cannot carry. Costas never changes a message silently; shorten or change it |
 | No radio set up | See *Radio not connected* above |
 

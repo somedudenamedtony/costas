@@ -15,11 +15,16 @@ a dot for its call, place, need, report and when it was heard. Your choices are 
 
 | Control | Options |
 | --- | --- |
-| View | **Around me**: centred on you, north up, with distance rings. **World**: a flat world map |
+| View | **Around me**: centred on you, north up, with distance rings. **World**: a globe, see below |
 | Show | **Everyone heard**, **Needed only**, **Calling CQ** |
 | Colour by | **Need** (new country amber, new band or grid blue, new call black, worked grey), **Signal** (strong, fair, weak), **Last heard** (last minute, 1 to 5 minutes, 5 to 15 minutes) |
 | **Who heard you** | Adds a hollow ring for each PSK Reporter receiver that heard you in the last 15 minutes. A station you hear that also hears you shows as a dot inside a ring |
 | **Day and night** | World view only: shades the night side of the earth, so you can see the greyline |
+
+**The globe** (World view, here and in Reach) starts facing your station and spins slowly. Hovering pauses it so
+you can read a dot. Drag it with the mouse to turn it to any part of the world, east and west or up and over towards
+the poles; once you have turned it, it stays where you left it. Double-click it to come back to your station and
+start the spin again.
 
 The legend under the map says in words what each colour means. Labels that would overlap are dropped; hover to see
 them. Without a grid, the map falls back to the World view and asks you to set your grid.
@@ -33,11 +38,14 @@ Press **Reach** in the top bar (++ctrl+3++), or **Open reach view** under *Your 
 - **Band** and **Window** (15 minutes, 1 hour, 24 hours) choose which reports to show. Only reports in the mode you are
   in are shown.
 - **Headline**: heard by how many stations, in how many countries, the farthest and the best report.
+- **World**: switches the plot for the globe, with a ring for each station that reported you. Drag to turn it,
+  double-click to come back to your station (see [the globe](#heard-here) above).
 - **Plot**: you are at the centre, north is up, with rings every 2,000 miles (or 3,000 km). Each dot is a station
   that reported you, at its bearing and distance. Bigger, darker dots are stronger reports: strong (-10 dB or
   better), fair (-11 to -17), weak (-18 or below).
 - **Who heard you**: the reporting stations with where, distance, bearing, dB, age and whether they are in your log.
   Sortable. Double-click a row for that station's details.
+- **By country**: each country that heard you on this band in the selected window, with how many stations, the best report and the farthest distance. Most stations first. Hover over a row for who gave the best report and who was farthest.
 - **By band, last 24 hours**: how many stations heard you on each band, the farthest and the median report.
 - **Compared with stations near you**: is it the band, or your station? PSK Reporter also hears the other stations
   within 300 miles of you. For every receiver that heard both you and one of them in the last 30 minutes, Costas
@@ -63,7 +71,7 @@ Press **Reach** in the top bar (++ctrl+3++), or **Open reach view** under *Your 
 
 Open **Reach** or the **Band** dropdown to see, before you switch, which bands are open from your area right now. For each band it shows how many PSK Reporter spots stations within 300 miles of you got in the last 15 minutes, which continents heard them (darker means more), and countries hearing them that you still need on that band, for example *You need Brazil +2*. Hover over it for the full list.
 
-It needs **Receive live reports of stations hearing my signal** and **Show band activity near me in Reach and the band menu** in [Settings](settings.md). The rows fill in once PSK Reporter has reported your own signal, which tells Costas your country; Costas remembers it, so after that they fill in at start-up. Until then each row says *Needs a spot of you*. If PSK Reporter sends more reports than Costas can keep up with, it follows only the band you are on and the other rows say *Too busy to follow* until you restart Costas.
+It needs **Receive live reports of stations hearing my signal** and **Show band activity near me in Reach and the band menu** in [Settings](settings.md). Costas uses the grid square in **Settings › Station** to follow nearby stations as soon as the feed connects, even before you transmit or your own signal is spotted. Changing that grid clears the old area’s activity and follows the new area. Without a valid grid, each row says *Set your grid in Settings*. In busy evenings PSK Reporter sends more reports than Costas can follow on every band at once. Costas then follows the band you are on and listens to the other bands one at a time, 30 seconds each, scaling what it hears up to 15 minutes. Those rows show an estimate with a tilde, such as *~1,200 spots*, and the tooltip says how long that band was listened to. A row whose turn has not come yet says *Checking soon*; every band has numbers within a few minutes.
 
 Reports appear a few minutes after you transmit. Until then the view says *No reports yet*.
 

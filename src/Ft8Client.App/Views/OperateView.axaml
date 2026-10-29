@@ -5,9 +5,9 @@
              x:Class="Ft8Client.App.Views.OperateView"
              x:DataType="vm:OperateViewModel">
   <Grid x:Name="Root" ColumnDefinitions="*,300" RowDefinitions="*,Auto" Margin="16,0,16,12">
-    <DockPanel Grid.Column="0" Grid.Row="0">
+    <DockPanel x:Name="LeftPane" Grid.Column="0" Grid.Row="0">
     <!-- Calling you: pinned above everything else whenever a station is calling me, so it is never scrolled away. -->
-    <Border DockPanel.Dock="Top" Classes="card" Padding="14,10" Margin="0,0,12,12" IsVisible="{Binding HasWaiting}"
+    <Border x:Name="CallingYou" DockPanel.Dock="Top" Classes="card" Padding="14,10" Margin="0,0,12,12" IsVisible="{Binding HasWaiting}"
             BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2" AutomationProperties.Name="Calling you">
       <StackPanel Spacing="6">
         <TextBlock Text="{Binding WaitingTitle}" Classes="title" />
@@ -30,8 +30,10 @@
         </ItemsControl>
       </StackPanel>
     </Border>
-    <ScrollViewer x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
-      <StackPanel Spacing="12" Margin="0,0,12,0">
+    <!-- Pinned: the contact card (and the band summary when idle) stays put while the call list below scrolls.
+         On a short window it scrolls on its own so the call list keeps room (see OperateView.FitPinned). -->
+    <ScrollViewer x:Name="PinnedScroll" DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="12" Margin="0,0,12,12">
 
         <!-- Top slot: the contact card, always shown. With no contact it is idle: no call, empty reports, the countdown and Call CQ. -->
         <Border Classes="card" Padding="18,12">
@@ -56,7 +58,7 @@
                         <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ReportUnit}" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5" />
                       </StackPanel>
                     </StackPanel>
-                    <StackPanel Grid.Column="2" MinWidth="150" AutomationProperties.LiveSetting="Polite">
+                    <StackPanel x:Name="CardSlot" Grid.Column="2" MinWidth="150" AutomationProperties.LiveSetting="Polite" IsVisible="{DynamicResource StandardSkin}">
                       <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLabel}" Classes="secondary" />
                       <StackPanel Orientation="Horizontal" Spacing="4">
                         <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLeft}" FontSize="24" FontWeight="SemiBold" Classes="num"
@@ -286,7 +288,12 @@
             </Grid>
           </Grid>
         </Border>
+      </StackPanel>
+    </ScrollViewer>
 
+    <!-- The call list: Next in line, Repeats and Watching. Only this part scrolls. -->
+    <ScrollViewer x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="12" Margin="0,0,12,0">
 
         <!-- Next in line -->
         <Border Classes="card">
@@ -490,13 +497,18 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:WatchRowViewModel">
                   <Border BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
-                    <Grid ColumnDefinitions="100,180,160,64,*" MinHeight="34" Margin="14,0">
+                    <Grid ColumnDefinitions="100,180,160,64,*,Auto" MinHeight="34" Margin="14,0">
                       <TextBlock Text="{Binding Call}" Classes="secondary" FontWeight="SemiBold" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="1" Text="{Binding Where}" Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                       <TextBlock Grid.Column="2" Text="{Binding Why}" VerticalAlignment="Center" Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" />
                       <v:SignalSparkline Grid.Column="3" Values="{Binding History}" Width="52" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" Opacity="0.7"
                                          ToolTip.Tip="{Binding HistoryTip}" AutomationProperties.Name="{Binding HistoryTip}" />
-                      <TextBlock Grid.Column="4" Text="{Binding Reason}" Classes="secondary" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="4" Text="{Binding Reason}" Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <!-- Call when free: the station is called in my next slot once its current contact is over. A button like
+                           the Call buttons in Next in line (owner request 2026-10-27), not a link. -->
+                      <Button Grid.Column="5" Content="{Binding CallWhenFreeText}" VerticalAlignment="Center" Margin="8,3,0,3" MinWidth="112" HorizontalContentAlignment="Center"
+                              Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ToggleCallWhenFreeCommand}" CommandParameter="{Binding}"
+                              ToolTip.Tip="{Binding CallWhenFreeTip}" AutomationProperties.Name="{Binding CallWhenFreeTip}" />
                     </Grid>
                   </Border>
                 </DataTemplate>
@@ -562,6 +574,9 @@
                 <TextBlock Text="{Binding SignalSource}" Classes="secondary" FontSize="12" Margin="0,-4,0,0" />
                 <!-- No map here: Heard here's "Who heard you" rings already show these stations on a map. -->
                 <TextBlock Text="{Binding SignalHeadline}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SignalCountries}" TextWrapping="Wrap" Margin="0,-2,0,0"
+                           IsVisible="{Binding SignalCountries, Converter={x:Static v:Converters.NotEmpty}}"
+                           ToolTip.Tip="{Binding SignalCountriesTip}" AutomationProperties.Name="Countries that heard you" />
                 <TextBlock Text="Stations hearing you · every 5 minutes" Classes="secondary" FontSize="12" />
                 <v:ReceptionChart History="{Binding SignalHistory}" Height="100"
                                   AutomationProperties.Name="Distinct stations hearing you in five-minute intervals over the last hour"

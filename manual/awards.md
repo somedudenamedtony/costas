@@ -6,6 +6,8 @@ The Awards view shows how far your log is towards the common awards, and which c
 on when you actually hear each one. Everything comes from your own log and your own decodes; nothing is looked up
 online.
 
+![The Awards view](images/awards.png)
+
 ## Award progress
 
 The **Count** menu at the top picks which contacts count: **All digital** (the default: FT8, FT4, PSK, RTTY and other

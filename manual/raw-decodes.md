@@ -13,13 +13,22 @@ bar or ++ctrl+2++.
 | **Hz** | Audio offset in the passband |
 | **Message** | The message exactly as decoded |
 | **Country** | The sender's country, from the country file |
+| **Distance** | How far away the sender is, in miles or kilometres as set in Settings. Blank until their grid is known |
+| **Why** | What working the sender would add, as in the station list: **New country** (orange), **New band** or **New grid** (blue), **New call**, or **Worked before** |
 
 - The newest slot is at the top, with a blank line between slots.
 - Messages to you are red; CQs are blue.
+- Lines from the station you are in a contact with, and your own transmissions to them, have a tinted background
+  and a blue bar on the left, so you can follow the contact through a busy band.
 - Scroll down to read older lines and the list stays put while new slots arrive; **Jump to live** takes you back to
   the top.
-- Type in **Filter by callsign or text** to show only matching lines.
+- Type in **Filter by callsign, text or country** to show only matching lines.
+- The **Show** menu beside it narrows the list to **CQs**, lines **To or from me** (messages to you and your own
+  transmissions), or **New country, band or grid**. While anything is hidden, the count reads, for example,
+  "5 of 212 lines", and **Clear filters** shows everything again.
 - Double-click a line to call its sender.
+- Right-click a line for **Call** its sender, **Show only** that callsign, or **Copy line** (laid out as WSJT-X
+  prints it, for pasting into a chat or a bug report).
 - In FT8, most lines of a slot appear about 12.5 s into it, before the slot has ended, and the rest shortly after it.
   Costas keeps the decoder running between slots and starts on each slot early, as WSJT-X does. The station list and
   the slot's counts update once the slot is complete.

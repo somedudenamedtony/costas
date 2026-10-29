@@ -43,13 +43,15 @@ public static class TxLevelTuner
 
     /// <summary>
     /// The state for the next transmission after one that read <paramref name="alc"/>. The level never goes above
-    /// <paramref name="maxDb"/> (at most 0 dBFS) or below <see cref="FloorDb"/>. With <paramref name="zeroAlc"/> the
-    /// level aims for no ALC at all (see <see cref="ZeroTarget"/>) instead of the point where it starts to act.
+    /// <paramref name="maxDb"/> (at most 0 dBFS) or below <paramref name="minDb"/> (at least <see cref="FloorDb"/>). With
+    /// <paramref name="zeroAlc"/> the level aims for no ALC at all (see <see cref="ZeroTarget"/>) instead of the point
+    /// where it starts to act.
     /// </summary>
-    public static TxLevelStep Next(TxLevelState state, double alc, double maxDb, bool zeroAlc = false)
+    public static TxLevelStep Next(TxLevelState state, double alc, double maxDb, double minDb = FloorDb, bool zeroAlc = false)
     {
         ArgumentNullException.ThrowIfNull(state);
         maxDb = Math.Min(maxDb, 0);
+        var floor = Math.Max(FloorDb, minDb);
         var g = state.GainDb;
         var high = zeroAlc ? ZeroTarget : High;
         var quiet = zeroAlc ? ZeroTarget : Quiet;
@@ -58,7 +60,7 @@ public static class TxLevelTuner
         {
             var drop = alc >= 0.75 ? 6.0 : alc >= 0.5 ? 3.0 : 1.0;
             var ceiling = Math.Min(state.CeilingDb ?? g, g);
-            return new(new(Round(Math.Max(FloorDb, g - drop)), ceiling, 0), TxLevelChange.Lowered);
+            return new(new(Round(Math.Max(floor, g - drop)), ceiling, 0), TxLevelChange.Lowered);
         }
         if (alc >= quiet) return new(state with { QuietAtCeiling = 0 }, TxLevelChange.Held);
 

@@ -9,4 +9,11 @@
 namespace Ft8Client.Rig;
 
 /// <summary>A rig command failed.</summary>
-public sealed class RigException(string message, Exception? inner = null) : Exception(message, inner);
+public sealed class RigException(string message, Exception? inner = null) : Exception(message, inner)
+{
+    /// <summary>
+    /// True when rigctld answered and the radio refused the command (an RPRT error code). The link is fine, so this is
+    /// not a reason to restart rigctld.
+    /// </summary>
+    public bool Refused { get; init; }
+}

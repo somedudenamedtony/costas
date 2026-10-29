@@ -28,7 +28,7 @@ How contacts are run once you start one. Nothing is sent unless you click Call o
 | Setting | Default | What it does |
 | --- | --- | --- |
 | **Audio level on 20m (dB)** | -6 | Level of the transmit audio sent to the radio on the current band, -40 to 0. Each band remembers its own level |
-| **Adjust automatically from the radio's ALC** | on | After each transmission Costas reads the radio's ALC and nudges the level so ALC barely moves: up 0.5 dB when ALC did not move, down when it moved too much. Only the next transmission changes. It never goes more than 6 dB above a level you type here. Turn it off to keep the level fixed. Needs a radio that reports ALC over CAT, such as the FT-710 or IC-7300 |
+| **Adjust automatically from the radio's ALC** | on | After each transmission Costas reads the radio's ALC and nudges the level so ALC barely moves: up 0.5 dB when ALC did not move, down when it moved too much. Only the next transmission changes. It never goes more than 6 dB above, or 20 dB below, a level you type here. Turn it off to keep the level fixed. Needs a radio that reports ALC over CAT, such as the FT-710 or IC-7300 |
 | **CQ** modifier | empty | Empty for a plain `CQ W7LIT DN40`, or `DX`, `POTA`, `NA`, a number and so on: `CQ DX W7LIT DN40`. The dropdown beside **Call CQ** on the Operate screen changes it too |
 | **Answering a CQ › Send my grid** | on | Your first message is `THEIRCALL W7LIT DN40`. Off: just `THEIRCALL W7LIT` |
 | **Sign-off on my CQ** | RR73 | When you called CQ: **RR73** ends the contact in one message; **RRR** waits for the other station's 73 |
@@ -44,8 +44,9 @@ exchange and the reports are fixed by FT8, so only the parts above can change.
 | --- | --- | --- |
 | **Call CQ in** | even | Even slots start at :00 and :30, odd slots at :15 and :45 |
 | **Give up after** | 4 | Tries without an answer before a contact ends as *No reply* |
-| **Watchdog** | 6 minutes | Transmitting stops if you have not touched the app for this long |
+| **Watchdog** | 6 minutes | Transmitting stops if you have not touched the app for this long. A contact the other station is answering is finished first |
 | **Clock limit** | 2.0 seconds | Transmitting is blocked when the PC clock is off by more than this |
+| **Clock correction** | on | When the PC clock is off, Costas times its slots, transmissions and log entries from internet time instead, checked every 15 minutes. The PC clock itself is not changed. Offsets over a minute are not corrected: set the Windows clock and time zone instead |
 | **Logging** | on | Log each contact automatically when it completes |
 | **Calling you › Chime** | off | A chime on the computer's default speakers when a new station calls you. Never on the radio's audio device |
 
@@ -82,11 +83,17 @@ line*.
   minutes. A station heard working someone else leaves the list straight away whatever this says.
 - **Parks on the Air: Show which park a station is activating (POTA spots)**: on. Costas reads the public spot list
   at pota.app every two minutes while it runs and shows *New park* or *Park* with the reference under **Why**
-  ([Operate](operate.md#next-in-line)). It does not change the order of the list. When you log a contact with a
-  spotted activator, the park goes into the log (see [Log](log.md#what-costas-logs)). If pota.app cannot be reached,
-  the **POTA** indicator says so and Costas tries again less often; nothing else is affected. Off makes no requests.
+  ([Operate](operate.md#next-in-line)). When you log a contact with a spotted activator, the park goes into the log
+  (see [Log](log.md#what-costas-logs)). If pota.app cannot be reached, the **POTA** indicator says so and Costas tries
+  again less often; nothing else is affected. Off makes no requests.
+  - **Rank stations at a park I have not worked higher**: on. A spotted activator at a park that is not in your log
+    comes right after your first need (new countries by default) and ahead of everything else, and it is listed in
+    **Next in line** even when you have worked that call on this band before. A station calling CQ POTA that nobody
+    has spotted is not moved, since Costas cannot tell which park it is at.
 
 ## Hunt list
+
+![Settings: Hunt list](images/settings-hunt-list.png)
 
 What you are looking for, and how you are told. See [Hunt list and alerts](hunt.md).
 
@@ -112,6 +119,8 @@ The key and password are kept in Windows Credential Manager.
 
 ## LoTW
 
+![Settings: LoTW](images/settings-lotw.png)
+
 Logbook of the World confirmations, uploads through TQSL, and the list of LoTW users. See [LoTW](log.md#lotw).
 
 - **Confirmations**: **Download my LoTW confirmations**, your LoTW login (usually your call) and LoTW website
@@ -131,7 +140,7 @@ The password is kept in Windows Credential Manager.
 - **Who hears me › Compare my signal with stations near me**: on. Also receives reports of other stations within
   300 miles on your band, for *Compared with stations near you* in the Reach view. Nothing about them is saved.
 - **Who hears me › Show band activity near me in Reach and the band menu**: on. Receives reports of stations within 300 miles on
-  every band, so Reach and the band menu show which bands are open from your area. Nothing about them is saved.
+  every band, using the current grid square in **Station**, so Reach and the band menu show which bands are open from your area. Changing the grid switches the area. Nothing about these reports is saved.
 - **Share what I hear › Send the stations I decode to PSK Reporter**: off. Helps other operators see where their
   signals reach. Sent every few minutes, never in simulation.
 
@@ -145,9 +154,11 @@ The password is kept in Windows Credential Manager.
 
 ## Mobile connection
 
-- **Let a paired phone on this network operate the station**: off by default. Takes effect at once and shows a
-  **Pair a phone** card with the address and a large one-time code.
-- **Forget paired phones** unpairs them all. **Port**: `8073`, applied when you save.
+![Settings: Mobile connection](images/settings-mobile-connection.png)
+
+- **Let a phone on this network operate the station**: off by default. Takes effect at once and shows the address
+  to open on the phone. There is no code: any phone on your home network can connect.
+- **Port**: `8073`, applied when you save.
 
 See [Operating from a phone](phone.md).
 
@@ -155,7 +166,18 @@ See [Operating from a phone](phone.md).
 
 ![Settings: Appearance](images/settings-appearance.png)
 
-- **Theme**: system (follows the Windows light or dark setting), light or dark.
+- **Skin**: Classic (the original appearance and system accent), Ocean (cool blues), Forest (soft greens), or
+  Amber (warm sand and copper). Four instrument skins also change the faceplate, typography, panel shapes and controls:
+  **Modern Radio** has a recessed digital display and a dial button; **Classic Transceiver** has a gray and black
+  faceplate, lime green seven-segment LCD digits and a black tuning dial; **Vintage Receiver** has warm dial lighting,
+  brass trim, rounded controls and a sweeping slot needle; **SDR Console** has square modules, monospace readouts
+  and a segmented slot strip. Their meters show progress through the current FT8 or FT4 slot; with one of these skins the faceplate is the
+  only slot countdown, so the contact card and bottom bar leave theirs out. The display also carries the radio's
+  power out, ALC and SWR meters (in place of the bottom bar's) once the radio has reported them. Click the large
+  frequency display or **DIAL** button to open the same frequency editor used by Classic.
+  Light and dark swatches preview your choice. Press **Save** to apply it to all desktop windows; it is remembered
+  the next time you start Costas. Transmit and warning colors stay the same.
+- **Theme**: system (follows your device's light or dark setting), light or dark. Each skin supports both.
 - **Distances in**: miles or kilometres.
 
 ## Updates
@@ -163,6 +185,32 @@ See [Operating from a phone](phone.md).
 ![Settings: Updates](images/settings-updates.png)
 
 **Check for a new build once a day** (on) and **Check now**. See [Install › Updates](install.md#updates).
+
+## Privacy
+
+![Settings: Privacy](images/settings-privacy.png)
+
+**Send anonymous usage statistics** (on). Costas sends a few anonymous counts to [Aptabase](https://aptabase.com),
+an open-source analytics service built for privacy, so its developer can see how many people use it and which features
+matter. Untick the box to stop sending them.
+
+What is sent:
+
+- the Costas version and whether it is running on Windows or Linux;
+- the band and mode you are on, and whether your radio is connected through Hamlib, VOX or not at all, with the Hamlib
+  model number (the same number for every owner of that radio);
+- which optional features are switched on (QRZ logbook, LoTW, eQSL, PSK Reporter, POTA spots, other programs, the
+  phone remote) and how many entries your Hunt list has;
+- which views and windows you open, and when you call CQ, call or answer a station, use Tune or a Hunt list alert,
+  and log a contact (band and mode only).
+
+What is never sent: your callsign, grid, name, frequencies, serial ports or network addresses, the stations you hear or
+work, or anything from your log. There is no account and no tracking id; each run of Costas is a separate anonymous
+session.
+
+Nothing is sent while your computer is offline. Counts wait in memory (never on disk) and go out when the network is
+back; anything still waiting when you close Costas is dropped. Statistics are never sent in simulation, and builds you
+make yourself from the source send nothing at all.
 
 ## Advanced
 
@@ -180,6 +228,8 @@ calls), and Station setup lists Hamlib's test radio, *Hamlib Dummy*, which never
 testing Costas, not for operating.
 
 ## eQSL
+
+![Settings: eQSL](images/settings-eqsl.png)
 
 In **Settings › eQSL**, enter your eQSL.cc username and password, and copy the **QTH nickname** for the
 current callsign and location from your eQSL account. Credentials stay in the system credential store when
