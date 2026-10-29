@@ -182,6 +182,16 @@ publishes a GitHub Release when the owner runs the CI workflow on `main` by hand
 | M12 PSK and RTTY transmit and contacts (feature branch) | Modulators read back by our demodulators; watchdog, fault and Halt PTT release; both contact flows; a whole PSK31 contact logged; RTTY power cap; PSK zero-ALC level | Contacts on the air with the owner's radio; LoTW confirmation |
 | M13 Keyboard modes everywhere else (feature branch) | PSK Reporter spots and WSJT-X UDP status (V23, V24 from fldigi and GridTracker source); macro keys in Mini mode and on the phone; Mode filters in Log and Awards; AFC switch; missing macro fields in red | A spot seen on pskreporter.info; a Status seen in GridTracker |
 
+### Test builds
+
+Every CI run builds a Windows installer and keeps it for 90 days as the run's **Costas-Setup** artifact, on any
+branch. Only a manual run on `main` publishes a release, so a test build never reaches installed apps, and only
+release builds carry the usage-statistics key. To try a branch (the PSK and RTTY work on `feature/keyboard-modes`,
+say): Actions > CI > Run workflow, pick the branch, wait for the green tick, open the run and download
+**Costas-Setup** from Artifacts (signed in to GitHub). Unzip it and run `Costas-Setup-<version>.exe`; it installs over
+the current Costas and keeps settings and the log. A test build is numbered from the same run counter, so the next
+release from `main` is newer and the app offers it as usual, which also takes the machine back to `main`.
+
 ### The manual
 
 The user manual is in [`manual/`](manual/), built with MkDocs Material and published to GitHub Pages by
