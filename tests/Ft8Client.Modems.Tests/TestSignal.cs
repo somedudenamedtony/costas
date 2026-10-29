@@ -41,6 +41,38 @@ internal static class TestSignal
         return output;
     }
 
+    /// <summary>
+    /// A CW signal keyed at <paramref name="wpm"/> words a minute in random letters and gaps, with 5 ms edges, peak 0.5.
+    /// </summary>
+    public static float[] Cw(double hz, int seconds, int wpm, int seed)
+    {
+        var rng = new Random(seed);
+        var unit = (int)(1.2 / wpm * Rate);
+        var keyDown = new List<bool>();
+        while (keyDown.Count * unit < Rate * seconds)
+        {
+            for (var k = rng.Next(1, 5); k > 0; k--)
+            {
+                keyDown.AddRange(Enumerable.Repeat(true, rng.Next(2) == 0 ? 3 : 1));
+                keyDown.Add(false);
+            }
+            keyDown.AddRange(Enumerable.Repeat(false, rng.Next(4) == 0 ? 6 : 2));
+        }
+        var output = new float[Rate * seconds];
+        var edge = Rate / 200;
+        for (var i = 0; i < output.Length; i++)
+        {
+            var u = i / unit;
+            if (!keyDown[u]) continue;
+            var pos = i % unit;
+            var a = 1.0;
+            if (u > 0 && !keyDown[u - 1] && pos < edge) a = pos / (double)edge;
+            if (u + 1 < keyDown.Count && !keyDown[u + 1] && unit - pos < edge) a = (unit - pos) / (double)edge;
+            output[i] = (float)(0.5 * a * Math.Sin(Math.Tau * hz * i / Rate));
+        }
+        return output;
+    }
+
     /// <summary>Character error rate: edit distance between the expected and received text, over the expected length.</summary>
     public static double ErrorRate(string expected, string received)
     {

@@ -88,6 +88,13 @@ public sealed class PskDemodulator : IKeyboardReceiver
     private double _charLevel;
     private int _charSymbols;
     private const double WeakCharacter = 0.55;
+    // Symbols of the character being read that had almost no signal. PSK keeps its level at every symbol (a phase
+    // reversal dips between symbols, not at them), so a character read across gaps is an on-off keyed CW signal in the
+    // channel, whose key-up symbols are noise and whose edges read as bits: the stray "e", "n" and "!" CW printed.
+    // A character is dropped when at least two of its symbols, and a sixth of them, are below HoleLevel times the
+    // signal's level; noise on a weak PSK signal rarely takes one symbol that low (tuned on keyed CW against weak PSK).
+    private int _charHoles;
+    private const double HoleLevel = 0.35;
 
     /// <summary>The frequency it is on now (moves with AFC).</summary>
     public double FrequencyHz { get; private set; }
@@ -191,6 +198,7 @@ public sealed class PskDemodulator : IKeyboardReceiver
         if (SquelchOpen) _level += (z.Magnitude - _level) / 32;
         _charLevel += z.Magnitude;
         _charSymbols++;
+        if (z.Magnitude < HoleLevel * _level) _charHoles++;
         if (Quality < DropLevel) _held.Clear();
         // A clean signal (quality near 1) releases its characters at once; noise never gets there.
         while (_held.Count > 0 && (_symbols - _held.Peek().Symbol >= HoldSymbols || Quality >= 0.8)) Emit(_held.Dequeue().Char);
@@ -213,10 +221,12 @@ public sealed class PskDemodulator : IKeyboardReceiver
         }
         if (++_zeros != 2) return;
         var strong = _charLevel >= WeakCharacter * _level * _charSymbols;
-        if (_code > 0 && SquelchOpen && strong && Varicode.TryDecode(_code, out var c)) _held.Enqueue((c, _symbols));
+        var keyed = _charHoles >= 2 && _charHoles * 6 >= _charSymbols;
+        if (_code > 0 && SquelchOpen && strong && !keyed && Varicode.TryDecode(_code, out var c)) _held.Enqueue((c, _symbols));
         _code = 0;
         _charLevel = 0;
         _charSymbols = 0;
+        _charHoles = 0;
     }
 
     private void Emit(char c)

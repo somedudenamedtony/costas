@@ -104,6 +104,20 @@ public class PskDemodulatorTests
     }
 
     [Fact]
+    public void Process_KeyedCwInChannel_AlmostNothingPrinted()
+    {
+        // A CW station keying inside the channel: its key-up symbols are noise and its edges read as bits, which printed
+        // stray letters ("eee!3e"). 24 half-minute runs at 10 to 30 wpm printed 84 characters before the fix, 7 after.
+        var printed = 0;
+        foreach (var wpm in new[] { 10, 20, 30 })
+        foreach (var off in new[] { 0.0, 6 })
+        foreach (var snr in new[] { 20.0, 6 })
+        for (var seed = 1; seed <= 2; seed++)
+            printed += Receive(Mode.Psk31, TestSignal.WithNoise(TestSignal.Cw(1000 + off, 30, wpm, seed), 0.5, snr, seed), 1000).Trim().Length;
+        printed.Should().BeLessThanOrEqualTo(15);
+    }
+
+    [Fact]
     public void Process_NoiseOnly_SquelchPrintsNothing()
     {
         var text = Receive(Mode.Psk31, TestSignal.Noise(TestSignal.Rate * 30, seed: 2), 1000);
