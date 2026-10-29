@@ -29,18 +29,27 @@ public static class Converters
         _ => "TextPrimaryBrush",
     }));
 
+    // A brush, or a colour string such as "#FFD27A" given as a binding source in XAML.
+    private static IBrush? ToBrush(object? v) => v switch
+    {
+        IBrush b => b,
+        string c when Color.TryParse(c, out var color) => new SolidColorBrush(color),
+        _ => null,
+    };
+
     /// <summary>
     /// Meter value text on an instrument faceplate: the skin's value colour, its caution colour, or the critical colour.
-    /// Values: the <see cref="TextKind"/>, then the value and caution brushes.
+    /// Values: the <see cref="TextKind"/>, then the value and caution brushes, and optionally a critical brush for a
+    /// display whose own colour is the critical red (the on-air bar).
     /// </summary>
     public static readonly IMultiValueConverter FaceKindBrush = new FuncMultiValueConverter<object?, IBrush?>(v =>
     {
         var a = v.ToArray();
         return (a.ElementAtOrDefault(0) as TextKind?) switch
         {
-            TextKind.Critical => Brush("CriticalBrush"),
-            TextKind.Caution => a.ElementAtOrDefault(2) as IBrush,
-            _ => a.ElementAtOrDefault(1) as IBrush,
+            TextKind.Critical => ToBrush(a.ElementAtOrDefault(3)) ?? Brush("CriticalBrush"),
+            TextKind.Caution => ToBrush(a.ElementAtOrDefault(2)),
+            _ => ToBrush(a.ElementAtOrDefault(1)),
         };
     });
 

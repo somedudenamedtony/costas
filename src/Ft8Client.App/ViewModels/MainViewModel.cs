@@ -256,13 +256,17 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial bool HasMeters { get; set; }
 
-    /// <summary>"TX" while the readings are live, "Last TX" while they hold after the transmission.</summary>
+    /// <summary>ALC or SWR warning from the last transmission ("SWR 3.4 · ALC 70%"), or empty.</summary>
     [ObservableProperty]
-    public partial string MeterCaption { get; set; } = string.Empty;
+    public partial string MeterText { get; set; } = string.Empty;
 
-    /// <summary>True while the meters are live, for the caption's colour.</summary>
+    /// <summary>The full ALC or SWR advice for <see cref="MeterText"/>.</summary>
     [ObservableProperty]
-    public partial bool MetersLive { get; set; }
+    public partial string MeterWarningTip { get; set; } = string.Empty;
+
+    /// <summary>Colour of the meter warning.</summary>
+    [ObservableProperty]
+    public partial TextKind MeterKind { get; set; }
 
     /// <summary>What the strip shows and, after a transmission outside limits, what to do about it.</summary>
     [ObservableProperty]
@@ -438,6 +442,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             (StatusText, StatusKind) = (statusText, statusKind);
             _applyingStatus = false;
         }
+        (MeterText, MeterWarningTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
         ApplyMeters(TxMeterText.Strip(s.TxMetersLive, s.TxMeters, _host.RadioPower.Power?.MaxWatts));
         Indicators.Clear();
         Indicators.Add(Indicator("Radio", s, ServiceNames.Radio));
@@ -821,8 +826,6 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         HasMeters = m is not null;
         if (m is null) return;
-        MetersLive = m.Live;
-        MeterCaption = m.Caption;
         MeterTip = m.Tip;
         HasPowerOut = m.Watts is not null;
         PowerOutText = m.Watts ?? string.Empty;
