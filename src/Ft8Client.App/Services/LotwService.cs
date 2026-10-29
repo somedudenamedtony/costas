@@ -134,7 +134,7 @@ public sealed class LotwService : IDisposable
                 .ToList();
             var (matched, added) = records.Count == 0 ? (0, 0) : _qsos.ApplyLotwConfirmations(records);
             if (DateTime.TryParse(report.LastQsl, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var lastQsl))
-                _sync.Set(ProfileId, SyncTarget, lastQsl, null);
+                _sync.Set(ProfileId, SyncTarget, lastQsl.AddSeconds(1), null); // qso_qslsince is inclusive: the last one came back every time
             LastDownloadUtc = _clock.UtcNow;
             var text = records.Count == 0 ? "No new LoTW confirmations" : $"{records.Count} new LoTW confirmations";
             _session.SetService(ServiceNames.Lotw, new ServiceStatus(ServiceHealth.Ok, text, _clock.UtcNow));

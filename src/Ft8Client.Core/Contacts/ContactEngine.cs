@@ -48,6 +48,7 @@ public sealed class ContactEngine
     private Stopped? _stopped;
     private string? _extraMessage;
     private SlotParity _extraParity;
+    private bool _lastBeforeWatchdog;
 
     /// <summary>Creates the engine.</summary>
     public ContactEngine(string myCall, string myGrid, ContactSettings settings, DateTime nowUtc)
@@ -115,10 +116,14 @@ public sealed class ContactEngine
         _settings = settings;
     }
 
+    /// <summary>True once the Tx watchdog time has passed with no operator input.</summary>
+    public bool WatchdogExpired(DateTime nowUtc) => nowUtc - _lastInputUtc >= TimeSpan.FromMinutes(_settings.WatchdogMinutes);
+
     /// <summary>Records operator input (key or click) for the watchdog.</summary>
     public void OperatorActivity(DateTime nowUtc)
     {
         _lastInputUtc = nowUtc;
+        _lastBeforeWatchdog = false;
         StopReason = null;
     }
 
@@ -127,12 +132,13 @@ public sealed class ContactEngine
     /// <paramref name="busyWith"/> names another station it is working right now, nothing is sent: the contact ends at
     /// once as <see cref="ContactOutcome.AnsweredOther"/> so the operator sees why. With <paramref name="fox"/> the
     /// station runs Fox/Hound: it is called as a Hound (<see cref="ContactFlow.Hound"/>), and since a Fox is always working
-    /// someone, <paramref name="busyWith"/> is ignored.
+    /// someone, <paramref name="busyWith"/> is ignored. A call Costas starts itself (<paramref name="byOperator"/> false,
+    /// "call when free") does not count as operator input for the watchdog.
     /// </summary>
     public void CallStation(string call, string? grid, int snr, SlotParity dxParity, int dxOffsetHz, DateTime nowUtc, string? busyWith = null,
-                            bool fox = false)
+                            bool fox = false, bool byOperator = true)
     {
-        OperatorActivity(nowUtc);
+        if (byOperator) OperatorActivity(nowUtc);
         call = Callsign.Normalize(call);
         _finished = null;
         _extraMessage = null;
@@ -149,12 +155,22 @@ public sealed class ContactEngine
         }
     }
 
-    /// <summary>Starts calling CQ in slots of the given parity.</summary>
+    /// <summary>
+    /// Starts calling CQ in slots of the given parity. The contact that just ended leaves the top slot at once. A contact
+    /// kept after Esc (<see cref="Hold"/>) is set aside: it leaves the top slot too, but its sign-off is still logged if
+    /// it arrives while it could be resumed (nothing is sent for it).
+    /// </summary>
     public void CallCq(SlotParity parity, DateTime nowUtc)
     {
         OperatorActivity(nowUtc);
         _cqRunning = true;
         _cqParity = parity;
+        if (_c is { Held: true })
+        {
+            End(ContactOutcome.Abandoned, nowUtc, resume: false);
+            _stopped = _stopped! with { ListenForSignoff = true };
+        }
+        if (_c is null) _finished = null;
     }
 
     /// <summary>Stops calling CQ. A contact in progress continues.</summary>
@@ -191,6 +207,7 @@ public sealed class ContactEngine
         OperatorActivity(nowUtc);
         if (_c is not null)
         {
+            _c.Held = false;
             _c.AwaitingReply = false;
             if (_c.StepTxCount > 0) _c.StepTxCount--; // an operator resend is not counted against the retry limit
         }
@@ -226,12 +243,29 @@ public sealed class ContactEngine
     /// <summary>Halt Tx: stops transmitting and sequencing (same as abandon).</summary>
     public void Halt(DateTime nowUtc) => Abandon(nowUtc);
 
+    /// <summary>True while the contact is kept but nothing is sent (see <see cref="Hold"/>).</summary>
+    public bool Holding => _c?.Held == true;
+
+    /// <summary>
+    /// Stops transmitting but keeps the contact (the operator's first Esc): the DX station's replies are still read, so
+    /// a sign-off that completes the contact is logged and ends it with nothing more sent. Resend or a step jump carries
+    /// on transmitting; <see cref="Abandon"/> ends it.
+    /// </summary>
+    public void Hold(DateTime nowUtc)
+    {
+        OperatorActivity(nowUtc);
+        _cqRunning = false;
+        _extraMessage = null;
+        if (_c is not null) _c.Held = true;
+    }
+
     /// <summary>Manual override: jump the sequence to one of my upcoming steps.</summary>
     public bool JumpTo(int stepIndex, DateTime nowUtc)
     {
         OperatorActivity(nowUtc);
         if (_c is null || stepIndex < 0 || stepIndex >= _c.Steps.Count || !_c.Steps[stepIndex].Mine || stepIndex <= _c.Phase) return false;
         if (stepIndex == 0) return false;
+        _c.Held = false;
         for (var i = _c.Phase; i < stepIndex; i++) _c.Steps[i] = _c.Steps[i] with { State = StepState.Done };
         SetPhase(_c, stepIndex);
         return true;
@@ -264,6 +298,8 @@ public sealed class ContactEngine
                 Advance(_c, m, slotStartUtc, nowUtc, h);
                 if (_c is null) break;
             }
+            // Held: nothing more goes out, so a contact the DX's sign-off has just logged is finished.
+            if (_c is { Held: true, Logged: true }) End(ContactOutcome.Logged, nowUtc, resume: false);
         }
         else
         {
@@ -284,7 +320,8 @@ public sealed class ContactEngine
             var first = toMe.FirstOrDefault(x => x.M.Kind is MessageKind.GridReply or MessageKind.Report);
             if (first.M is not null)
             {
-                AddWaiting(first.H, first.M, parity, slotStartUtc);
+                // Past the cap too: a caller to my CQ is answered even when the waiting list is full.
+                AddWaiting(first.H, first.M, parity, slotStartUtc, ignoreCap: true);
                 var w = _waiting.First(x => Callsign.EqualsCall(x.Call, first.M.SenderCall));
                 StartFromCaller(w);
             }
@@ -297,6 +334,11 @@ public sealed class ContactEngine
             if (_lastLogged is { } l && Callsign.EqualsCall(m.SenderCall, l.DxCall) && nowUtc - l.LoggedUtc < LateWindow) continue;
             if (_stopped is { } s && Callsign.EqualsCall(m.SenderCall, s.Contact.DxCall))
             {
+                if (s.ListenForSignoff && _settings.AutoLog && CompletesHeld(s.Contact, m))
+                {
+                    LogSetAside(s.Contact, m, slotStartUtc, nowUtc);
+                    continue;
+                }
                 s.Late.Add((m, slotStartUtc, h));
                 AddWaiting(h, m, parity, slotStartUtc, afterStop: true);
                 continue;
@@ -316,7 +358,16 @@ public sealed class ContactEngine
         var wantsTx = _c is not null || _cqRunning || _extraMessage is not null;
         if (!wantsTx) return null;
 
-        if (nowUtc - _lastInputUtc >= TimeSpan.FromMinutes(_settings.WatchdogMinutes))
+        var watchdogExpired = WatchdogExpired(nowUtc);
+        if (watchdogExpired && (_c is not null ? Answered(_c) : _lastBeforeWatchdog))
+        {
+            // Owner decision 2026-10-20: a contact the other station is answering runs to its end (still bounded by
+            // the retry limit), including a free text queued after it, so the watchdog never cuts it off halfway.
+            // Nothing new starts after it.
+            _cqRunning = false;
+            _lastBeforeWatchdog = true;
+        }
+        else if (watchdogExpired)
         {
             _cqRunning = false;
             _extraMessage = null;
@@ -327,6 +378,7 @@ public sealed class ContactEngine
 
         if (_c is not null)
         {
+            if (_c.Held) return null;
             if (parity != _c.MyParity) return null;
             if (_c.Phase >= _c.Steps.Count || !_c.Steps[_c.Phase].Mine) return null;
             if (_c.Flow == ContactFlow.Hound) return PlanHound(_c, slotStartUtc, mode, nowUtc);
@@ -390,6 +442,21 @@ public sealed class ContactEngine
 
     /// <summary>Clears the ended contact from the top slot (one slot after it ended).</summary>
     public void ClearFinished() => _finished = null;
+
+    // The DX station's sign-off that would have logged a held contact (see Advance and AdvanceHound).
+    private static bool CompletesHeld(Contact c, ParsedMessage m) => c.Phase == 2 && (c.Flow == ContactFlow.Hound
+        ? m.Kind == MessageKind.RogerBye
+        : c.Flow != ContactFlow.CalledCq && m.Kind is MessageKind.RogerBye or MessageKind.Roger or MessageKind.Bye);
+
+    // Logs a held contact that calling CQ set aside, without showing it in the top slot again or sending anything.
+    private void LogSetAside(Contact c, ParsedMessage m, DateTime slotUtc, DateTime nowUtc)
+    {
+        MarkReceived(c, 3, m.Text, slotUtc);
+        c.Outcome = ContactOutcome.Logged;
+        DoLog(c, nowUtc);
+        ForgetStopped();
+        RemoveWaiting(c.DxCall);
+    }
 
     private static bool IsFinalCourtesy(Contact c, int phase) => c.Flow != ContactFlow.CalledCq && phase == 4;
 
@@ -607,6 +674,7 @@ public sealed class ContactEngine
         c.Outcome = ContactOutcome.InProgress;
         c.StepTxCount = 0;
         c.AwaitingReply = false;
+        _extraMessage = null; // a free text or extra 73 queued meanwhile belonged to another station
         _c = c;
         foreach (var (m, slot, heard) in s.Late)
         {
@@ -642,6 +710,11 @@ public sealed class ContactEngine
         }
         _finished = _c;
         _c = null;
+        if (_lastBeforeWatchdog)
+        {
+            resume = false;
+            StopReason = "Stopped by watchdog";
+        }
         if (!resume) return;
         var next = _waiting.FirstOrDefault(w => w.AnswerAfter);
         if (next is not null) Begin(next, nowUtc);
@@ -664,6 +737,9 @@ public sealed class ContactEngine
         c.AwaitingReply = false;
     }
 
+    // True once the other station has sent me something in this contact.
+    private static bool Answered(Contact c) => c.Steps.Exists(s => !s.Mine && s.State == StepState.Done);
+
     private static void MarkReceived(Contact c, int index, string text, DateTime utc) =>
         c.Steps[index] = c.Steps[index] with { Message = text, State = StepState.Done, Count = c.Steps[index].Count + 1, TimeUtc = utc };
 
@@ -671,7 +747,7 @@ public sealed class ContactEngine
         c.Steps[index] = c.Steps[index] with { Count = c.Steps[index].Count + 1, TimeUtc = utc };
 
     // A station replying after I stopped its contact is always kept, whatever it sent, so the operator sees it.
-    private void AddWaiting(HeardMessage h, ParsedMessage m, SlotParity parity, DateTime slotUtc, bool afterStop = false)
+    private void AddWaiting(HeardMessage h, ParsedMessage m, SlotParity parity, DateTime slotUtc, bool afterStop = false, bool ignoreCap = false)
     {
         var call = m.SenderCall!;
         var i = _waiting.FindIndex(x => Callsign.EqualsCall(x.Call, call));
@@ -687,7 +763,7 @@ public sealed class ContactEngine
             };
             return;
         }
-        if (!afterStop && _waiting.Count >= MaxWaiting) return;
+        if (!afterStop && !ignoreCap && _waiting.Count >= MaxWaiting) return;
         if (!afterStop && m.Kind is not (MessageKind.GridReply or MessageKind.Report or MessageKind.RogerReport or MessageKind.Bare)) return;
         _waiting.Add(new WaitingCaller(call, m.Grid, h.Decode.Snr, m.Kind == MessageKind.RogerReport ? MessageKind.Report : m.Kind,
             m.Report, parity, h.Decode.OffsetHz, slotUtc, slotUtc, AfterStop: afterStop, LastMessage: m.Text));
@@ -754,6 +830,7 @@ public sealed class ContactEngine
         var sentAny = c.Steps.Any(s => s.Mine && s.Count > 0 && s.Message.Contains(Report.Format(c.ReportSent), StringComparison.Ordinal));
         var status = c.Outcome switch
         {
+            ContactOutcome.InProgress when c.Held => $"Transmitting stopped. Still listening to {c.DxCall}; Ctrl+R carries on, Esc abandons.",
             ContactOutcome.InProgress when c.AwaitingReply => $"Waiting for {c.DxCall}.",
             ContactOutcome.InProgress => $"Transmitting to {c.DxCall}.",
             ContactOutcome.Logged => $"Logged {c.DxCall}.",
@@ -766,7 +843,7 @@ public sealed class ContactEngine
             _ => $"Stopped calling {c.DxCall}.",
         };
         return new ContactView(c.DxCall, c.DxGrid, c.Flow, c.Outcome, sentAny ? c.ReportSent : null, c.ReportReceived, steps, c.Logged,
-            !c.Logged && sentAny && c.ReportReceived is not null, status) { MyParity = c.MyParity };
+            !c.Logged && sentAny && c.ReportReceived is not null, status) { MyParity = c.MyParity, Held = c.Held && c.Outcome == ContactOutcome.InProgress };
     }
 
     private sealed class Contact(ContactFlow flow, string dxCall, string? dxGrid, SlotParity myParity, int reportSent, int dxOffset)
@@ -803,6 +880,8 @@ public sealed class ContactEngine
 
         public bool Logged { get; set; }
 
+        public bool Held { get; set; }
+
         public DateTime? LoggedUtc { get; set; }
 
         public ContactOutcome Outcome { get; set; } = ContactOutcome.InProgress;
@@ -814,7 +893,9 @@ public sealed class ContactEngine
 
     private sealed record Finished(string DxCall, ContactFlow Flow, SlotParity MyParity, DateTime LoggedUtc, Contact Contact);
 
-    private sealed record Stopped(Contact Contact, DateTime EndedUtc, List<(ParsedMessage Message, DateTime SlotUtc, HeardMessage Heard)> Late);
+    // ListenForSignoff: a held contact set aside by calling CQ, logged if the DX station's sign-off arrives.
+    private sealed record Stopped(Contact Contact, DateTime EndedUtc, List<(ParsedMessage Message, DateTime SlotUtc, HeardMessage Heard)> Late,
+                                  bool ListenForSignoff = false);
 
     private string Format(Finished f, int index) => Format(f.Contact, index);
 }

@@ -9,6 +9,8 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Security.Cryptography;
+using Ft8Client.App.Engine;
+using Ft8Client.App.Services;
 using Ft8Client.Core;
 using Ft8Client.Core.Remote;
 using Ft8Client.Core.Time;
@@ -16,7 +18,7 @@ using Ft8Client.Core.Time;
 namespace Ft8Client.App.Remote;
 
 /// <summary>
-/// The rules of remote operation, without the network: pairing, sign-in, who has control, the commands, and the link-loss
+/// The rules of remote operation, without the network: sign-in, who has control, the commands, and the link-loss
 /// stop. A phone takes control with any command; operator input at the desk takes it back. While a phone has control the
 /// Tx watchdog is capped at <see cref="ControlLease.WatchdogCapMinutes"/> minutes, and when it goes silent for
 /// <see cref="ControlLease.LinkTimeout"/> transmit is halted.
@@ -27,6 +29,7 @@ public sealed class RemoteControl
     private readonly IClock _clock;
     private readonly Action<string> _saveTokens;
     private readonly IRemoteTuning? _tuning;
+    private readonly RadioPowerService? _power;
     private readonly ConcurrentDictionary<string, string> _viewing = new(StringComparer.Ordinal);
     private readonly object _gate = new();
 
@@ -41,20 +44,20 @@ public sealed class RemoteControl
     /// <param name="clock">Clock.</param>
     /// <param name="tokens">The paired phones.</param>
     /// <param name="saveTokens">Saves the paired phones (to the OS credential store).</param>
-    /// <param name="pairing">The pairing code.</param>
     /// <param name="tuning">Band and Tx offset changes; without it the phone cannot change them.</param>
-    public RemoteControl(IRemoteTarget target, IClock clock, DeviceTokens tokens, Action<string> saveTokens, PairingGate? pairing = null,
-                         IRemoteTuning? tuning = null)
+    /// <param name="power">The radio's power setting; without it the phone cannot change it.</param>
+    public RemoteControl(IRemoteTarget target, IClock clock, DeviceTokens tokens, Action<string> saveTokens,
+                         IRemoteTuning? tuning = null, RadioPowerService? power = null)
     {
         _target = target;
         _tuning = tuning;
+        _power = power;
         _clock = clock;
         Tokens = tokens;
         _saveTokens = saveTokens;
-        Pairing = pairing ?? new PairingGate();
     }
 
-    /// <summary>Raised when control changes hands, a phone is paired or the paired phones are forgotten.</summary>
+    /// <summary>Raised when control changes hands or a phone connects for the first time.</summary>
     public event Action? Changed;
 
     /// <summary>Who has control.</summary>
@@ -63,9 +66,6 @@ public sealed class RemoteControl
     /// <summary>The paired phones.</summary>
     public DeviceTokens Tokens { get; }
 
-    /// <summary>The pairing code.</summary>
-    public PairingGate Pairing { get; }
-
     /// <summary>A stable id for the phone holding <paramref name="token"/>, or null when the token is not paired.</summary>
     public string? SignIn(string? token)
     {
@@ -73,24 +73,24 @@ public sealed class RemoteControl
         return Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token!)))[..16];
     }
 
-    /// <summary>Pairs a phone with the code shown in Settings. Returns its token, or null for a wrong or expired code.</summary>
-    public string? Pair(string? code)
+    /// <summary>
+    /// Gives a phone its token the first time it opens the page. There is no code to type (owner decision, 2026-10-25):
+    /// the server only answers addresses on the home network, and the token just identifies the phone.
+    /// </summary>
+    public string Pair()
     {
-        if (!Pairing.TryRedeem(code, _clock.UtcNow)) return null;
         var token = Tokens.Issue();
-        _saveTokens(Tokens.Serialize());
+        try
+        {
+            _saveTokens(Tokens.Serialize());
+        }
+        catch (Exception ex)
+        {
+            // The phone is paired until Costas restarts; it will have to pair again after that.
+            Serilog.Log.Warning(ex, "Could not save the paired phones");
+        }
         Changed?.Invoke();
         return token;
-    }
-
-    /// <summary>Forgets every paired phone and hands control back to the desk.</summary>
-    public void ForgetPhones()
-    {
-        Tokens.Clear();
-        _saveTokens(string.Empty);
-        _viewing.Clear();
-        DeskActivity();
-        Changed?.Invoke();
     }
 
     /// <summary>"you", "desk" or "other": who has control, as seen by <paramref name="deviceId"/>.</summary>
@@ -134,6 +134,9 @@ public sealed class RemoteControl
             else _viewing[deviceId] = shown;
             return null;
         }
+        var call = cmd.Call?.Trim().ToUpperInvariant() ?? string.Empty;
+        // A message the station cannot act on changes nothing: it must not take control or reset the Tx watchdog.
+        if (!Understood(cmd, call)) return "The station did not understand that.";
         bool changed;
         lock (_gate)
         {
@@ -142,7 +145,6 @@ public sealed class RemoteControl
         }
         _target.SetWatchdogCap(ControlLease.WatchdogCapMinutes);
         if (changed) Changed?.Invoke();
-        var call = cmd.Call?.Trim().ToUpperInvariant() ?? string.Empty;
         switch (cmd.Type)
         {
             case "halt":
@@ -188,10 +190,24 @@ public sealed class RemoteControl
                 if (_tuning is null) return "The station cannot change that from the phone.";
                 _tuning.SetTxOffset(null);
                 return null;
+            case "power" when cmd.Watts is { } watts:
+                // Only the setting changes, never PTT; refused while transmitting, like a band change.
+                return _power is null ? "The station cannot change that from the phone." : await _power.SetAsync(watts).ConfigureAwait(false);
             default:
                 return "The station did not understand that.";
         }
     }
+
+    private static bool Understood(RemoteCommand cmd, string call) => cmd.Type switch
+    {
+        "halt" or "abandon" or "cq" or "resend" or "logNow" or "band" or "offsetAuto" => true,
+        "call" or "answer" or "answerAfter" => call.Length > 0,
+        "jump" => cmd.Step is not null,
+        "offset" => cmd.Hz is not null,
+        "power" => cmd.Watts is not null,
+        "macro" => cmd.Key is not null,
+        _ => false,
+    };
 
     // As the band menu on the desk: not while transmitting, and only to a band in the frequency table.
     private async Task<string?> BandAsync(RemoteCommand cmd)
@@ -216,6 +232,9 @@ public sealed class RemoteControl
         await _tuning.SetBandAsync(band, mode).ConfigureAwait(false);
         return null;
     }
+
+    /// <summary>The radio's power as the phone shows it, or null when the radio does not report it.</summary>
+    public RemotePower? PowerFor() => _power?.Power is { } p ? new RemotePower(p.Watts, p.MaxWatts, _power.CanChange) : null;
 
     /// <summary>
     /// Checks the link of the phone in control. When it has been silent too long, control returns to the desk and transmit

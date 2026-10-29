@@ -89,6 +89,9 @@ public sealed class OperatingSettings
     /// <summary>The PSK and RTTY macros, F1 up. Empty means the defaults.</summary>
     public List<MacroOptions> Macros { get; set; } = [];
 
+    /// <summary>Correct Costas's own clock from internet time when the PC clock is off (the PC clock is never changed).</summary>
+    public bool CorrectClock { get; set; } = true;
+
     /// <summary>Clock offset above which transmit is blocked, in seconds.</summary>
     public double ClockBlockSeconds { get; set; } = 2.0;
 }

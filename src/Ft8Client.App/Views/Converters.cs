@@ -29,13 +29,29 @@ public static class Converters
         _ => "TextPrimaryBrush",
     }));
 
+    /// <summary>
+    /// Meter value text on an instrument faceplate: the skin's value colour, its caution colour, or the critical colour.
+    /// Values: the <see cref="TextKind"/>, then the value and caution brushes.
+    /// </summary>
+    public static readonly IMultiValueConverter FaceKindBrush = new FuncMultiValueConverter<object?, IBrush?>(v =>
+    {
+        var a = v.ToArray();
+        return (a.ElementAtOrDefault(0) as TextKind?) switch
+        {
+            TextKind.Critical => Brush("CriticalBrush"),
+            TextKind.Caution => a.ElementAtOrDefault(2) as IBrush,
+            _ => a.ElementAtOrDefault(1) as IBrush,
+        };
+    });
+
     /// <summary>Raw decodes line text: another program's highlight colour, or the line's own colour.</summary>
     public static readonly IValueConverter RawForeground = new FuncValueConverter<RawLineViewModel, IBrush?>(l =>
         l?.Foreground is { } c ? new SolidColorBrush(Color.FromArgb(c.A, c.R, c.G, c.B)) : KindBrush.Convert(l?.Kind ?? TextKind.Normal, typeof(IBrush), null, CultureInfo.InvariantCulture) as IBrush);
 
-    /// <summary>Raw decodes line background: another program's highlight colour, or none.</summary>
+    /// <summary>Raw decodes line background: another program's highlight colour, the in-contact tint, or none.</summary>
     public static readonly IValueConverter RawBackground = new FuncValueConverter<RawLineViewModel, IBrush?>(l =>
-        l?.Background is { } c ? new SolidColorBrush(Color.FromArgb(c.A, c.R, c.G, c.B)) : Brushes.Transparent);
+        l?.Background is { } c ? new SolidColorBrush(Color.FromArgb(c.A, c.R, c.G, c.B))
+        : l is { IsPartner: true } ? Brush("SelectedRowBrush") : Brushes.Transparent);
 
     /// <summary>Legend dot fill: the kind's colour, or none for a ring.</summary>
     public static readonly IValueConverter LegendFill = new FuncValueConverter<LegendItem, IBrush?>(l => l is null || l.Ring ? null : Brush(StationMap.DotBrushKey(l.Kind)));
@@ -150,10 +166,7 @@ public static class Converters
     public static readonly IValueConverter NotEmpty = new FuncValueConverter<string?, bool>(s => !string.IsNullOrEmpty(s));
 
     /// <summary>Caution brush when true, else the default foreground.</summary>
-    public static readonly IValueConverter CautionWhen = new FuncValueConverter<bool, IBrush?>(b => b ? Brush("CautionBrush") : null);
-
-    /// <summary>Transmitting colours the Halt button.</summary>
-    public static readonly IValueConverter CriticalWhen = new FuncValueConverter<bool, IBrush?>(b => b ? Brush("CriticalBrush") : null);
+    public static readonly IValueConverter CautionWhen = new FuncValueConverter<bool, object?>(b => b ? Brush("CautionBrush") : AvaloniaProperty.UnsetValue);
 
     /// <summary>Critical text while transmitting, primary otherwise.</summary>
     public static readonly IValueConverter TransmittingText = new FuncValueConverter<bool, IBrush?>(b => Brush(b ? "CriticalBrush" : "TextPrimaryBrush"));
@@ -163,7 +176,7 @@ public static class Converters
 
     /// <summary>Band menu continent chip shade (0 to 3) to its fill: none, then the accent colour at rising strength.</summary>
     public static readonly IValueConverter ShadeBackground = new FuncValueConverter<int, IBrush?>(l =>
-        l <= 0 || Brush("AccentBrush") is not ISolidColorBrush a ? Brushes.Transparent : new SolidColorBrush(a.Color, l switch { 1 => 0.3, 2 => 0.65, _ => 1.0 }));
+        l <= 0 ? Brushes.Transparent : ThemeBrush.Get("AccentBrush", l switch { 1 => 0.3, 2 => 0.65, _ => 1.0 }));
 
     /// <summary>Band menu continent chip shade to its outline: the control border when there are no spots.</summary>
     public static readonly IValueConverter ShadeBorder = new FuncValueConverter<int, IBrush?>(l => l <= 0 ? Brush("ControlBorderBrush") : Brushes.Transparent);
@@ -177,12 +190,7 @@ public static class Converters
     });
 
     /// <summary>A theme brush by key, for the current theme variant; null when there is none.</summary>
-    internal static IBrush? Brush(string key)
-    {
-        var app = Application.Current;
-        if (app is null) return null;
-        return app.TryGetResource(key, app.ActualThemeVariant, out var v) ? v as IBrush : null;
-    }
+    internal static IBrush? Brush(string key) => ThemeBrush.Get(key);
 
     private sealed class IntEqualsConverter : IValueConverter
     {

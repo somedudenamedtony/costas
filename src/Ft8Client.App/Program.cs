@@ -7,7 +7,9 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Avalonia;
+using Ft8Client.App.Services;
 using Serilog;
+using Velopack;
 
 namespace Ft8Client.App;
 
@@ -16,11 +18,17 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        // First, before anything else: Velopack's installer and updater start the app with their own arguments to run
+        // install and update steps, and this handles those and exits. Otherwise it returns at once.
+        VelopackApp.Build().Run();
         var cmd = CommandLine.Parse(args);
         try
         {
             App.Host = AppHost.StartAsync(cmd).GetAwaiter().GetResult();
-            return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            var code = BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            // The app has shut down (radio, jt9 and log closed), so an update that installs elsewhere can start Costas again.
+            if (UpdateService.RunAfterExit is { } next) System.Diagnostics.Process.Start(next)?.Dispose();
+            return code;
         }
         catch (Exception ex)
         {

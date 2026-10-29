@@ -25,6 +25,9 @@ jobs:
           echo "COSTAS_AUDIO_LOOPBACK=ALSA:pulse" >> "$GITHUB_ENV"
       - run: scripts/ci.sh
       - name: Build the Linux package
+        env:
+          # Only release builds carry the Aptabase app key (not a secret: it ships inside the app), so test and pull-request builds never send usage statistics.
+          APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && 'A-US-6947074211' || '' }}
         run: scripts/build-linux.sh ${{ github.run_number }}
       - uses: actions/upload-artifact@v4
         with:
@@ -56,12 +59,18 @@ jobs:
           path: third_party/.download
           key: third-party-${{ hashFiles('third_party/fetch.ps1') }}
       - name: Build installer
+        env:
+          # Only release builds carry the Aptabase app key (not a secret: it ships inside the app), so test and pull-request builds never send usage statistics.
+          APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && 'A-US-6947074211' || '' }}
+          # Release runs download the latest release's Velopack package so this one carries a delta from it.
+          VELOPACK_PREVIOUS: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && '1' || '' }}
         run: ./scripts/build-installer.ps1 -BuildNumber ${{ github.run_number }}
         shell: pwsh
       - name: Check jt9 stays running (shared memory)
         shell: pwsh
         run: |
-          $out = dotnet run -c Release --project tools/Ft8Client.DecodeCli -- --keep-running --call W7LIT --grid DN40 samples/ft8/260101_000000.wav samples/ft8/260101_000015.wav | Out-String
+          # The staged jt9 (only the DLLs the installer ships), so a DLL it needs for shared memory cannot be missing.
+          $out = dotnet run -c Release --project tools/Ft8Client.DecodeCli -- --jt9 artifacts/stage/third_party/wsjtx/bin/jt9.exe --keep-running --call W7LIT --grid DN40 samples/ft8/260101_000000.wav samples/ft8/260101_000015.wav | Out-String
           Write-Host $out
           if ($out -notmatch 'stays running' -or $out -notmatch '<PJ4/K1ABC> W7LIT DN40') { throw 'jt9 did not resolve the hashed call through shared memory' }
           dotnet test tests/Ft8Client.Decoding.Tests -c Release --filter "FullyQualifiedName~Jt9PersistentDecoderTests"
@@ -74,10 +83,15 @@ jobs:
           name: Costas-Setup
           path: artifacts/Costas-Setup-*.exe
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Costas-Velopack
+          path: artifacts/velopack/
+          if-no-files-found: error
   release:
     # Releases are cut on demand: a manual run of this workflow on main publishes its green build as a GitHub Release,
     # and the app's update check offers the newest one. Ordinary pushes and merges only build and test. The release
-    # stays in this workflow so its version (<Version>.<run number>) keeps counting up from earlier releases.
+    # stays in this workflow so its version (<major>.<minor>.<run number>) keeps counting up from earlier releases.
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     needs: [linux, windows, installer]
     runs-on: ubuntu-24.04
@@ -92,6 +106,10 @@ jobs:
         with:
           name: Costas-linux
           path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: Costas-Velopack
+          path: velopack
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -102,5 +120,7 @@ jobs:
           v=${v%.exe}
           sha256sum "$f" | cut -d' ' -f1 > "$f.sha256"
           linux="Costas-$v-linux-x64.tar.gz"
-          gh release create "v$v" "$f" "$f.sha256" "$linux" "$linux.sha256" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+          # Velopack's files (installer, this version's full package and delta, and the feed the app reads) sit beside the
+          # classic installer, which builds from before Velopack still update through.
+          gh release create "v$v" "$f" "$f.sha256" "$linux" "$linux.sha256" ../velopack/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "Costas $v" --generate-notes

@@ -1,6 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Ft8Client.App.ViewModels"
+        xmlns:services="using:Ft8Client.App.Services"
+        xmlns:v="using:Ft8Client.App.Views"
         x:Class="Ft8Client.App.Views.SettingsWindow"
         Icon="/Assets/costas.ico"
         x:DataType="vm:SettingsViewModel"
@@ -187,6 +189,13 @@
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Clock correction" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Correct the clock inside Costas from internet time" IsChecked="{Binding CorrectClock}" />
+                <TextBlock Classes="help" Text="When the computer's clock is off, Costas times its slots from internet time instead, checked every 15 minutes. Your computer's clock is not changed. Offsets over a minute are not corrected: set the Windows clock and time zone instead." TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Logging" />
               <CheckBox Grid.Column="1" Content="Log each contact automatically when it completes" IsChecked="{Binding AutoLog}" />
             </Grid>
@@ -342,7 +351,8 @@
               <TextBlock Classes="label" Text="Parks on the Air" />
               <StackPanel Grid.Column="1">
                 <CheckBox Content="Show which park a station is activating (POTA spots)" IsChecked="{Binding PotaSpots}" />
-                <TextBlock Classes="help" Text="Reads the public spot list at pota.app every two minutes and shows New park or Park with the reference under Why. It does not change the order of the list. A park you work is written to the log." TextWrapping="Wrap" />
+                <CheckBox Content="Rank stations at a park I have not worked higher" IsChecked="{Binding PreferNewParks}" IsEnabled="{Binding PotaSpots}" Margin="24,0,0,0" />
+                <TextBlock Classes="help" Text="Reads the public spot list at pota.app every two minutes and shows New park or Park with the reference under Why. A station at a new park comes right after your first need (new countries by default), even if you have worked its call on this band before. A park you work is written to the log." TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
@@ -519,7 +529,7 @@
                 <CheckBox Content="Compare my signal with stations near me" IsChecked="{Binding CompareNeighbours}" IsEnabled="{Binding FeedEnabled}" />
                 <TextBlock Classes="help" Text="Also receives reports of stations within 300 miles on your band, so the Reach view can show where you are stronger or weaker than them." TextWrapping="Wrap" />
                 <CheckBox Content="Show band activity near me in Reach and the band menu" IsChecked="{Binding BandActivity}" IsEnabled="{Binding FeedEnabled}" Margin="0,8,0,0" />
-                <TextBlock Classes="help" Text="Receives reports of stations within 300 miles on every band, so Reach and the band menu show which bands are open from your area and where they are heard." TextWrapping="Wrap" />
+                <TextBlock Classes="help" Text="Receives reports of stations within 300 miles of the grid square in Station on every band, so Reach and the band menu show which bands are open from your area and where they are heard. Changing your grid switches the area." TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
@@ -573,48 +583,28 @@
         <ScrollViewer>
           <StackPanel>
             <TextBlock Classes="page" Text="Mobile connection" />
-            <TextBlock Classes="intro" Text="Operate from a phone on your home network: see the contact, who is calling you and Next in line, call stations, call CQ and halt transmit. The phone opens a page in its browser; nothing to install." />
+            <TextBlock Classes="intro" Text="Operate from a phone on your home network: see the contact, who is calling you and Next in line, call stations, call CQ, change band and the radio's power, and halt transmit. The phone opens a page in its browser; nothing to install." />
             <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Mobile connection" />
               <StackPanel Grid.Column="1" Spacing="6">
-                <CheckBox Content="Let a paired phone on this network operate the station" IsChecked="{Binding RemoteEnabled}" />
+                <CheckBox Content="Let a phone on this network operate the station" IsChecked="{Binding RemoteEnabled}" />
                 <TextBlock Classes="help" Text="{Binding RemoteStatus}" />
                 <TextBlock Classes="help" IsVisible="{Binding RemoteEnabled}"
                            Text="If Windows asks whether Costas may use the network, choose Allow for private networks. Phones cannot connect until you do. Addresses outside your home network are always refused." />
               </StackPanel>
             </Grid>
 
-            <!-- The pairing code, large enough to read from across the desk while typing it on the phone. -->
-            <Border IsVisible="{Binding HasPairingCode}" Margin="0,4,0,16" Padding="20,16" CornerRadius="8" BorderThickness="2"
+            <!-- The address, large enough to read from across the desk while typing it on the phone. -->
+            <Border IsVisible="{Binding RemoteRunning}" Margin="0,4,0,16" Padding="20,16" CornerRadius="8" BorderThickness="2"
                     BorderBrush="{DynamicResource AccentBrush}" Background="{DynamicResource CardBackgroundBrush}">
-              <StackPanel Spacing="10">
-                <TextBlock Text="Pair a phone" FontSize="18" FontWeight="SemiBold" />
-                <StackPanel Spacing="2">
-                  <TextBlock Classes="help" Text="1. On the phone, open" />
-                  <SelectableTextBlock Text="{Binding PairingUrl}" FontSize="22" FontWeight="SemiBold" />
-                  <TextBlock Classes="help" Text="{Binding PairingOtherUrls}" IsVisible="{Binding PairingOtherUrls, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                </StackPanel>
-                <StackPanel Spacing="2">
-                  <TextBlock Classes="help" Text="2. Type this code" />
-                  <SelectableTextBlock Text="{Binding PairingCode}" FontSize="56" FontWeight="Bold" FontFamily="Consolas,Menlo,monospace"
-                                       LetterSpacing="4" Foreground="{DynamicResource AccentBrush}" />
-                  <TextBlock Classes="help" Text="{Binding PairingExpiry}" />
-                </StackPanel>
-                <Button Content="New code" Command="{Binding PairPhoneCommand}" HorizontalAlignment="Left" />
+              <StackPanel Spacing="4">
+                <TextBlock Text="On the phone, open" FontSize="18" FontWeight="SemiBold" />
+                <SelectableTextBlock Text="{Binding PhoneUrl}" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock Classes="help" Text="{Binding PhoneOtherUrls}" IsVisible="{Binding PhoneOtherUrls, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Classes="help" Text="No code to type: any phone or tablet on your home network can open it and operate the station." />
               </StackPanel>
             </Border>
 
-            <Grid Classes="field" ColumnDefinitions="210,*" IsVisible="{Binding RemoteEnabled}">
-              <TextBlock Classes="label" Text="Phones" />
-              <StackPanel Grid.Column="1" Spacing="6">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Button Content="Pair a phone" Command="{Binding PairPhoneCommand}" IsEnabled="{Binding RemoteRunning}" IsVisible="{Binding !HasPairingCode}" />
-                  <Button Content="{Binding ForgetPhonesText}" Command="{Binding ForgetPhonesCommand}" IsVisible="{Binding HasPairedPhones}" />
-                </StackPanel>
-                <TextBlock Classes="help" Text="{Binding PairingNote}" IsVisible="{Binding PairingNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                <TextBlock Classes="help" Text="A paired phone stays paired until you forget it here. The code only works while this window is open." />
-              </StackPanel>
-            </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Port" />
               <StackPanel Grid.Column="1" Spacing="6">
@@ -639,10 +629,54 @@
             <TextBlock Classes="page" Text="Appearance" />
             <TextBlock Classes="intro" Text="How the app looks." />
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Skin" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <ComboBox ItemsSource="{Binding Skins}" SelectedItem="{Binding Skin}" MinWidth="160" AutomationProperties.Name="Skin">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="services:AppSkin"><TextBlock Text="{Binding Name}" /></DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <TextBlock Classes="help" Text="{Binding Skin.Description}" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,4,0,0">
+                  <Border Background="{Binding Skin.Light.WindowBrush}" Padding="10" CornerRadius="6" BorderThickness="1" BorderBrush="{Binding Skin.Light.SecondaryBrush}">
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="Light" Foreground="{Binding Skin.Light.SecondaryBrush}" FontSize="12" />
+                      <Border Background="{Binding Skin.Light.CardBrush}" Padding="8" CornerRadius="{Binding Skin.PreviewCornerRadius}">
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="{Binding Skin.PreviewTitle}" FontFamily="{Binding Skin.PreviewFont}" Foreground="{Binding Skin.Light.TextBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" IsVisible="{Binding Skin.HasPlainPreview}" />
+                          <Border Background="#111A0B" Padding="4" IsVisible="{Binding Skin.HasSegmentedDisplay}">
+                            <v:SegmentedDisplay Text="14.074.000" DigitHeight="22" AutomationProperties.Name="Example frequency 14.074 MHz" />
+                          </Border>
+                          <Border Background="{Binding Skin.Light.SelectionBrush}" Height="12" CornerRadius="2" />
+                          <Border Background="{Binding Skin.Light.AccentBrush}" Height="6" Width="40" HorizontalAlignment="Left" CornerRadius="2" />
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </Border>
+                  <Border Grid.Column="1" Background="{Binding Skin.Dark.WindowBrush}" Padding="10" CornerRadius="6" BorderThickness="1" BorderBrush="{Binding Skin.Dark.SecondaryBrush}">
+                    <StackPanel Spacing="8">
+                      <TextBlock Text="Dark" Foreground="{Binding Skin.Dark.SecondaryBrush}" FontSize="12" />
+                      <Border Background="{Binding Skin.Dark.CardBrush}" Padding="8" CornerRadius="{Binding Skin.PreviewCornerRadius}">
+                        <StackPanel Spacing="6">
+                          <TextBlock Text="{Binding Skin.PreviewTitle}" FontFamily="{Binding Skin.PreviewFont}" Foreground="{Binding Skin.Dark.TextBrush}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" IsVisible="{Binding Skin.HasPlainPreview}" />
+                          <Border Background="#111A0B" Padding="4" IsVisible="{Binding Skin.HasSegmentedDisplay}">
+                            <v:SegmentedDisplay Text="14.074.000" DigitHeight="22" AutomationProperties.Name="Example frequency 14.074 MHz" />
+                          </Border>
+                          <Border Background="{Binding Skin.Dark.SelectionBrush}" Height="12" CornerRadius="2" />
+                          <Border Background="{Binding Skin.Dark.AccentBrush}" Height="6" Width="40" HorizontalAlignment="Left" CornerRadius="2" />
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </Border>
+                </Grid>
+                <TextBlock Classes="help" Text="Save applies the skin to all desktop windows. Transmit and warning colors stay the same." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Theme" />
               <StackPanel Grid.Column="1">
                 <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}" MinWidth="120" />
-                <TextBlock Classes="help" Text="System follows the Windows light or dark setting." />
+                <TextBlock Classes="help" Text="System follows your device's light or dark setting. Every skin supports both." />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
@@ -675,6 +709,24 @@
       </TabItem>
 
       <!-- 8 Advanced -->
+      <!-- Privacy: anonymous usage statistics (opt-out) -->
+      <TabItem Header="Privacy">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Privacy" />
+            <TextBlock Classes="intro" Text="Costas can send anonymous usage counts to Aptabase so its developer can see how many people use it and which features matter. Nothing is sent while your computer is offline." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Usage statistics" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Send anonymous usage statistics" IsChecked="{Binding UsageEnabled}" />
+                <TextBlock Classes="help" Text="Sent: the Costas version, Windows or Linux, band and mode, the kind of radio connection and Hamlib model number, which views and features you use, and when a contact is logged. Never sent: your callsign, grid, name, frequencies, the stations you work, or anything from your log. No account or tracking id; each run of Costas is a separate anonymous session." />
+                <TextBlock Classes="help" Text="{Binding UsageBuildNote}" IsVisible="{Binding UsageBuildNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <TabItem Header="Advanced">
         <ScrollViewer>
           <StackPanel>

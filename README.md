@@ -22,13 +22,23 @@ log, whether the station is free to call, and whether it can hear you.
   worked them, one click to call them again.
 - **Hears you and Chance**: from PSK Reporter, whether each station (or someone near it) hears your signal, and a
   Good / Fair / Long shot rating.
-- **One-click contacts**: click **Call** or press Enter. Costas runs the standard exchange, shows each step in a
-  five-box strip, and logs the contact when it completes.
+- **One-click contacts**: click **Call** or press Enter. Costas runs the standard exchange, shows each step on a
+  progress strip, and logs the contact when it completes. Clicking **Call** on a recognised DXpedition Fox works it
+  the Hound way automatically.
 - **Calling you bar**: anyone who calls you is pinned above the list with an **Answer** button, and a station that
   replies after you gave up can be picked up again with **Resume**.
-- **Logging and QRZ**: a local log with ADIF import and export, uploaded to your QRZ logbook and optionally eQSL as you go, with eQSL inbox and confirmation sync.
-- **Maps**: who you hear (Heard here) and who hears you (Reach), centred on your grid.
-- **Works with your other tools**: WSJT-X UDP for GridTracker, JTAlert and loggers.
+- **Hunt list**: the countries, calls, US states or grids you are after, with an alert when one is heard, on your
+  band or (through PSK Reporter) any other. Alerts never transmit.
+- **Logging and confirmations**: a local log with ADIF import and export, uploaded to your QRZ logbook, LoTW (through
+  TQSL) and eQSL as you go, with confirmations synced back.
+- **Awards**: DXCC, WAS, WAZ and VUCC progress from your own log, and when you usually hear each country you still
+  need.
+- **Maps**: who you hear (Heard here) and who hears you (Reach), centred on your grid, with band activity near you.
+- **A waterfall you can size**: drag it taller in the main window or pop it out into its own window.
+- **Mini mode and phone remote**: shrink Costas to a strip that stays on top, or operate from a phone or tablet on
+  your home network.
+- **Works with your other tools**: WSJT-X UDP for GridTracker, JTAlert and loggers; FLRig and network rigctld as
+  well as direct Hamlib control.
 - **Safe by design**: it never transmits on its own, never changes a message silently, and has a watchdog,
   band-edge check, clock check and PTT release on any fault.
 
@@ -41,11 +51,19 @@ log, whether the station is free to call, and whether it can hear you.
 <td align="center">A contact in progress</td>
 <td align="center">Someone calling you while you work another station</td>
 </tr>
+<tr>
+<td><img src="manual/images/awards.png" alt="The Awards view"></td>
+<td><img src="manual/images/log.png" alt="The Log view"></td>
+</tr>
+<tr>
+<td align="center">Award progress and the countries you still need</td>
+<td align="center">The log, with QRZ, LoTW and eQSL status</td>
+</tr>
 </table>
 
 ## Install
 
-1. Download `Costas-Setup-<version>.exe` from the
+1. Download `CostasApp-win-Setup.exe` from the
    [latest release](https://github.com/somedudenamedtony/costas/releases/latest).
 2. Run it. If Windows SmartScreen warns you (the installer is not code-signed yet), click **More info**, then
    **Run anyway**.
@@ -54,7 +72,7 @@ log, whether the station is free to call, and whether it can hear you.
 
 Requires 64-bit Windows 10 (1809) or later. The decoder (`jt9` from WSJT-X) and radio control (Hamlib) are
 bundled; you do not need WSJT-X installed. Costas checks for new builds at start and daily and offers to install them, keeping
-your log and settings.
+your log and settings; an update downloads only what changed, usually a few MB.
 
 ### Linux (preview, receive only)
 
@@ -82,9 +100,23 @@ The [manual](https://somedudenamedtony.github.io/costas/) covers every screen an
 [making contacts](https://somedudenamedtony.github.io/costas/contacts/),
 [maps](https://somedudenamedtony.github.io/costas/maps/),
 [the log and QRZ](https://somedudenamedtony.github.io/costas/log/),
+[the Hunt list](https://somedudenamedtony.github.io/costas/hunt/),
+[awards](https://somedudenamedtony.github.io/costas/awards/),
+[operating from a phone](https://somedudenamedtony.github.io/costas/phone/),
 [settings](https://somedudenamedtony.github.io/costas/settings/) and
 [troubleshooting](https://somedudenamedtony.github.io/costas/troubleshooting/).
 Its source is in [`manual/`](manual/) if you prefer to read it here.
+
+## Privacy
+
+Costas sends anonymous usage statistics to [Aptabase](https://aptabase.com) so its developer can see how many people
+use it and which features matter. It sends the Costas version, Windows or Linux, the band and mode, the kind of radio
+connection and Hamlib model number, which optional features are on, and which views and actions you use. It never
+sends your callsign, grid, name, frequencies, the stations you hear or work, or anything from your log, and there is no
+account or tracking id. Nothing is sent while you are offline, in simulation, or from a build you make yourself.
+
+To turn it off, untick **Settings › Privacy › Send anonymous usage statistics**. The full list is in
+[the manual](https://somedudenamedtony.github.io/costas/settings/#privacy).
 
 ## Status
 
@@ -108,6 +140,7 @@ child processes. Rules for working on the code are in [`CLAUDE.md`](CLAUDE.md); 
 | [`docs/07-milestones.md`](docs/07-milestones.md) | Build order, M0 to M13, with acceptance tests |
 | [`docs/08-open-questions.md`](docs/08-open-questions.md) | Decisions assumed, facts not yet verified, known risks |
 | [`docs/09-keyboard-modes.md`](docs/09-keyboard-modes.md) | PSK31, PSK63 and RTTY on the same Operate screen (planned) |
+| [`docs/09-next-up.md`](docs/09-next-up.md) | Proposed next features and fixes, for the owner to pick from |
 | [`mockups/`](mockups/) | The original approved screen designs |
 
 ### Build and run from source
@@ -148,6 +181,16 @@ publishes a GitHub Release when the owner runs the CI workflow on `main` by hand
 | M11 RTTY receive (feature branch) | Demodulator with ATC against noise, fading, one lost tone and Reverse; synthetic recordings (busy, fading, reversed) | Real recordings against fldigi or MMTTY (V25); transmit is M12 |
 | M12 PSK and RTTY transmit and contacts (feature branch) | Modulators read back by our demodulators; watchdog, fault and Halt PTT release; both contact flows; a whole PSK31 contact logged; RTTY power cap; PSK zero-ALC level | Contacts on the air with the owner's radio; LoTW confirmation |
 | M13 Keyboard modes everywhere else (feature branch) | PSK Reporter spots and WSJT-X UDP status (V23, V24 from fldigi and GridTracker source); macro keys in Mini mode and on the phone; Mode filters in Log and Awards; AFC switch; missing macro fields in red | A spot seen on pskreporter.info; a Status seen in GridTracker |
+
+### Test builds
+
+Every CI run builds a Windows installer and keeps it for 90 days as the run's **Costas-Setup** artifact, on any
+branch. Only a manual run on `main` publishes a release, so a test build never reaches installed apps, and only
+release builds carry the usage-statistics key. To try a branch (the PSK and RTTY work on `feature/keyboard-modes`,
+say): Actions > CI > Run workflow, pick the branch, wait for the green tick, open the run and download
+**Costas-Setup** from Artifacts (signed in to GitHub). Unzip it and run `Costas-Setup-<version>.exe`; it installs over
+the current Costas and keeps settings and the log. A test build is numbered from the same run counter, so the next
+release from `main` is newer and the app offers it as usual, which also takes the machine back to `main`.
 
 ### The manual
 

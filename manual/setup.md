@@ -120,8 +120,10 @@ barely moves.
 ![Setup step 5: Clock check](images/setup-5-clock.png)
 
 FT8 needs your PC clock within about a second of UTC. Costas measures the offset against internet time. It never
-changes your clock. Under 0.5 s is fine. If it is off, open **Windows Settings › Time & language › Date & time** and
-press **Sync now**. Offline is fine too: once decodes arrive, Costas estimates the offset from them.
+changes your clock. Under 0.5 s is fine. If it is off by up to a minute, Costas corrects for it inside the app
+(**Settings › Transmitting › Clock correction**), so you can carry on, though syncing the clock is still better: open
+**Windows Settings › Time & language › Date & time** and press **Sync now**. Offline is fine too: once decodes arrive,
+Costas estimates the offset from them, but it only corrects from internet time.
 
 Transmitting is blocked while the clock is off by more than 2 seconds (the limit can be changed in
 **Settings › Transmitting › Clock limit**).

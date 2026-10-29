@@ -4,7 +4,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#141414">
+<meta name="theme-color" content="#141414" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f3f3" media="(prefers-color-scheme: light)">
+<!-- Add to Home Screen opens the page full screen, like an app. -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Costas">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Costas remote</title>
 <style>
 :root{--bg:#141414;--card:#202020;--line:#333;--tx:#eee;--mut:#9a9a9a;--btn:#3a3a3a;--red:#e8584e;--halt:#b3261e;--grn:#4caf6a;--amb:#e0a83a;
@@ -18,7 +26,7 @@ button{font:inherit;color:inherit;border:0;border-radius:8px;background:var(--bt
 button:disabled{opacity:.45}
 button.red{background:var(--red);color:#fff}
 button.next{background:var(--accent);color:#fff}
-.top{padding:12px 16px 10px;border-bottom:1px solid var(--line);font-size:13px;color:var(--mut);position:sticky;top:0;background:var(--bg);z-index:2}
+.top{padding:calc(12px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 10px calc(16px + env(safe-area-inset-left));border-bottom:1px solid var(--line);font-size:13px;color:var(--mut);position:sticky;top:0;background:var(--bg);z-index:2}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:12px;white-space:nowrap}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--mut)}
@@ -53,6 +61,13 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
 .banner{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-tx);border-radius:12px;padding:12px;font-size:14px}
 .note{position:fixed;left:14px;right:14px;bottom:110px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;display:none;z-index:3}
+/* The "Logged" notice: one slim line above HALT TX with a countdown bar; it closes itself after 5 s. */
+.logged{position:fixed;left:14px;right:14px;bottom:110px;background:var(--card);border:1px solid var(--grn);border-radius:12px;padding:9px 10px 0;z-index:3;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.logged .row1{display:flex;gap:10px;align-items:center}
+.logged .ok{width:26px;height:26px;border-radius:50%;background:var(--grn);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.logged .t{font-weight:700;font-size:15px}.logged .body{flex:1;min-width:0}.logged .body .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logged .x{background:none;padding:4px 8px;color:var(--mut)}
+.logged .track{height:3px;background:var(--line);margin:8px -10px 0}.logged .track div{height:100%;background:var(--grn)}
 .haltbar{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 30%)}
 .halt{width:100%;background:var(--halt);color:#fff;border-radius:14px;padding:14px;font-size:19px;font-weight:800;letter-spacing:1px}
 .halt span{display:block;font-size:12px;font-weight:400;letter-spacing:0;opacity:.9;margin-top:2px}
@@ -97,7 +112,7 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
    the desk's right-hand column. */
 @media (min-width:760px){
   html,body{font-size:16px}
-  .top{padding:14px 24px 12px}
+  .top{padding:calc(14px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right)) 12px calc(24px + env(safe-area-inset-left))}
   .tabs{padding:10px 24px 0}.tabs button{flex:0 0 auto;padding:10px 22px;font-size:15px}
   .tabs button[data-phone]{display:none}
   main{padding:14px 24px 130px}
@@ -119,12 +134,12 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
   .call{font-size:34px}
   .btns{grid-template-columns:repeat(auto-fit,minmax(130px,180px));justify-content:end}
   .shade{align-items:stretch;justify-content:flex-end}
-  .sheet{width:440px;max-height:none;height:100%;border-radius:16px 0 0 16px}
+  .sheet{width:440px;max-height:none;height:100%;border-radius:16px 0 0 16px;padding-top:calc(16px + env(safe-area-inset-top))}
   .dec{font-size:14px;grid-template-columns:4.2em 3em 3.6em 1fr 12em;padding:6px 0}
   .dec .cty{grid-column:5;font-size:13px;align-self:center}
   .haltbar{padding:10px 24px calc(14px + env(safe-area-inset-bottom));display:flex;justify-content:flex-end;pointer-events:none}
   .halt{width:420px;padding:12px;font-size:18px;pointer-events:auto;box-shadow:0 4px 18px rgba(0,0,0,.35)}
-  .note{left:auto;right:24px;width:420px}
+  .note,.logged{left:auto;right:24px;width:420px}
 }
 @media (min-width:760px) and (max-width:1079px){
   .thead:not(.wide2) > :nth-child(7),.trow:not(.wide2) > :nth-child(7){display:none}
@@ -140,17 +155,15 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 <body>
 
 <section id="pairView" class="pair hidden">
-  <div class="freq">Pair this phone</div>
-  <div class="sub">On the station computer, open Settings, Mobile connection. Type the six-digit code shown there.</div>
-  <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000 000">
-  <button id="pairBtn" class="red">Pair</button>
-  <div id="pairErr" class="err"></div>
+  <div class="freq">Costas</div>
+  <div id="pairErr" class="sub">Connecting to the station…</div>
+  <button id="pairBtn" class="red hidden">Try again</button>
 </section>
 
 <section id="opView" class="hidden">
   <div class="top">
     <div class="row"><span id="station">Costas</span><span class="pill"><span id="linkDot" class="dot"></span><span id="link">Connecting…</span></span></div>
-    <div class="row"><button id="freq" class="freq tunebtn" title="Band, mode and Tx offset">—</button><span class="pill"><span id="radioDot" class="dot"></span>Radio</span></div>
+    <div class="row"><button id="freq" class="freq tunebtn" title="Band, mode, Tx offset and radio power">—</button><span class="pill"><span id="radioDot" class="dot"></span>Radio</span></div>
     <div class="row" style="margin-top:3px"><span id="health"></span><span id="control"></span></div>
     <div id="slot" class="slot"><span id="slotLabel">Receiving</span><div class="track"><div id="slotFill" class="fill"></div></div><span id="slotLeft"></span></div>
   </div>
@@ -183,6 +196,7 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
   <div id="detailsShade" class="shade hidden"><div id="details" class="sheet"></div></div>
   <div id="tuneShade" class="shade hidden"><div id="tune" class="sheet"></div></div>
   <div id="note" class="note"></div>
+  <div id="logged" class="logged hidden" role="status" aria-live="polite"></div>
   <div class="haltbar"><button id="halt" class="halt">HALT TX<span>Stops transmitting now. Receive keeps running.</span></button></div>
 </section>
 
@@ -190,7 +204,7 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 "use strict";
 const KEY = "costas-remote-token";
 const $ = id => document.getElementById(id);
-let token = null, ws = null, state = null, pingAt = 0, lastMsg = 0, backoff = 1000, noteTimer = 0;
+let token = null, ws = null, state = null, pingAt = 0, lastMsg = 0, backoff = 1000, noteTimer = 0, retryTimer = null;
 
 function load() { try { return localStorage.getItem(KEY); } catch { return null; } }
 function save(t) { try { if (t) localStorage.setItem(KEY, t); else localStorage.removeItem(KEY); } catch { } }
@@ -212,25 +226,26 @@ function button(text, cls, onClick, disabled) {
 function showPair(msg) {
   $("opView").classList.add("hidden");
   $("pairView").classList.remove("hidden");
-  $("pairErr").textContent = msg || "";
+  $("pairErr").textContent = msg || "Connecting to the station…";
+  $("pairBtn").classList.toggle("hidden", !msg);
 }
 function showOp() {
   $("pairView").classList.add("hidden");
   $("opView").classList.remove("hidden");
 }
 
-$("pairBtn").onclick = async () => {
-  const code = $("code").value.replace(/\D/g, "");
-  if (code.length !== 6) { $("pairErr").textContent = "The code has six digits."; return; }
-  $("pairBtn").disabled = true;
+// No code to type: any phone on the home network gets its own id from the station, kept on the phone so control
+// stays with it across reconnects.
+async function pair() {
+  showPair();
   try {
-    const r = await fetch("/api/pair", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+    const r = await fetch("/api/pair", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.token) { $("pairErr").textContent = j.error || "Pairing failed."; return; }
+    if (!r.ok || !j.token) { showPair(j.error || "The station did not answer. Is Costas running with Mobile connection on?"); return; }
     token = j.token; save(token); showOp(); connect();
-  } catch { $("pairErr").textContent = "Cannot reach the station. Is this phone on the same network?"; }
-  finally { $("pairBtn").disabled = false; }
-};
+  } catch { showPair("Cannot reach the station. Is this phone on the same network?"); }
+}
+$("pairBtn").onclick = pair;
 
 function send(obj) {
   if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify(obj)); return true; }
@@ -240,40 +255,54 @@ function send(obj) {
 function cmd(type, extra) { send(Object.assign({ type }, extra || {})); }
 
 function connect() {
+  // One socket at a time: a pending retry or a socket still closing must not open a second one.
+  clearTimeout(retryTimer); retryTimer = null;
+  if (ws) { const old = ws; ws = null; old.onclose = null; try { old.close(); } catch { } }
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  ws = new WebSocket(proto + "//" + location.host + "/ws");
+  const sock = new WebSocket(proto + "//" + location.host + "/ws");
+  ws = sock;
+  lastMsg = Date.now();
   setLink("amb", "Connecting…");
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type: "hello", token }));
-    if (viewing) ws.send(JSON.stringify({ type: "show", call: viewing }));
+  sock.onopen = () => {
+    sock.send(JSON.stringify({ type: "hello", token }));
+    if (viewing) sock.send(JSON.stringify({ type: "show", call: viewing }));
   };
-  ws.onmessage = ev => {
+  sock.onmessage = ev => {
     lastMsg = Date.now();
     backoff = 1000;
     let m; try { m = JSON.parse(ev.data); } catch { return; }
     if (m.type === "pong") { setLink("grn", "Link " + (Date.now() - pingAt) + " ms"); return; }
+    if (m.type === "note") { if (m.note) note(m.note); return; }
     if (m.type === "state") {
-      state = m.state; render();
+      state = m.state; slotAt = Date.now(); render();
       if (m.note) note(m.note);
       if ($("link").textContent === "Connecting…" || $("link").textContent === "Reconnecting…") setLink("grn", "Connected");
     }
   };
-  ws.onclose = ev => {
+  sock.onclose = ev => {
+    if (ws !== sock) return;
     ws = null;
-    if (ev.reason === "unpaired") { token = null; save(null); showPair("This phone is not paired any more. Pair it again."); return; }
+    if (ev.reason === "unpaired") { token = null; save(null); pair(); return; }
     setLink("amb", "Reconnecting…");
-    setTimeout(connect, backoff);
+    retryTimer = setTimeout(connect, backoff);
     backoff = Math.min(backoff * 2, 5000);
   };
 }
 
+// After the phone sleeps, a dead socket can still read as open for minutes. The station sends
+// state every second, so a long silence means the link is gone: drop it and connect again.
+function stale() { return lastMsg && Date.now() - lastMsg > 8000; }
+
 // Heartbeat: the station stops transmitting when the phone in control is silent for 15 s.
 setInterval(() => {
+  if (!token) return;
+  if (ws && stale()) { connect(); return; }
   if (ws && ws.readyState === WebSocket.OPEN) { pingAt = Date.now(); ws.send(JSON.stringify({ type: "ping" })); }
   if (lastMsg && Date.now() - lastMsg > 4000 && ws) setLink("amb", "No answer from the station");
 }, 5000);
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && token && (!ws || ws.readyState > 1)) connect();
+  if (document.visibilityState !== "visible" || !token) return;
+  if (!ws || ws.readyState > 1 || stale()) connect();
 });
 
 function setLink(color, text) {
@@ -305,9 +334,9 @@ function render() {
   f.classList.toggle("hidden", !s.fault && s.radioOk);
   f.textContent = s.fault || (!s.radioOk ? "Radio: " + s.radio : "");
 
-  const h = $("hunt");
-  h.classList.toggle("hidden", !s.hunt);
-  h.textContent = s.hunt ? "Hunt list · " + s.hunt : "";
+  const hunt = $("hunt");
+  hunt.classList.toggle("hidden", !s.hunt);
+  hunt.textContent = s.hunt ? "Hunt list · " + s.hunt : "";
 
   const m = $("meter");
   m.classList.toggle("hidden", !s.meter);
@@ -316,7 +345,7 @@ function render() {
   $("services").classList.toggle("hidden", !s.services);
   $("services").textContent = s.services || "";
 
-  slotAt = Date.now(); renderSlot();
+  renderSlot();
   renderContact(s);
   renderCallers(s);
   renderLine(s);
@@ -326,6 +355,7 @@ function render() {
   renderTonight(s);
   renderDetails(s);
   renderTune(s);
+  renderLogged(s);
 
   const busy = s.transmitting || s.callingCq || (s.contact && s.contact.active);
   const h = $("halt");
@@ -641,7 +671,7 @@ function renderDetails(s) {
     [["Grid", d.grid], ["Bearing", d.bearing], ["Local time", d.localTime], ["Licence", d.licenseClass], ["QSL", d.qsl], ["Zones", d.zones]]
       .filter(([, v]) => v).forEach(([k, v]) => kv.append(el("span", null, k), el("span", null, v)));
     box.append(kv);
-    if (d.pileup) box.append(el("div", "sub", d.pileup));
+    if (d.pileup) box.append(el("div", "banner warnline", d.pileup));
     if (d.lookupNote) box.append(el("div", "s", d.lookupNote));
     box.append(el("b", null, "Your contacts"));
     if (d.past.length === 0) box.append(el("div", "s", "No contacts with this call yet."));
@@ -665,9 +695,9 @@ function changeBand(band, mode) {
 
 function renderTune(s) {
   $("tuneShade").classList.toggle("hidden", !tuning);
-  if (!tuning || !changed("tune", { b: s.bands, band: s.band, mode: s.mode, can: s.canChangeBand, o: s.offset, a: s.offsetAuto })) return;
+  if (!tuning || !changed("tune", { b: s.bands, band: s.band, mode: s.mode, can: s.canChangeBand, o: s.offset, a: s.offsetAuto, p: s.power })) return;
   const box = $("tune"); box.replaceChildren();
-  const top = el("div", "row"); top.append(el("b", null, "Band and offset"), button("Close", "", () => { tuning = false; render(); }));
+  const top = el("div", "row"); top.append(el("b", null, s.power ? "Band, offset and power" : "Band and offset"), button("Close", "", () => { tuning = false; render(); }));
   box.append(top);
   if (!s.canChangeBand) box.append(el("div", "s", "Wait until this transmission ends to change band."));
   const seg = el("div", "seg");
@@ -680,9 +710,32 @@ function renderTune(s) {
   const row = el("div", "offset");
   const input = el("input"); input.type = "number"; input.inputMode = "numeric"; input.min = 200; input.max = 2900; input.step = 10;
   input.value = s.offsetHz; input.setAttribute("aria-label", "Tx offset in hertz");
-  row.append(input, button("Use", "", () => cmd("offset", { hz: parseInt(input.value, 10) })));
+  row.append(input, button("Use", "", () => {
+    const hz = parseInt(input.value, 10);
+    if (Number.isNaN(hz)) { note("Type an offset from 200 to 2900 Hz first."); return; }
+    cmd("offset", { hz });
+  }));
   box.append(row, button("Automatic (picks a clear spot)", s.offsetAuto ? "on" : "", () => cmd("offsetAuto")),
     el("div", "s", "Or type a fixed offset from 200 to 2900 Hz and press Use."));
+  if (s.power) renderPower(box, s.power);
+}
+
+// The radio's power setting, shown when the radio reports it. Changes only the setting, between transmissions; the
+// station refuses anything outside the radio's range.
+function renderPower(box, p) {
+  box.append(el("div", "lbl", "Radio power · " + p.watts + " W"));
+  if (!p.canChange) box.append(el("div", "s", "Wait until this transmission ends to change power."));
+  const row = el("div", "offset");
+  const input = el("input"); input.type = "number"; input.inputMode = "numeric"; input.min = 1; input.max = p.maxWatts; input.step = 1;
+  input.value = p.watts; input.setAttribute("aria-label", "Radio power in watts");
+  const set = w => {
+    if (Number.isNaN(w) || w < 1 || w > p.maxWatts) { note("Type a power from 1 to " + p.maxWatts + " W first."); return; }
+    cmd("power", { watts: w });
+  };
+  row.append(button("−5", "", () => set(Math.max(1, p.watts - 5)), !p.canChange), input,
+    button("+5", "", () => set(Math.min(p.maxWatts, p.watts + 5)), !p.canChange),
+    button("Use", "", () => set(parseInt(input.value, 10)), !p.canChange));
+  box.append(row, el("div", "s", "Up to " + p.maxWatts + " W. This changes the radio's power setting only; it does not transmit."));
 }
 
 // The slot countdown runs on the phone between states, from the station's position in the slot.
@@ -699,6 +752,42 @@ function renderSlot() {
   $("slotLeft").textContent = Math.max(0, Math.ceil((s.slotLengthMs - into) / 1000)) + " s";
 }
 setInterval(renderSlot, 200);
+
+// The "Logged" notice. The station sends the contact only while its notice should show, with the time left; the
+// phone counts down between states and shows each contact once, so ✕ keeps it closed.
+let loggedId = 0, loggedUntil = 0;
+function renderLogged(s) {
+  const l = s.logged;
+  if (!l || l.id === loggedId) return;
+  loggedId = l.id;
+  loggedUntil = Date.now() + l.msLeft;
+  const box = $("logged"); box.replaceChildren();
+  const row = el("div", "row1");
+  const body = el("div", "body");
+  const t = el("div", "t", "Logged " + l.call + " ");
+  if (l.need) t.append(el("span", "tag", l.need));
+  body.append(t, el("div", "s", l.line));
+  row.append(el("div", "ok", "✓"), body, el("span", "s left"), button("✕", "x", closeLogged));
+  const track = el("div", "track"); track.append(el("div"));
+  box.append(row, track);
+  box.classList.remove("hidden");
+  tickLogged();
+}
+function closeLogged() { loggedUntil = 0; tickLogged(); }
+function tickLogged() {
+  const box = $("logged");
+  const left = loggedUntil - Date.now();
+  if (left <= 0) {
+    box.classList.add("hidden");
+    $("note").style.bottom = "";
+    return;
+  }
+  box.querySelector(".left").textContent = Math.ceil(left / 1000) + " s";
+  box.querySelector(".track div").style.width = (100 * left / 5000).toFixed(1) + "%";
+  // A command's note stacks above the notice rather than over it.
+  $("note").style.bottom = (110 + box.offsetHeight + 8) + "px";
+}
+setInterval(() => { if (loggedUntil) tickLogged(); }, 200);
 
 // Tabs; the one in use is remembered on this phone.
 const TAB = "costas-remote-tab";
@@ -728,7 +817,7 @@ wideQuery.addEventListener("change", e => {
 });
 
 token = load();
-if (token) { showOp(); connect(); } else showPair();
+if (token) { showOp(); connect(); } else pair();
 </script>
 </body>
 </html>

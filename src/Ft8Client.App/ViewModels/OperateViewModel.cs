@@ -44,6 +44,7 @@ public sealed partial class OperateViewModel : ObservableObject
     private DateTime _lastKeyboardRank;
     private readonly LineStabilizer<IReadOnlyList<RankedStation>> _repeats;
     private DateTime? _lastRankedSlot;
+    private (string Band, Ft8Client.Core.Mode Mode) _lastRankedBand;
     private SessionSnapshot? _snap;
     private string? _inContact;
 
@@ -246,6 +247,14 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial IReadOnlyList<ReceptionBucket> SignalHistory { get; set; } = [];
 
+    /// <summary>"USA 30 · Canada 2": the countries that heard me, most stations first.</summary>
+    [ObservableProperty]
+    public partial string SignalCountries { get; set; } = string.Empty;
+
+    /// <summary>Every country that heard me, with its best report and farthest station.</summary>
+    [ObservableProperty]
+    public partial string SignalCountriesTip { get; set; } = string.Empty;
+
     /// <summary>Farthest.</summary>
     [ObservableProperty]
     public partial string SignalFarthest { get; set; } = "—";
@@ -361,12 +370,16 @@ public sealed partial class OperateViewModel : ObservableObject
         ReportUnit = ModeInfo.IsSlotted(s.Mode) ? "dB" : string.Empty;
         UpdateSlot(now);
 
-        // Re-rank only when a new slot has been decoded; a keyboard mode has no slots, so it re-ranks every few seconds.
+        // Re-rank only when a new slot has been decoded, or the band or mode changed (the old band's stations, with
+        // Call buttons that no longer work, stayed until the next decode). A keyboard mode has no slots, so it re-ranks
+        // every few seconds.
+        var bandMode = (s.Band, s.Mode);
         var keyboardDue = !ModeInfo.IsSlotted(s.Mode) && now - _lastKeyboardRank >= KeyboardRankEvery;
-        if (_lastRankedSlot != s.LastDecodedSlot || _line.Applied is null || keyboardDue)
+        if (_lastRankedSlot != s.LastDecodedSlot || _line.Applied is null || _lastRankedBand != bandMode || keyboardDue)
         {
             _lastRankedSlot = s.LastDecodedSlot;
             _lastKeyboardRank = now;
+            _lastRankedBand = bandMode;
             _line.Offer(s.Rank.Line);
             var log = Log?.Invoke();
             var mode = ModeInfo.Name(s.Mode);
@@ -386,8 +399,11 @@ public sealed partial class OperateViewModel : ObservableObject
         }
 
         Watching.Clear();
-        foreach (var w in s.Rank.Watching.Take(MaxWatching)) Watching.Add(new WatchRowViewModel(w, now, Units));
-        WatchingCanFold = WatchingSummary.CanFold(s.Rank.Watching);
+        var marked = s.CallWhenFree.ToHashSet(StringComparer.Ordinal);
+        // A station marked "call when free" stays listed past the row limit, so its mark can always be seen and cancelled.
+        foreach (var w in s.Rank.Watching.Where((w, i) => i < MaxWatching || marked.Contains(w.Station.Call)))
+            Watching.Add(new WatchRowViewModel(w, now, Units, marked.Contains(w.Station.Call)));
+        WatchingCanFold = WatchingSummary.CanFold(s.Rank.Watching) && !Watching.Any(w => w.CallWhenFree);
         WatchingSummaryText = WatchingSummary.Text(s.Rank.Watching);
         OnPropertyChanged(nameof(WatchingFolded));
         var band = BandPlan.Display(s.Band);
@@ -459,12 +475,12 @@ public sealed partial class OperateViewModel : ObservableObject
             return;
         }
         SlotUnit = "left";
-        // While transmitting, count down to the end of the transmission (as the conversation strip does), not the slot.
-        var len = Transmitting ? ModeInfo.TxEnd(mode) : ModeInfo.SlotLength(mode);
+        // Count down to the slot boundary, and call the whole slot a transmission went out in the transmit slot.
+        var len = ModeInfo.SlotLength(mode);
         var into = now - SlotMath.SlotStart(now, mode);
         SlotProgress = Math.Clamp(into / len, 0, 1);
         SlotLeft = $"{Math.Max(0, (int)Math.Ceiling((len - into).TotalSeconds))} s";
-        SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+        SlotLabel = (_snap?.InTransmitSlot(now) ?? Transmitting) ? "Transmitting" : "Receiving";
     }
 
     /// <summary>Pointer entered Repeats: hold its order still.</summary>
@@ -578,6 +594,10 @@ public sealed partial class OperateViewModel : ObservableObject
         _line.Clicked();
         _commands.Call(row.Call);
     }
+
+    /// <summary>Marks a Watching station to be called once its contact is over, or cancels the mark.</summary>
+    [RelayCommand]
+    private void ToggleCallWhenFree(WatchRowViewModel row) => _commands.CallWhenFree(row.Call, !row.CallWhenFree);
 
     /// <summary>Answers a waiting caller.</summary>
     [RelayCommand]
@@ -710,10 +730,12 @@ public sealed partial class OperateViewModel : ObservableObject
         };
         if (Countries is null || Log is null) return;
         var points = ReachPoint.From(s.Reports, now, TimeSpan.FromMinutes(15), s.MyGrid, Countries, Log(), s.Band, ModeInfo.Name(s.Mode));
-        var countries = points.Select(p => p.EntityKey).Where(k => k is not null).Distinct().Count();
+        var countries = CountryReach.From(points, Countries, Units);
         SignalHeadline = points.Count == 0
             ? "No reports yet. Reports appear a few minutes after you transmit."
-            : $"{points.Count} stations in {countries} countries heard you in the last 15 minutes.";
+            : $"{points.Count} stations in {countries.Count} countries heard you in the last 15 minutes.";
+        SignalCountries = CountryReach.Summary(countries);
+        SignalCountriesTip = CountryReach.Tip(countries);
         var far = points.MaxBy(p => p.Km);
         SignalFarthest = far is null ? "—" : $"{far.Call} · {StationText.Distance(far.Km, Units)}";
         var best = points.MaxBy(p => p.Snr);
@@ -740,6 +762,7 @@ public sealed partial class OperateViewModel : ObservableObject
         if (!r.OnlyCallingCq) parts.Add("Stations finishing a contact are included.");
         if (r.SkipLongShots) parts.Add("Long shots are left out.");
         if (r.ConfirmedOnly) parts.Add("Only confirmed contacts count.");
+        if (r.PreferNewParks) parts.Add("Stations at a park you have not worked come next after the first need.");
         if (r.KeepCqCallers > TimeSpan.Zero)
             parts.Add(r.KeepCqCallers.TotalMinutes == 1 ? "CQ callers stay listed for 1 minute after they were last heard."
                 : $"CQ callers stay listed for {r.KeepCqCallers.TotalMinutes:0} minutes after they were last heard.");

@@ -43,4 +43,7 @@ public sealed record ContactView(string DxCall, string? DxGrid, ContactFlow Flow
     /// after a mode change); null for the current mode.
     /// </summary>
     public Mode? Mode { get; init; }
+
+    /// <summary>True while the operator has stopped transmitting but kept the contact (first Esc).</summary>
+    public bool Held { get; init; }
 }

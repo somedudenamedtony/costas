@@ -25,7 +25,7 @@ The search text is kept. The list shows the newest 5,000 matching contacts; the 
 | Button | What it does |
 | --- | --- |
 | Search box | Finds contacts by call, grid, country or name |
-| **Edit** | Opens the selected contact to correct it |
+| **Edit** | Opens the selected contact to correct it (call, grid, reports, name, power, comment) |
 | **Delete** | Removes the selected contact from the local log. Press it twice to confirm. It is **not** deleted from QRZ |
 | **Import ADIF** | Reads an `.adi` file (from WSJT-X, another logger, or a QRZ export). Duplicates are merged, not added twice; Costas reports how many were imported, merged and skipped |
 | **Export ADIF** | Writes the whole log to an `.adi` file |

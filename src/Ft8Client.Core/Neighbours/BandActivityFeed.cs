@@ -15,15 +15,21 @@ public enum BandActivityFeed
     /// <summary>Not followed: the feed or the setting is off.</summary>
     Off,
 
-    /// <summary>My DXCC code is not known yet, so nothing can be followed until PSK Reporter reports my signal.</summary>
-    WaitingForMySpot,
+    /// <summary>The station grid in Settings is missing or invalid, so nearby stations cannot be followed.</summary>
+    WaitingForGrid,
 
     /// <summary>Followed on every band.</summary>
     AllBands,
 
-    /// <summary>Reports on every band came too fast; followed on the current band only.</summary>
+    /// <summary>
+    /// Reports on every band came too fast; followed on the current band, and the other bands are sampled one at a time
+    /// (<see cref="BandSampler"/>).
+    /// </summary>
     CurrentBandOnly,
 
-    /// <summary>Reports came too fast even on the current band; not followed for the rest of the session.</summary>
+    /// <summary>
+    /// Reports came too fast even on the current band; no band is followed all the time for the rest of the session, and
+    /// every band is sampled one at a time.
+    /// </summary>
     Stopped,
 }

@@ -67,6 +67,16 @@ public sealed class UploadQueueRepository(SqliteDatabase db)
         c.Execute("DELETE FROM upload_queue WHERE id=@id", new { id });
     }
 
+    /// <summary>
+    /// Moves a contact's first upload (every target) to <paramref name="nextTryUtc"/>: later while the operator may still
+    /// edit it, or now when they are done. Items already tried keep their back-off.
+    /// </summary>
+    public void Postpone(long qsoId, DateTime nextTryUtc)
+    {
+        using var c = db.Open();
+        c.Execute("UPDATE upload_queue SET next_try_utc=@nextTryUtc WHERE qso_id=@qsoId AND attempts=0", new { qsoId, nextTryUtc });
+    }
+
     /// <summary>Makes every item due now (the operator pressed Retry).</summary>
     public void RetryAllNow(DateTime nowUtc)
     {

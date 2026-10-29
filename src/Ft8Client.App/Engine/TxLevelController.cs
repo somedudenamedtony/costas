@@ -22,7 +22,10 @@ namespace Ft8Client.App.Engine;
 /// </summary>
 public sealed class TxLevelController
 {
-    /// <summary>Automatic level rises at most this far above the level the operator set in Settings.</summary>
+    /// <summary>
+    /// Automatic level rises at most this far above the level the operator set in Settings. It falls at most
+    /// <see cref="AudioSettings.AutoLowestBelowDb"/> below it.
+    /// </summary>
     public const double AutoHeadroomDb = 6;
 
     private readonly Transmitter _tx;
@@ -83,6 +86,13 @@ public sealed class TxLevelController
         var s = _settings.Current;
         var audio = s.Profile.Audio;
         if (!audio.AutoTxLevel || result.Alc is not { } alc) return result;
+        if (alc is < 0 or > 1)
+        {
+            // Hamlib reads ALC from 0 to 1. Anything else is not an ALC reading (SWR, read from a reply out of step, is
+            // 1 or more and walked the level down to silence): leave the level alone.
+            Log.Warning("Automatic transmit level ignored an ALC reading of {Alc} (outside 0 to 1)", alc);
+            return result;
+        }
         (string Band, string Mode) sent;
         lock (_gate) sent = _onAir ?? (s.Operating.Band, s.Operating.Mode);
         var band = LevelKey(sent.Band, sent.Mode);
@@ -95,7 +105,8 @@ public sealed class TxLevelController
             // A level changed by hand since the last transmission starts afresh.
             var known = _states.TryGetValue(band, out var st) && st.GainDb == gain;
             previous = known ? _lastChange.GetValueOrDefault(band) : null;
-            step = TxLevelTuner.Next(known ? st! : new TxLevelState(gain), alc, audio.TxGainDb + AutoHeadroomDb, zeroAlc: psk);
+            step = TxLevelTuner.Next(known ? st! : new TxLevelState(gain), alc, audio.TxGainDb + AutoHeadroomDb,
+                audio.TxGainDb - AudioSettings.AutoLowestBelowDb, zeroAlc: psk);
             _states[band] = step.State;
             _lastChange[band] = step.Change;
         }
@@ -111,7 +122,8 @@ public sealed class TxLevelController
             Log.Information("Automatic transmit level on {Band}: no ALC at its highest level {Level:0.0} dB", band, gain);
         }
 
-        if (step.Change != TxLevelChange.Lowered || result.Warning is not { } w) return result;
+        // At the lowest automatic level the operator's advice stays: Costas did not lower anything.
+        if (step.Change != TxLevelChange.Lowered || next >= gain || result.Warning is not { } w) return result;
         var done = $"Costas lowered its audio level to {next.ToString("0.0", CultureInfo.InvariantCulture)} dB for the next transmission.";
         return result with { Warning = w.Replace(TxMeterCheck.AlcAdvice, done, StringComparison.Ordinal) };
     }

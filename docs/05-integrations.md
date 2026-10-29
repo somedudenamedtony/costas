@@ -90,11 +90,11 @@ Hamlib: https://hamlib.github.io/ . Bundle the Windows release under `third_part
 | Get split | `s` | split line, Tx VFO line |
 | Set split | `S 1 VFOB` | `RPRT 0` |
 | Set split Tx frequency | `I 14075000` | `RPRT 0` |
-| Get ALC / SWR meter | `l ALC` / `l SWR` | echo line, the value on a line of its own (`0.25`, `1.66`), `RPRT 0`; `RPRT -N` when not supported |
+| Get ALC / SWR / power out meter | `l ALC` / `l SWR` / `l RFPOWER_METER_WATTS` | echo line, the value on a line of its own (`0.25`, `1.66`, `24.5`), `RPRT 0`; `RPRT -N` when not supported |
 
 A reply of `RPRT -N` (negative) is an error. **VERIFY** exact reply shapes against the bundled version with `rigctld -m 1` (the dummy rig), which is also used in integration tests.
 
-- Poll frequency and mode every 1 s when idle; do not poll during a transmission. During a transmission only the ALC and SWR meters are read, on a second connection (`04-domain-logic.md` section 11).
+- Poll frequency and mode every 1 s when idle; do not poll during a transmission. During a transmission only the ALC, SWR and power out meters are read, on a second connection (`04-domain-logic.md` section 11).
 - Port auto-scan (setup step 2): for each serial port and the model's common baud rates, start `rigctld`, send `f`, accept the first that returns a plausible frequency. Time out at 2 s per attempt.
 - VOX / audio-only mode: no `rigctld`; band is chosen by the operator; PTT calls are no-ops.
 - Split: default off in v1 (transmit offset is used as is). A setting enables "Fake it" (shift the dial during Tx to keep Tx audio between 1500 and 2000 Hz) once basic operation is proven.
@@ -167,8 +167,8 @@ Source: https://www.mqtt.pskreporter.info/ (confirmed). A best-effort community 
 - Subscribe to `pskr/filter/v2/+/+/<MYCALL>/#`.
 - Payload JSON: `sq` sequence, `f` frequency Hz, `md` mode, `rp` report dB, `t` epoch seconds, `sc`/`rc` sender and receiver calls, `sl`/`rl` locators, `sa`/`ra` ADIF DXCC codes, `b` band.
 - **VERIFY** how a callsign containing `/` appears in the topic.
-- Neighbour comparison (`04-domain-logic.md` section 13, optional, on by default): once a report of my signal gives my ADIF DXCC code (`sa`), also subscribe (the code is remembered in settings with the call it was learned for, so later runs subscribe at start-up; a fresh report of my signal replaces it) to `pskr/filter/v2/<band>/<mode>/+/+/+/+/<my DXCC>/#` for the band and mode I am on, and change it when they change. Reports from senders more than 300 miles away are dropped on arrival and nothing is stored on disk; the rest are kept in memory for 30 minutes. If more than 6,000 arrive in a minute the client stops following them for the session. **VERIFY** the rate on a busy band (V17).
-- Band openings (`04-domain-logic.md` section 14, optional, on by default): the same subscription with `+` for the band, `pskr/filter/v2/+/<mode>/+/+/+/+/<my DXCC>/#`, so one topic serves both features. If more than 6,000 arrive in a minute the client falls back to the current band's topic for the session (the neighbour comparison keeps working; the band menu shows the current band and says "Too busy to follow" on the others). **VERIFY** the all-band rate (V18).
+- Neighbour comparison (`04-domain-logic.md` section 13, optional, on by default): subscribe at start-up using the current grid in Settings, without waiting for my signal to be reported or persisting my country. `NeighbourGrids.Covering` covers the 300-mile circle with four-character sender squares, including squares across field and country boundaries and the date line. For each square subscribe to `pskr/filter/v2/<band>/<mode>/+/+/<square>/#`; all sender countries are allowed. The topic's four-character grid and the separate full locator in the payload are confirmed from [M0LTE's feed consumer](https://github.com/M0LTE/pskrmqtt2db/blob/4df4a930b929d0421faf4c34b6da4ef912ae992c/pskrmqtt2db/Services/PskrFeedService.cs) (checked 2026-10-20). Reports more than 300 miles from the configured grid are dropped on arrival; the rest are kept in memory for 30 minutes. Grid changes replace the subscriptions and clear old-area reports and samples. If more than 6,000 arrive in a minute the client stops following them for the session (reset when the grid changes). **VERIFY** the rate on a busy band (V17).
+- Band openings (`04-domain-logic.md` section 14, optional, on by default): the same square subscriptions with `+` for the band, `pskr/filter/v2/+/<mode>/+/+/<square>/#`, serve both features. If more than 6,000 arrive in a minute the client falls back to the current band's square subscriptions, starting a fresh count, and samples the other bands in turn using the same squares, one band at a time for 30 seconds or 1,000 reports, at most one sample started per 30 seconds. No valid grid: no area subscriptions, and rows ask for the grid in Settings. **VERIFY** the all-band rate (V18).
 - Reconnect with back-off. Store each report in `spot` (dedupe on receiver, band, 5-minute bucket; keep the strongest). Prune after 24 hours.
 
 ### Fallback and history: query service
@@ -243,7 +243,7 @@ None of this runs in simulation. With LoTW unreachable the status says so and no
 - Optional, on by default (Settings › Who to call › Parks on the Air): the feed is public and read-only and the app sends nothing about the operator except the usual User-Agent.
 - Polled every 2 minutes, only while the app runs and the setting is on; never more often (the response is a CDN-cached copy that changes about once a minute). On failure the wait doubles, up to 30 minutes. The last spots are shown for 15 minutes after the last good answer, then dropped. Status is the `pota` service: Ok, Degraded (showing the last spots), Down, or Off.
 - Matching: a spot matches a heard station when the base calls are equal (`Callsign.BaseCall`, so K1ABC matches K1ABC/P) and the spot's frequency is on the band being worked; the newest spot wins. A station calling `CQ POTA` with no spot is shown as POTA without a park.
-- Display only: the park never changes rank, tier, score or order.
+- Ranking (owner decision 2026-10-20, D16): with Settings › Who to call › "Rank stations at a park I have not worked higher" on (default), a spotted activator whose park is not in the log ranks right after the first tier and ahead of the rest, and stays in Next in line even when its call is worked on this band. A `CQ POTA` with no spot is not moved. The park never changes the need tier itself.
 - Logged contacts with a matched park get ADIF `SIG=POTA`, `SIG_INFO=<reference>`, kept in the record's raw ADIF (no `qso` column) and copied by `AdifMapper.ToAdif` into QRZ uploads, exports and the UDP logged-ADIF message. Worked parks come from `SIG`/`SIG_INFO` and from ADIF 3.1.4 `POTA_REF` (comma list, `@location` suffix stripped).
 
 ## 8. Country file
@@ -260,13 +260,36 @@ NAudio, WASAPI shared mode by default. Identify devices by their endpoint ID and
 
 ## 10. Update check
 
-GitHub Releases for `somedudenamedtony/costas` (public). CI publishes a release when the CI workflow is run by hand on `main` (`workflow_dispatch`; pushes and merges only build and test), as release `v<version>` with `Costas-Setup-<version>.exe` and `Costas-Setup-<version>.exe.sha256` attached, plus the Linux preview `Costas-<version>-linux-x64.tar.gz` and its `.sha256`. On Linux the update bar's Update opens the release page instead of downloading an installer.
+GitHub Releases for `somedudenamedtony/costas` (public). CI publishes a release when the CI workflow is run by hand on `main` (`workflow_dispatch`; pushes and merges only build and test), as release `v<major>.<minor>.<run number>` (three parts, as Velopack requires; builds before Velopack were `v0.1.0.<run>`, which compare older). Attached: Velopack's files (`CostasApp-win-Setup.exe`, `CostasApp-<version>-full.nupkg`, `CostasApp-<version>-delta.nupkg` from the previous release, and the feed `releases.win.json`, `assets.win.json`, `RELEASES`), the classic Inno Setup installer `Costas-Setup-<version>.exe` with its `.sha256` (for builds from before Velopack, which only look for that name), and the Linux preview `Costas-<version>-linux-x64.tar.gz` with its `.sha256`. On Linux the update bar's Update opens the release page instead of downloading anything.
 
+Owner decision 2026-10-26: updates on Windows go through Velopack (https://velopack.io) so they download only what changed. The Velopack pack id is `CostasApp`, so it installs to `%LOCALAPPDATA%\CostasApp` (per user, no administrator rights); `%LOCALAPPDATA%\Costas` stays the data folder, which Velopack's uninstall must not touch.
+
+- **Velopack install** (the normal case): `UpdateManager` with `GithubSource` reads the feed from the releases (app User-Agent on every request), downloads the deltas from the running version (or the full package when there is no delta chain), verifies them, and on Update calls `WaitExitThenApplyUpdates`: Velopack's updater waits for Costas to exit (PTT released, child processes stopped), swaps the files and starts it again. Refused while transmitting or in a contact.
+- **Classic install** (Inno Setup, up to 0.1.0.407): the GitHub check below. When the release has `CostasApp-win-Setup.exe`, Update downloads and verifies that, and once Costas has shut down runs it with `--silent --log <logs>/update-<time>.log` through a hidden `cmd` that then starts the new Costas from `%LOCALAPPDATA%\CostasApp\current` (a silent Velopack install does not start it), or reopens the classic install if the installer fails. The new Costas removes the per-user classic install (its uninstaller, silently) and makes the Start menu shortcut again, since the uninstaller deletes the one with the same name. An all-users classic install is left (removing it needs administrator rights) and logged. A release without the Velopack installer is installed the classic way: the installer through a hidden `cmd` with `/SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /LOG=<logs>/update-<time>.log`, which waits for Costas, jt9 and rigctld from the install folder to exit before copying, and Costas is started again whether or not the upgrade succeeded.
 - `GET https://api.github.com/repos/somedudenamedtony/costas/releases/latest` with the app's User-Agent and `Accept: application/vnd.github+json`. Unauthenticated limit is 60 requests an hour per address; the app asks at start and then once a day. 404 (no release yet, or the repository is private) means "no update", not an error.
 - The checksum comes from the asset's `digest` field (`sha256:<hex>`) when GitHub provides it, otherwise from the `.sha256` asset. With neither, the app refuses to install the download.
 - Draft and pre-release releases are ignored. A release is offered only when its version is greater than the running build's, and not after the operator chose "Skip this version".
-- Install: download to the data folder's `tmp/updates`, verify, start the installer through a hidden `cmd` that runs it with `/SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /LOG=<logs>/update-<time>.log` (Inno Setup's progress window only), waits for it and then starts the app again, whether or not the upgrade succeeded, close the app normally (PTT released, child processes stopped). Refused while transmitting or in a contact. The installer upgrades in place.
 
+
+## 10a. Usage statistics (Aptabase)
+
+Anonymous usage counts go to Aptabase (https://aptabase.com). Opt-out: on by default, switched off in Settings,
+Privacy. Owner decision 2026-10-15.
+
+- `POST https://{us|eu}.aptabase.com/api/v0/event`, header `App-Key: A-US-…` (the region comes from the key),
+  JSON body `{ timestamp, sessionId, eventName, systemProps, props }` as the official SDKs send it. Aptabase refuses
+  events older than a day; props are strings or numbers.
+- The app key (`A-US-6947074211`; not a secret, it ships inside the app) is baked into release builds only: CI
+  sets `APTABASE_APP_KEY` for the publish steps of a manual run on `main` (`AssemblyMetadata` `AptabaseAppKey`). Other builds have no key and send
+  nothing. Nothing is sent when the `CI` environment variable is `true` (the installer test starts the app).
+- User-Agent `Costas/<version>` without the callsign: these requests must not identify the station.
+- No first-run notice (owner decision 2026-10-15): the switch lives only in Settings, Privacy. Nothing is sent when it
+  is off, in simulation, or while the operating system
+  reports no network. Events wait in memory (at most 500, under 23 hours old) and are sent once a minute; failures
+  back off up to 30 minutes; whatever is waiting at exit gets one 3-second attempt and is then dropped.
+- Events: `app_started` (settings snapshot, see `UsageEvents`), `app_running` (once a UTC day for long runs),
+  `band_changed`, `view_opened`, `window_opened`, `cq_started`, `station_called`, `caller_answered`, `call_when_free`, `tune`,
+  `hunt_go`, `hunt_added`, `contact_logged`. Never a callsign, grid, name, frequency, port, address or log content.
 
 ## 11. eQSL
 

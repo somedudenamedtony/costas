@@ -54,21 +54,33 @@ public sealed class UpdateChecker(HttpClient http, string repository, Uri? apiBa
         var tag = root.GetProperty("tag_name").GetString() ?? string.Empty;
         if (!Version.TryParse(tag.TrimStart('v', 'V'), out var version)) return null;
         var page = root.TryGetProperty("html_url", out var h) ? h.GetString() ?? string.Empty : string.Empty;
+        ReleaseInfo? classic = null;
         foreach (var a in root.GetProperty("assets").EnumerateArray())
         {
             var name = a.GetProperty("name").GetString() ?? string.Empty;
-            if (!IsInstallerName(name)) continue;
+            var velopack = string.Equals(name, VelopackSetupName, StringComparison.OrdinalIgnoreCase);
+            if (!velopack && !IsInstallerName(name)) continue;
             string? sha = null;
             if (a.TryGetProperty("digest", out var d) && d.ValueKind == JsonValueKind.String && d.GetString() is { } digest &&
                 digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase))
             {
                 sha = digest[7..].ToLowerInvariant();
             }
-            return new ReleaseInfo(version, tag, page, name, a.GetProperty("browser_download_url").GetString() ?? string.Empty,
+            var info = new ReleaseInfo(version, tag, page, name, a.GetProperty("browser_download_url").GetString() ?? string.Empty,
                 a.TryGetProperty("size", out var s) ? s.GetInt64() : 0, sha);
+            // A release with the Velopack installer moves a classic install over to delta updates; the classic installer
+            // stays in releases for builds that predate Velopack, which only know to look for it.
+            if (velopack) return info;
+            classic ??= info;
         }
-        return null;
+        return classic;
     }
+
+    /// <summary>
+    /// The Velopack installer published with each release since the move to delta updates. A classic (Inno Setup) install
+    /// runs it once to move to a Velopack install; from then on updates are deltas.
+    /// </summary>
+    public const string VelopackSetupName = "CostasApp-win-Setup.exe";
 
     private static bool IsInstallerName(string name) =>
         name.StartsWith("Costas-Setup-", StringComparison.OrdinalIgnoreCase) && name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);

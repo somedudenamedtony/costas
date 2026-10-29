@@ -37,6 +37,8 @@ public static class TxMeterCheck
         // SWR below 1 is not a real ratio: the radio reports 0 when it measured no forward power.
         var alc = Median(list.Select(r => r.Alc).Where(a => a is >= 0).Select(a => a!.Value));
         var swr = Median(list.Select(r => r.Swr).Where(s => s is >= 1).Select(s => s!.Value));
+        // 0 W is a real reading: the radio is keyed but puts out nothing (no audio reaching it, for one).
+        var watts = Median(list.Select(r => r.Watts).Where(w => w is >= 0).Select(w => w!.Value));
 
         var level = TxMeterLevel.Ok;
         var parts = new List<string>();
@@ -53,7 +55,7 @@ public static class TxMeterCheck
             parts.Add($"ALC {Math.Round(a * 100).ToString("0", CultureInfo.InvariantCulture)}% on the last transmission: "
                     + "the audio is overdriving the radio. " + AlcAdvice);
         }
-        return new TxMeterResult(alc, swr, level, parts.Count == 0 ? null : string.Join(" ", parts));
+        return new TxMeterResult(alc, swr, level, parts.Count == 0 ? null : string.Join(" ", parts), watts);
     }
 
     private static string Fmt(double swr) => swr.ToString("0.0", CultureInfo.InvariantCulture);

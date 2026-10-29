@@ -29,11 +29,14 @@ public sealed class EqslInboxRepository(SqliteDatabase db)
         card["eqsl_user"] = null;
         card["eqsl_pswd"] = null;
         card["eqsl_qth_nickname"] = null;
-        var key = $"{contact.Call}|{contact.Band.ToUpperInvariant()}|{DuplicateRule.ModeKey(contact.Mode, contact.Submode)}|{contact.QsoDateOn:yyyyMMddHHmm}";
+        // Invariant: under a Thai or Saudi Windows locale the year would be Buddhist or Hijri, and the same card a new key.
+        var key = string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"{contact.Call}|{contact.Band.ToUpperInvariant()}|{DuplicateRule.ModeKey(contact.Mode, contact.Submode)}|{contact.QsoDateOn:yyyyMMddHHmm}");
         // Before PSK31 and PSK63 had keys of their own, a PSK card was stored under mode PSK. Replace that row rather than
         // keep the same card twice.
         var legacy = string.Equals(contact.Mode, "PSK", StringComparison.OrdinalIgnoreCase)
-            ? $"{contact.Call}|{contact.Band.ToUpperInvariant()}|PSK|{contact.QsoDateOn:yyyyMMddHHmm}"
+            ? string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                $"{contact.Call}|{contact.Band.ToUpperInvariant()}|PSK|{contact.QsoDateOn:yyyyMMddHHmm}")
             : key;
         using var c = db.Open();
         if (legacy != key) c.Execute("DELETE FROM eqsl_inbox WHERE profile_id=@profileId AND card_key=@legacy", new { profileId, legacy });

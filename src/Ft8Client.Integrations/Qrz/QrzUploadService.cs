@@ -49,8 +49,12 @@ public sealed class QrzUploadService
     /// <summary>Adds a contact to the queue.</summary>
     public void Enqueue(long qsoId) => _queue.Enqueue(qsoId, Target, _clock.UtcNow);
 
-    /// <summary>Uploads every item that is due. Returns the number uploaded (including duplicates).</summary>
-    public async Task<int> ProcessDueAsync(string key, CancellationToken ct)
+    /// <summary>
+    /// Uploads every item that is due. Returns the number uploaded (including duplicates). With
+    /// <paramref name="profileId"/>, only that profile's contacts: the key opens that profile's logbook, and another
+    /// profile's contacts wait until it is active again.
+    /// </summary>
+    public async Task<int> ProcessDueAsync(string key, CancellationToken ct, string? profileId = null)
     {
         var done = 0;
         foreach (var item in _queue.Due(Target, _clock.UtcNow))
@@ -62,6 +66,7 @@ public sealed class QrzUploadService
                 _queue.Remove(item.Id);
                 continue;
             }
+            if (profileId is not null && qso.ProfileId != profileId) continue;
 
             var wait = _lastRequestUtc + MinInterval - _clock.UtcNow;
             if (wait > TimeSpan.Zero) await _delay(wait, ct).ConfigureAwait(false);

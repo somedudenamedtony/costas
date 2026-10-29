@@ -15,6 +15,8 @@
           <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource SystemAccentColor}" />
           <SolidColorBrush x:Key="AccentTextBrush" Color="{DynamicResource SystemAccentColorDark1}" />
           <SolidColorBrush x:Key="CautionBrush" Color="#8A4B00" />
+          <SolidColorBrush x:Key="CautionBackgroundBrush" Color="#FFF4CE" />
+          <SolidColorBrush x:Key="CautionBorderBrush" Color="#E8C27A" />
           <SolidColorBrush x:Key="CriticalBrush" Color="#C42B1C" />
           <SolidColorBrush x:Key="SuccessBrush" Color="#0F7B0F" />
           <SolidColorBrush x:Key="SelectedRowBrush" Color="#E5F1FB" />
@@ -32,6 +34,8 @@
           <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource SystemAccentColor}" />
           <SolidColorBrush x:Key="AccentTextBrush" Color="{DynamicResource SystemAccentColorLight2}" />
           <SolidColorBrush x:Key="CautionBrush" Color="#F0A64B" />
+          <SolidColorBrush x:Key="CautionBackgroundBrush" Color="#3B2A12" />
+          <SolidColorBrush x:Key="CautionBorderBrush" Color="#6B4A1A" />
           <SolidColorBrush x:Key="CriticalBrush" Color="#E5584A" />
           <SolidColorBrush x:Key="SuccessBrush" Color="#6CCB5F" />
           <SolidColorBrush x:Key="SelectedRowBrush" Color="#1F3A55" />
@@ -42,6 +46,8 @@
       </ResourceDictionary.ThemeDictionaries>
       <FontFamily x:Key="AppFont">Segoe UI Variable Text, Segoe UI, Inter, Open Sans, DejaVu Sans</FontFamily>
       <FontFamily x:Key="MessageFont">Cascadia Mono, Consolas, DejaVu Sans Mono, monospace</FontFamily>
+      <x:Boolean x:Key="InstrumentSkin">False</x:Boolean>
+      <x:Boolean x:Key="StandardSkin">True</x:Boolean>
     </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>
@@ -58,12 +64,24 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="8" />
     </Style>
+    <!-- Something the operator should look at now, such as other stations calling the one I'm calling. -->
+    <Style Selector="Border.attention">
+      <Setter Property="Background" Value="{DynamicResource CautionBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CautionBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="12,8" />
+    </Style>
     <Style Selector="TextBlock.title">
       <Setter Property="FontSize" Value="15" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="TextBlock.secondary">
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+    <Style Selector="TextBlock.secondary.live">
+      <Setter Property="Foreground" Value="{DynamicResource CriticalBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="TextBlock.num">
       <Setter Property="FontFeatures" Value="+tnum" />
@@ -89,6 +107,19 @@
     <Style Selector="Button.macro.next">
       <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
       <Setter Property="Foreground" Value="White" />
+    </Style>
+    <!-- Small buttons laid over the waterfall's frequency scale (pop out, pop in). The waterfall is always dark. -->
+    <Style Selector="Button.wfoverlay">
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="Padding" Value="5,0" />
+      <Setter Property="Margin" Value="0,1,2,0" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Background" Value="#BF07121E" />
+      <Setter Property="Foreground" Value="#D6DDE6" />
+      <Setter Property="BorderBrush" Value="#2C3C4F" />
+      <Setter Property="BorderThickness" Value="1" />
     </Style>
     <Style Selector="Button.critical">
       <Setter Property="Background" Value="{DynamicResource CriticalBrush}" />

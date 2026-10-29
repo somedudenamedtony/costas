@@ -20,7 +20,7 @@ public class RemoteControlTests
     private readonly FakeRemoteTarget _target = new();
     private string _saved = string.Empty;
 
-    private RemoteControl Make() => new(_target, _clock, new DeviceTokens(), t => _saved = t, new PairingGate(() => 314159));
+    private RemoteControl Make() => new(_target, _clock, new DeviceTokens(), t => _saved = t);
 
     [Fact]
     public async Task HandleAsync_CommandFromPhone_TakesControlAndCapsWatchdog()
@@ -60,6 +60,32 @@ public class RemoteControlTests
         var note = await Make().HandleAsync("phone", new RemoteCommand("transmit", "X"));
         note.Should().NotBeNull();
         _target.Calls.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("transmit")]
+    [InlineData("offset")] // An empty offset box sends no hertz.
+    [InlineData("call")] // No callsign.
+    public async Task HandleAsync_NotUnderstood_DoesNotTakeControlOrResetWatchdog(string type)
+    {
+        var rc = Make();
+        var note = await rc.HandleAsync("phone", new RemoteCommand(type));
+
+        note.Should().Be("The station did not understand that.");
+        rc.Lease.IsHeld.Should().BeFalse();
+        _target.ActivityCount.Should().Be(0);
+        _target.WatchdogCap.Should().BeNull();
+    }
+
+    [Fact]
+    public void Pair_SavingFails_StillPairsForThisRun()
+    {
+        var rc = new RemoteControl(_target, _clock, new DeviceTokens(), _ => throw new InvalidOperationException("credential store full"));
+
+        var token = rc.Pair();
+
+        token.Should().NotBeNull();
+        rc.SignIn(token).Should().NotBeNull();
     }
 
     [Fact]
@@ -145,31 +171,14 @@ public class RemoteControlTests
     }
 
     [Fact]
-    public void Pair_RightCode_TokenSignsInAndIsSaved()
+    public void Pair_NoCode_TokenSignsInAndIsSaved()
     {
         var rc = Make();
-        rc.Pairing.Open(_clock.UtcNow);
-        rc.Pair("000000").Should().BeNull();
-        var token = rc.Pair("314159");
+        var token = rc.Pair();
 
         token.Should().NotBeNull();
         _saved.Should().NotBeEmpty().And.NotContain(token!);
         rc.SignIn(token).Should().NotBeNull().And.Be(rc.SignIn(token));
         rc.SignIn("not-a-token").Should().BeNull();
-    }
-
-    [Fact]
-    public async Task ForgetPhones_AfterPairing_TokenRefusedAndDeskControls()
-    {
-        var rc = Make();
-        rc.Pairing.Open(_clock.UtcNow);
-        var token = rc.Pair("314159");
-        await rc.HandleAsync(rc.SignIn(token)!, new RemoteCommand("cq"));
-
-        rc.ForgetPhones();
-
-        rc.SignIn(token).Should().BeNull();
-        rc.Lease.IsHeld.Should().BeFalse();
-        _saved.Should().BeEmpty();
     }
 }

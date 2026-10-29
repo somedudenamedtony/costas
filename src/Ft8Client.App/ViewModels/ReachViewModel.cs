@@ -79,6 +79,13 @@ public sealed partial class ReachViewModel : ObservableObject
     [ObservableProperty]
     public partial string BandActivityStatus { get; set; } = "Waiting for reports of nearby stations.";
 
+    /// <summary>By country, for the selected band and window.</summary>
+    public ObservableCollection<CountryReachRowViewModel> ByCountry { get; } = [];
+
+    /// <summary>"By country, last 15 minutes".</summary>
+    [ObservableProperty]
+    public partial string ByCountryTitle { get; set; } = "By country, last 15 minutes";
+
     /// <summary>By band, last 24 hours.</summary>
     public ObservableCollection<BandReachRowViewModel> ByBand { get; } = [];
 
@@ -197,7 +204,11 @@ public sealed partial class ReachViewModel : ObservableObject
     /// <summary>Mode.</summary>
     public string Mode { get; set; } = "FT8";
 
-    partial void OnBandChanged(string value) => Refresh();
+    partial void OnBandChanged(string value)
+    {
+        if (value is null) return; // a drop-down refilling its list clears its selection: not a band
+        Refresh();
+    }
 
     partial void OnWindowChanged(string value) => Refresh();
 
@@ -214,15 +225,18 @@ public sealed partial class ReachViewModel : ObservableObject
         Points = pts;
         Centre = Grid.ToLatLon(MyGrid);
         Empty = pts.Count == 0;
-        var countries = pts.Select(p => p.EntityKey).Where(k => k is not null).Distinct().Count();
+        var countries = CountryReach.From(pts, _countries, Units);
         var far = pts.MaxBy(p => p.Km);
         var best = pts.MaxBy(p => p.Snr);
         Headline = Empty ? "No reports yet. Reports appear a few minutes after you transmit."
-            : $"Heard by {pts.Count} stations in {countries} countries · farthest {far!.Call}, {StationText.Distance(far.Km, Units)} · best {Report.Format(best!.Snr)} from {best.Call}";
+            : $"Heard by {pts.Count} stations in {countries.Count} countries · farthest {far!.Call}, {StationText.Distance(far.Km, Units)} · best {Report.Format(best!.Snr)} from {best.Call}";
         Rows.Clear();
         foreach (var p in pts.OrderByDescending(p => p.Km))
             Rows.Add(new ReachRowViewModel(p.Call, p.Where, StationText.Distance(p.Km, Units), $"{p.Bearing}°", Report.Format(p.Snr),
                 StationText.ShortAgo(now - p.TimeUtc), p.InLog, p.Km));
+        ByCountryTitle = $"By country, last {Window}";
+        ByCountry.Clear();
+        foreach (var c in countries) ByCountry.Add(c);
         ByBand.Clear();
         foreach (var g in all.GroupBy(r => r.Band).OrderBy(g => BandOrder(g.Key)))
         {

@@ -9,7 +9,6 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Styling;
 using Avalonia.Threading;
 using Serilog;
 using Ft8Client.App.Services;
@@ -21,31 +20,41 @@ namespace Ft8Client.App;
 /// <summary>The Avalonia application.</summary>
 public sealed class App : Application
 {
+    private AppearanceService? _appearance;
+
     /// <summary>The host, set by Program before start.</summary>
     public static AppHost? Host { get; set; }
 
     /// <inheritdoc />
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        _appearance = new AppearanceService(this);
+    }
 
     /// <inheritdoc />
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && Host is { } host)
         {
-            RequestedThemeVariant = host.Settings.Current.Appearance.Theme switch
-            {
-                "light" => ThemeVariant.Light,
-                "dark" => ThemeVariant.Dark,
-                _ => ThemeVariant.Default,
-            };
+            ApplyTheme(host);
+            // A theme chosen in Settings takes effect at once, not at the next start.
+            host.Settings.Changed += _ => Dispatcher.UIThread.Post(() => ApplyTheme(host));
             MainViewModel.Dispatch = a => Dispatcher.UIThread.Post(a);
             MainViewModel.Shutdown = () => Dispatcher.UIThread.Post(() => desktop.Shutdown());
             var vm = new MainViewModel(host);
             desktop.MainWindow = new MainWindow { DataContext = vm };
             WatchForUnexpectedErrors(host, vm);
-            desktop.ShutdownRequested += (_, _) => host.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            // Exit, not ShutdownRequested: a shutdown for an update is forced and never raises ShutdownRequested, which
+            // skipped the final saves (neighbour history, logs) and the services' clean stop.
+            desktop.Exit += (_, _) => host.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void ApplyTheme(AppHost host)
+    {
+        _appearance?.Apply(host.Settings.Current.Appearance);
     }
 
     // An error nothing caught (a command failing on a driver or system error) used to close the app without a word.

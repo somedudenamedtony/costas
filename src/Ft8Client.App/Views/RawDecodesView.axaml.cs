@@ -7,6 +7,8 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Avalonia.Controls;
+using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Ft8Client.App.ViewModels;
 
 namespace Ft8Client.App.Views;
@@ -24,6 +26,18 @@ public partial class RawDecodesView : UserControl
             {
                 if (vm.Lines.Count > 0) List.ScrollIntoView(0);
             };
+        };
+        LineMenu.Opening += (_, e) =>
+        {
+            // Right-click selects the line under the pointer; a separator or an empty list has nothing to offer.
+            if (List.SelectedItem is not RawLineViewModel { IsBlank: false } line)
+            {
+                e.Cancel = true;
+                return;
+            }
+            CallItem.Header = line.Sender is null ? "Call" : $"Call {line.Sender}";
+            OnlyItem.Header = line.Sender is null ? "Show only" : $"Show only {line.Sender}";
+            CallItem.IsVisible = OnlyItem.IsVisible = line.Sender is not null;
         };
         List.DoubleTapped += (_, _) =>
         {
@@ -44,5 +58,21 @@ public partial class RawDecodesView : UserControl
             if (e.OffsetDelta.Y > 0 && e.ExtentDelta.Y == 0 && !atTop) vm.ScrolledAway = true;
             else if (atTop) vm.ScrolledAway = false;
         });
+    }
+
+    private void OnCall(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is RawDecodesViewModel vm && List.SelectedItem is RawLineViewModel line) vm.Activate(line);
+    }
+
+    private void OnShowOnly(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is RawDecodesViewModel vm && List.SelectedItem is RawLineViewModel line) vm.ShowOnly(line);
+    }
+
+    private async void OnCopy(object? sender, RoutedEventArgs e)
+    {
+        if (List.SelectedItem is RawLineViewModel { IsBlank: false } line && TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard)
+            await clipboard.SetTextAsync(line.Copy);
     }
 }

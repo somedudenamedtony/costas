@@ -23,5 +23,7 @@ namespace Ft8Client.Core.Ranking;
 /// <param name="NowUtc">Current time.</param>
 /// <param name="Countries">Country file, for country CQ modifiers. Optional.</param>
 /// <param name="Lotw">Who uploads to LoTW; with only confirmed contacts counting, LoTW users rank ahead. Optional.</param>
+/// <param name="Parks">POTA spots and worked parks; an activator at a park not in the log ranks higher. Optional.</param>
 public sealed record RankInput(IReadOnlyCollection<Station> Stations, LogIndex Log, HearsMe? HearsMe, RankingSettings Settings,
-                               EntityMatch? MyEntity, string Band, string ModeKey, DateTime NowUtc, CountryFile? Countries = null, LotwUsers? Lotw = null);
+                               EntityMatch? MyEntity, string Band, string ModeKey, DateTime NowUtc, CountryFile? Countries = null, LotwUsers? Lotw = null,
+                               Pota.PotaParks? Parks = null);

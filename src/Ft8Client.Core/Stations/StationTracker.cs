@@ -234,7 +234,13 @@ public sealed class StationTracker
         };
         s = s with { Trend = TrendOf(s.SnrHistory) };
 
-        if (m.IsAddressedTo(_myCall))
+        if (m.IsAddressedTo(_myCall) && StageOf(m.Kind) == PartnerStage.SignOff)
+        {
+            // RRR, RR73 or 73 to me ends a contact rather than starting one: the station is signing off with me,
+            // not calling me, so it is not offered as a caller to answer once the contact has logged.
+            s = s with { State = StationState.Finishing, Partner = _myCall, PartnerStage = PartnerStage.SignOff, CqStreak = 0 };
+        }
+        else if (m.IsAddressedTo(_myCall))
         {
             s = s with { State = StationState.CallingMe, Partner = _myCall, PartnerStage = StageOf(m.Kind), CqStreak = 0 };
         }

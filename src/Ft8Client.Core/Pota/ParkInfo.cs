@@ -10,7 +10,7 @@ namespace Ft8Client.Core.Pota;
 
 /// <summary>
 /// A heard station that is activating a park: from a matching spot (with its reference) or from its own "CQ POTA"
-/// (reference unknown). Display only; it never changes the ranking.
+/// (reference unknown). A new park ranks higher (see <see cref="Ranking.RankingSettings.PreferNewParks"/>).
 /// </summary>
 /// <param name="Reference">Park reference from a spot, or null when only the CQ said POTA.</param>
 /// <param name="ParkName">Park name from the spot, if given.</param>

@@ -14,6 +14,7 @@ using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Stations;
+using Ft8Client.Core.Time;
 using Ft8Client.Core.Transmit;
 
 namespace Ft8Client.App.Tests;
@@ -100,13 +101,22 @@ public class RemoteStateBuilderTests
     }
 
     [Fact]
-    public void Build_Transmitting_CannotChangeBandAndCountsDownTheTransmission()
+    public void Build_Transmitting_CannotChangeBandAndCountsDownTheSlot()
     {
         var s = RemoteStateBuilder.Build(Snap() with { Transmitting = true }, Now, Ctx, "you", null);
 
         s.CanChangeBand.Should().BeFalse();
         s.SlotLabel.Should().Be("Transmitting");
-        s.SlotLengthMs.Should().Be((int)ModeInfo.TxEnd(Mode.Ft8).TotalMilliseconds);
+        s.SlotLengthMs.Should().Be(15_000);
+    }
+
+    [Fact]
+    public void Build_AudioEndedInTransmitSlot_StillTransmitSlot()
+    {
+        var s = RemoteStateBuilder.Build(Snap() with { LastTxSlotUtc = SlotMath.SlotStart(Now, Mode.Ft8) }, Now, Ctx, "you", null);
+
+        s.Transmitting.Should().BeFalse();
+        s.SlotLabel.Should().Be("Transmitting");
     }
 
     [Fact]
@@ -145,5 +155,27 @@ public class RemoteStateBuilderTests
     public void Build_NotViewing_NoDetails()
     {
         RemoteStateBuilder.Build(Snap(), Now, Ctx, "you", null).Details.Should().BeNull();
+    }
+
+    [Fact]
+    public void Build_JustLogged_SendsNoticeWithTimeLeft()
+    {
+        var logged = new LoggedContact(3, "W9TJP", NeedTag.NewCall, "Indiana, USA", "20m", Mode.Ft8, -12, -8, Now.AddSeconds(-2), PowerWatts: "25");
+
+        var l = RemoteStateBuilder.Build(Snap() with { LastLogged = logged }, Now, Ctx, "you", null).Logged!;
+
+        l.Id.Should().Be(3);
+        l.Call.Should().Be("W9TJP");
+        l.Need.Should().Be("New call");
+        l.Line.Should().Be("Sent -12 · Received -08 · Indiana, USA · 25 W");
+        l.MsLeft.Should().Be(3000);
+    }
+
+    [Fact]
+    public void Build_LoggedLongAgo_SendsNoNotice()
+    {
+        var logged = new LoggedContact(3, "W9TJP", NeedTag.NewCall, "", "20m", Mode.Ft8, -12, -8, Now.AddSeconds(-6));
+
+        RemoteStateBuilder.Build(Snap() with { LastLogged = logged }, Now, Ctx, "you", null).Logged.Should().BeNull();
     }
 }

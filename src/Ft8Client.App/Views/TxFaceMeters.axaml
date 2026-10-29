@@ -1,0 +1,54 @@
+<!-- The radio's transmit meters on an instrument skin's display, as on the radio's own screen: power out, ALC and SWR,
+     live while transmitting and held from the last transmission. Each skin sets the colours to suit its display. The
+     bars shrink to leave the frequency room at the narrowest window. -->
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Ft8Client.App.ViewModels"
+             xmlns:v="using:Ft8Client.App.Views"
+             x:Class="Ft8Client.App.Views.TxFaceMeters"
+             x:DataType="vm:MainViewModel" x:Name="Root">
+  <!-- The bar column takes up to 120 px of the room left; the spacer on the left takes the rest, so the meters sit right. -->
+  <Grid RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6" VerticalAlignment="Center"
+        IsVisible="{Binding HasMeters}" Background="Transparent" ToolTip.Tip="{Binding MeterTip}" AutomationProperties.Name="{Binding MeterTip}">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="Auto" />
+      <ColumnDefinition Width="1000*" MinWidth="36" MaxWidth="120" />
+      <ColumnDefinition Width="40" />
+    </Grid.ColumnDefinitions>
+    <Grid.Styles>
+      <Style Selector="TextBlock.label">
+        <Setter Property="FontSize" Value="10" /><Setter Property="LetterSpacing" Value="1" /><Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+      <Style Selector="TextBlock.value">
+        <Setter Property="FontSize" Value="12" /><Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+      <Style Selector="v|TxMeterBar">
+        <Setter Property="Segments" Value="20" /><Setter Property="Height" Value="9" /><Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
+    </Grid.Styles>
+    <TextBlock Grid.Column="1" Classes="label" Text="PO" Foreground="{Binding #Root.LabelBrush}" FontFamily="{Binding #Root.FontFamily}" />
+    <v:TxMeterBar Grid.Column="2" Value="{Binding PowerOutBar}" MeterBrush="{Binding #Root.MeterBrush}" TrackBrush="{Binding #Root.TrackBrush}" />
+    <TextBlock Grid.Column="3" Classes="value" Text="{Binding PowerOutText}" Foreground="{Binding #Root.ValueBrush}" FontFamily="{Binding #Root.FontFamily}" />
+    <TextBlock Grid.Column="1" Grid.Row="1" Classes="label" Text="ALC" Foreground="{Binding #Root.LabelBrush}" FontFamily="{Binding #Root.FontFamily}" />
+    <v:TxMeterBar Grid.Row="1" Grid.Column="2" Value="{Binding AlcBar}" CautionAt="0.5" MeterBrush="{Binding #Root.MeterBrush}"
+                  CautionBrush="{Binding #Root.CautionBrush}" TrackBrush="{Binding #Root.TrackBrush}" />
+    <TextBlock Grid.Row="1" Grid.Column="3" Classes="value" Text="{Binding AlcText}" FontFamily="{Binding #Root.FontFamily}">
+      <TextBlock.Foreground>
+        <MultiBinding Converter="{x:Static v:Converters.FaceKindBrush}">
+          <Binding Path="AlcKind" /><Binding Path="#Root.ValueBrush" /><Binding Path="#Root.CautionBrush" />
+        </MultiBinding>
+      </TextBlock.Foreground>
+    </TextBlock>
+    <TextBlock Grid.Column="1" Grid.Row="2" Classes="label" Text="SWR" Foreground="{Binding #Root.LabelBrush}" FontFamily="{Binding #Root.FontFamily}" />
+    <v:TxMeterBar Grid.Row="2" Grid.Column="2" Value="{Binding SwrBar}" CautionAt="0.5" MeterBrush="{Binding #Root.MeterBrush}"
+                  CautionBrush="{Binding #Root.CautionBrush}" TrackBrush="{Binding #Root.TrackBrush}" />
+    <TextBlock Grid.Row="2" Grid.Column="3" Classes="value" Text="{Binding SwrText}" FontFamily="{Binding #Root.FontFamily}">
+      <TextBlock.Foreground>
+        <MultiBinding Converter="{x:Static v:Converters.FaceKindBrush}">
+          <Binding Path="SwrKind" /><Binding Path="#Root.ValueBrush" /><Binding Path="#Root.CautionBrush" />
+        </MultiBinding>
+      </TextBlock.Foreground>
+    </TextBlock>
+  </Grid>
+</UserControl>

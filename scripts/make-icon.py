@@ -2,7 +2,8 @@
 # Costas - a station-centric FT8/FT4 client.
 # Copyright (C) 2026 Costas contributors. GPLv3; see LICENSE.
 #
-# Draws the app icon (the "Sync grid" mark) and writes src/Ft8Client.App/Assets/costas.ico and costas-256.png.
+# Draws the app icon (the "Sync grid" mark) and writes src/Ft8Client.App/Assets/costas.ico and costas-256.png, plus the
+# square home-screen icons the remote page serves (src/Ft8Client.App/Remote/icon-*.png; phones round the corners).
 # The mark is the FT8 Costas sync array, tones 3 1 4 0 6 5 2: one lit cell per symbol on a 7 x 7 time/tone grid,
 # tone 0 at the bottom. Large sizes show the faint grid; small sizes drop it and enlarge the cells so they stay legible.
 # Needs Pillow. Run from anywhere: python3 scripts/make-icon.py
@@ -18,13 +19,13 @@ SIGNAL = (0xF5, 0xB2, 0x3D, 255)
 SUPERSAMPLE = 8
 
 
-def draw(size: int) -> Image.Image:
+def draw(size: int, square: bool = False) -> Image.Image:
     big = size >= 48
     s = size * SUPERSAMPLE
     u = s / 64  # one unit of the 64 x 64 design grid
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    radius = 14 if big else (12 if size >= 24 else 10)
+    radius = 0 if square else 14 if big else (12 if size >= 24 else 10)
     d.rounded_rectangle((0, 0, s - 1, s - 1), radius=radius * u, fill=NIGHT)
 
     if big:
@@ -56,6 +57,9 @@ def main() -> None:
     images = [draw(n) for n in sizes]
     images[-1].save(assets / "costas-256.png")
     images[-1].save(assets / "costas.ico", sizes=[(n, n) for n in sizes], append_images=images[:-1])
+    remote = assets.parent / "Remote"
+    for n in (180, 192, 512):
+        draw(n, square=True).save(remote / f"icon-{n}.png")
 
 
 if __name__ == "__main__":

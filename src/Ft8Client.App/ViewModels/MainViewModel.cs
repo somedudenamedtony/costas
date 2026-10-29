@@ -33,8 +33,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 {
     private readonly AppHost _host;
     private readonly CallerAlert _callers = new();
-    private readonly HashSet<string> _cacheChecked = new(StringComparer.Ordinal);
     private bool _escArmed;
+    private readonly HashSet<string> _cacheChecked = new(StringComparer.Ordinal);
     private bool _updatingBand;
 
     /// <summary>Creates the view model.</summary>
@@ -83,12 +83,14 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _ = heard.Refresh();
         Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
             () => Shutdown());
+        Logged = new LoggedNoticeViewModel(() => host.Clock.UtcNow, new LoggedContactStore(host.Qsos, host.Countries, host.LogHold, host.RebuildLogIndex));
         Mini = new MiniViewModel(Operate, this, () => HaltCommand.Execute(null));
         Mini.HuntDismissed += () => HuntDismissCommand.Execute(null);
         Modes = [.. ModeInfo.Operable.Select(ModeInfo.Name)];
         ApplySettings();
         _host.Settings.Changed += _ => Dispatch(ApplySettings);
         _host.Remote.Changed += () => Dispatch(UpdateRemote);
+        _host.RadioPower.Changed += () => Dispatch(UpdatePower);
         UpdateRemote();
         _host.Udp.Inbound += m => Dispatch(() => OnUdp(m));
     }
@@ -155,6 +157,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>The update bar.</summary>
     public UpdateBarViewModel Update { get; }
+
+    /// <summary>The "Logged" notice in the corner of the window.</summary>
+    public LoggedNoticeViewModel Logged { get; }
 
     /// <summary>Operate view.</summary>
     public OperateViewModel Operate { get; }
@@ -245,25 +250,102 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [ObservableProperty]
     public partial TextKind StatusKind { get; set; }
 
+    private static readonly TimeSpan NoteTime = TimeSpan.FromSeconds(8);
+    private DateTime _noteUntilUtc;
+    private bool _applyingStatus;
+
+    partial void OnStatusTextChanged(string value)
+    {
+        if (!_applyingStatus) _noteUntilUtc = DateTime.UtcNow + NoteTime;
+    }
+
     /// <summary>"Tx offset 1650 Hz · clear".</summary>
     [ObservableProperty]
     public partial string TxOffsetText { get; set; } = string.Empty;
 
-    /// <summary>ALC or SWR warning from the last transmission ("SWR 3.4 · ALC 70%"), or empty.</summary>
+    /// <summary>True once the radio has reported a transmit meter, so the meter strip shows.</summary>
     [ObservableProperty]
-    public partial string MeterText { get; set; } = string.Empty;
+    public partial bool HasMeters { get; set; }
 
-    /// <summary>The full ALC or SWR advice, for the tooltip.</summary>
+    /// <summary>"TX" while the readings are live, "Last TX" while they hold after the transmission.</summary>
+    [ObservableProperty]
+    public partial string MeterCaption { get; set; } = string.Empty;
+
+    /// <summary>True while the meters are live, for the caption's colour.</summary>
+    [ObservableProperty]
+    public partial bool MetersLive { get; set; }
+
+    /// <summary>What the strip shows and, after a transmission outside limits, what to do about it.</summary>
     [ObservableProperty]
     public partial string MeterTip { get; set; } = string.Empty;
 
-    /// <summary>Colour of the meter warning.</summary>
+    /// <summary>True when the radio reports its power output.</summary>
     [ObservableProperty]
-    public partial TextKind MeterKind { get; set; }
+    public partial bool HasPowerOut { get; set; }
+
+    /// <summary>Power output, "24 W".</summary>
+    [ObservableProperty]
+    public partial string PowerOutText { get; set; } = string.Empty;
+
+    /// <summary>Power output on the faceplate bar, 0 to 1 of the radio's maximum.</summary>
+    [ObservableProperty]
+    public partial double PowerOutBar { get; set; }
+
+    /// <summary>True when the radio reports ALC.</summary>
+    [ObservableProperty]
+    public partial bool HasAlc { get; set; }
+
+    /// <summary>ALC on the bar, 0 to 1.</summary>
+    [ObservableProperty]
+    public partial double AlcBar { get; set; }
+
+    /// <summary>"OK" or "High".</summary>
+    [ObservableProperty]
+    public partial string AlcText { get; set; } = string.Empty;
+
+    /// <summary>Colour of <see cref="AlcText"/>.</summary>
+    [ObservableProperty]
+    public partial TextKind AlcKind { get; set; }
+
+    /// <summary>True when the radio reports SWR.</summary>
+    [ObservableProperty]
+    public partial bool HasSwr { get; set; }
+
+    /// <summary>SWR, "1.3".</summary>
+    [ObservableProperty]
+    public partial string SwrText { get; set; } = string.Empty;
+
+    /// <summary>SWR on the faceplate bar: 1.0 empty, 3.0 and above full, caution from 2.0 at the middle.</summary>
+    [ObservableProperty]
+    public partial double SwrBar { get; set; }
+
+    /// <summary>Colour of <see cref="SwrText"/>.</summary>
+    [ObservableProperty]
+    public partial TextKind SwrKind { get; set; }
 
     /// <summary>Manual offset entry.</summary>
     [ObservableProperty]
     public partial string ManualOffset { get; set; } = "1500";
+
+    /// <summary>The radio's power setting, "50 W", for the bottom bar.</summary>
+    [ObservableProperty]
+    public partial string PowerText { get; set; } = string.Empty;
+
+    /// <summary>True when the radio reports its power, so it can be changed here.</summary>
+    [ObservableProperty]
+    public partial bool HasPower { get; set; }
+
+    /// <summary>"1 to 100 W".</summary>
+    [ObservableProperty]
+    public partial string PowerRange { get; set; } = string.Empty;
+
+    /// <summary>What the operator typed in the power box.</summary>
+    [ObservableProperty]
+    public partial string PowerEntry { get; set; } = string.Empty;
+
+    /// <summary>Why the power was not changed, or what the radio set instead; empty when it took it.</summary>
+    [ObservableProperty]
+    public partial string PowerMessage { get; set; } = string.Empty;
 
     /// <summary>"Call CQ" or "Stop CQ".</summary>
     [ObservableProperty]
@@ -335,7 +417,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         var tonight = TonightRows(s);
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
-        Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current.Ranking);
+        Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current);
         Operate.ShowCqModifier(_host.Settings.Current.Operating.CqModifier);
         Operate.Apply(s, tonight.Rows, tonight.Total);
         Reach.ApplyNeighbours(s.Neighbours, s.Band, _host.Settings.Current.PskReporter is { FeedEnabled: true, CompareNeighbours: true });
@@ -343,7 +425,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         FillLookups(s);
         ApplyBandOpenings(s);
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
-        Raw.Apply(s.RawDecodes, !ModeInfo.IsSlotted(s.Mode));
+        Raw.Units = Operate.Units;
+        Raw.Apply(s.RawDecodes, s.Rank, s.Contact?.DxCall, keyboard: !ModeInfo.IsSlotted(s.Mode));
+        Logged.Apply(s.LastLogged);
         Frequency = FormatFrequency(s.DialHz);
         FollowBand(s.Band);
         Transmitting = s.Transmitting;
@@ -356,11 +440,19 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
         UpdateTune(s);
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
-        (StatusText, StatusKind) = Status(s, SettingsMapper.Rtty(_host.Settings.Current));
-        // After a first Esc the bar keeps saying that the next Esc abandons, until the contact ends.
+        // A line set by an operator action ("Added to your Hunt list", "not in the station list") stays for a few seconds;
+        // the snapshot that the action itself publishes used to replace it before it could be read. A fault still shows.
+        var (statusText, statusKind) = Status(s, SettingsMapper.Rtty(_host.Settings.Current));
+        // After a first Esc in PSK or RTTY the bar keeps saying that the next Esc abandons, until the contact ends.
         if (s.Contact is not { Outcome: ContactOutcome.InProgress }) _escArmed = false;
-        else if (_escArmed && s.Fault is null && !s.Transmitting) (StatusText, StatusKind) = (EscapeText(s.Contact, true), TextKind.Critical);
-        (MeterText, MeterTip, MeterKind) = TxMeterText.Warning(s.TxMeters);
+        else if (_escArmed && s.Fault is null && !s.Transmitting) (statusText, statusKind) = (EscapeText(s.Contact, true), TextKind.Critical);
+        if (DateTime.UtcNow >= _noteUntilUtc || statusKind == TextKind.Critical)
+        {
+            _applyingStatus = true;
+            (StatusText, StatusKind) = (statusText, statusKind);
+            _applyingStatus = false;
+        }
+        ApplyMeters(TxMeterText.Strip(s.TxMetersLive, s.TxMeters, _host.RadioPower.Power?.MaxWatts));
         Indicators.Clear();
         Indicators.Add(Indicator("Radio", s, ServiceNames.Radio));
         Indicators.Add(Indicator("Audio", s, ServiceNames.Audio));
@@ -371,9 +463,17 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var offset = s.ClockOffsetSeconds;
         ClockKind = offset is { } o && Math.Abs(o) > _host.Settings.Current.Operating.ClockBlockSeconds ? TextKind.Critical
             : offset is { } o2 && Math.Abs(o2) > ClockEstimate.WarnSeconds ? TextKind.Caution : TextKind.Normal;
-        ClockTip = offset is { } o3 ? $"Clock offset {o3:+0.00;-0.00} s." : "Clock offset not measured yet.";
+        ClockTip = ClockTipText(offset, _host.CorrectedClock.Correction);
         if (Tab == 2) Reach.Refresh();
         Mini.Refresh(SelectedBand, SelectedMode);
+    }
+
+    /// <summary>The clock tooltip: the offset left, and the correction Costas applies to the PC clock, if any.</summary>
+    public static string ClockTipText(double? offsetSeconds, TimeSpan correction)
+    {
+        var left = offsetSeconds is { } o ? $"Clock offset {o:+0.00;-0.00} s." : "Clock offset not measured yet.";
+        return correction == TimeSpan.Zero ? left
+            : $"{left} Your PC clock is {Math.Abs(correction.TotalSeconds):0.00} s {(correction > TimeSpan.Zero ? "slow" : "fast")}; Costas corrects for it from internet time.";
     }
 
     /// <summary>Called every 200 ms: clock and slot progress.</summary>
@@ -390,15 +490,18 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             SlotProgress = into / len;
             var left = (int)Math.Ceiling((len - into).TotalSeconds);
             SlotRemaining = $"{left} s to next slot";
+            SlotLabel = _host.Session.Snapshot.InTransmitSlot(now) ? "Transmitting" : "Receiving";
         }
         else
         {
             SlotProgress = 0;
             SlotRemaining = "Reading continuously";
+            SlotLabel = Transmitting ? "Transmitting" : "Receiving";
         }
-        SlotLabel = Transmitting ? "Transmitting" : "Receiving";
         UpdateTune(_host.Session.Snapshot);
         Operate.Tick();
+        Logged.Tick();
+        _host.LogHold.Tick();
         Mini.Refresh(SelectedBand, SelectedMode);
     }
 
@@ -417,12 +520,17 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _ = _host.SetBandAsync(band, mode);
     }
 
-    // The band menu shows the band the session is on, whoever changed it.
+    // The band menu shows the band the session is on, whoever changed it (the operator turning the radio's band knob too).
     private void FollowBand(string band)
     {
         var shown = BandPlan.Display(band);
         if (shown == SelectedBand) return;
         _updatingBand = true;
+        // A band the radio went to that has no FT8/FT4 frequency for this mode (2 m) still gets a row, so the menu says it;
+        // the row goes again once the radio leaves that band.
+        ModeInfo.TryParse(SelectedMode, out var mode);
+        if (!Bands.Select(b => b.Band).SequenceEqual(BandPlan.WithBand(_host.Frequencies.Bands(mode), band).Select(b => b.ToLowerInvariant())))
+            RefreshBands(mode, band);
         SelectedBand = shown;
         _updatingBand = false;
     }
@@ -443,9 +551,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>False on the Operate view, whose contact card always has Call CQ and the countdown.</summary>
     public static bool ShowCqAndSlotInBar(int tab) => tab != 0;
 
+    private static readonly string[] TabNames = ["operate", "raw_decodes", "reach", "log", "awards"];
+
     partial void OnTabChanged(int value)
     {
         BarShowsCqAndSlot = ShowCqAndSlotInBar(value);
+        if (value >= 0 && value < TabNames.Length) _host.Usage.Track("view_opened", "view", TabNames[value]);
         if (value == 2)
         {
             Reach.Band = _host.Session.Config.Band;
@@ -462,13 +573,23 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public void Call(string call)
     {
         Activity();
+        _host.Usage.Track("station_called", "mode", SelectedMode);
         if (!_host.Session.CallStation(call)) StatusText = $"{call} is not in the station list.";
+    }
+
+    /// <inheritdoc />
+    public void CallWhenFree(string call, bool on)
+    {
+        Activity();
+        if (on) _host.Usage.Track("call_when_free", "mode", SelectedMode);
+        _host.Session.SetCallWhenFree(call, on);
     }
 
     /// <inheritdoc />
     public void Answer(string call)
     {
         Activity();
+        _host.Usage.Track("caller_answered", "mode", SelectedMode);
         _host.Session.AnswerCaller(call);
     }
 
@@ -498,7 +619,6 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <inheritdoc />
     public void Abandon()
     {
-        _escArmed = false;
         _ = _host.Session.AbandonAsync();
     }
 
@@ -546,6 +666,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             return;
         }
         _host.Settings.Update(s => s.Hunt.Targets.Add(HuntService.ToEntry(target)));
+        _host.Usage.Track("hunt_added");
         StatusText = $"Added {target.Describe(countries)} to your Hunt list. Change it in Settings, Hunt list.";
         StatusKind = TextKind.Normal;
     }
@@ -602,6 +723,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             _updatingBand = false;
         }
         _ = _host.SetBandAsync(h.Heard.Band, mode);
+        _host.Usage.Track("hunt_go");
         HuntCanGo = false;
     }
 
@@ -617,6 +739,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <inheritdoc />
     public void RetryUpload(long qsoId)
     {
+        // Only a failed or waiting upload: re-queuing one already in QRZ uploads a duplicate, and one never meant for
+        // QRZ (no logbook set up) would wait forever.
+        var state = _host.Qsos.Get(qsoId)?.UploadState;
+        if (state is not (Data.Log.UploadState.Failed or Data.Log.UploadState.Queued)) return;
         _host.Uploads.Enqueue(qsoId, "qrz", _host.Clock.UtcNow);
         _host.Qrz.RetryUploadsNow();
     }
@@ -626,6 +752,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public void ToggleCq()
     {
         Activity();
+        if (!_host.Session.Snapshot.CallingCq) _host.Usage.Track("cq_started", "mode", SelectedMode);
         _host.Session.ToggleCq();
     }
 
@@ -687,6 +814,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             await _host.Session.HaltAsync();
             return;
         }
+        _host.Usage.Track("tune");
         await _host.Session.TuneAsync(TuneSeconds);
     }
 
@@ -702,7 +830,6 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     [RelayCommand]
     private void Halt()
     {
-        _escArmed = false;
         _ = _host.Session.HaltAsync();
     }
 
@@ -727,28 +854,103 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         _host.Settings.Update(s => s.Operating.TxOffset = hz.ToString(CultureInfo.InvariantCulture));
     }
 
+    /// <summary>Sets the radio's power to what was typed.</summary>
+    [RelayCommand]
+    private Task PowerSet()
+    {
+        if (!int.TryParse(PowerEntry, NumberStyles.Integer, CultureInfo.InvariantCulture, out var w))
+        {
+            PowerMessage = "Type the power in watts, such as 50.";
+            return Task.CompletedTask;
+        }
+        return SetPowerAsync(w);
+    }
+
+    /// <summary>Steps the radio's power up or down by the watts given ("5" or "-5").</summary>
+    [RelayCommand]
+    private Task PowerStep(string step)
+    {
+        if (_host.RadioPower.Power is not { } p || !int.TryParse(step, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var d)) return Task.CompletedTask;
+        return SetPowerAsync(Math.Clamp(p.Watts + d, RadioPowerService.MinWatts, p.MaxWatts));
+    }
+
+    private async Task SetPowerAsync(int watts)
+    {
+        PowerMessage = await _host.RadioPower.SetAsync(watts) ?? string.Empty;
+        UpdatePower();
+    }
+
+    private void ApplyMeters(TxMeterStrip? m)
+    {
+        HasMeters = m is not null;
+        if (m is null) return;
+        MetersLive = m.Live;
+        MeterCaption = m.Caption;
+        MeterTip = m.Tip;
+        HasPowerOut = m.Watts is not null;
+        PowerOutText = m.Watts ?? string.Empty;
+        PowerOutBar = m.WattsBar;
+        HasAlc = m.Alc is not null;
+        AlcText = m.Alc ?? string.Empty;
+        AlcBar = m.AlcBar;
+        AlcKind = m.AlcKind;
+        HasSwr = m.Swr is not null;
+        SwrText = m.Swr ?? string.Empty;
+        SwrBar = m.SwrBar;
+        SwrKind = m.SwrKind;
+    }
+
+    private void UpdatePower()
+    {
+        var p = _host.RadioPower.Power;
+        HasPower = p is not null;
+        PowerText = p is null ? string.Empty : $"{p.Watts} W";
+        PowerRange = p is null ? string.Empty : $"{RadioPowerService.MinWatts} to {p.MaxWatts} W";
+        if (p is not null) PowerEntry = p.Watts.ToString(CultureInfo.InvariantCulture);
+    }
+
     /// <summary>Opens a dialog by name.</summary>
     [RelayCommand]
     private void Open(string name) => OpenDialog?.Invoke(name);
+
+    /// <summary>Records a window being opened (Settings, Mini mode…) in the anonymous usage statistics.</summary>
+    public void TrackWindow(string name) => _host.Usage.Track("window_opened", "window", name);
 
     /// <summary>Switches view.</summary>
     [RelayCommand]
     private void ShowTab(string index) => Tab = int.Parse(index, CultureInfo.InvariantCulture);
 
-    /// <summary>Esc: halt; in a contact, abandon (a second press confirms once both reports are exchanged).</summary>
+    /// <summary>
+    /// Esc: once both reports are exchanged, the first press stops transmitting but keeps the contact (the DX's RR73 is
+    /// still logged) and a second press abandons it; otherwise it abandons at once.
+    /// </summary>
     public void Escape()
     {
         var s = _host.Session.Snapshot;
-        var action = EscapeDecision(s, _escArmed);
-        if (action == EscapeAction.Abandon)
+        if (!ModeInfo.IsSlotted(s.Mode))
         {
-            _escArmed = false;
-            _ = _host.Session.AbandonAsync();
+            // PSK and RTTY: the first Esc stops the over and keeps the contact, the second abandons.
+            var action = EscapeDecision(s, _escArmed);
+            if (action == EscapeAction.Abandon)
+            {
+                _escArmed = false;
+                _ = _host.Session.AbandonAsync();
+                return;
+            }
+            _escArmed = action == EscapeAction.HaltAndArm;
+            _ = _host.Session.HaltAsync();
+            (StatusText, StatusKind) = (EscapeText(s.Contact, _escArmed), TextKind.Critical);
             return;
         }
-        _escArmed = action == EscapeAction.HaltAndArm;
-        _ = _host.Session.HaltAsync();
-        (StatusText, StatusKind) = (EscapeText(s.Contact, _escArmed), TextKind.Critical);
+        var c = s.Contact;
+        if (c is { Outcome: ContactOutcome.InProgress, Held: false } && c.ReportSent is not null && c.ReportReceived is not null)
+        {
+            _ = _host.Session.HoldAsync();
+            StatusText = "Transmitting stopped. Still listening to " + c.DxCall + ": its RR73 will be logged. Ctrl+R carries on, Esc again abandons.";
+            StatusKind = TextKind.Critical;
+            return;
+        }
+        _ = _host.Session.AbandonAsync();
     }
 
     /// <summary>What Esc does.</summary>
@@ -805,26 +1007,41 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Reach.MyCall = s.Profile.Callsign;
         Reach.MyGrid = s.Profile.Grid;
         Reach.Units = SettingsMapper.Units(s);
-        Reach.Bands.Clear();
-        foreach (var b in _host.Frequencies.Bands(mode)) Reach.Bands.Add(b);
+        var reachModeChanged = Reach.Mode != ModeInfo.Name(mode);
+        Reach.Mode = ModeInfo.Name(mode);
+        // Settings are written often (after every transmission with automatic Tx level): refill the band list only when
+        // it changes, and keep the band shown. Clearing it made the drop-down write a null band into the Reach view.
+        var bands = _host.Frequencies.Bands(mode);
+        if (!Reach.Bands.SequenceEqual(bands))
+        {
+            var shown = Reach.Band;
+            Reach.Bands.Clear();
+            foreach (var b in bands) Reach.Bands.Add(b);
+            Reach.Band = bands.Contains(shown) ? shown : bands.FirstOrDefault() ?? shown;
+        }
+        if (reachModeChanged) Reach.Refresh();
     }
 
-    // The band menu's activity rows, from PSK Reporter reports of stations near me. A band whose reports are not being
-    // received says why rather than "No spots", which would read as a closed band.
+    // The band menu's activity rows, from PSK Reporter reports of stations near me: followed all the time on every band,
+    // or, when that is too busy, on the current band with the others estimated from samples. A band with nothing received
+    // yet says why rather than "No spots", which would read as a closed band.
     private void ApplyBandOpenings(SessionSnapshot s)
     {
         var on = _host.Settings.Current.PskReporter is { FeedEnabled: true, BandActivity: true };
         var feed = on ? s.BandActivityFeed : BandActivityFeed.Off;
         var current = s.Band.ToLowerInvariant();
         bool Followed(string band) => feed == BandActivityFeed.AllBands || (feed == BandActivityFeed.CurrentBandOnly && band == current);
-        var openings = s.BandOpenings.Where(kv => Followed(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
-        var live = openings.Count > 0;
+        bool Sampled(string band) => feed == BandActivityFeed.Stopped || (feed == BandActivityFeed.CurrentBandOnly && band != current);
+        var openings = s.BandOpenings.Where(kv => Followed(kv.Key))
+                        .Concat(s.SampledBandOpenings.Where(kv => Sampled(kv.Key)))
+                        .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+        var live = openings.Values.Any(o => o.Spots > 0);
         var max = live ? openings.Values.Max(o => o.Spots) : 0;
         var units = SettingsMapper.Units(_host.Settings.Current);
         var tip = BandOpeningText.NotFollowedTip(feed);
         foreach (var b in Bands)
         {
-            var reason = BandOpeningText.NotFollowed(feed, Followed(b.Band));
+            var reason = BandOpeningText.NotFollowed(feed, Followed(b.Band) || openings.ContainsKey(b.Band));
             if (reason.Length > 0) b.ApplyNotFollowed(reason, tip);
             else b.Apply(openings.GetValueOrDefault(b.Band), max, live, units);
         }
@@ -846,12 +1063,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         }
     }
 
-    private void RefreshBands(Mode mode)
+    private void RefreshBands(Mode mode, string? extraBand = null)
     {
         var keep = _updatingBand;
         _updatingBand = true;
         Bands.Clear();
-        foreach (var b in _host.Frequencies.Bands(mode)) Bands.Add(new BandChoiceViewModel(b));
+        foreach (var b in BandPlan.WithBand(_host.Frequencies.Bands(mode), extraBand)) Bands.Add(new BandChoiceViewModel(b));
         SelectedBandChoice = Bands.FirstOrDefault(b => b.Name == SelectedBand);
         _updatingBand = keep;
         ApplyBandOpenings(_host.Session.Snapshot);
@@ -886,6 +1103,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         if (s.Fault is { } f) return (f, TextKind.Critical);
         if (s.RigTuningUntilUtc is not null) return ("The radio's antenna tuner is tuning.", TextKind.Critical);
+        // The band menu keeps the last band; the band-edge guard already refuses to transmit here.
+        if (s.DialHz > 0 && BandPlan.BandOf(s.DialHz) is null)
+            return ($"The radio is on {DialText.Mhz(s.DialHz)} MHz, outside the amateur bands. Costas will not transmit there.", TextKind.Caution);
         if (s.Contact is { Outcome: ContactOutcome.InProgress } c)
         {
             if (!s.Transmitting) return ($"Waiting for {c.DxCall}.", TextKind.Normal);

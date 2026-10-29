@@ -10,10 +10,13 @@ namespace Ft8Client.Core.Transmit;
 
 /// <summary>
 /// One reading of the radio's transmit meters as Hamlib reports them: ALC from 0 to 1 of the radio's ALC scale, SWR
-/// as a ratio. A value is null when the radio does not report that meter.
+/// as a ratio, and power output in watts. A value is null when the radio does not report that meter.
 /// </summary>
-public sealed record TxMeterReading(double? Alc, double? Swr)
+public sealed record TxMeterReading(double? Alc, double? Swr, double? Watts = null)
 {
+    /// <summary>True when the radio reported at least one meter.</summary>
+    public bool Any => Alc is not null || Swr is not null || Watts is not null;
+
     /// <summary>A reading with no meters.</summary>
     public static TxMeterReading None { get; } = new(null, null);
 }

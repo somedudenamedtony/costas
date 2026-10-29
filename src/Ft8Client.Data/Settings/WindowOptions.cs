@@ -28,4 +28,22 @@ public sealed class WindowOptions
 
     /// <summary>Mini mode strip: top, or null.</summary>
     public int? MiniY { get; set; }
+
+    /// <summary>Height of the waterfall strip in the main window, in pixels; 52 is the compact strip.</summary>
+    public double WaterfallHeight { get; set; } = 52;
+
+    /// <summary>True when the waterfall is popped out into its own window.</summary>
+    public bool WaterfallOut { get; set; }
+
+    /// <summary>Popped-out waterfall window: left, or null to place it under the main window the first time.</summary>
+    public int? WaterfallX { get; set; }
+
+    /// <summary>Popped-out waterfall window: top, or null.</summary>
+    public int? WaterfallY { get; set; }
+
+    /// <summary>Popped-out waterfall window: width.</summary>
+    public double WaterfallWindowWidth { get; set; } = 1000;
+
+    /// <summary>Popped-out waterfall window: height.</summary>
+    public double WaterfallWindowHeight { get; set; } = 320;
 }

@@ -9,7 +9,8 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
-[ -n "${1:-}" ] && version="$version.$1"
+# Release builds are <major>.<minor>.<CI run number>, as on Windows (Velopack needs three parts there).
+[ -n "${1:-}" ] && version="${version%.*}.$1"
 name="Costas-$version-linux-x64"
 art="$ROOT/artifacts"
 stage="$art/$name"

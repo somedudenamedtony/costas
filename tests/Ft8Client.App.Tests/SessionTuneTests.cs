@@ -65,6 +65,23 @@ public class SessionTuneTests
     }
 
     [Fact]
+    public void SetBand_RadioDialGiven_KeepsRadioDial()
+    {
+        _session.SetBand("40m", Mode.Ft8, 7_080_500);
+
+        _session.Snapshot.Band.Should().Be("40m");
+        _session.Snapshot.DialHz.Should().Be(7_080_500);
+    }
+
+    [Fact]
+    public void SetBand_NoDial_UsesBandFrequency()
+    {
+        _session.SetBand("40m", Mode.Ft8);
+
+        _session.Snapshot.DialHz.Should().Be(7_074_000);
+    }
+
+    [Fact]
     public async Task TuneAsync_Idle_KeysAndShowsTune()
     {
         var why = await _session.TuneAsync(10);

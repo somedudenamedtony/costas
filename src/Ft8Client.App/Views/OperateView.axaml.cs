@@ -38,6 +38,12 @@ public partial class OperateView : UserControl
             if (Vm?.Selected is { } row) Vm.CallSelected();
         };
         SizeChanged += (_, e) => Relayout(e.NewSize.Width);
+        LeftPane.SizeChanged += (_, _) => FitPinned();
+        CallingYou.SizeChanged += (_, _) => FitPinned();
+        CallingYou.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == IsVisibleProperty) FitPinned();
+        };
         TypeAhead.AddHandler(KeyDownEvent, OnTypeAheadKey, RoutingStrategies.Tunnel);
         TypeAhead.AddHandler(TextInputEvent, OnTypeAheadText, RoutingStrategies.Tunnel);
         DataContextChanged += (_, _) =>
@@ -182,6 +188,16 @@ public partial class OperateView : UserControl
         Root.RowDefinitions = narrow ? new RowDefinitions("*,Auto") : new RowDefinitions("*");
         Grid.SetColumn(RightColumn, narrow ? 0 : 1);
         Grid.SetRow(RightColumn, narrow ? 1 : 0);
-        RightColumn.MaxHeight = narrow ? 320 : double.PositiveInfinity;
+        // Leave room to operate when a faceplate or status banner takes vertical space from a small window.
+        RightColumn.MaxHeight = narrow ? Math.Min(320, Math.Max(100, Bounds.Height / 3)) : double.PositiveInfinity;
+    }
+
+    // The contact card stays pinned above the call list. On a short window it gives way (and scrolls on its own)
+    // so the call list always keeps enough height to show a few rows.
+    private void FitPinned()
+    {
+        const double listRoom = 220;
+        var calling = CallingYou.IsVisible ? CallingYou.Bounds.Height + CallingYou.Margin.Bottom : 0;
+        PinnedScroll.MaxHeight = Math.Max(120, LeftPane.Bounds.Height - calling - listRoom);
     }
 }

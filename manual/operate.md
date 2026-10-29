@@ -9,11 +9,11 @@ should not need Settings while operating.
 
 | Item | What it does |
 | --- | --- |
-| **Band** | The band you are on, filled in at start-up. Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
+| **Band** | The band you are on, filled in at start-up, and follows the radio when you change band on it ([below](#changing-band-on-the-radio)). Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
 | **Mode** | FT8, FT4, PSK31, PSK63 or RTTY. Changes the slot length and dial frequency. Locked while transmitting. For PSK31, PSK63 and RTTY see [PSK31, PSK63 and RTTY](keyboard-modes.md) |
 | Frequency | The dial frequency read from the radio, in MHz. Click it to type another frequency or use one you saved ([below](#typing-a-frequency)). Locked while transmitting |
 | **Operate**, **Raw decodes**, **Reach**, **Log**, **Awards** | The five views. ++ctrl+1++ to ++ctrl+5++ |
-| Clock | UTC. Turns amber with a tooltip when your clock is off by more than 0.5 s, red above 2 s |
+| Clock | UTC, corrected from internet time when your PC clock is off (the tooltip says by how much). Turns amber with a tooltip when the clock is still off by more than 0.5 s, red above 2 s |
 | **☰** | Mini mode, Settings, Station setup, Diagnostics, Keyboard shortcuts, About |
 
 ### Typing a frequency
@@ -22,6 +22,17 @@ DXpeditions often sit off the standard frequency (14.090 instead of 14.074, for 
 type the new one (`14.090`, `14090` in kHz, or `14.090.000` all work) and press **Tune** or ++enter++. Costas moves the
 radio there, and to that band if it is a different one. The usual transmit limits still apply: Costas will not tune
 outside the amateur bands, or to a band it has no transmit limits for.
+
+### Changing band on the radio
+
+You can also change band with the radio's own band button or dial. Costas reads the radio's frequency every second and,
+when it lands on another band, follows it: the **Band** menu switches to the new band, the station list is cleared, your
+per-band transmit level is used, and the new band is remembered for next time. Costas does not move the radio back.
+Any contact or CQ in progress ends, and a transmission waiting for the next slot is cancelled. Tuning off the standard
+FT8/FT4 frequency within the same band only changes the frequency shown.
+
+If the radio goes outside the amateur bands (a broadcast station, say), Costas keeps the last band in the menu, says
+*The radio is on 15.000 MHz, outside the amateur bands* in the status line, and will not transmit until you tune back.
 
 **Save the current frequency** adds the frequency the radio is on to *Your frequencies* in the same menu, so the next
 time it is one click. **Remove** takes one off the list. The standard frequencies are not saved there; they are what the
@@ -57,6 +68,9 @@ when you open Costas, or after 2 hours with no contact.
 
 When you call or answer a station, this card becomes the contact panel. See [Making contacts](contacts.md).
 
+The contact card and this summary stay put at the top. Only the call list below them (Next in line, Repeats and
+Watching) scrolls, so the countdown, Call CQ and the contact's progress are always in view.
+
 ## Next in line
 
 The stations you need that you can call right now, best first. At most 12 rows; the rest are counted underneath.
@@ -71,7 +85,7 @@ it is heard working someone else, and moves to Watching once the time is up.
 | **#** | Rank |
 | **Call** | Callsign |
 | **Where** | Country (or state for the USA, province for Canada) and distance |
-| **Why** | Why you need them: **New country**, **New band** (hover to see which bands you already have that country on), **New grid** with the grid, such as **New grid DO62**, or **New call**. A new country also gets a small rarity meter, five cells from common to very rare, from Club Log's most-wanted list. Hover for its rank. A station activating a park for Parks on the Air gets a second line: **New park US-1234** when that park is not in your log yet, *Park US-1234* when it is, or *POTA* when it is calling CQ POTA but nobody has spotted it on this band yet. Hover for the park's name. The park line never changes the order |
+| **Why** | Why you need them: **New country**, **New band** (hover to see which bands you already have that country on), **New grid** with the grid, such as **New grid DO62**, or **New call**. A new country also gets a small rarity meter, five cells from common to very rare, from Club Log's most-wanted list. Hover for its rank. A station activating a park for Parks on the Air gets a second line: **New park US-1234** when that park is not in your log yet, *Park US-1234* when it is, or *POTA* when it is calling CQ POTA but nobody has spotted it on this band yet. Hover for the park's name. A station at a new park moves up: it comes right after your first need (new countries, unless you changed the order), and it is listed even if you have already worked that call on this band, because a new park is a new contact for park hunters. You can turn this off in Settings › Who to call |
 | **Doing now** | *Calling CQ, 3 slots*, *Calling CQ DX*, *Calling you*, and *fading* when their signal is dropping |
 | **Last heard** | How long ago their last decoded transmission ended, counting up every second |
 | **dB** | Their signal at your station |
@@ -98,7 +112,7 @@ location, grid, bearing and your past contacts with that call. For a station at 
 
 ### Who else is calling
 
-When other stations are calling the one you selected, the details card adds a **Who else is calling** section:
+When other stations are calling the one you selected, the details card adds a **Who else is calling** section, shaded yellow so it stands out (the same box shows under your contact when you call a busy station, and on the phone's station sheet):
 
 - how many stations called it in its latest answer slot, with each caller's signal at your station and audio offset;
 - whether your transmit offset is clear of them, or which caller is sitting on top of it;
@@ -152,6 +166,26 @@ you change it. A new country or a new band is never folded away: as soon as one 
 
 Stations you have already worked on this band are not in Watching; they are in [Repeats](#repeats).
 
+### Call when free
+
+Each Watching row has a **Call when free** button. Click it on a station you want, and Costas calls that station
+for you as soon as its current contact is over. The row then reads *· calling when free* and the button changes to
+**Cancel**.
+
+Costas calls the station in your next slot after it is heard signing off with someone else (`RR73`, `RRR` or
+`73`), or calling CQ again, the same moment you would tail-end it by hand. There is no extra wait.
+
+Nothing goes out unless you clicked the link, and the usual transmit checks still apply. The mark is dropped when:
+
+- the call starts (it is used once; the contact then runs as if you had clicked **Call**),
+- you click **Cancel**, press **Halt Tx**, or change band or mode,
+- the station is no longer heard, or
+- the Tx watchdog time passes with no click or key from you, so nothing starts after you have walked away.
+
+If you are in a contact of your own when the station comes free, your contact carries on and the station is called
+once yours ends, if it is still free then. You can mark more than one station; the first one marked that comes
+free is called first. A marked station is never folded away, even past the first eight rows.
+
 ## Right column
 
 From top to bottom:
@@ -160,7 +194,7 @@ From top to bottom:
   [Maps and who hears you](maps.md#heard-here).
 - **Band activity, last hour**: a bar per minute of decodes per slot (grey) and needed stations per slot (blue),
   with a sentence saying whether the band is busier or quieter than half an hour ago.
-- **Your signal on 20 m**: how many stations hear you, the farthest and the best report, plus a graph of distinct receivers in five-minute intervals over the last hour. Each receiver counts once per interval. Times are local and the faded final bar is still incomplete. History stays available when you switch back to a band or mode during this session; recent stored reports refill it at start-up, and changing your station clears the in-memory counts. Reports may arrive late, and transmitting less or losing the feed can lower counts even when the band has not changed.
+- **Your signal on 20 m**: how many stations hear you, which countries they are in (*USA 12 · Canada 3 · Japan 1*, most stations first; after six countries it says *+4 more*, and hovering over the line lists every country with its best report and farthest station), the farthest and the best report, plus a graph of distinct receivers in five-minute intervals over the last hour. Each receiver counts once per interval. Times are local and the faded final bar is still incomplete. History stays available when you switch back to a band or mode during this session; recent stored reports refill it at start-up, and changing your station clears the in-memory counts. Reports may arrive late, and transmitting less or losing the feed can lower counts even when the band has not changed.
   **Open reach view** goes to the full view.
 - **Worked tonight**: your latest contacts this session with their QRZ upload state. **Show all in the log** opens
   the Log view.
@@ -174,15 +208,35 @@ From top to bottom:
 | Status text | One line: *Not in a contact. Enter calls NT2A, the top of the line.*, *Transmitting to F5RXL.*, *Waiting for F5RXL.*, or a fault in red |
 | **Tx offset 1650 Hz · clear** | Your transmit audio offset. Click to choose **Automatic (picks a clear spot)**, the default, or type a fixed value (200 to 2900 Hz) and press **Use** |
 | **Call CQ** | Starts calling CQ in the next slot. Becomes **Stop CQ** while running. ++ctrl+q++ |
+| **50 W** | The radio's power setting, shown when the radio reports it over CAT. Click to type a new power and press **Use** (or ++enter++), or step it with **−5** and **+5**. Anything outside 1 W to the radio's maximum is refused; a radio with its own minimum (5 W on the FT-710) keeps it and Costas says so. Changes the setting only, never keys the radio, and not while a transmission is on the air. On the FT-710 it needs Hamlib 4.6 or newer, which the Windows installer includes |
 | **Tune** | Starts your radio's own antenna tuner, as its TUNE button would. If the radio has no tuner Costas can start (or its tuner is switched off), Costas sends a steady tone at your transmit offset for up to 10 seconds instead, for an external tuner. Becomes **Stop tune** for up to 10 seconds; click it to stop. Available only when nothing else is being sent; calling a station or CQ stops the tone |
 | **Halt Tx** | Always available. Drops PTT at once and stops sequencing. ++esc++ does the same |
-| Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar |
-| Meter warning | Appears only when the last transmission's SWR or ALC was high, for example *SWR 3.4 · ALC 70%* |
-| Indicators | **Radio**, **Audio**, **QRZ**, **PSK Reporter**, **POTA**: a dot and a word each. Click to open Diagnostics |
+| Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar. Shown away from Operate, where the contact card has it. Hidden with an instrument skin, whose faceplate shows it |
+| Radio meters | The radio's own meters, read over CAT: **PO** (the watts actually going out, which can differ from the power setting next to it), an **ALC** bar with *OK* or *High*, and **SWR**. Marked **TX** in red and updated twice a second while you transmit, then **Last TX** with the readings held until your next transmission. A high reading turns orange (SWR 2 or more, ALC high) or red (SWR 3 or more); hover for advice. A meter your radio does not report is left out, and power out needs Hamlib 4.6 or newer. Hidden with an instrument skin, whose faceplate shows the meters. Display only: the meters never stop or change a transmission |
+| Indicators | **Radio**, **Audio**, **QRZ**, **eQSL**, **PSK Reporter**, **POTA**: a dot and a word each. Click to open Diagnostics |
 
 ![Transmit offset flyout](images/tx-offset.png)
 
-Costas has no waterfall. With the offset on Automatic it picks a clear spot in the passband for you each time.
+The strip along the bottom is a waterfall of the passband with a line at your transmit offset: click it to move your
+offset there. **Auto-select** goes back to Automatic, which picks a clear spot in the passband for you each time.
+
+### A bigger waterfall
+
+The waterfall starts as a thin strip showing the last few seconds. To make it bigger:
+
+- **Drag the grip** (the short bar on the strip's top edge) upwards. The waterfall can grow to half the window; the
+  panels above it get shorter and scroll. Double-click the grip to go back to the thin strip. With the grip focused,
+  the up and down arrow keys resize it and ++home++ makes it thin again.
+- **Pop it out**: click **Pop out** at the right end of the strip to open the waterfall in its own window. Size it however you
+  like or drag it to a second monitor. While it is open the strip leaves the main window, so the waterfall is never
+  shown twice. Click **Pop in**, or close the window, to put it back.
+
+A taller waterfall shows more time rather than stretching the same few seconds: about 12 seconds per 100 pixels, up to
+80 seconds. Once it is taller than the strip, faint lines mark where each receive slot began. Clicking it picks your
+transmit offset at any size, and ++esc++ in the waterfall window halts transmit as it does in the main window. Costas
+remembers the strip's height, and whether the waterfall was popped out and where.
+
+![The waterfall in its own window](images/waterfall-window.png)
 
 ## Mini mode
 

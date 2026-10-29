@@ -26,6 +26,62 @@ public class RigTests
     }
 
     [Fact]
+    public async Task SendAsync_CallerCancelsMidReply_NextCommandGetsItsOwnReply()
+    {
+        // A slow radio: each reply comes 300 ms after its command. Accepts new connections like rigctld.
+        var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        l.Start();
+        var port = ((System.Net.IPEndPoint)l.LocalEndpoint).Port;
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                System.Net.Sockets.TcpClient c;
+                try { c = await l.AcceptTcpClientAsync(TestContext.Current.CancellationToken); }
+                catch (Exception) { return; }
+                _ = Task.Run(async () =>
+                {
+                    using (c)
+                    {
+                        var s = c.GetStream();
+                        var r = new StreamReader(s);
+                        try
+                        {
+                            while (await r.ReadLineAsync(TestContext.Current.CancellationToken) is { } line)
+                            {
+                                var name = line[3..];
+                                await Task.Delay(300, TestContext.Current.CancellationToken);
+                                var val = name == "SWR" ? "1.500000" : "0.100000";
+                                await s.WriteAsync(System.Text.Encoding.ASCII.GetBytes($"get_level: {name}\n{val}\nRPRT 0\n"), TestContext.Current.CancellationToken);
+                            }
+                        }
+                        catch (IOException)
+                        {
+                        }
+                    }
+                }, TestContext.Current.CancellationToken);
+            }
+        }, TestContext.Current.CancellationToken);
+        try
+        {
+            await using var client = new RigctldClient("127.0.0.1", port, TimeSpan.FromSeconds(2));
+            using (var cts = new CancellationTokenSource(100))
+            {
+                var cancelled = () => client.GetLevelAsync("SWR", cts.Token);
+                await cancelled.Should().ThrowAsync<OperationCanceledException>();
+            }
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+
+            (await client.GetLevelAsync("ALC", TestContext.Current.CancellationToken)).Should().Be(0.1);
+            (await client.GetLevelAsync("SWR", TestContext.Current.CancellationToken)).Should().Be(1.5);
+        }
+        finally
+        {
+            l.Stop();
+        }
+    }
+
+    [Fact]
     public void Reply_GetLevel_ValueOnItsOwnLine()
     {
         // Captured from rigctld 4.5.5 (-m 1): "+l SWR" answers with the echo, the bare value, then RPRT.
@@ -101,6 +157,45 @@ public class RigTests
         (await new SimulatedRig(SystemClock.Instance) { PowerWatts = 40 }.ReadPowerWattsAsync(ct)).Should().Be(40);
         (await new SimulatedRig(SystemClock.Instance).ReadPowerWattsAsync(ct)).Should().BeNull();
         (await new VoxRig(14_074_000).ReadPowerWattsAsync(ct)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SetPowerWatts_Simulated_ClampsToItsRangeAndReadsBack()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var rig = new SimulatedRig(SystemClock.Instance) { PowerWatts = 40 };
+        (await rig.ReadPowerAsync(ct)).Should().Be(new RigPower(40, 100));
+        (await rig.SetPowerWattsAsync(2, ct)).Should().Be(new RigPower(5, 100), "the radio's minimum is 5 W");
+        (await rig.SetPowerWattsAsync(150, ct)).Should().Be(new RigPower(100, 100));
+        rig.Ptt.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("rigctl Hamlib 4.5.5 Apr 05 11:43:08Z 2023 SHA=6eecd3", "4.5.5")]
+    [InlineData("rigctld Hamlib 4.6.5 2025-09-01T00:00:00Z SHA=abcdef", "4.6.5")]
+    [InlineData("rigctld, Hamlib 4.7", "4.7")]
+    public void Parse_VersionLine_HamlibRelease(string line, string expected) =>
+        HamlibVersion.Parse(line).Should().Be(Version.Parse(expected));
+
+    [Fact]
+    public void Parse_NoVersion_Null() => HamlibVersion.Parse("command not found").Should().BeNull();
+
+    [Theory]
+    [InlineData(1049, "4.5.5", false)]
+    [InlineData(1049, null, false)]
+    [InlineData(1049, "4.6.5", true)]
+    [InlineData(1049, "4.6", true)]
+    [InlineData(3073, "4.5.5", true)]
+    [InlineData(1, null, true)]
+    public void PowerScaleTrusted_Ft710NeedsHamlib46(int model, string? version, bool trusted) =>
+        RigctldRig.PowerScaleTrusted(model, version is null ? null : Version.Parse(version)).Should().Be(trusted);
+
+    [Fact]
+    public async Task SetPowerWatts_AudioOnly_Null()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        (await new VoxRig(14_074_000).ReadPowerAsync(ct)).Should().BeNull();
+        (await new VoxRig(14_074_000).SetPowerWattsAsync(50, ct)).Should().BeNull();
     }
 
     [Fact]
@@ -327,10 +422,11 @@ public class RigTests
         await rig.SetSplitAsync(true, 14_075_000, ct);
         (await rig.GetStateAsync(ct)).Split.Should().BeTrue();
 
-        // The dummy rig reports both meters (as 0); reading them never faults.
+        // The dummy rig reports ALC and SWR (as 0); reading them never faults.
         var meterFaults = new List<RigFault>();
         rig.Faulted += (_, f) => meterFaults.Add(f);
-        (await rig.ReadTxMetersAsync(ct)).Should().Be(new Core.Transmit.TxMeterReading(0, 0));
+        var dummyMeters = await rig.ReadTxMetersAsync(ct);
+        (dummyMeters.Alc, dummyMeters.Swr).Should().Be((0.0, 0.0));
         // The dummy rig's power setting starts at 0, which is no reading; still no fault.
         (await rig.ReadPowerWattsAsync(ct)).Should().BeNull();
         meterFaults.Should().BeEmpty();
@@ -390,6 +486,8 @@ public class RigTests
                 var meters = await rig.ReadTxMetersAsync(ct);
                 meters.Alc.Should().BeInRange(0.01, 1.0, "the emulator's ALC meter reads 32 of 255");
                 meters.Swr.Should().BeGreaterThan(1.0, "the emulator's SWR meter reads 32 of 255");
+                // Hamlib releases without RFPOWER_METER_WATTS report no power; 4.6's FT-710 table reads raw 94 as 25 W.
+                if (meters.Watts is { } watts) watts.Should().BeApproximately(25, 1);
                 await rig.SetPttAsync(false, ct);
                 (await rig.GetStateAsync(ct)).Ptt.Should().BeFalse();
             }
@@ -398,6 +496,55 @@ public class RigTests
             sent.Should().Contain("MD0C;", "DATA-U is the FT-710's data mode");
             sent.Should().ContainInOrder("TX1;", "RM4;", "RM6;", "TX0;");
             sent.Should().NotContain(l => l.StartsWith("SH0", StringComparison.Ordinal) && l.Length > 4, "the operator's receive filter is left alone");
+        }
+        finally
+        {
+            emu.Kill();
+            File.Delete(log);
+        }
+    }
+
+    // The power setting through Hamlib's FT-710 backend: PC reads and sets it in watts (5 to 100), and power2mW of 1.0
+    // gives the 100 W maximum that the RFPOWER fraction is scaled against. Hamlib before 4.6 scales PC by 255 (25 W
+    // would go out as PC064), so with that rigctld (Ubuntu's 4.5.5) power control must stay off and send nothing.
+    [Fact]
+    public async Task SetPowerWatts_Ft710Emulator_SendsPcAndReadsBack()
+    {
+        var exe = HamlibModels.Find("rigctld", null);
+        var python = HamlibModels.Find("python3", null);
+        Assert.SkipWhen(exe is null || python is null || !OperatingSystem.IsLinux(), "Needs Linux with rigctld and python3.");
+        var ct = TestContext.Current.CancellationToken;
+        var trusted = RigctldRig.PowerScaleTrusted(RigctldRig.Ft710Model, HamlibVersion.Of(exe!));
+        var log = Path.Combine(Path.GetTempPath(), $"ft710-{Guid.NewGuid():N}.log");
+        using var emu = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(python!,
+            [Path.Combine(AppContext.BaseDirectory, "Emulators", "ft710.py"), log]) { RedirectStandardOutput = true })!;
+        try
+        {
+            var pty = (await emu.StandardOutput.ReadLineAsync(ct))!.Trim();
+            await using (var rig = await RigctldRig.StartAsync(new RigctldOptions(exe!, 1049, pty, 38400), NullProcessGuard.Instance, SystemClock.Instance, ct))
+            {
+                var faults = new List<RigFault>();
+                rig.Faulted += (_, f) => faults.Add(f);
+                await rig.SetFrequencyAsync(14_074_000, ct);
+                await rig.SetModeAsync(RigMode.PktUsb, ct);
+                if (trusted)
+                {
+                    (await rig.ReadPowerAsync(ct)).Should().Be(new RigPower(50, 100), "the emulator starts at PC050");
+                    (await rig.SetPowerWattsAsync(25, ct)).Should().Be(new RigPower(25, 100));
+                    (await rig.ReadPowerWattsAsync(ct)).Should().Be(25);
+                }
+                else
+                {
+                    (await rig.ReadPowerAsync(ct)).Should().BeNull();
+                    (await rig.SetPowerWattsAsync(25, ct)).Should().BeNull();
+                }
+                (await rig.GetStateAsync(ct)).Ptt.Should().BeFalse();
+                faults.Should().BeEmpty();
+            }
+            var sent = File.ReadAllLines(log);
+            if (trusted) sent.Should().Contain("PC025;");
+            else sent.Should().NotContain(l => l.StartsWith("PC", StringComparison.Ordinal) && l.Length > 3, "a wrongly scaled power is never sent");
+            sent.Should().NotContain("TX1;", "changing the power never keys the radio");
         }
         finally
         {

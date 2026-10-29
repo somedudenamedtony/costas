@@ -7,6 +7,7 @@
 // see the GNU General Public License in LICENSE for details.
 
 using FluentAssertions;
+using Ft8Client.Data.Log;
 using Ft8Client.App.Engine;
 using Ft8Client.Audio.Backends;
 using Ft8Client.Audio.Timing;
@@ -45,10 +46,10 @@ public class KeyboardContactSessionTests : IDisposable
     {
         public List<(ContactLogEntry Entry, LogContext Context)> Written { get; } = [];
 
-        public bool Write(ContactLogEntry entry, LogContext context)
+        public QsoRecord? Write(ContactLogEntry entry, LogContext context)
         {
             Written.Add((entry, context));
-            return true;
+            return null;
         }
     }
 

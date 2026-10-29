@@ -32,7 +32,11 @@ public sealed class RigctldRig : IRig
     private RigctldClient? _meters;
     private int _port;
     private int _restarts;
+    private int _backoff;
     private bool _modeFallback;
+    private volatile bool _disposed;
+    private volatile bool _pttMayBeOn;
+    private readonly Queue<string> _stderr = new();
 
     private RigctldRig(RigctldOptions options, IProcessGuard guard, IClock clock)
     {
@@ -167,7 +171,7 @@ public sealed class RigctldRig : IRig
                 await Run(c => c.SetAsync("M PKTUSB -1", ct), ct).ConfigureAwait(false);
                 return;
             }
-            catch (RigException)
+            catch (RigException ex) when (ex.Refused)
             {
                 _modeFallback = true; // the radio rejects PKTUSB: use USB from now on
             }
@@ -180,21 +184,29 @@ public sealed class RigctldRig : IRig
     {
         if (on)
         {
+            // Set before sending: a "T 1" that times out may still have keyed the radio.
+            _pttMayBeOn = true;
             await Run(c => c.SetAsync("T 1", ct), ct).ConfigureAwait(false);
             return;
         }
-        // Releasing PTT: try hard, over a fresh connection if needed.
+        // Releasing PTT: try hard, over a fresh connection if needed. A restart already under way (started by the
+        // fault that stopped the transmission) is waited for, so "T 0" goes to the new rigctld, not the one being killed.
         for (var attempt = 0; attempt < 3; attempt++)
         {
             try
             {
-                await _client!.SetAsync("T 0", CancellationToken.None).ConfigureAwait(false);
+                var c = _client ?? throw new RigException("rigctld is not running.");
+                await c.SetAsync("T 0", CancellationToken.None).ConfigureAwait(false);
+                _pttMayBeOn = false;
                 return;
             }
-            catch (RigException ex)
+            catch (Exception ex) when (ex is RigException or ObjectDisposedException)
             {
                 RaiseFault($"PTT release failed: {ex.Message}");
-                await RestartAsync(CancellationToken.None).ConfigureAwait(false);
+                if (_disposed) break;
+                await _restartLock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+                _restartLock.Release();
+                if (!ProcessRunning) await RestartAsync(CancellationToken.None).ConfigureAwait(false);
             }
         }
         throw new RigException("PTT could not be released through rigctld. Switch the radio off or unplug the PTT line.");
@@ -210,7 +222,10 @@ public sealed class RigctldRig : IRig
         {
             var alc = await m.GetLevelAsync("ALC", ct).ConfigureAwait(false);
             var swr = await m.GetLevelAsync("SWR", ct).ConfigureAwait(false);
-            return new TxMeterReading(alc, swr);
+            // Power output in watts from the radio's PO meter (Hamlib 4.6 and later; older releases answer RPRT -1 at
+            // once, without asking the radio).
+            var watts = await m.GetLevelAsync("RFPOWER_METER_WATTS", ct).ConfigureAwait(false);
+            return new TxMeterReading(alc, swr, watts);
         }
         catch (Exception ex) when (ex is RigException or ObjectDisposedException)
         {
@@ -261,6 +276,71 @@ public sealed class RigctldRig : IRig
         {
             return null;
         }
+    }
+
+    /// <summary>Hamlib model number of the Yaesu FT-710.</summary>
+    public const int Ft710Model = 1049;
+
+    /// <summary>
+    /// False when this Hamlib release is known to scale the power setting wrongly for the radio, so setting it in watts
+    /// would send a different power: Hamlib before 4.6 reads and sets the FT-710's <c>PC</c> (watts, 5 to 100) as a
+    /// fraction of 255, so asking for 25 W would send <c>PC064</c>. An unknown version counts as wrong for the FT-710.
+    /// </summary>
+    public static bool PowerScaleTrusted(int model, Version? hamlib) => model != Ft710Model || hamlib >= new Version(4, 6);
+
+    /// <inheritdoc />
+    public async Task<RigPower?> ReadPowerAsync(CancellationToken ct)
+    {
+        // The meter connection, as ReadPowerWattsAsync. The most the radio can be set to is power2mW of a full-scale 1.0.
+        var m = _meters;
+        if (m is null || !ProcessRunning || !PowerScaleTrusted(_options.Model, HamlibVersion.Of(_options.ExecutablePath))) return null;
+        try
+        {
+            var level = await m.GetLevelAsync("RFPOWER", ct).ConfigureAwait(false);
+            if (level is not (>= 0 and <= 1)) return null;
+            var (hz, mode) = await TuningAsync(m, ct).ConfigureAwait(false);
+            if (mode is null) return null;
+            var max = TxPower.Watts(await m.PowerToMilliwattsAsync(1.0, hz, mode, ct).ConfigureAwait(false));
+            var now = TxPower.Watts(await m.PowerToMilliwattsAsync(level.Value, hz, mode, ct).ConfigureAwait(false));
+            return max is { } mx && now is { } w ? new RigPower(Math.Min(w, mx), mx) : null;
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<RigPower?> SetPowerWattsAsync(int watts, CancellationToken ct)
+    {
+        // RFPOWER is a fraction of the radio's maximum on this band and mode, which power2mW of 1.0 gives in milliwatts.
+        // Hamlib's drivers scale it linearly, so the fraction is watts over that maximum. The radio rounds or clamps it
+        // (the FT-710 accepts 5 to 100 W in steps of 1), so the setting is read back rather than assumed. Sent on the
+        // meter connection so a PTT command never waits behind it; a refusal or no answer is not a radio fault.
+        var m = _meters;
+        if (m is null || !ProcessRunning || watts < TxPower.MinWatts || !PowerScaleTrusted(_options.Model, HamlibVersion.Of(_options.ExecutablePath))) return null;
+        try
+        {
+            var (hz, mode) = await TuningAsync(m, ct).ConfigureAwait(false);
+            if (mode is null) return null;
+            var maxMw = await m.PowerToMilliwattsAsync(1.0, hz, mode, ct).ConfigureAwait(false);
+            if (maxMw is not > 0) return null;
+            var level = Math.Clamp(watts * 1000.0 / maxMw.Value, 0, 1);
+            var r = await m.SendAsync(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"L RFPOWER {level:0.####}"), ct).ConfigureAwait(false);
+            if (!r.Ok) return null;
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return null;
+        }
+        return await ReadPowerAsync(ct).ConfigureAwait(false);
+    }
+
+    private static async Task<(long Hz, string? Mode)> TuningAsync(RigctldClient m, CancellationToken ct)
+    {
+        var hz = await m.GetFrequencyAsync(ct).ConfigureAwait(false);
+        var mode = (await m.SendAsync("m", ct).ConfigureAwait(false))["Mode"];
+        return (hz, string.IsNullOrEmpty(mode) ? null : mode);
     }
 
     /// <inheritdoc />
@@ -349,16 +429,28 @@ public sealed class RigctldRig : IRig
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        // First, so a command failing because of the kill below does not start a new rigctld that would hold the
+        // serial port until Costas exits.
+        _disposed = true;
         try
         {
             if (_client is not null) await _client.SetAsync("T 0", CancellationToken.None).ConfigureAwait(false);
         }
-        catch (RigException)
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
         {
         }
-        await StopProcessAsync().ConfigureAwait(false);
-        if (_meters is not null) await _meters.DisposeAsync().ConfigureAwait(false);
-        _restartLock.Dispose();
+        // Wait for a restart in progress to finish (it sees _disposed and launches nothing) before killing.
+        await _restartLock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+        try
+        {
+            await StopProcessAsync().ConfigureAwait(false);
+            if (_client is not null) await _client.DisposeAsync().ConfigureAwait(false);
+            if (_meters is not null) await _meters.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _restartLock.Release();
+        }
     }
 
     private async Task<T> Run<T>(Func<RigctldClient, Task<T>> f, CancellationToken ct)
@@ -367,9 +459,11 @@ public sealed class RigctldRig : IRig
         {
             // A dead rigctld is a rig error (the transmitter must stop), not something to paper over by restarting quietly.
             if (_client is null || !ProcessRunning) throw new RigException("rigctld is not running; restarting it.");
-            return await f(_client).ConfigureAwait(false);
+            var result = await f(_client).ConfigureAwait(false);
+            _backoff = 0; // working again: the next fault starts the back-off from the shortest delay
+            return result;
         }
-        catch (RigException ex)
+        catch (RigException ex) when (!ex.Refused && !_disposed)
         {
             RaiseFault(ex.Message);
             _ = Task.Run(() => RestartAsync(CancellationToken.None), CancellationToken.None);
@@ -388,14 +482,29 @@ public sealed class RigctldRig : IRig
 
     private async Task RestartAsync(CancellationToken ct)
     {
-        if (!await _restartLock.WaitAsync(0, ct).ConfigureAwait(false)) return;
+        if (_disposed || !await _restartLock.WaitAsync(0, ct).ConfigureAwait(false)) return;
         try
         {
-            var delay = RestartDelays[Math.Min(_restarts, RestartDelays.Length - 1)];
+            if (_disposed) return;
+            var delay = RestartDelays[Math.Min(_backoff, RestartDelays.Length - 1)];
+            _backoff++;
             _restarts++;
             await StopProcessAsync().ConfigureAwait(false);
             await Task.Delay(delay, ct).ConfigureAwait(false);
+            if (_disposed) return;
             await LaunchAsync(ct).ConfigureAwait(false);
+            if (_pttMayBeOn)
+            {
+                // The rigctld that keyed the radio was killed before it could unkey it: unkey through the new one.
+                try
+                {
+                    await _client!.SetAsync("T 0", CancellationToken.None).ConfigureAwait(false);
+                    _pttMayBeOn = false;
+                }
+                catch (RigException)
+                {
+                }
+            }
         }
         catch (RigException)
         {
@@ -425,8 +534,17 @@ public sealed class RigctldRig : IRig
         {
             throw new RigException($"rigctld could not be started: {ex.Message}", ex);
         }
+        lock (_stderr) _stderr.Clear();
         _process.OutputDataReceived += (_, _) => { };
-        _process.ErrorDataReceived += (_, _) => { };
+        _process.ErrorDataReceived += (_, e) =>
+        {
+            if (string.IsNullOrWhiteSpace(e.Data)) return;
+            lock (_stderr)
+            {
+                _stderr.Enqueue(e.Data.Trim());
+                if (_stderr.Count > 4) _stderr.Dequeue();
+            }
+        };
         _process.BeginOutputReadLine();
         _process.BeginErrorReadLine();
         _guard.Adopt(_process);
@@ -450,8 +568,16 @@ public sealed class RigctldRig : IRig
             }
             catch (RigException ex)
             {
+                var exited = _process.HasExited;
+                if (exited) _process.WaitForExit(); // lets the stderr reader finish
                 await StopProcessAsync().ConfigureAwait(false);
-                throw new RigException($"rigctld is not answering on port {_port}: {ex.Message}", ex);
+                // rigctld says why it gave up (a bad setting, the serial port busy or missing) on stderr; that is what
+                // the operator needs, not our internal TCP port number.
+                string said;
+                lock (_stderr) said = string.Join(" ", _stderr);
+                throw new RigException(exited && said.Length > 0
+                    ? $"rigctld stopped: {said}"
+                    : $"rigctld is not answering: {ex.Message}" + (said.Length > 0 ? $" ({said})" : string.Empty), ex);
             }
             catch (OperationCanceledException)
             {

@@ -14,6 +14,7 @@ using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Stations;
+using Ft8Client.Core.Time;
 using Ft8Client.Core.Transmit;
 
 namespace Ft8Client.App.Engine;
@@ -69,6 +70,12 @@ public sealed record SessionSnapshot
     /// <summary>Per band (ADIF, lower case): where stations near me are heard right now, for the band menu.</summary>
     public IReadOnlyDictionary<string, BandOpening> BandOpenings { get; init; } = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Per band: estimates from sampling, for bands not followed all the time (see <see cref="BandActivityFeed"/>); a band
+    /// sampled in the last 15 minutes is present even with no spots.
+    /// </summary>
+    public IReadOnlyDictionary<string, BandOpening> SampledBandOpenings { get; init; } = new Dictionary<string, BandOpening>(StringComparer.Ordinal);
+
     /// <summary>Which bands <see cref="BandOpenings"/> are being received for.</summary>
     public BandActivityFeed BandActivityFeed { get; init; }
 
@@ -86,6 +93,16 @@ public sealed record SessionSnapshot
 
     /// <summary>True while transmitting.</summary>
     public bool Transmitting { get; init; }
+
+    /// <summary>Slot start of the latest transmission that went on the air, or null.</summary>
+    public DateTime? LastTxSlotUtc { get; init; }
+
+    /// <summary>
+    /// True for the whole slot a transmission went out in, not just while audio plays (FT8 audio ends about 2 s before
+    /// the slot does), so slot countdowns read transmit slot then receive slot.
+    /// </summary>
+    /// <param name="nowUtc">Now.</param>
+    public bool InTransmitSlot(DateTime nowUtc) => Transmitting || (ModeInfo.IsSlotted(Mode) && LastTxSlotUtc == SlotMath.SlotStart(nowUtc, Mode));
 
     /// <summary>The message being transmitted now, or null.</summary>
     public string? TransmittingMessage { get; init; }
@@ -107,6 +124,9 @@ public sealed record SessionSnapshot
     /// <summary>True when the offset is chosen automatically.</summary>
     public bool TxOffsetAuto { get; init; } = true;
 
+    /// <summary>The contact logged most recently this session, or null.</summary>
+    public LoggedContact? LastLogged { get; init; }
+
     /// <summary>A line for the bottom bar when something is wrong (fault text), else null.</summary>
     public string? Fault { get; init; }
 
@@ -116,8 +136,14 @@ public sealed record SessionSnapshot
     /// <summary>ALC and SWR from the latest transmission that reported them on this band, with any warning; null before then.</summary>
     public TxMeterResult? TxMeters { get; init; }
 
+    /// <summary>The latest meter reading while a transmission or tone is on the air; null otherwise.</summary>
+    public TxMeterReading? TxMetersLive { get; init; }
+
     /// <summary>Stations waiting for me (called me), oldest first.</summary>
     public IReadOnlyList<WaitingCaller> Waiting { get; init; } = [];
+
+    /// <summary>Watching stations marked "call when free", oldest first.</summary>
+    public IReadOnlyList<string> CallWhenFree { get; init; } = [];
 
     /// <summary>Per-slot activity on this band over the last hour, oldest first.</summary>
     public IReadOnlyList<SlotActivity> Activity { get; init; } = [];

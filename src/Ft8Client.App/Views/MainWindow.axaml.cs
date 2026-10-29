@@ -26,20 +26,33 @@ public partial class MainWindow : Window
     private bool _wired;
     private string? _waterfallBand;
     private Audio.Timing.CapturePump? _waterfallPump;
+    private long _waterfallSlot = -1;
+    private WaterfallWindow? _waterfallWindow;
+    private const double CompactWaterfall = 52;
 
     /// <summary>Creates the window.</summary>
     public MainWindow()
     {
         InitializeComponent();
-        ReceiveWaterfall.ChannelSelected += hz =>
+        ReceiveWaterfall.ChannelSelected += SelectChannel;
+        WaterfallGrip.DragDelta += (_, e) => SetWaterfallHeight(WaterfallHeight - e.Vector.Y, save: false);
+        WaterfallGrip.DragCompleted += (_, _) => SetWaterfallHeight(WaterfallHeight, save: true);
+        WaterfallGrip.DoubleTapped += (_, e) =>
         {
-            if (Vm is not { } vm) return;
-            vm.ManualOffset = hz.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            vm.OffsetManualCommand.Execute(null);
-            ReceiveWaterfall.Update(null, hz);
-            // In a keyboard mode a click also reads the signal there, and keeps reading it while it is quiet.
-            if (!Core.ModeInfo.IsSlotted(vm.Host.Session.Config.Mode)) vm.Host.Keyboard.Listen(hz);
+            SetWaterfallHeight(CompactWaterfall, save: true);
+            e.Handled = true;
         };
+        WaterfallGrip.KeyDown += OnGripKey;
+        PopOutButton.Click += (_, _) => PopOutWaterfall();
+        AddHandler(Button.ClickEvent, (_, e) =>
+        {
+            if (e.Source is Button button && button.Classes.Contains("instrument-dial"))
+            {
+                DialFrequencyButton.Flyout?.ShowAt(button);
+                e.Handled = true;
+            }
+        });
+        SizeChanged += (_, _) => SetWaterfallHeight(WaterfallHeight, save: false);
         AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, OnKeyUp, RoutingStrategies.Tunnel);
         AddHandler(TextInputEvent, OnText, RoutingStrategies.Tunnel);
@@ -64,6 +77,8 @@ public partial class MainWindow : Window
         Width = Math.Max(MinWidth, w.Width);
         Height = Math.Max(MinHeight, w.Height);
         if (w.X is { } x && w.Y is { } y) Position = new Avalonia.PixelPoint(x, y);
+        SetWaterfallHeight(w.WaterfallHeight, save: false);
+        if (w.WaterfallOut) Dispatcher.UIThread.Post(PopOutWaterfall);
         vm.Host.Session.Changed += s => Dispatcher.UIThread.Post(() => vm.Apply(s));
         vm.Apply(vm.Host.Session.Snapshot);
         vm.OpenDialog += OpenDialog;
@@ -77,12 +92,28 @@ public partial class MainWindow : Window
             if (_waterfallBand != $"{snapshot.Band}/{snapshot.Mode}" || _waterfallPump != pump)
             {
                 ReceiveWaterfall.Clear();
+                _waterfallWindow?.View.Clear();
                 _waterfallBand = $"{snapshot.Band}/{snapshot.Mode}";
                 _waterfallPump = pump;
+                if (_waterfallWindow is { } ww) ww.Title = $"Costas waterfall · {snapshot.Band} {snapshot.Mode.ToString().ToUpperInvariant()}";
             }
-            var row = pump?.Spectrum.TakeLatest();
-            ReceiveWaterfall.Update(snapshot.Transmitting ? null : row, snapshot.TxOffsetHz);
-            ReceiveWaterfall.SetTags(Core.ModeInfo.IsSlotted(snapshot.Mode) ? [] : Tags(snapshot));
+            var row = snapshot.Transmitting ? null : pump?.Spectrum.TakeLatest();
+            // Marks the first row of each receive slot, so a tall waterfall can draw the slot boundaries. PSK and RTTY
+            // have no slots.
+            var slotted = Core.ModeInfo.IsSlotted(snapshot.Mode);
+            var slotStart = false;
+            if (slotted)
+            {
+                var slot = vm.Host.Clock.UtcNow.Ticks / TimeSpan.TicksPerMillisecond / Core.ModeInfo.SlotMilliseconds(snapshot.Mode);
+                slotStart = row is not null && slot != _waterfallSlot;
+                if (row is not null) _waterfallSlot = slot;
+            }
+            // Both views are fed so the strip and the window each have full history when switching between them.
+            ReceiveWaterfall.Update(row, snapshot.TxOffsetHz, slotStart);
+            _waterfallWindow?.View.Update(row, snapshot.TxOffsetHz, slotStart);
+            var tags = slotted ? [] : Tags(snapshot);
+            ReceiveWaterfall.SetTags(tags);
+            _waterfallWindow?.View.SetTags(tags);
         };
         _timer.Start();
         if (!vm.Host.Settings.Current.SetupComplete) Dispatcher.UIThread.Post(() => OpenDialog("setup"));
@@ -106,6 +137,11 @@ public partial class MainWindow : Window
         _mini?.Close();
         if (Vm is { } vm)
         {
+            if (_waterfallWindow is { } ww)
+            {
+                SaveWaterfallWindow(vm, ww, stillOut: true);
+                ww.Close();
+            }
             var size = ClientSize;
             vm.Host.Settings.Update(s =>
             {
@@ -118,9 +154,102 @@ public partial class MainWindow : Window
         base.OnClosing(e);
     }
 
+    private void SelectChannel(int hz)
+    {
+        if (Vm is not { } vm) return;
+        vm.ManualOffset = hz.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        vm.OffsetManualCommand.Execute(null);
+        ReceiveWaterfall.Update(null, hz);
+        _waterfallWindow?.View.Update(null, hz);
+        // In a keyboard mode a click also reads the signal there, and keeps reading it while it is quiet.
+        if (!Core.ModeInfo.IsSlotted(vm.Host.Session.Config.Mode)) vm.Host.Keyboard.Listen(hz);
+    }
+
+    private double WaterfallHeight => BottomGrid.RowDefinitions[2].Height.Value;
+
+    // The strip grows up to half the window, so the panels above it always keep room; the panels scroll when short.
+    private void SetWaterfallHeight(double height, bool save)
+    {
+        var max = Math.Max(CompactWaterfall, Math.Round(Bounds.Height / 2));
+        height = Math.Round(Math.Clamp(height, CompactWaterfall, max));
+        if (_waterfallWindow is null && height != WaterfallHeight) BottomGrid.RowDefinitions[2].Height = new GridLength(height);
+        if (!save || Vm is not { } vm) return;
+        vm.Host.Settings.Update(s => s.Window.WaterfallHeight = height);
+    }
+
+    private void OnGripKey(object? sender, KeyEventArgs e)
+    {
+        var height = e.Key switch
+        {
+            Key.Up => WaterfallHeight + 20,
+            Key.Down => WaterfallHeight - 20,
+            Key.Home => CompactWaterfall,
+            _ => (double?)null,
+        };
+        if (height is not { } h) return;
+        SetWaterfallHeight(h, save: true);
+        e.Handled = true;
+    }
+
+    // The waterfall is shown in one place at a time: popping it out hides the strip and its grip, popping it in brings them back.
+    private void PopOutWaterfall()
+    {
+        if (_waterfallWindow is not null || Vm is not { } vm) return;
+        var w = vm.Host.Settings.Current.Window;
+        var window = new WaterfallWindow
+        {
+            Escape = vm.Escape,
+            Width = Math.Max(420, w.WaterfallWindowWidth),
+            Height = Math.Max(120, w.WaterfallWindowHeight),
+            Title = $"Costas waterfall · {vm.Host.Session.Snapshot.Band} {vm.Host.Session.Snapshot.Mode.ToString().ToUpperInvariant()}",
+        };
+        if (w is { WaterfallX: { } x, WaterfallY: { } y } && OnSomeScreen(new PixelPoint(x, y))) window.Position = new PixelPoint(x, y);
+        else window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        window.View.CopyFrom(ReceiveWaterfall);
+        window.View.ChannelSelected += SelectChannel;
+        window.Closing += (_, _) =>
+        {
+            // Closing the main window closes this one too, and it should open again next time.
+            if (!_closing) SaveWaterfallWindow(vm, window, stillOut: false);
+        };
+        window.Closed += (_, _) =>
+        {
+            _waterfallWindow = null;
+            if (_closing) return;
+            ReceiveWaterfall.CopyFrom(window.View);
+            ShowStrip(true);
+        };
+        _waterfallWindow = window;
+        ShowStrip(false);
+        window.Show(this);
+        vm.Host.Settings.Update(s => s.Window.WaterfallOut = true);
+    }
+
+    private void ShowStrip(bool show)
+    {
+        WaterfallStrip.IsVisible = show;
+        WaterfallGrip.IsVisible = show;
+        BottomGrid.RowDefinitions[2].Height = new GridLength(show ? Math.Max(CompactWaterfall, Vm?.Host.Settings.Current.Window.WaterfallHeight ?? CompactWaterfall) : 0);
+        if (show) SetWaterfallHeight(WaterfallHeight, save: false);
+    }
+
+    private static void SaveWaterfallWindow(MainViewModel vm, WaterfallWindow window, bool stillOut) =>
+        vm.Host.Settings.Update(s =>
+        {
+            s.Window.WaterfallOut = stillOut;
+            s.Window.WaterfallX = window.Position.X;
+            s.Window.WaterfallY = window.Position.Y;
+            s.Window.WaterfallWindowWidth = window.Width;
+            s.Window.WaterfallWindowHeight = window.Height;
+        });
+
+    // A window remembered on a monitor that is no longer connected opens centred over Costas instead.
+    private bool OnSomeScreen(PixelPoint point) => Screens.All.Any(s => s.WorkingArea.Contains(point + new PixelPoint(40, 20)));
+
     private void OpenDialog(string name)
     {
         if (Vm is not { } vm) return;
+        vm.TrackWindow(name);
         if (name == "mini")
         {
             OpenMini(vm);
@@ -150,9 +279,11 @@ public partial class MainWindow : Window
             _mini = null;
             if (_closing) return;
             Show();
+            _waterfallWindow?.Show(this);
             Activate();
         };
         _mini.Show();
+        _waterfallWindow?.Hide();
         Hide();
     }
 
@@ -199,10 +330,16 @@ public partial class MainWindow : Window
         vm.Activity();
         var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
         var typing = e.Source is TextBox;
+        // A drop-down, menu or flyout is open: its keys are its own (Esc closes it; it must not abandon the contact).
+        var inPopup = InPopup(e.Source);
+        // Enter and the arrows belong to the control that has focus (a button, a drop-down); only on the station list or
+        // nothing in particular do they move through Next in line and call. Enter on Halt Tx must never call a station.
+        var listKeys = vm.Tab == 0 && !typing && !inPopup
+                       && e.Source is not (Button or ComboBox or ComboBoxItem or MenuItem or Slider or NumericUpDown);
         switch (e.Key)
         {
             // Esc aimed at an open dropdown or menu closes it, and halts only when something is on the air.
-            case Key.Escape when InPopup(e.Source):
+            case Key.Escape when inPopup:
                 if (vm.Host.Session.Snapshot.Transmitting) vm.HaltCommand.Execute(null);
                 break;
             case Key.Escape:
@@ -244,15 +381,15 @@ public partial class MainWindow : Window
                 vm.Operate.Keyboard.Enter();
                 e.Handled = true;
                 break;
-            case Key.Enter when vm.Tab == 0 && !typing && !vm.Operate.Keyboard.Visible:
+            case Key.Enter when listKeys && !vm.Operate.Keyboard.Visible:
                 vm.Operate.CallSelected();
                 e.Handled = true;
                 break;
-            case Key.Up when vm.Tab == 0 && !typing:
+            case Key.Up when listKeys:
                 vm.Operate.MoveSelection(-1);
                 e.Handled = true;
                 break;
-            case Key.Down when vm.Tab == 0 && !typing:
+            case Key.Down when listKeys:
                 vm.Operate.MoveSelection(1);
                 e.Handled = true;
                 break;

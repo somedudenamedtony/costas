@@ -8,6 +8,8 @@
 
 using System.Globalization;
 using Ft8Client.App.Engine;
+using Ft8Client.Core;
+using Ft8Client.Core.Ranking;
 using Ft8Client.Integrations.Wsjtx;
 
 namespace Ft8Client.App.ViewModels;
@@ -26,8 +28,12 @@ public sealed class RawLineViewModel
     /// <param name="l">The decode line.</param>
     /// <param name="localZone">Zone for the Local column; the machine's zone when null.</param>
     /// <param name="highlight">Colours another program asked for this line's callsign, if any.</param>
+    /// <param name="sender">What the station list knows about the sender, if anything.</param>
+    /// <param name="units">Distance units.</param>
+    /// <param name="partner">True when the line is from or to the station I am in a contact with.</param>
     /// <param name="keyboard">A PSK or RTTY line, which has no time offset (DT is left empty).</param>
-    public RawLineViewModel(RawDecodeLine l, TimeZoneInfo? localZone = null, WsjtxHighlight? highlight = null, bool keyboard = false)
+    public RawLineViewModel(RawDecodeLine l, TimeZoneInfo? localZone = null, WsjtxHighlight? highlight = null,
+                            RankedStation? sender = null, DistanceUnit units = DistanceUnit.Miles, bool partner = false, bool keyboard = false)
     {
         Background = highlight?.Background;
         Foreground = highlight?.Foreground;
@@ -42,6 +48,14 @@ public sealed class RawLineViewModel
         Country = l.Country ?? string.Empty;
         Kind = l.Transmitted ? TextKind.Secondary : l.ToMe ? TextKind.Critical : l.IsCq ? TextKind.Accent : TextKind.Normal;
         Sender = l.Message.SenderCall;
+        IsPartner = partner;
+        if (sender is not null && !l.Transmitted)
+        {
+            Need = StationText.Why(sender.Need.Tag, sender.Station.Grid);
+            NeedKind = StationRowViewModel.KindOf(sender.Need.Tag);
+            Distance = sender.Station.DistanceKm is { } km ? StationText.Distance(km, units) : string.Empty;
+        }
+        Copy = $"{Utc} {Db,3} {Dt,4} {Hz,4} ~  {Message}";
     }
 
     /// <summary>Slot time.</summary>
@@ -64,6 +78,21 @@ public sealed class RawLineViewModel
 
     /// <summary>Country.</summary>
     public string Country { get; } = string.Empty;
+
+    /// <summary>Distance to the sender, from the station list; empty when not known.</summary>
+    public string Distance { get; } = string.Empty;
+
+    /// <summary>What working the sender would add ("New country", "Worked before"); empty when not known.</summary>
+    public string Need { get; } = string.Empty;
+
+    /// <summary>Colour of <see cref="Need"/>, as in the station list.</summary>
+    public TextKind NeedKind { get; } = TextKind.Secondary;
+
+    /// <summary>True when the line is from or to the station I am in a contact with.</summary>
+    public bool IsPartner { get; }
+
+    /// <summary>The line as text for the clipboard, laid out as WSJT-X prints it.</summary>
+    public string Copy { get; } = string.Empty;
 
     /// <summary>Colour: to me critical, CQ accent.</summary>
     public TextKind Kind { get; }
