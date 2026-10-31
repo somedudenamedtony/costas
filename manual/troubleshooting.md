@@ -106,6 +106,19 @@ audio output device in Station setup and that the radio takes its transmit audio
 4. If another program has the audio device in exclusive mode, close it. In Windows sound settings you can also untick
    *Allow applications to take exclusive control of this device* for the radio's device.
 
+### The status line says the receive audio is silent or clipping
+
+Costas keeps an ear on the radio's audio while it runs. When something is clearly wrong for half a minute of receiving
+(time spent transmitting does not count), the status line says so in amber:
+
+| Message | Cause and fix |
+| --- | --- |
+| *No audio is arriving from the radio's sound device* | The USB cable came loose, the radio or PC went to sleep, or another program took the device. Check the cable and the radio; Costas reopens the device when it comes back |
+| *The radio's sound device sends only silence* | The radio's USB audio output is turned down to zero or muted, or Windows muted the recording device |
+| *The receive audio is clipping* | The audio is too loud and being cut off, which costs decodes. Turn down the radio's USB audio output level or the Windows recording level until the Setup input meter sits in the shaded band |
+
+The message goes away by itself five seconds after the audio is good again. A quiet band is not reported.
+
 ### Everyone shows as "New call"
 
 Costas does not know your log yet. Add your QRZ logbook API key in [Settings › QRZ](settings.md#qrz) and press
@@ -117,6 +130,7 @@ Costas does not know your log yet. Add your QRZ logbook API key in [Settings ›
 | --- | --- |
 | *Your clock is off by 2.4 s. Transmitting is blocked above 2 s.* | Sync the Windows clock. With **Clock correction** on, Costas fixes this itself once a time server answers; if it cannot reach one, or the clock is off by more than a minute, it can't. The limit is in Settings › Transmitting › Clock limit |
 | *Stopped by watchdog* | You had not touched the app for 6 minutes (3 from the phone). Any contact being answered was finished first. Click Call or Call CQ again |
+| *… is outside the US data segments on 20 m* | US rules allow FT8 only in part of each band (below 14.150 MHz on 20 m, 7.125 MHz on 40 m, 3.600 MHz on 80 m, and so on). Tune back to an FT8 frequency. Licensed outside the US? Turn off **Settings › Transmitting › US data segments only** |
 | *… cannot be sent …* | The message cannot be encoded exactly as shown, for example a callsign or free text FT8 cannot carry. Costas never changes a message silently; shorten or change it |
 | No radio set up | See *Radio not connected* above |
 

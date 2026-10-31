@@ -11,6 +11,12 @@ namespace Ft8Client.Core.Bands;
 /// <summary>The operator-editable list of dial frequencies and transmit limits.</summary>
 public sealed class FrequencyTable(IReadOnlyList<FrequencyEntry> entries)
 {
+    /// <summary>
+    /// Also keep transmissions inside the US data segments (<see cref="UsDataSegments"/>), not only the band limits in the
+    /// table. On by default; operators licensed elsewhere turn it off.
+    /// </summary>
+    public bool UsDataSegmentsOnly { get; set; } = true;
+
     /// <summary>All entries.</summary>
     public IReadOnlyList<FrequencyEntry> Entries { get; } = entries;
 
@@ -27,7 +33,7 @@ public sealed class FrequencyTable(IReadOnlyList<FrequencyEntry> entries)
 
     /// <summary>
     /// The band-edge guard: true when the whole transmitted signal (dial + offset to dial + offset + bandwidth)
-    /// lies inside the allowed range for the band.
+    /// lies inside the allowed range for the band and, with <see cref="UsDataSegmentsOnly"/>, inside a US data segment.
     /// </summary>
     public bool TransmitAllowed(string band, Mode mode, long dialHz, int offsetHz, out string reason)
     {
@@ -42,6 +48,11 @@ public sealed class FrequencyTable(IReadOnlyList<FrequencyEntry> entries)
         if (low < e.LowHz || high > e.HighHz)
         {
             reason = $"{low / 1000.0:0.000} kHz is outside {BandPlan.Display(e.Band)} transmit limits.";
+            return false;
+        }
+        if (UsDataSegmentsOnly && !UsDataSegments.Contains(low, high))
+        {
+            reason = $"{low / 1000.0:0.000} kHz is outside the US data segments on {BandPlan.Display(e.Band)}. Licensed elsewhere? Turn off \"US data segments only\" in Settings › Transmitting.";
             return false;
         }
         reason = string.Empty;

@@ -87,6 +87,52 @@ public class PskReporterTests
     }
 
     [Fact]
+    public async Task FlushAsync_SpotsWaiting_SendsAtOnce()
+    {
+        var clock = new ManualClock(new DateTime(2026, 1, 4, 3, 0, 0, DateTimeKind.Utc));
+        var sent = 0;
+        var up = new PskSpotUploader(_ =>
+        {
+            sent++;
+            return Task.CompletedTask;
+        }, clock, new Random(1)) { Receiver = new PskReceiver("W7LIT", "DN40", "Costas") };
+        (await up.FlushAsync()).Should().Be(0, "nothing is waiting");
+        up.Add(new PskSpot("K1ABC", 14_075_000, -10, "FT8", "FN42", clock.UtcNow));
+
+        (await up.FlushAsync()).Should().Be(1, "closing does not wait for the five-minute interval");
+        sent.Should().Be(1);
+        up.Pending.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task TickAsync_SendFails_KeepsSpotsForTheNextSend()
+    {
+        var clock = new ManualClock(new DateTime(2026, 1, 4, 3, 0, 0, DateTimeKind.Utc));
+        var fail = true;
+        var sent = new List<byte[]>();
+        var up = new PskSpotUploader(b =>
+        {
+            if (fail) throw new System.Net.Sockets.SocketException();
+            sent.Add(b);
+            return Task.CompletedTask;
+        }, clock, new Random(1)) { Receiver = new PskReceiver("W7LIT", "DN40", "Costas") };
+        up.Add(new PskSpot("K1ABC", 14_075_000, -10, "FT8", "FN42", clock.UtcNow));
+        up.Add(new PskSpot("K2ABC", 14_076_000, -12, "FT8", "FN31", clock.UtcNow));
+        clock.Advance(TimeSpan.FromMinutes(5.6));
+
+        var act = () => up.TickAsync();
+        await act.Should().ThrowAsync<System.Net.Sockets.SocketException>();
+        up.Pending.Should().Be(2, "spots that did not go out are kept");
+
+        fail = false;
+        clock.Advance(TimeSpan.FromMinutes(5.6));
+        (await up.TickAsync()).Should().Be(1);
+        up.Pending.Should().Be(0);
+        sent[0][16].Should().Be(0x00, "the templates are sent again with the retried spots");
+        sent[0][17].Should().Be(0x02);
+    }
+
+    [Fact]
     public void ParseQuery_Sample_ReadsReportsAndSequence()
     {
         var (reports, last) = PskReportParser.ParseQuery(File.ReadAllText(Path.Combine(TestPaths.Samples, "pskreporter", "query-reply.xml")), Countries);

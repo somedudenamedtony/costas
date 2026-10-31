@@ -26,6 +26,8 @@ public sealed class CapturePump : IDisposable
     private Thread? _thread;
     private volatile bool _run;
     private long _lastOverruns;
+    private long _samples;
+    private int _peakBits;
 
     /// <summary>Creates a pump for an open input.</summary>
     public CapturePump(IAudioInput input, SlotRecorder recorder)
@@ -41,6 +43,19 @@ public sealed class CapturePump : IDisposable
 
     /// <summary>Recent RMS input level in dBFS.</summary>
     public double LevelDbfs { get; private set; } = -120;
+
+    /// <summary>Input samples received since start (at the device rate).</summary>
+    public long SamplesReceived => Interlocked.Read(ref _samples);
+
+    /// <summary>
+    /// The largest sample magnitude since the last call, in dBFS (-120 for silence or nothing received), and starts a new
+    /// window. For the receive-level watch, read about once a second from another thread.
+    /// </summary>
+    public double TakePeakDbfs()
+    {
+        var peak = BitConverter.Int32BitsToSingle(Interlocked.Exchange(ref _peakBits, 0));
+        return peak <= 1e-6f ? -120 : 20 * Math.Log10(peak);
+    }
 
     /// <summary>Dropout events (ring buffer overruns) since start.</summary>
     public int Dropouts { get; private set; }
@@ -61,6 +76,8 @@ public sealed class CapturePump : IDisposable
         while ((n = _input.Buffer.Read(_in)) > 0)
         {
             LevelDbfs = AudioLevel.RmsDbfs(_in.AsSpan(0, n));
+            Interlocked.Add(ref _samples, n);
+            KeepPeak(_in.AsSpan(0, n));
             var m = _resampler.Process(_in.AsSpan(0, n), _out);
             _recorder.Append(_out.AsSpan(0, m));
             Spectrum.Append(_out.AsSpan(0, m));
@@ -73,6 +90,16 @@ public sealed class CapturePump : IDisposable
             _lastOverruns = over;
         }
         return total;
+    }
+
+    private void KeepPeak(ReadOnlySpan<float> block)
+    {
+        float peak = 0;
+        foreach (var v in block) peak = Math.Max(peak, Math.Abs(v));
+        int seen, bits = BitConverter.SingleToInt32Bits(peak);
+        while (peak > BitConverter.Int32BitsToSingle(seen = Volatile.Read(ref _peakBits)) && Interlocked.CompareExchange(ref _peakBits, bits, seen) != seen)
+        {
+        }
     }
 
     private void Loop()

@@ -48,6 +48,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     private readonly List<SlotActivity> _activity = [];
     private readonly List<(DateTime Slot, SlotParity Parity, List<int> Offsets)> _recentOffsets = [];
     private readonly Dictionary<string, ServiceStatus> _services = new(StringComparer.Ordinal);
+    private string? _receiveLevelWarning;
     private readonly Dictionary<string, CallsignCacheEntry> _lookups = new(StringComparer.Ordinal);
     private readonly List<TonightContact> _tonight = [];
     private readonly List<string> _callWhenFree = []; // Watching rows marked "call when free", oldest first
@@ -966,6 +967,17 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
+    /// <summary>Sets the receive-audio warning for the status line (null clears it).</summary>
+    public void SetReceiveLevelWarning(string? text)
+    {
+        lock (_gate)
+        {
+            if (_receiveLevelWarning == text) return;
+            _receiveLevelWarning = text;
+        }
+        Publish();
+    }
+
     /// <summary>Sets a service status.</summary>
     public void SetService(string name, ServiceStatus status)
     {
@@ -1191,6 +1203,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 LastLogged = _lastLogged,
                 Fault = _fault ?? _engine.StopReason,
                 ClockOffsetSeconds = ClockEstimate.Offset(_sntpOffset, _medianDt),
+                ReceiveLevelWarning = _receiveLevelWarning,
                 Waiting = _engine.Waiting.ToList(),
                 CallWhenFree = _callWhenFree.ToList(),
                 TxMeters = _txMeters,

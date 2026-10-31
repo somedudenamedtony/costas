@@ -994,6 +994,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         // The band menu keeps the last band; the band-edge guard already refuses to transmit here.
         if (s.DialHz > 0 && BandPlan.BandOf(s.DialHz) is null)
             return ($"The radio is on {DialText.Mhz(s.DialHz)} MHz, outside the amateur bands. Costas will not transmit there.", TextKind.Caution);
+        if (s.ReceiveLevelWarning is { } audio && !s.Transmitting) return (audio, TextKind.Caution);
         if (s.Contact is { Outcome: ContactOutcome.InProgress } c)
         {
             if (!s.Transmitting) return ($"Waiting for {c.DxCall}.", TextKind.Normal);

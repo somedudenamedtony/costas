@@ -126,7 +126,7 @@ real FT-710.
 
 Other notes from M2:
 
-- 60 m transmit limits in `frequencies.json` use the ITU WRC-15 range 5351.5 to 5366.5 kHz. US 60 m rules are channelised; the owner should check the limits for his licence before transmitting on 60 m.
+- 60 m transmit limits in `frequencies.json` use the ITU WRC-15 range 5351.5 to 5366.5 kHz. Checked 2026-10-31: the FCC opened 5351.5-5366.5 kHz to US General class and up on 13 February 2026 (ARRL news, FCC 25-60), at most 9.15 W ERP and 2.8 kHz; the channels at 5332, 5348, 5373 and 5405 kHz stay (100 W ERP) and the 5358.5 kHz channel is gone. Settings › Transmitting › "US data segments only" (on by default) also keeps transmissions inside the 97.305(c) data segments read from eCFR the same day (`UsDataSegments`). Power is not limited by Costas.
 
 ## Risks
 

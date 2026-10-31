@@ -18,6 +18,9 @@ namespace Ft8Client.Integrations.PskReporter;
 /// </summary>
 public sealed class PskSpotUploader
 {
+    /// <summary>Most spots kept waiting while sends fail.</summary>
+    public const int MaxQueued = 600;
+
     /// <summary>Minimum interval between sends.</summary>
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
 
@@ -70,17 +73,27 @@ public sealed class PskSpotUploader
     }
 
     /// <summary>Sends if the interval has passed (or a packet would be full). Call every few seconds.</summary>
-    public async Task<int> TickAsync()
+    public Task<int> TickAsync() => SendAsync(force: false);
+
+    /// <summary>Sends every waiting spot now (closing, or a callsign change). Returns the packets sent.</summary>
+    public Task<int> FlushAsync() => SendAsync(force: true);
+
+    // Spots that could not be sent go back to the front of the queue for the next send, up to MaxQueued (oldest dropped
+    // first), so a network outage costs nothing until it outlasts the queue.
+    private async Task<int> SendAsync(bool force)
     {
         List<PskSpot> spots;
         bool descriptors;
         uint seq;
+        PskReceiver? receiver;
         var now = _clock.UtcNow;
         lock (_gate)
         {
-            if (Receiver is null) return 0;
+            receiver = Receiver;
+            if (receiver is null) return 0;
+            if (force && _queue.Count == 0) return 0;
             var full = _queue.Count >= 60;
-            if (now < _nextSend && !full) return 0;
+            if (!force && now < _nextSend && !full) return 0;
             if (_queue.Count == 0 && _descriptorsLeft == 0 && now < _nextDescriptors)
             {
                 _nextSend = now + Interval + Jitter();
@@ -99,12 +112,30 @@ public sealed class PskSpotUploader
             _nextSend = now + Interval + Jitter();
             foreach (var (k, t) in _lastSpotted.ToList()) if (now - t > PerCall) _lastSpotted.Remove(k);
         }
-        var packets = IpfixPacketBuilder.Build(Receiver!, spots, descriptors, seq, _observationId,
+        var packets = IpfixPacketBuilder.Build(receiver, spots, descriptors, seq, _observationId,
             (uint)new DateTimeOffset(now).ToUnixTimeSeconds());
-        foreach (var p in packets)
+        var sentSpots = 0;
+        var sent = 0;
+        try
         {
-            await _send(p.Payload).ConfigureAwait(false);
-            lock (_gate) _sequence += (uint)p.SpotCount;
+            foreach (var p in packets)
+            {
+                await _send(p.Payload).ConfigureAwait(false);
+                sent++;
+                sentSpots += p.SpotCount;
+                lock (_gate) _sequence += (uint)p.SpotCount;
+            }
+        }
+        catch
+        {
+            lock (_gate)
+            {
+                _queue.InsertRange(0, spots.Skip(sentSpots));
+                if (_queue.Count > MaxQueued) _queue.RemoveRange(0, _queue.Count - MaxQueued);
+                // The templates may not have arrived: send them again with the next packet.
+                if (descriptors && sent == 0) _descriptorsLeft = Math.Max(_descriptorsLeft, 1);
+            }
+            throw;
         }
         return packets.Count;
     }

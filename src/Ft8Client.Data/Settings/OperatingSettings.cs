@@ -62,6 +62,9 @@ public sealed class OperatingSettings
     /// <summary>Correct Costas's own clock from internet time when the PC clock is off (the PC clock is never changed).</summary>
     public bool CorrectClock { get; set; } = true;
 
+    /// <summary>Refuse to transmit outside the US data segments (FCC 97.305), besides the band limits. Off for other countries.</summary>
+    public bool UsDataSegmentsOnly { get; set; } = true;
+
     /// <summary>Clock offset above which transmit is blocked, in seconds.</summary>
     public double ClockBlockSeconds { get; set; } = 2.0;
 }
