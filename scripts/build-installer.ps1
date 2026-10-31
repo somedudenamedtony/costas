@@ -4,7 +4,8 @@
 # Builds the Windows installer: publishes the app self-contained for win-x64, stages jt9 (WSJT-X) and rigctld (Hamlib)
 # with their licences, smoke-tests both from the staged folder, then compiles installer/Costas.iss with Inno Setup.
 # Then packs the same staged folder with Velopack (delta updates). Set VELOPACK_PREVIOUS=1 to download the latest
-# published release first, so the pack includes a delta from it (release runs).
+# published release first, so the pack includes a delta from it (release runs). Set COSTAS_SIGN=1 (release runs, once
+# Artifact Signing is set up; see scripts/sign.ps1) to code-sign the app, both installers and the uninstaller.
 # Output: artifacts/Costas-Setup-<version>.exe and artifacts/velopack/ (Velopack installer, packages, feed)
 param([string]$BuildNumber = '')
 $ErrorActionPreference = 'Stop'
@@ -67,6 +68,15 @@ Copy-Item (Join-Path $root 'samples/ft8/*.wav') (Join-Path $ss 'ft8')
 Copy-Item (Join-Path $root 'samples/ft4/*.wav') (Join-Path $ss 'ft4')
 Copy-Item (Join-Path $root 'samples/partners.txt'), (Join-Path $root 'samples/README.md') $ss
 
+# Code signing: every .exe and .dll in the stage that is not already signed (ours, Avalonia's, jt9 and Hamlib), so
+# SmartScreen and Smart App Control see a known publisher on everything the installers put on disk.
+$sign = $env:COSTAS_SIGN -eq '1'
+$signScript = Join-Path $root 'scripts/sign.ps1'
+if ($sign) {
+    $binaries = Get-ChildItem $stage -Recurse -File -Include '*.exe', '*.dll' | ForEach-Object FullName
+    & $signScript @binaries
+}
+
 # Smoke tests against the staged copies: Hamlib answers, and jt9 decodes a busy sample through the app's decoder host.
 $freq = & (Join-Path $stp 'hamlib/bin/rigctl.exe') -m 1 f
 if ($LASTEXITCODE -ne 0 -or -not ($freq -match '^\d+$')) { throw "Staged rigctl did not answer: $freq" }
@@ -84,7 +94,11 @@ if (-not (Test-Path $iscc)) {
     choco install innosetup -y --no-progress | Out-Host
     $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
 }
-& $iscc "/DAppVersion=$version" "/DStageDir=$stage" "/DOutputDir=$art" (Join-Path $root 'installer/Costas.iss')
+$isccArgs = @("/DAppVersion=$version", "/DStageDir=$stage", "/DOutputDir=$art")
+# Inno Setup signs the installer and the uninstaller it embeds through the named tool "costas"; $q is a quote and $f the
+# file, both expanded by Inno Setup.
+if ($sign) { $isccArgs += '/DSign', ('/Scostas=pwsh -NoProfile -ExecutionPolicy Bypass -File $q' + $signScript + '$q $f') }
+& $iscc @isccArgs (Join-Path $root 'installer/Costas.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed' }
 Get-ChildItem $art -Filter 'Costas-Setup-*.exe' | ForEach-Object { Write-Host "Installer: $($_.FullName) ($([math]::Round($_.Length / 1MB)) MB)" }
 
@@ -100,10 +114,30 @@ if ($env:VELOPACK_PREVIOUS -eq '1') {
     # The first Velopack release has nothing to download; it ships without a delta.
     if ($LASTEXITCODE -ne 0) { Write-Warning 'No earlier Velopack release to make a delta from' }
 }
+$vpkSign = @()
+if ($sign) {
+    # Velopack signs its own Update.exe and Setup.exe through Artifact Signing (the staged files are signed already and
+    # are skipped). It authenticates the same way, from the AZURE_* variables.
+    $meta = Join-Path $art 'artifact-signing.json'
+    @{ Endpoint = $env:ARTIFACT_SIGNING_ENDPOINT; CodeSigningAccountName = $env:ARTIFACT_SIGNING_ACCOUNT
+       CertificateProfileName = $env:ARTIFACT_SIGNING_PROFILE } | ConvertTo-Json | Set-Content -Encoding utf8 $meta
+    $vpkSign = '--azureTrustedSignFile', $meta
+}
 dotnet vpk pack --packId CostasApp --packVersion $version --packDir $stage --mainExe Costas.exe --packTitle Costas `
     --packAuthors 'Costas contributors' --icon (Join-Path $root 'src/Ft8Client.App/Assets/costas.ico') `
-    --runtime win-x64 --shortcuts StartMenuRoot --noPortable --outputDir $vp
+    --runtime win-x64 --shortcuts StartMenuRoot --noPortable --outputDir $vp @vpkSign
 if ($LASTEXITCODE -ne 0) { throw 'Velopack pack failed' }
 # Only this version's packages are published; an earlier one downloaded for the delta is already on its own release.
 Get-ChildItem $vp -Filter '*.nupkg' | Where-Object { $_.Name -notlike "*-$version-*" } | Remove-Item
 Get-ChildItem $vp | ForEach-Object { Write-Host "Velopack: $($_.Name) ($([math]::Round($_.Length / 1MB, 1)) MB)" }
+
+# A signed build must not ship an unsigned download: check both installers and the installed app's main exe.
+if ($sign) {
+    $check = @(Get-ChildItem $art -Filter 'Costas-Setup-*.exe') + @(Get-ChildItem $vp -Filter '*Setup.exe') +
+        @(Get-Item (Join-Path $stage 'Costas.exe'))
+    foreach ($f in $check) {
+        $sig = Get-AuthenticodeSignature $f.FullName
+        if ($sig.Status -ne 'Valid') { throw "$($f.Name) is not signed ($($sig.Status))" }
+        Write-Host "Signed: $($f.Name) by $($sig.SignerCertificate.Subject)"
+    }
+}
