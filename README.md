@@ -76,15 +76,15 @@ Requires 64-bit Windows 10 (1809) or later. The decoder (`jt9` from WSJT-X) and 
 bundled; you do not need WSJT-X installed. Costas checks for new builds at start and daily and offers to install them, keeping
 your log and settings; an update downloads only what changed, usually a few MB.
 
-### Linux (preview, receive only)
+### Linux (preview)
 
 1. Install the decoder, radio control and audio library from your distribution:
    `sudo apt install wsjtx libhamlib-utils libportaudio2 libsecret-tools` (Debian and Ubuntu names).
 2. Download `Costas-<version>-linux-x64.tar.gz` from the
    [latest release](https://github.com/somedudenamedtony/costas/releases/latest), unpack it and run `./Costas`.
 
-The Linux version decodes, ranks stations, logs and uploads, but **does not transmit yet**: Call, Tune and the
-transmit test say so and do nothing. Transmit will be turned on once its audio has been checked with a real radio.
+The Linux version receives and transmits FT8, FT4, PSK31, PSK63 and RTTY. It is still a preview because it has
+not yet been used with a real radio on Linux: check your transmit audio level and ALC on your first contacts.
 See [Install](https://somedudenamedtony.github.io/costas/install/#linux-preview) in the manual for details.
 
 ## Use it

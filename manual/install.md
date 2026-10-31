@@ -57,10 +57,10 @@ Uninstalling removes the program but keeps your data folder, so a reinstall pick
 
 ## Linux (preview) {#linux-preview}
 
-Each release also has a Linux build, `Costas-<version>-linux-x64.tar.gz`. It is a **receive-only preview**: Costas
-decodes, ranks stations, logs, uploads to QRZ and reports to PSK Reporter, but it does not transmit on Linux yet.
-**Call**, **Tune** and the transmit test say *the Linux version is a receive-only preview* and the radio is never
-keyed. Transmit will be turned on once the Linux audio has been checked with a real radio.
+Each release also has a Linux build, `Costas-<version>-linux-x64.tar.gz`. It does everything the Windows
+version does, transmit included, but it is still a **preview**: it has been tested end to end with recordings and
+Hamlib's test radio, not yet with a real radio on Linux. On your first contacts, run the transmit test in Setup and
+watch the radio's ALC and power, as you would on Windows.
 
 1. Install what Costas uses from your distribution. On Debian and Ubuntu:
 

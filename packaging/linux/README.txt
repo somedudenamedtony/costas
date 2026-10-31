@@ -1,9 +1,9 @@
 Costas for Linux (preview)
 ==========================
 
-This is a receive-only preview. Costas decodes, shows stations, logs, uploads to QRZ and reports to PSK Reporter, but
-it does not transmit on Linux yet: Call, Tune and the transmit test are refused with a message saying so. Transmit
-will be turned on once the Linux audio has been checked with a real radio.
+This is a preview. Costas receives and transmits FT8, FT4, PSK31, PSK63 and RTTY on Linux, but it has not yet been
+used with a real radio on Linux: on your first contacts, run the transmit test in Setup and watch the radio's ALC and
+power.
 
 Install what Costas uses from your distribution (Debian and Ubuntu names):
 

@@ -347,8 +347,6 @@ public sealed class AppHost : IAsyncDisposable
         }
 
         Transmitter = new Transmitter(_rig, _output, Clock, Frequencies);
-        // The Linux build is a receive-only preview until its transmit audio has been checked on a real radio.
-        if (OperatingSystem.IsLinux() && !Simulating) Transmitter.DisabledReason = LinuxPreview.TransmitRefusal;
         TxLevel = new TxLevelController(Transmitter, Settings);
         LogHold = new LogHold(Uploads, Qsos, () => Clock.UtcNow);
         var log = new DatabaseSessionLog(Qsos, Uploads, () => Settings.Current.Profile.Id,
