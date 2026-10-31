@@ -1,7 +1,8 @@
-# User manual for Costas, published to GitHub Pages by .github/workflows/manual.yml.
-# The pages live in manual/ (docs/ holds the build specification, not user documentation).
-site_name: Costas user manual
-site_description: How to install, set up and operate Costas, a station-centric FT8 and FT4 client.
+# The Costas website (landing page and user manual), published to GitHub Pages by .github/workflows/manual.yml.
+# The pages live in manual/ (docs/ holds the build specification, not user documentation). The landing page is
+# manual/index.md; the manual starts at manual/introduction.md.
+site_name: Costas
+site_description: Costas is a free FT8, FT4, PSK31, PSK63 and RTTY program for Windows that shows you stations, not messages.
 site_url: https://somedudenamedtony.github.io/costas/
 repo_url: https://github.com/somedudenamedtony/costas
 repo_name: somedudenamedtony/costas
@@ -48,9 +49,15 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.keys
 
+extra_css:
+  - stylesheets/home.css
+extra_javascript:
+  - javascripts/home.js
+
 nav:
   - Home: index.md
   - Getting started:
+      - Introduction: introduction.md
       - Install: install.md
       - First-run setup: setup.md
   - Operating:
@@ -69,3 +76,4 @@ nav:
       - Keyboard shortcuts: shortcuts.md
       - Troubleshooting: troubleshooting.md
       - Building from source: building.md
+      - Code signing policy: code-signing.md
