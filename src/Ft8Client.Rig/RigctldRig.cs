@@ -564,7 +564,18 @@ public sealed class RigctldRig : IRig
             }
             catch (RigException) when (DateTime.UtcNow < deadline && !_process.HasExited)
             {
-                await Task.Delay(100, ct).ConfigureAwait(false);
+                try
+                {
+                    await Task.Delay(100, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Cancelled between tries, typically Setup's port scan once another port has answered. The catch
+                    // below does not see an exception thrown here, so this rigctld was left running, holding its serial
+                    // port (often the radio's second one) until Costas exited.
+                    await StopProcessAsync().ConfigureAwait(false);
+                    throw;
+                }
             }
             catch (RigException ex)
             {

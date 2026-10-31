@@ -816,6 +816,13 @@ public sealed partial class SetupViewModel : ObservableObject
         SetOrDelete(SecretNames.QrzPassword, QrzPassword);
         _host.RebuildLogIndex();
         await _host.ReopenDevicesAsync();
+        // The rest of setup is saved; stay on this page with the reason so the key can be cleared or skipped.
+        if (_secretProblem is { } why)
+        {
+            _secretProblem = null;
+            Message = SecretStoreProblem.Describe(why);
+            return;
+        }
         if (!string.IsNullOrWhiteSpace(LogbookKey))
         {
             Message = "First sync with QRZ…";
@@ -904,17 +911,26 @@ public sealed partial class SetupViewModel : ObservableObject
             InputLevelState.NoAudio => "No audio is arriving from this device. It may be unplugged, or another program may be using it exclusively."
                                        + (r.StoppedReason is null ? string.Empty : $" ({r.StoppedReason})"),
             InputLevelState.Silence => "The device sends only silence. Check that this is the radio's USB audio device and that the radio's USB audio output is turned up.",
-            InputLevelState.TooQuiet => $"Too quiet ({r.RmsDbfs:0} dBFS). Turn up the radio's USB audio output level or the Windows recording level.",
-            InputLevelState.TooLoud => $"Too loud ({r.RmsDbfs:0} dBFS). Turn down the radio's USB audio output level or the Windows recording level.",
-            InputLevelState.Clipping => "Clipping: the audio is being cut off. Turn down the radio's USB audio output level or the Windows recording level.",
+            InputLevelState.TooQuiet => $"Too quiet ({r.RmsDbfs:0} dBFS). Turn up the radio's USB audio output level or the computer's recording level.",
+            InputLevelState.TooLoud => $"Too loud ({r.RmsDbfs:0} dBFS). Turn down the radio's USB audio output level or the computer's recording level.",
+            InputLevelState.Clipping => "Clipping: the audio is being cut off. Turn down the radio's USB audio output level or the computer's recording level.",
             _ => $"Good level ({r.RmsDbfs:0} dBFS)." + (r.Passed ? " The input passes." : " Hold it there for 5 seconds."),
         };
     }
 
+    private string? _secretProblem;
+
     private void SetOrDelete(string name, string value)
     {
-        if (string.IsNullOrEmpty(value)) _host.Secrets.Delete(name);
-        else _host.Secrets.Set(name, value);
+        try
+        {
+            if (string.IsNullOrEmpty(value)) _host.Secrets.Delete(name);
+            else _host.Secrets.Set(name, value);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            _secretProblem ??= ex.Message;
+        }
     }
 
     private async Task MeasureClockAsync()
@@ -926,9 +942,16 @@ public sealed partial class SetupViewModel : ObservableObject
             : Math.Abs(r.Offset.TotalSeconds) < 0.5
                 ? $"Your clock is {Math.Abs(r.Offset.TotalSeconds):0.00} s off. That is fine."
                 : _host.Settings.Current.Operating.CorrectClock && r.Offset.Duration() <= Core.Time.ClockCorrection.MaxCorrection
-                    ? $"Your clock is {Math.Abs(r.Offset.TotalSeconds):0.00} s off. Costas corrects for it from internet time, so you can carry on. Syncing it in Windows time settings is still better."
-                    : $"Your clock is {Math.Abs(r.Offset.TotalSeconds):0.00} s off. Sync it in Windows time settings (Settings › Time & language › Date & time › Sync now).";
+                    ? $"Your clock is {Math.Abs(r.Offset.TotalSeconds):0.00} s off. Costas corrects for it from internet time, so you can carry on. Syncing it in {ClockSettingsName} is still better."
+                    : $"Your clock is {Math.Abs(r.Offset.TotalSeconds):0.00} s off. Sync it in {ClockSettingsName} ({ClockSettingsHow}).";
     }
+
+    // Where the operator syncs the computer's clock: the Windows page, or on Linux the network time switch.
+    private static string ClockSettingsName => OperatingSystem.IsWindows() ? "Windows time settings" : "your desktop's date and time settings";
+
+    private static string ClockSettingsHow => OperatingSystem.IsWindows()
+        ? "Settings › Time & language › Date & time › Sync now"
+        : "turn on network time, or run timedatectl set-ntp true";
 
     private async Task LoadModelsAsync(int? current)
     {

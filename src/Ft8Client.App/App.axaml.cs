@@ -6,6 +6,7 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -48,6 +49,7 @@ public sealed class App : Application
             // Exit, not ShutdownRequested: a shutdown for an update is forced and never raises ShutdownRequested, which
             // skipped the final saves (neighbour history, logs) and the services' clean stop.
             desktop.Exit += (_, _) => host.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            CloseOnStopSignals(desktop, host);
         }
         base.OnFrameworkInitializationCompleted();
     }
@@ -77,6 +79,34 @@ public sealed class App : Application
             Log.Error(e.Exception, "Unobserved task error");
             e.SetObserved();
         };
+    }
+
+    // Kept for the life of the app: a registration that is collected stops handling its signal.
+    private static readonly List<PosixSignalRegistration> StopSignals = [];
+
+    // Linux: SIGTERM (logout, shutdown, kill), SIGINT (Ctrl+C in the terminal that started Costas) and SIGHUP (that
+    // terminal closed) ended Costas at once, and the rigctld and jt9 it started kept running without it, rigctld still
+    // holding the radio's port. Now they close Costas the way its close button does: transmit stopped, the log and
+    // settings saved, and the child processes stopped. If the window cannot get to it, the children are stopped anyway.
+    private static void CloseOnStopSignals(IClassicDesktopStyleApplicationLifetime desktop, AppHost host)
+    {
+        if (OperatingSystem.IsWindows()) return;
+        foreach (var signal in new[] { PosixSignal.SIGTERM, PosixSignal.SIGINT, PosixSignal.SIGHUP })
+        {
+            StopSignals.Add(PosixSignalRegistration.Create(signal, context =>
+            {
+                context.Cancel = true;
+                Log.Information("{Signal} received; closing", context.Signal);
+                Dispatcher.UIThread.Post(() => desktop.Shutdown());
+                _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ =>
+                {
+                    Log.Warning("Closing did not finish; stopping rigctld and jt9 and exiting");
+                    host.Guard.Dispose();
+                    Log.CloseAndFlush();
+                    Environment.Exit(1);
+                }, TaskScheduler.Default);
+            }));
+        }
     }
 
     private static async Task HaltAsync(AppHost host)

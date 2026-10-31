@@ -46,7 +46,7 @@ Ordered by value to an FT8 operator against effort. Anything that changes what g
 | C7 | More rigs: OmniRig and TCI (SunSDR, ANAN) | In the spec's v1.x list; TCI also carries audio, so no sound-card setup | M each |
 | C8 | Automatic log backup and per-profile ADIF export with QSL state | Protects the log; today's export mixes profiles and drops QSL status | S |
 | C9 | Audio device comes back after USB re-plug or sleep | Today a reconnected sound card needs a Costas restart | S |
-| C10 | Linux transmit, once a Linux user confirms clean receive | Turns the preview into a full client; needs one tester | S |
+| C10 | ~~Linux transmit~~ (turned on 2026-10-31, D17); a Linux user checking it with a real radio | Ends the preview label | S |
 
 ## Reliability and finishing
 
