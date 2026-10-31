@@ -63,7 +63,7 @@ public sealed class ReceiveLevelWatch
     {
         ReceiveLevelProblem.NoAudio => "No audio is arriving from the radio's sound device. It may be unplugged or asleep, or another program may be holding it.",
         ReceiveLevelProblem.Silence => "The radio's sound device sends only silence. Check that the radio's USB audio output is turned up and not muted.",
-        ReceiveLevelProblem.Clipping => "The receive audio is clipping. Turn down the radio's USB audio output level or the Windows recording level.",
+        ReceiveLevelProblem.Clipping => "The receive audio is clipping. Turn down the radio's USB audio output level or the computer's recording level.",
         _ => null,
     };
 }

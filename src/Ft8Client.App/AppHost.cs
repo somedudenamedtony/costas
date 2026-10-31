@@ -359,8 +359,6 @@ public sealed class AppHost : IAsyncDisposable
         }
 
         Transmitter = new Transmitter(_rig, _output, Clock, Frequencies);
-        // The Linux build is a receive-only preview until its transmit audio has been checked on a real radio.
-        if (OperatingSystem.IsLinux() && !Simulating) Transmitter.DisabledReason = LinuxPreview.TransmitRefusal;
         TxLevel = new TxLevelController(Transmitter, Settings);
         LogHold = new LogHold(Uploads, Qsos, () => Clock.UtcNow);
         var log = new DatabaseSessionLog(Qsos, Uploads, () => Settings.Current.Profile.Id,
@@ -737,10 +735,35 @@ public sealed class AppHost : IAsyncDisposable
             Transmitter.SetOutput(Plan.MutesTransmitAudio(Settings.Current.Profile.Rig) ? _mutedOutput ??= new NullAudioOutput { RealTime = true } : _output);
         }
         closed?.Dispose(); // after the transmitter has let go of it
-        if (!Simulating && !string.Equals(a.InputId, _inputId, StringComparison.Ordinal))
+        if (!Simulating && AudioBackend is not NullAudioBackend && !string.Equals(a.InputId, _inputId, StringComparison.Ordinal))
         {
-            Session.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Degraded, "Restart to use the new input device", Clock.UtcNow));
+            SwitchInput(a.InputId);
         }
+    }
+
+    // A new input chosen in Station setup takes effect at once, the same swap the recovery loop makes when a device
+    // comes back. It used to wait for a restart, so a first-time setup ended with nothing decoding and "Audio retrying".
+    private void SwitchInput(string? id)
+    {
+        var (oldPump, oldInput) = (_pump, _input);
+        (_pump, _input) = (null, null);
+        oldPump?.Dispose();
+        if (oldInput is not null) CloseQuietly(oldInput);
+        _inputId = id;
+        _inputDown = false;
+        if (id is null)
+        {
+            Session.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down, "No input device configured", Clock.UtcNow));
+            return;
+        }
+        if (StartInput(id) is { } why)
+        {
+            _inputRetryUtc = DateTime.UtcNow + RecoveryRetry;
+            Session.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Down, $"The input device could not be opened: {why}", Clock.UtcNow));
+            return;
+        }
+        Log.Information("Audio input changed; receiving from the new device");
+        Session.SetService(ServiceNames.Audio, new ServiceStatus(ServiceHealth.Ok, "Receiving", Clock.UtcNow));
     }
 
     /// <summary>
@@ -911,7 +934,7 @@ public sealed class AppHost : IAsyncDisposable
     private void RecoverInput()
     {
         var id = Settings.Current.Profile.Audio.InputId;
-        // An input changed in Station setup waits for a restart (the status says so); only the device in use comes back.
+        // Only the device in use comes back (Station setup switches to a new one itself).
         if (id is null || !string.Equals(id, _inputId, StringComparison.Ordinal)) return;
         if ((_input is not null && !_inputDown) || DateTime.UtcNow < _inputRetryUtc) return;
         if (!AudioBackend.ListInputs().Any(d => string.Equals(d.Id, id, StringComparison.Ordinal))) return;

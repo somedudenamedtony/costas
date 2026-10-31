@@ -93,7 +93,7 @@ radio on a busy FT8 frequency. The text beside it tells you what it sees:
 | --- | --- |
 | No audio is arriving from this device | It may be unplugged, or another program has it in exclusive mode |
 | The device sends only silence | Wrong device, or the radio's USB audio output level is at zero |
-| Too quiet | Turn up the radio's USB audio output level, or the Windows recording level |
+| Too quiet | Turn up the radio's USB audio output level, or the computer's recording level (Windows Sound settings, or your Linux desktop's sound settings) |
 | Too loud / Clipping | Turn either of those down |
 | Good level | Hold it there for 5 seconds and the input passes |
 

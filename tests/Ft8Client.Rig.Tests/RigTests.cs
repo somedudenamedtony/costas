@@ -389,6 +389,41 @@ public class RigTests
     }
 
     [Fact]
+    public async Task Start_CancelledWhileRigctldIsNotAnsweringYet_StopsIt()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "The stand-in rigctld is a shell script.");
+        // A rigctld that never opens its TCP port, as a slow one does for its first moments: Costas retries until the
+        // scan that started it is cancelled, and must not leave it running.
+        var dir = Directory.CreateTempSubdirectory("costas-rigctld-").FullName;
+        try
+        {
+            var exe = Path.Combine(dir, "rigctld");
+            File.WriteAllText(exe, "#!/bin/sh\nexec sleep 30\n");
+            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            var guard = new RecordingGuard();
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+
+            var act = () => RigctldRig.StartAsync(new RigctldOptions(exe, 1, "/dev/ttyCostasNoSuchPort", 38400), guard, SystemClock.Instance, cts.Token);
+
+            await act.Should().ThrowAsync<OperationCanceledException>();
+            var pid = guard.Adopted.Should().ContainSingle().Subject;
+            var stillRunning = () => System.Diagnostics.Process.GetProcessById(pid);
+            stillRunning.Should().Throw<ArgumentException>("the rigctld it started was stopped");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    private sealed class RecordingGuard : IProcessGuard
+    {
+        public List<int> Adopted { get; } = [];
+
+        public void Adopt(System.Diagnostics.Process process) => Adopted.Add(process.Id);
+    }
+
+    [Fact]
     public void Options_ExtraConfig_PassedAsDashC()
     {
         string.Join(' ', new RigctldOptions("rigctld", 3073, "COM4", 115200, Config: " civaddr=0x94 ").Arguments(4532))

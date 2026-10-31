@@ -1157,6 +1157,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         // tells the operator to set it here when rigctld is missing, so it must take effect without a restart.
         if (activeId != _loadedProfile || !string.Equals(oldHamlibDir, _host.Settings.Current.Paths.HamlibDir, StringComparison.Ordinal))
             _ = _host.ReopenDevicesAsync();
+        // Everything else is saved; the window stays open on the reason so the operator knows the key is not kept.
+        if (_secretProblem is { } why)
+        {
+            _secretProblem = null;
+            Message = SecretStoreProblem.Describe(why);
+            return;
+        }
         Close?.Invoke();
     }
 
@@ -1164,9 +1171,20 @@ public sealed partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     private void Cancel() => Close?.Invoke();
 
+    // A keyring that refuses (none running on this Linux desktop, or its unlock prompt cancelled) used to throw out of
+    // Save: the window stayed open with a generic "Something went wrong" on the main window's status line.
+    private string? _secretProblem;
+
     private void Set(string name, string value)
     {
-        if (string.IsNullOrEmpty(value)) _host.Secrets.Delete(name);
-        else _host.Secrets.Set(name, value);
+        try
+        {
+            if (string.IsNullOrEmpty(value)) _host.Secrets.Delete(name);
+            else _host.Secrets.Set(name, value);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            _secretProblem ??= ex.Message;
+        }
     }
 }
