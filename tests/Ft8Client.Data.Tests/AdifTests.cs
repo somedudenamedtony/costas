@@ -122,6 +122,67 @@ public sealed class AdifTests : IDisposable
     }
 
     [Fact]
+    public void Upsert_SameContactFromAnotherStationCallsign_IsNewContact()
+    {
+        var home = Sample();
+        home.StationCallsign = "W7LIT";
+        var club = Sample();
+        club.StationCallsign = "W7ABC";
+        club.QsoDateOn = home.QsoDateOn.AddMinutes(10);
+
+        _repo.Upsert(home).Inserted.Should().BeTrue();
+        _repo.Upsert(club).Inserted.Should().BeTrue("a second station profile working the same station is its own contact");
+        _repo.List().Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void Upsert_QrzCopyOfDeletedContact_IsNotBroughtBack()
+    {
+        var local = Sample();
+        local.QrzLogid = 77;
+        var (id, _) = _repo.Upsert(local);
+        _repo.Delete(id);
+
+        var fromQrz = Sample();
+        fromQrz.QrzLogid = 77;
+        fromQrz.Source = QsoSource.Qrz;
+        _repo.Upsert(fromQrz).Inserted.Should().BeFalse();
+        var lotw = Sample();
+        lotw.QsoDateOn = local.QsoDateOn.AddMinutes(1);
+        lotw.Source = QsoSource.Lotw;
+        _repo.UpsertMany([lotw]).Should().Be((0, 1));
+        _repo.List().Should().BeEmpty("a sync does not undo the operator's delete");
+
+        var imported = Sample();
+        imported.Source = QsoSource.Adif;
+        _repo.Upsert(imported).Inserted.Should().BeTrue("importing a file that holds it is the operator's choice");
+    }
+
+    [Fact]
+    public void Upsert_QrzCopyOfEditedContact_KeepsEditsAndTakesConfirmation()
+    {
+        var local = Sample();
+        local.QrzLogid = 78;
+        var (id, _) = _repo.Upsert(local);
+        var edited = _repo.Get(id)!;
+        edited.Gridsquare = "RF80";
+        edited.Name = "Robert";
+        _repo.SaveEdit(edited);
+
+        var fromQrz = Sample();
+        fromQrz.QrzLogid = 78;
+        fromQrz.Source = QsoSource.Qrz;
+        fromQrz.Confirmed = true;
+        _repo.Upsert(fromQrz).Inserted.Should().BeFalse();
+
+        var row = _repo.Get(id)!;
+        row.Gridsquare.Should().Be("RF80");
+        row.Name.Should().Be("Robert");
+        row.Confirmed.Should().BeTrue();
+        row.EditedUtc.Should().NotBeNull();
+    }
+
+    [Fact]
     public void Upsert_TwoQrzRecordsWithDifferentLogids_StaySeparate()
     {
         var a = Sample();

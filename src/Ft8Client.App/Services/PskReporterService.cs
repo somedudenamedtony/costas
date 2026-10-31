@@ -46,9 +46,13 @@ public sealed class PskReporterService : IAsyncDisposable
     private readonly bool _uploadsAllowed;
     private readonly CancellationTokenSource _cts = new();
     private readonly PskSpotUploader _uploader;
-    private PskFeedClient? _feed;
+    private volatile PskFeedClient? _feed;
     private UdpClient? _udp;
-    private string _myCall = string.Empty;
+    private readonly Func<PskFeedClient> _newFeed;
+    private readonly SemaphoreSlim _identityGate = new(1, 1);
+    private Task _identity = Task.CompletedTask;
+    private CancellationTokenSource? _queryCts;
+    private volatile string _myCall = string.Empty;
     private volatile bool _queryWorking;
     private bool _neighboursStopLogged;
     private bool _allBandsStopLogged;
@@ -60,7 +64,15 @@ public sealed class PskReporterService : IAsyncDisposable
     /// </summary>
     public PskReporterService(Session session, AppSettingsAccessor settings, SpotRepository spots, CountryFile countries, FrequencyTable frequencies, IClock clock,
                               bool uploadsAllowed)
+        : this(session, settings, spots, countries, frequencies, clock, uploadsAllowed, null)
     {
+    }
+
+    /// <summary>Creates the service; <paramref name="newFeed"/> replaces the live feed's broker in tests.</summary>
+    internal PskReporterService(Session session, AppSettingsAccessor settings, SpotRepository spots, CountryFile countries, FrequencyTable frequencies, IClock clock,
+                                bool uploadsAllowed, Func<PskFeedClient>? newFeed)
+    {
+        _newFeed = newFeed ?? (() => new PskFeedClient(countries));
         _frequencies = frequencies;
         _session = session;
         _settings = settings;
@@ -77,6 +89,12 @@ public sealed class PskReporterService : IAsyncDisposable
     /// <summary>True while the live feed is running (Hunt list reports can arrive).</summary>
     public bool FeedRunning => _feed is not null;
 
+    /// <summary>The callsign the feed, the query and spot uploads follow (empty when none).</summary>
+    internal string FollowedCall => _myCall;
+
+    /// <summary>Waits until the latest callsign or feed setting change has been applied (tests).</summary>
+    internal Task Settled => _identity;
+
     /// <summary>True when Hunt list reports came too fast and following them was stopped.</summary>
     public bool HuntStopped => _feed?.HuntStopped == true;
 
@@ -87,38 +105,17 @@ public sealed class PskReporterService : IAsyncDisposable
     public void FollowHunt(IReadOnlyCollection<string> calls, IReadOnlyCollection<int> dxccs)
     {
         _hunt = ([.. calls], [.. dxccs]);
-        _feed?.FollowHunt(calls, dxccs, _feed.MyDxcc);
+        var feed = _feed;
+        feed?.FollowHunt(calls, dxccs, feed.MyDxcc);
     }
 
-    /// <summary>Loads the last hour of stored reports and starts the feed, the fallback query and the uploader.</summary>
+    /// <summary>
+    /// Starts the uploader and, when the feed is on and a callsign is set, loads the last hour of stored reports and starts
+    /// the feed and the fallback query. A later change of callsign (Setup on first run, a station profile switch) or of
+    /// the feed setting restarts them for the new call.
+    /// </summary>
     public void Start()
     {
-        var s = _settings.Current;
-        _myCall = Callsign.Normalize(s.Profile.Callsign);
-        if (_myCall.Length == 0 || !s.PskReporter.FeedEnabled)
-        {
-            _session.SetReportsAvailable(false);
-            _session.SetService(ServiceNames.Psk, ServiceStatus.Off("PSK Reporter off"));
-        }
-        else
-        {
-            LoadStored();
-            _feed = new PskFeedClient(_countries);
-            _feed.Report += OnReport;
-            _feed.NeighbourReport += _session.AddNeighbourReport;
-            _feed.BandSampled += _session.AddBandSample;
-            _feed.HuntReport += spot => HuntReport?.Invoke(spot);
-            _feed.StatusChanged += st =>
-            {
-                _session.SetReportsAvailable(st.Health == ServiceHealth.Ok || _queryWorking);
-                if (st.Health == ServiceHealth.Ok || !_queryWorking) _session.SetService(ServiceNames.Psk, st);
-            };
-            _session.SetService(ServiceNames.Psk, new ServiceStatus(ServiceHealth.Degraded, "Connecting to the live feed", _clock.UtcNow));
-            _feed.Start(_myCall);
-            FollowNeighbours();
-            _feed.FollowHunt(_hunt.Calls, _hunt.Dxccs, _feed.MyDxcc);
-            _ = Task.Run(() => QueryLoopAsync(_cts.Token));
-        }
         _settings.Changed += OnSettingsChanged;
         _session.BandChanged += FollowNeighbours;
         _session.SlotDecoded += OnSlotDecoded;
@@ -126,6 +123,82 @@ public sealed class PskReporterService : IAsyncDisposable
         // PSK31, PSK63 and RTTY have no slots to catch up on, so follow a band or mode change when it happens.
         _session.BandChanged += FollowNeighbours;
         _ = Task.Run(() => UploadLoopAsync(_cts.Token));
+        _identity = Task.Run(() => FollowIdentityAsync(_settings.Current));
+        _identity.Wait();
+    }
+
+    // Starts, stops or restarts the feed and the query for the callsign and feed setting in use. Runs one at a time.
+    private async Task FollowIdentityAsync(Ft8Client.Data.Settings.AppSettings s)
+    {
+        var call = Callsign.Normalize(s.Profile.Callsign);
+        var on = call.Length > 0 && s.PskReporter.FeedEnabled;
+        await _identityGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_cts.IsCancellationRequested || (call == _myCall && on == (_feed is not null))) return;
+            var previous = _myCall;
+            if (previous.Length > 0 && previous != call)
+            {
+                // Spots waiting to go out were heard by the previous callsign: send them under it first.
+                try
+                {
+                    await _uploader.FlushAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is SocketException or ObjectDisposedException or OperationCanceledException)
+                {
+                    Log.Warning(ex, "Could not send PSK Reporter spots before the callsign change");
+                }
+                _uploader.Receiver = null;
+            }
+            await StopFeedAsync().ConfigureAwait(false);
+            _myCall = call;
+            if (!on)
+            {
+                _session.SetReportsAvailable(false);
+                _session.SetService(ServiceNames.Psk, ServiceStatus.Off("PSK Reporter off"));
+                return;
+            }
+            if (previous.Length > 0) Log.Information("PSK Reporter now follows {Call}", call);
+            _session.SetReportsAvailable(false);
+            LoadStored();
+            var feed = _newFeed();
+            feed.Report += OnReport;
+            feed.NeighbourReport += _session.AddNeighbourReport;
+            feed.BandSampled += _session.AddBandSample;
+            feed.HuntReport += spot => HuntReport?.Invoke(spot);
+            feed.StatusChanged += st =>
+            {
+                if (!ReferenceEquals(feed, _feed)) return;
+                _session.SetReportsAvailable(st.Health == ServiceHealth.Ok || _queryWorking);
+                if (st.Health == ServiceHealth.Ok || !_queryWorking) _session.SetService(ServiceNames.Psk, st);
+            };
+            _session.SetService(ServiceNames.Psk, new ServiceStatus(ServiceHealth.Degraded, "Connecting to the live feed", _clock.UtcNow));
+            _feed = feed;
+            feed.Start(call);
+            FollowNeighbours();
+            feed.FollowHunt(_hunt.Calls, _hunt.Dxccs, feed.MyDxcc);
+            _queryCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+            var token = _queryCts.Token;
+            _ = Task.Run(() => QueryLoopAsync(call, token));
+        }
+        finally
+        {
+            _identityGate.Release();
+        }
+    }
+
+    private async Task StopFeedAsync()
+    {
+        _queryWorking = false;
+        if (_queryCts is not null)
+        {
+            await _queryCts.CancelAsync().ConfigureAwait(false);
+            _queryCts.Dispose();
+            _queryCts = null;
+        }
+        var feed = _feed;
+        _feed = null;
+        if (feed is not null) await feed.DisposeAsync().ConfigureAwait(false);
     }
 
     private void LoadStored()
@@ -156,33 +229,44 @@ public sealed class PskReporterService : IAsyncDisposable
     // when every band at once is too busy).
     private void FollowNeighbours()
     {
-        if (_feed is null) return;
+        var feed = _feed;
+        if (feed is null) return;
         var settings = _settings.Current;
         var o = settings.PskReporter;
         var on = o.FeedEnabled && (o.CompareNeighbours || o.BandActivity);
         // The configuration, not the snapshot: on a band change the snapshot is published after BandChanged is raised.
         var config = _session.Config;
-        _feed.FollowNeighbours(on ? config.Band : null, on ? ModeInfo.Name(config.Mode) : null, on ? settings.Profile.Grid : null, o.BandActivity,
+        feed.FollowNeighbours(on ? config.Band : null, on ? ModeInfo.Name(config.Mode) : null, on ? settings.Profile.Grid : null, o.BandActivity,
             _frequencies.Bands(config.Mode));
         _session.SetBandActivityFeed(!o.FeedEnabled || !o.BandActivity ? BandActivityFeed.Off
             : Grid.ToLatLon(settings.Profile.Grid) is null ? BandActivityFeed.WaitingForGrid
-            : _feed.NeighboursStopped ? BandActivityFeed.Stopped
-            : _feed.AllBandsStopped ? BandActivityFeed.CurrentBandOnly
+            : feed.NeighboursStopped ? BandActivityFeed.Stopped
+            : feed.AllBandsStopped ? BandActivityFeed.CurrentBandOnly
             : BandActivityFeed.AllBands);
-        _feed.FollowHunt(_hunt.Calls, _hunt.Dxccs, _feed.MyDxcc);
-        if (_feed.AllBandsStopped && !_allBandsStopLogged)
+        feed.FollowHunt(_hunt.Calls, _hunt.Dxccs, feed.MyDxcc);
+        if (feed.AllBandsStopped && !_allBandsStopLogged)
         {
             _allBandsStopLogged = true;
             Log.Warning("PSK Reporter reports on every band came too fast; following the current band and sampling the others");
         }
-        if (_feed.NeighboursStopped && !_neighboursStopLogged)
+        if (feed.NeighboursStopped && !_neighboursStopLogged)
         {
             _neighboursStopLogged = true;
             Log.Warning("PSK Reporter neighbour reports came too fast; stopped following them and sampling every band");
         }
     }
 
-    private void OnSettingsChanged(Ft8Client.Data.Settings.AppSettings _) => FollowNeighbours();
+    private void OnSettingsChanged(Ft8Client.Data.Settings.AppSettings s)
+    {
+        var call = Callsign.Normalize(s.Profile.Callsign);
+        var on = call.Length > 0 && s.PskReporter.FeedEnabled;
+        if (call != _myCall || on != (_feed is not null))
+        {
+            _identity = _identity.ContinueWith(_ => FollowIdentityAsync(s), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default).Unwrap();
+            return;
+        }
+        FollowNeighbours();
+    }
 
     private void Store(ReceptionReport r, string source)
     {
@@ -202,9 +286,9 @@ public sealed class PskReporterService : IAsyncDisposable
         }
     }
 
-    private async Task QueryLoopAsync(CancellationToken ct)
+    private async Task QueryLoopAsync(string myCall, CancellationToken ct)
     {
-        using var http = HttpFactory.Create(_myCall);
+        using var http = HttpFactory.Create(myCall);
         var query = new PskQueryClient(http, _countries);
         // Give the feed a moment so a working feed does not also cost a query.
         try
@@ -219,7 +303,8 @@ public sealed class PskReporterService : IAsyncDisposable
         {
             if (_feed?.Connected != true)
             {
-                var reports = await query.QueryAsync(_myCall, _settings.Current.PskReporter.AppContact, _clock.UtcNow, ct).ConfigureAwait(false);
+                var reports = await query.QueryAsync(myCall, _settings.Current.PskReporter.AppContact, _clock.UtcNow, ct).ConfigureAwait(false);
+                if (ct.IsCancellationRequested) return;
                 if (reports is null)
                 {
                     _queryWorking = false;
@@ -304,6 +389,21 @@ public sealed class PskReporterService : IAsyncDisposable
         await _udp.SendAsync(payload, UploadHost, UploadPort, _cts.Token).ConfigureAwait(false);
     }
 
+    // Spots still waiting go out when Costas closes, as WSJT-X sends its pending spots when it stops. Never longer than
+    // a couple of seconds: closing must not hang on the network.
+    private async Task FlushOnExitAsync()
+    {
+        if (_uploader.Pending == 0) return;
+        try
+        {
+            await _uploader.FlushAsync().WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is SocketException or ObjectDisposedException or OperationCanceledException or TimeoutException)
+        {
+            Log.Information("PSK Reporter spots not sent at exit: {Error}", ex.Message);
+        }
+    }
+
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
@@ -311,9 +411,17 @@ public sealed class PskReporterService : IAsyncDisposable
         _session.BandChanged -= FollowNeighbours;
         _session.SlotDecoded -= OnSlotDecoded;
         _session.KeyboardHeard -= OnKeyboardHeard;
-        _session.BandChanged -= FollowNeighbours;
+        await FlushOnExitAsync().ConfigureAwait(false);
         await _cts.CancelAsync().ConfigureAwait(false);
-        if (_feed is not null) await _feed.DisposeAsync().ConfigureAwait(false);
+        await _identityGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await StopFeedAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _identityGate.Release();
+        }
         _udp?.Dispose();
         _cts.Dispose();
     }

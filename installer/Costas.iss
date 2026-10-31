@@ -50,6 +50,12 @@ WizardStyle=modern
 SetupIconFile=..\src\Ft8Client.App\Assets\costas.ico
 UninstallDisplayIcon={app}\Costas.exe
 UninstallDisplayName=Costas
+#ifdef Sign
+; Release builds: build-installer.ps1 defines Sign and the "costas" sign tool (scripts/sign.ps1), which signs this
+; installer and the uninstaller inside it.
+SignTool=costas
+SignedUninstaller=yes
+#endif
 CloseApplications=yes
 RestartApplications=no
 

@@ -134,7 +134,7 @@ real FT-710.
 
 Other notes from M2:
 
-- 60 m transmit limits in `frequencies.json` use the ITU WRC-15 range 5351.5 to 5366.5 kHz. US 60 m rules are channelised; the owner should check the limits for his licence before transmitting on 60 m.
+- 60 m transmit limits in `frequencies.json` use the ITU WRC-15 range 5351.5 to 5366.5 kHz. Checked 2026-10-31: the FCC opened 5351.5-5366.5 kHz to US General class and up on 13 February 2026 (ARRL news, FCC 25-60), at most 9.15 W ERP and 2.8 kHz; the channels at 5332, 5348, 5373 and 5405 kHz stay (100 W ERP) and the 5358.5 kHz channel is gone. Settings › Transmitting › "US data segments only" (on by default) also keeps transmissions inside the 97.305(c) data segments read from eCFR the same day (`UsDataSegments`). Power is not limited by Costas.
 
 ## Risks
 
@@ -147,7 +147,7 @@ Other notes from M2:
 | Sequencer edge cases cause bad on-air behaviour | Repeated or mistimed transmissions | Pure state machine with exhaustive tests; simulated partner; owner sign-off on any behaviour change |
 | Radio-specific CAT quirks | Setup fails for some radios | Hamlib, port scan, diagnostics bundle, audio-only fallback |
 | USB audio device re-enumeration on Windows | Silent receive | Devices by ID, auto-reopen, visible level and status |
-| Unsigned installer | SmartScreen warnings | Code-signing certificate in M8 |
+| Unsigned installer | SmartScreen warnings | Artifact Signing on release runs (`scripts/sign.ps1`), on once the owner's Azure identity validation is done; until then, the manual explains **More info › Run anyway** |
 | Ranking feels wrong to the operator | The core idea fails | Tier order and filters are settings; the raw decode tab remains; tune thresholds with real use |
 
 ## Questions for the owner
@@ -162,10 +162,16 @@ Other notes from M2:
 ### eQSL API verification outstanding
 
 Uploads, inbox downloads and confirmation matching are implemented with synthetic test responses.
-Before release, verify the primary documentation at `https://www.eqsl.cc/qslcard/ImportADIF.cfm` and
-`https://www.eqsl.cc/qslcard/DownloadInBox.cfm`, including QTH selection, upload/duplicate acknowledgment
-wording, empty inbox behavior and the ADIF download-link path. Capture redacted fixtures without credentials.
-This session could not reach the network proxy or run .NET tests (SDK absent).
+Still to verify against a real account: QTH selection and upload/duplicate acknowledgment wording at
+`https://www.eqsl.cc/qslcard/ImportADIF.cfm`.
+
+Inbox download, confirmed 2026-10-31 from eQSL's `https://www.eqsl.cc/qslcard/DownloadInBox.txt` (revised 12 Oct 2025)
+and live replies with a wrong password: `DownloadInBox.cfm` accepts `UserName`, `Password` and `QTHNickname` as POST
+form fields as well as in the URL (both gave the same reply). Success says "Your ADIF log file has been built" and links
+the `.adi` and `.txt` files; since 22 Oct 2019 the files live in `/downloadedfiles/`, above `/qslcard/`, so the link is
+`../downloadedfiles/…`. Costas only followed links under `/qslcard/`, so every working login read as a failure. An
+empty inbox says "You have no log entries". Failures read "Error: No such Username/Password found" (known callsign,
+wrong password) or "Error: No such Callsign found" (unknown username); with no credentials, "You are not yet logged in".
 
 Hamlib network models (Hamlib master, `include/hamlib/riglist.h` and `rigs/dummy/*.c`, read 2026-10-13): NET rigctl is
 model 2, FLRig 4, TRXManager 5, ACLog 8, SDR# 9. Each takes its server as `host:port` in `-r` (rig_pathname) and

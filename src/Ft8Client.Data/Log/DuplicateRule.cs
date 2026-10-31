@@ -11,7 +11,8 @@ using Ft8Client.Core.Logbook;
 namespace Ft8Client.Data.Log;
 
 /// <summary>
-/// Same call, band, mode (and submode) and time on within 30 minutes is the same contact.
+/// Same call, band, mode (and submode) and time on within 30 minutes, made from the same station callsign, is the same
+/// contact. Two station profiles (a home call and a club or portable call) working the same station are two contacts.
 /// FT4 logged as <c>MFSK</c>/<c>FT4</c> and as <c>FT4</c> are treated as the same mode, and so are PSK31 logged as
 /// <c>PSK</c>/<c>PSK31</c> and as the older <c>PSK31</c> (likewise PSK63). PSK31 and PSK63 are different modes, and
 /// when both contacts carry a submode the submodes must agree.
@@ -25,9 +26,14 @@ public static class DuplicateRule
     public static bool IsDuplicate(QsoRecord a, QsoRecord b) =>
         string.Equals(a.Call, b.Call, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(a.Band, b.Band, StringComparison.OrdinalIgnoreCase) &&
+        SameStation(a.StationCallsign, b.StationCallsign) &&
         ModeKey(a.Mode, a.Submode) == ModeKey(b.Mode, b.Submode) &&
         SubmodesAgree(a.Submode, b.Submode) &&
         (a.QsoDateOn - b.QsoDateOn).Duration() <= Window;
+
+    // A row without a station callsign (an old import) matches any station.
+    private static bool SameStation(string? a, string? b) =>
+        string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b) || string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The mode key used for need tiers and worked-before (see <see cref="LogModeKey.Of(string?, string?)"/>).</summary>
     public static string ModeKey(string? mode, string? submode) => LogModeKey.Of(mode, submode);

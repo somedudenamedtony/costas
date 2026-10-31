@@ -52,9 +52,10 @@ public sealed class EqslService(Session session, AppSettingsAccessor settings, I
             return message;
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested) { throw; }
-        catch (Exception)
+        catch (Exception ex)
         {
-            const string message = "eQSL inbox sync failed; check the login, QTH nickname and connection. Waiting to retry.";
+            // EqslException messages quote what eQSL said with credentials blanked; other exceptions may carry form data.
+            var message = ex is EqslException ? ex.Message : "eQSL inbox sync failed; check the login, QTH nickname and connection. Waiting to retry.";
             session.SetService(ServiceNames.Eqsl, new(ServiceHealth.Degraded, message, clock.UtcNow));
             lock (_nextSync) _nextSync[profile.Id] = clock.UtcNow.AddMinutes(5);
             return message;

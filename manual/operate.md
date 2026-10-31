@@ -46,7 +46,12 @@ Open the **Band** menu or see **Band activity near you** in [Reach](maps.md#reac
 
 Two banners can appear under the top bar:
 
-- **ON AIR** (red) while Costas is transmitting, with the message being sent and a **Halt (Esc)** button.
+- **ON AIR** (red) while Costas is transmitting, with the message being sent and a **Halt (Esc)** button. Next to
+  Halt are the radio's own meters, read over CAT twice a second: **PO** (the watts the radio's PO meter reads, which
+  can differ from the power setting in the bottom bar), an **ALC** bar with *OK* or *High*, and **SWR**. A high reading
+  turns yellow (SWR 2 or more, ALC high); hover for advice. A meter your radio does not report is left out, and power
+  out needs Hamlib 4.6 or newer. With an instrument skin the faceplate shows the meters instead. Display only: the
+  meters never stop or change a transmission.
 - **Radio not connected** (amber) when the radio is not set up or not answering, with a **Station setup** button.
 
 A **Hunt list** bar appears below them when a station on your [Hunt list](hunt.md) is heard, with **Go to** *band*
@@ -93,6 +98,16 @@ it is heard working someone else, and moves to Watching once the time is up.
 | **Chance** | **Good**, Fair or Long shot, with what it is based on beside it: *hears you at -22* (they reported you on PSK Reporter), *heard in Japan at -17* (someone in their country or area did), or *no reports yet*. With no reports, a station at -18 dB or better is Fair and a weaker one is a Long shot |
 | **Last worked** | Your most recent contact with that call on any band or mode (*2026-10-03 · 40 m*), or *Never*. Hover for the details |
 | button | **Call**, or **Answer** when they are calling you |
+
+### Resizing columns
+
+Drag the edge between two column headings to make a column wider or narrower; a faint line marks each edge and turns
+blue under the pointer. *Doing now* takes whatever room is left. Next in line and Repeats share their columns, so
+resizing one resizes the other and they stay lined up. Watching has its own headings and widths. Double-click an edge
+to put that column back to its usual width. Costas remembers your widths the next time it starts.
+
+A column can't grow past the point where *Doing now* would disappear. If the **Call** buttons are cut off on a small
+window, narrow a wide column such as **Chance** or **Where** to bring them back.
 
 How the order works: stations are grouped by need (new country first), then by chance, then by how well they hear
 you, then by their signal. The **ⓘ** beside the title shows the current rules in one sentence; click it to change
@@ -212,7 +227,7 @@ From top to bottom:
 | **Tune** | Starts your radio's own antenna tuner, as its TUNE button would. If the radio has no tuner Costas can start (or its tuner is switched off), Costas sends a steady tone at your transmit offset for up to 10 seconds instead, for an external tuner. Becomes **Stop tune** for up to 10 seconds; click it to stop. Available only when nothing else is being sent; calling a station or CQ stops the tone |
 | **Halt Tx** | Always available. Drops PTT at once and stops sequencing. ++esc++ does the same |
 | Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar. Shown away from Operate, where the contact card has it. Hidden with an instrument skin, whose faceplate shows it |
-| Radio meters | The radio's own meters, read over CAT: **PO** (the watts actually going out, which can differ from the power setting next to it), an **ALC** bar with *OK* or *High*, and **SWR**. Marked **TX** in red and updated twice a second while you transmit, then **Last TX** with the readings held until your next transmission. A high reading turns orange (SWR 2 or more, ALC high) or red (SWR 3 or more); hover for advice. A meter your radio does not report is left out, and power out needs Hamlib 4.6 or newer. Hidden with an instrument skin, whose faceplate shows the meters. Display only: the meters never stop or change a transmission |
+| Meter warning | Appears after a transmission whose SWR or ALC was high, for example *SWR 3.4 · ALC 70%*. Hover for advice. The live meters are in the red **ON AIR** bar at the top |
 | Indicators | **Radio**, **Audio**, **QRZ**, **eQSL**, **PSK Reporter**, **POTA**: a dot and a word each. Click to open Diagnostics |
 
 ![Transmit offset flyout](images/tx-offset.png)

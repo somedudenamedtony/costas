@@ -32,11 +32,24 @@ public class FrequencyTableTests
     public void TransmitAllowed_WideShiftNearTopEdge_Refused()
     {
         // 850 Hz shift centred 300 Hz below the edge: mark sits 125 Hz past it. The fixed 250 Hz width let it through.
+        // Band edges only: the US data segments would refuse 14.348 MHz whatever the width.
+        var table = new FrequencyTable(Table.Entries) { UsDataSegmentsOnly = false };
         const long dial = 14_348_000;
         const int offset = 1_700;
-        Table.TransmitAllowed("20m", Mode.Rtty, dial, offset, out _).Should().BeTrue();
-        Table.TransmitAllowed("20m", Mode.Rtty, dial, offset, ModeInfo.RttyBandwidthHz(850, 45.45), out var why).Should().BeFalse();
+        table.TransmitAllowed("20m", Mode.Rtty, dial, offset, out _).Should().BeTrue();
+        table.TransmitAllowed("20m", Mode.Rtty, dial, offset, ModeInfo.RttyBandwidthHz(850, 45.45), out var why).Should().BeFalse();
         why.Should().Contain("outside");
+    }
+
+    [Fact]
+    public void TransmitAllowed_WideShiftNearTopOfUsDataSegment_Refused()
+    {
+        // 20 m data ends at 14.150 MHz for US stations: a standard RTTY signal centred 300 Hz below it fits, an 850 Hz
+        // shift does not.
+        const long dial = 14_148_000;
+        const int offset = 1_700;
+        Table.TransmitAllowed("20m", Mode.Rtty, dial, offset, out _).Should().BeTrue();
+        Table.TransmitAllowed("20m", Mode.Rtty, dial, offset, ModeInfo.RttyBandwidthHz(850, 45.45), out _).Should().BeFalse();
     }
 
     [Fact]

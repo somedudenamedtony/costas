@@ -179,6 +179,13 @@
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Where to transmit" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="US data segments only" IsChecked="{Binding UsDataSegmentsOnly}" />
+                <TextBlock Classes="help" Text="Refuses to transmit outside the parts of each band where US rules allow data modes such as FT8 (for example above 14.150 MHz on 20 m or 7.125 MHz on 40 m), and on 60 m outside the channels and 5351.5 to 5366.5 kHz. Turn it off if you are licensed in another country; the band limits still apply." TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Clock limit" />
               <StackPanel Grid.Column="1">
                 <StackPanel Orientation="Horizontal" Spacing="8">

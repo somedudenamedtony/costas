@@ -48,6 +48,10 @@ jobs:
   installer:
     runs-on: windows-latest
     timeout-minutes: 30
+    env:
+      # Release runs code-sign the app and installers once Artifact Signing is set up (the ARTIFACT_SIGNING_* repository
+      # variables and AZURE_* secrets; see scripts/sign.ps1). Test and pull-request builds stay unsigned.
+      COSTAS_SIGN: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.ARTIFACT_SIGNING_ACCOUNT != '' && '1' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -58,8 +62,22 @@ jobs:
         with:
           path: third_party/.download
           key: third-party-${{ hashFiles('third_party/fetch.ps1') }}
+      - name: Note an unsigned release
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && env.COSTAS_SIGN != '1'
+        run: echo "::warning::Code signing is not set up (no ARTIFACT_SIGNING_ACCOUNT variable), so this release is unsigned and SmartScreen will warn."
+        shell: pwsh
+      - name: Install the Artifact Signing module
+        if: env.COSTAS_SIGN == '1'
+        run: Install-Module ArtifactSigning -RequiredVersion 0.1.20 -Scope CurrentUser -Force
+        shell: pwsh
       - name: Build installer
         env:
+          ARTIFACT_SIGNING_ENDPOINT: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          ARTIFACT_SIGNING_ACCOUNT: ${{ vars.ARTIFACT_SIGNING_ACCOUNT }}
+          ARTIFACT_SIGNING_PROFILE: ${{ vars.ARTIFACT_SIGNING_PROFILE }}
+          AZURE_TENANT_ID: ${{ env.COSTAS_SIGN == '1' && secrets.AZURE_TENANT_ID || '' }}
+          AZURE_CLIENT_ID: ${{ env.COSTAS_SIGN == '1' && secrets.AZURE_CLIENT_ID || '' }}
+          AZURE_CLIENT_SECRET: ${{ env.COSTAS_SIGN == '1' && secrets.AZURE_CLIENT_SECRET || '' }}
           # Only release builds carry the Aptabase app key (not a secret: it ships inside the app), so test and pull-request builds never send usage statistics.
           APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && 'A-US-6947074211' || '' }}
           # Release runs download the latest release's Velopack package so this one carries a delta from it.

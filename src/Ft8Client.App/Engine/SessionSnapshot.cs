@@ -130,6 +130,9 @@ public sealed record SessionSnapshot
     /// <summary>A line for the bottom bar when something is wrong (fault text), else null.</summary>
     public string? Fault { get; init; }
 
+    /// <summary>What is wrong with the receive audio (no audio, silence, clipping), or null.</summary>
+    public string? ReceiveLevelWarning { get; init; }
+
     /// <summary>Measured clock offset in seconds (SNTP or DT estimate), if known.</summary>
     public double? ClockOffsetSeconds { get; init; }
 

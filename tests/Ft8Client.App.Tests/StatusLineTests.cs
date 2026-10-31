@@ -64,6 +64,14 @@ public class StatusLineTests
     }
 
     [Fact]
+    public void Status_ReceiveAudioClipping_SaysSoAsCaution()
+    {
+        var (text, kind) = MainViewModel.Status(new SessionSnapshot { DialHz = 14_074_000, ReceiveLevelWarning = "The receive audio is clipping." });
+        text.Should().Be("The receive audio is clipping.");
+        kind.Should().Be(TextKind.Caution);
+    }
+
+    [Fact]
     public void ClockTipText_Corrected_SaysHowFarThePcClockIsOff()
     {
         MainViewModel.ClockTipText(0.02, TimeSpan.Zero).Should().Be("Clock offset +0.02 s.");

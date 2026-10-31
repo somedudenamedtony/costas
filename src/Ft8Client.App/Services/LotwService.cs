@@ -46,6 +46,8 @@ public sealed class LotwService : IDisposable
     private readonly string _uploadFolder;
     private readonly TqslUploader _tqsl;
     private readonly CancellationTokenSource _cts = new();
+    private int _uploadWanted;
+    private int _autoUploading;
     private readonly SemaphoreSlim _downloadLock = new(1, 1);
     private readonly SemaphoreSlim _uploadLock = new(1, 1);
 
@@ -99,8 +101,46 @@ public sealed class LotwService : IDisposable
     {
         var o = _settings.Current.Lotw;
         if (!_allowed || !o.UploadOnComplete || q.Source != QsoSource.Local) return;
-        _ = Task.Run(() => UploadNowAsync(_cts.Token));
+        Interlocked.Exchange(ref _uploadWanted, 1);
+        if (Interlocked.CompareExchange(ref _autoUploading, 1, 0) == 0) _ = Task.Run(() => AutoUploadAsync(_cts.Token));
     }
+
+    // Uploads until nothing new is waiting: a contact logged while TQSL runs is sent by a second run straight after, and a
+    // run that failed (LoTW unreachable, TQSL refused) is tried again after 2, 4, 8 ... up to 60 minutes.
+    private async Task AutoUploadAsync(CancellationToken ct)
+    {
+        var failures = 0;
+        try
+        {
+            while (true)
+            {
+                if (Interlocked.Exchange(ref _uploadWanted, 0) == 0)
+                {
+                    Interlocked.Exchange(ref _autoUploading, 0);
+                    // A contact logged just now, after the check above: carry on rather than leave it waiting.
+                    if (Volatile.Read(ref _uploadWanted) == 0 || Interlocked.CompareExchange(ref _autoUploading, 1, 0) != 0) return;
+                    continue;
+                }
+                if (!_settings.Current.Lotw.UploadOnComplete) continue;
+                var (_, retry) = await UploadAsync(ct).ConfigureAwait(false);
+                if (!retry)
+                {
+                    failures = 0;
+                    continue;
+                }
+                failures++;
+                await Task.Delay(RetryDelay(failures), ct).ConfigureAwait(false);
+                Interlocked.Exchange(ref _uploadWanted, 1);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Interlocked.Exchange(ref _autoUploading, 0);
+        }
+    }
+
+    /// <summary>How long automatic upload waits after <paramref name="failures"/> failed runs in a row.</summary>
+    internal static TimeSpan RetryDelay(int failures) => TimeSpan.FromMinutes(Math.Min(60, Math.Pow(2, Math.Clamp(failures, 1, 6))));
 
     /// <summary>Downloads new confirmations now. Returns a message for the status line.</summary>
     public async Task<string> DownloadNowAsync(CancellationToken ct)
@@ -149,28 +189,32 @@ public sealed class LotwService : IDisposable
     }
 
     /// <summary>Signs and uploads every contact LoTW does not have yet through TQSL. Returns a message for the status line.</summary>
-    public async Task<string> UploadNowAsync(CancellationToken ct)
+    public async Task<string> UploadNowAsync(CancellationToken ct) => (await UploadAsync(ct).ConfigureAwait(false)).Text;
+
+    // The status-line message, and whether the run should be tried again later (TQSL ran and failed, the file could not be
+    // written, or another upload was running and may have missed the newest contact).
+    private async Task<(string Text, bool Retry)> UploadAsync(CancellationToken ct)
     {
-        if (!_allowed) return "Nothing is uploaded to LoTW in simulation.";
+        if (!_allowed) return ("Nothing is uploaded to LoTW in simulation.", false);
         var tqsl = TqslPath;
-        if (tqsl is null) return Remember("TQSL not found. Install TQSL from ARRL or set its path in Settings.");
-        if (!await _uploadLock.WaitAsync(0, ct).ConfigureAwait(false)) return "A LoTW upload is already running.";
+        if (tqsl is null) return (Remember("TQSL not found. Install TQSL from ARRL or set its path in Settings."), false);
+        if (!await _uploadLock.WaitAsync(0, ct).ConfigureAwait(false)) return ("A LoTW upload is already running.", true);
         string? file = null;
         try
         {
             var pending = _qsos.PendingLotw(_settings.Current.Profile.Callsign);
-            if (pending.Count == 0) return Remember("Every contact is already on LoTW.");
+            if (pending.Count == 0) return (Remember("Every contact is already on LoTW."), false);
             Directory.CreateDirectory(_uploadFolder);
             file = Path.Combine(_uploadFolder, $"upload-{_clock.UtcNow:yyyyMMddHHmmss}.adi");
             await File.WriteAllTextAsync(file, AdifWriter.Document(pending.Select(AdifMapper.ToAdif), _clock.UtcNow), ct).ConfigureAwait(false);
             var r = await _tqsl.UploadAsync(tqsl, file, _settings.Current.Lotw.StationLocation, ct).ConfigureAwait(false);
             if (r.Uploaded) _qsos.SetLotwUploadState(pending.Select(q => q.Id), UploadState.Uploaded);
             Log.Information("TQSL upload of {Count} contacts: {Message}", pending.Count, r.Message);
-            return Remember(r.Uploaded ? $"{r.Message} ({pending.Count} contacts)." : r.Message + ".");
+            return (Remember(r.Uploaded ? $"{r.Message} ({pending.Count} contacts)." : r.Message + "."), !r.Uploaded);
         }
         catch (IOException ex)
         {
-            return Remember($"Could not write the file for TQSL: {ex.Message}");
+            return (Remember($"Could not write the file for TQSL: {ex.Message}"), true);
         }
         finally
         {

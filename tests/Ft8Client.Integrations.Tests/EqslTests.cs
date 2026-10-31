@@ -144,6 +144,110 @@ public sealed class EqslTests
     }
 
     [Fact]
+    public async Task Inbox_DownloadedFilesAboveQslcard_FollowsLink()
+    {
+        // Since October 2019 eQSL links the file one folder up, outside /qslcard/.
+        var requests = new List<Uri>();
+        using var handler = new Handler((request, _) =>
+        {
+            requests.Add(request.RequestUri!);
+            var reply = request.Method == HttpMethod.Post
+                ? "<H3>Your ADIF log file has been built</H3><A HREF=\"../Graphics/logo.gif\">x</A><LI><A HREF=\"../downloadedfiles/W7LIT1.adi\">.ADI file</A>"
+                : AdifWriter.Document([AdifMapper.ToAdif(Contact("home", "W7LIT"))], Now);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(reply) });
+        });
+        using var http = HttpFactory.Create("W7LIT", handler);
+        var cards = await new EqslClient(http).DownloadInboxAsync("W7LIT", "secret", "", TestContext.Current.CancellationToken);
+        cards.Should().HaveCount(1);
+        requests[1].AbsoluteUri.Should().Be("https://www.eqsl.cc/downloadedfiles/W7LIT1.adi");
+    }
+
+    [Theory]
+    [InlineData("http://www.eqsl.cc/downloadedfiles/a.adi", "https://www.eqsl.cc/downloadedfiles/a.adi")]
+    [InlineData("https://eqsl.cc/DownloadedFiles/a.adi", "https://eqsl.cc/DownloadedFiles/a.adi")]
+    public async Task Inbox_AbsoluteEqslLink_FetchedOverHttps(string href, string expected)
+    {
+        var requests = new List<Uri>();
+        using var handler = new Handler((request, _) =>
+        {
+            requests.Add(request.RequestUri!);
+            var reply = request.Method == HttpMethod.Post ? $"<a href='{href}'>.ADI file</a>" : "<eoh>";
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(reply) });
+        });
+        using var http = HttpFactory.Create("W7LIT", handler);
+        await new EqslClient(http).DownloadInboxAsync("W7LIT", "secret", "", TestContext.Current.CancellationToken);
+        requests.Should().HaveCount(2);
+        requests[1].AbsoluteUri.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("https://www.eqsl.cc/downloadedfiles/a.txt")]
+    [InlineData("https://www.eqsl.cc/Graphics/a.adi")]
+    [InlineData("https://www.eqsl.cc:8443/downloadedfiles/a.adi")]
+    [InlineData("http://evil.example/downloadedfiles/a.adi")]
+    [InlineData("https://www.eqsl.cc/downloadedfiles/a.adi?x=1")]
+    public async Task Inbox_OtherLinks_NotFollowed(string href)
+    {
+        var requests = 0;
+        using var handler = new Handler((_, _) =>
+        {
+            requests++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent($"<a href='{href}'>file</a>") });
+        });
+        using var http = HttpFactory.Create("W7LIT", handler);
+        var act = () => new EqslClient(http).DownloadInboxAsync("W7LIT", "secret", "", TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<EqslException>();
+        requests.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Inbox_NoLogEntries_ReturnsEmpty()
+    {
+        using var handler = new Handler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        { Content = new StringContent("<DIV><H3>You have no log entries</H3></DIV>") }));
+        using var http = HttpFactory.Create("W7LIT", handler);
+        var cards = await new EqslClient(http).DownloadInboxAsync("W7LIT", "secret", "", TestContext.Current.CancellationToken);
+        cards.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Inbox_WrongPassword_QuotesEqslWithoutCredentials()
+    {
+        // Captured from eQSL on 2026-10-31 with a wrong password.
+        const string reply = "<DIV ALIGN=\"CENTER\">\n        <H3>Error: No such Username/Password found</H3>\n"
+            + "        This could mean the wrong callsign or the wrong password, or the user does not exist.\n        </BODY>";
+        using var handler = new Handler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(reply) }));
+        using var http = HttpFactory.Create("W7LIT", handler);
+        var act = () => new EqslClient(http).DownloadInboxAsync("W7LIT", "secret", "Home", TestContext.Current.CancellationToken);
+        (await act.Should().ThrowAsync<EqslException>()).Which.Message.Should()
+            .Be("eQSL said \"Error: No such Username/Password found This could mean the wrong callsign or the wrong password, or the user does not exist.\". "
+                + "Check the username (your eQSL callsign) and password in Settings.");
+    }
+
+    [Theory]
+    [InlineData("a&b+<c")]
+    [InlineData("pa<ss>word")]
+    [InlineData("x&amp;y")]
+    public void ServerMessage_EchoedPassword_Blanked(string password)
+    {
+        var echoes = new[] { password, WebUtility.UrlEncode(password), WebUtility.HtmlEncode(password) };
+        foreach (var echo in echoes)
+        {
+            var said = EqslClient.ServerMessage($"<h3>Error: bad password {echo} for <eqsl_pswd:{password.Length}>{password}</h3>", "W7LIT", password, "");
+            said.Should().StartWith("Error: bad password").And.NotContain(password).And.NotContain("W7LIT");
+            said.Should().NotContain(WebUtility.UrlEncode(password)).And.NotContain(WebUtility.HtmlEncode(password));
+        }
+    }
+
+    [Fact]
+    public void ParseResponse_Refused_QuotesEqsl()
+    {
+        var result = EqslClient.ParseResponse("<b>Error: No match on eQSL_User/eQSL_Pswd</b>", "W7LIT", "secret", "Home");
+        result.Accepted.Should().BeFalse();
+        result.Error.Should().Be("eQSL said \"Error: No match on eQSL_User/eQSL_Pswd\". Check the username (your eQSL callsign) and password in Settings.");
+    }
+
+    [Fact]
     public async Task Inbox_LoginHtml_RefusedWithoutAdvancingSyncState()
     {
         var db = SqliteDatabase.InMemory(out var keepAlive);
@@ -213,6 +317,26 @@ public sealed class EqslTests
         result.Unmatched.Should().Be(1);
         qsos.Get(id)!.Confirmed.Should().BeFalse();
         qsos.Get(secondId)!.Confirmed.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Inbox_CardTwoMinutesFromMyTime_ConfirmsTheOneContact()
+    {
+        var db = SqliteDatabase.InMemory(out var keepAlive);
+        using var connection = keepAlive;
+        var qsos = new QsoRepository(db);
+        var id = qsos.Insert(Contact("home", "W7LIT"));
+        var card = AdifMapper.ToAdif(Contact("home", "W7LIT"));
+        card["time_on"] = Now.AddMinutes(2).ToString("HHmm", System.Globalization.CultureInfo.InvariantCulture);
+        using var handler = new Handler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        { Content = new StringContent(AdifWriter.Document([card], Now)) }));
+        using var http = HttpFactory.Create("W7LIT", handler);
+        var worker = new EqslSyncService(new EqslClient(http), qsos, new EqslInboxRepository(db), new SyncStateRepository(db), new ManualClock(Now));
+
+        var result = await worker.SyncAsync("home", "W7LIT", "W7LIT", "secret", "Home", TestContext.Current.CancellationToken);
+
+        result.Confirmed.Should().Be(1, "the other station logged its own start time, two minutes from mine");
+        qsos.Get(id)!.EqslConfirmed.Should().BeTrue();
     }
 
     private static QsoRecord Contact(string profile, string station) => new()

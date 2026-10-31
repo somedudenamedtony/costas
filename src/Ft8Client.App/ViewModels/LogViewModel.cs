@@ -244,7 +244,7 @@ public sealed partial class LogViewModel : ObservableObject
         if (!ConfirmingDelete)
         {
             ConfirmingDelete = true;
-            Message = $"Press Delete again to remove {Selected.Call} on {Selected.Date} from the local log. It stays in QRZ.";
+            Message = $"Press Delete again to remove {Selected.Call} on {Selected.Date} from the local log. It stays in QRZ, but syncing will not bring it back.";
             return;
         }
         _qsos.Delete(Selected.Record.Id);
@@ -268,7 +268,7 @@ public sealed partial class LogViewModel : ObservableObject
         if (Editing is null) return;
         var q = Editing.Apply();
         q.EntityKey = _countries.Lookup(q.Call)?.Entity.Key;
-        _qsos.Update(q);
+        _qsos.SaveEdit(q);
         Editing = null;
         Message = $"Saved {q.Call}.";
         Refresh();

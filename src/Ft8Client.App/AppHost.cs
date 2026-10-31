@@ -94,6 +94,7 @@ public sealed class AppHost : IAsyncDisposable
         BandStats = new BandStatRepository(Database);
         Countries = ReferenceData.LoadCountries(paths);
         Frequencies = ReferenceData.LoadFrequencies(paths);
+        Frequencies.UsDataSegmentsOnly = Settings.Current.Operating.UsDataSegmentsOnly;
         _rig = new SimulatedRig(Clock);
     }
 
@@ -450,6 +451,7 @@ public sealed class AppHost : IAsyncDisposable
         _ = Task.Run(ClockCheckLoopAsync);
         _ = Task.Run(RigPollLoopAsync);
         _ = Task.Run(DeviceRecoveryLoopAsync);
+        _ = Task.Run(ReceiveLevelLoopAsync);
         var confirmedBy = SettingsMapper.ConfirmationSource(s);
         var rttyPower = s.Operating.RttyPowerPercent;
         var correctClock = s.Operating.CorrectClock;
@@ -460,6 +462,7 @@ public sealed class AppHost : IAsyncDisposable
                 confirmedBy = SettingsMapper.ConfirmationSource(Settings.Current);
                 RebuildLogIndex();
             }
+            Frequencies.UsDataSegmentsOnly = Settings.Current.Operating.UsDataSegmentsOnly;
             TxLevel.Apply();
             Pota.Wake();
             if (Settings.Current.Operating.CorrectClock != correctClock)
@@ -1079,6 +1082,55 @@ public sealed class AppHost : IAsyncDisposable
         Session.SetBand(band, mode, dialHz);
         Usage?.Track("band_changed", UsageEvents.BandMode(band, ModeInfo.Name(mode)));
         await StopTransmitterForRetuneAsync().ConfigureAwait(false);
+    }
+
+    // Once a second: is receive audio arriving, and is it silent or clipping? A fault that lasts half a minute of receiving
+    // goes on the status line (the radio mutes its audio while transmitting, so those seconds and two after do not count).
+    private async Task ReceiveLevelLoopAsync()
+    {
+        var watch = new ReceiveLevelWatch();
+        CapturePump? pump = null;
+        long samples = 0;
+        var txUntil = DateTime.MinValue;
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(_cts.Token).ConfigureAwait(false))
+            {
+                try
+                {
+                    var now = Clock.UtcNow;
+                    if (Transmitter.Transmitting) txUntil = now + TimeSpan.FromSeconds(2);
+                    var current = _pump;
+                    if (current is null)
+                    {
+                        // No input device (none configured, or it failed): the Audio indicator already says so.
+                        if (watch.Problem != ReceiveLevelProblem.None) Session.SetReceiveLevelWarning(null);
+                        watch = new ReceiveLevelWatch();
+                        pump = null;
+                        continue;
+                    }
+                    if (!ReferenceEquals(current, pump))
+                    {
+                        pump = current;
+                        samples = current.SamplesReceived;
+                        current.TakePeakDbfs();
+                        continue;
+                    }
+                    var total = current.SamplesReceived;
+                    var peak = current.TakePeakDbfs();
+                    if (watch.Update(total - samples, peak, now < txUntil)) Session.SetReceiveLevelWarning(ReceiveLevelWatch.Text(watch.Problem));
+                    samples = total;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    Log.Warning(ex, "Receive level check failed");
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
     // Measures the PC clock against internet time at start and then hourly, every 15 minutes while correcting (a PC

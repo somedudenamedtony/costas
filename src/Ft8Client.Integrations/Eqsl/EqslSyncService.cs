@@ -16,6 +16,9 @@ namespace Ft8Client.Integrations.Eqsl;
 /// <summary>Stores incoming eQSL cards and confirms uniquely matching local contacts.</summary>
 public sealed class EqslSyncService(EqslClient client, QsoRepository qsos, EqslInboxRepository inbox, SyncStateRepository state, IClock clock)
 {
+    /// <summary>Largest difference between the card's time on and mine for a match.</summary>
+    public static readonly TimeSpan MatchWindow = TimeSpan.FromMinutes(15);
+
     /// <summary>Fetches the full inbox so confirmations of older QSOs are not missed.</summary>
     public async Task<EqslSyncResult> SyncAsync(string profileId, string callsign, string user, string password, string nickname, CancellationToken ct)
     {
@@ -30,11 +33,14 @@ public sealed class EqslSyncService(EqslClient client, QsoRepository qsos, EqslI
                 || string.IsNullOrWhiteSpace(incoming.Mode) || !incoming.StationCallsign.Equals(callsign, StringComparison.OrdinalIgnoreCase))
             { unmatched++; continue; }
             inbox.Store(profileId, card, incoming, clock.UtcNow);
-            // eQSL times may omit seconds. Require the same minute and a unique match; never guess within 30 minutes.
-            var matches = local.Where(q => q.Call.Equals(incoming.Call, StringComparison.OrdinalIgnoreCase)
+            // The other station logs its own time on, often a minute or two from mine. Take the one contact on the same
+            // call, band and mode within MatchWindow; if there are several, only one in the same minute.
+            var near = local.Where(q => q.Call.Equals(incoming.Call, StringComparison.OrdinalIgnoreCase)
                 && q.Band.Equals(incoming.Band, StringComparison.OrdinalIgnoreCase)
                 && DuplicateRule.ModeKey(q.Mode, q.Submode) == DuplicateRule.ModeKey(incoming.Mode, incoming.Submode)
-                && q.QsoDateOn.Ticks / TimeSpan.TicksPerMinute == incoming.QsoDateOn.Ticks / TimeSpan.TicksPerMinute).ToList();
+                && (q.QsoDateOn - incoming.QsoDateOn).Duration() <= MatchWindow).ToList();
+            var matches = near.Count == 1 ? near
+                : near.Where(q => q.QsoDateOn.Ticks / TimeSpan.TicksPerMinute == incoming.QsoDateOn.Ticks / TimeSpan.TicksPerMinute).ToList();
             if (matches.Count != 1) { unmatched++; continue; }
             var match = matches[0];
             if (match.EqslConfirmed) continue;

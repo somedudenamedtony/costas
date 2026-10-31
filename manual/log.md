@@ -25,8 +25,8 @@ The search text is kept. The list shows the newest 5,000 matching contacts; the 
 | Button | What it does |
 | --- | --- |
 | Search box | Finds contacts by call, grid, country or name |
-| **Edit** | Opens the selected contact to correct it (call, grid, reports, name, power, comment) |
-| **Delete** | Removes the selected contact from the local log. Press it twice to confirm. It is **not** deleted from QRZ |
+| **Edit** | Opens the selected contact to correct it (call, grid, reports, name, power, comment). Your corrections stay: a later QRZ sync adds confirmations but does not change what you edited. The change is not sent to QRZ; correct it there too if you want both to match |
+| **Delete** | Removes the selected contact from the local log. Press it twice to confirm. It is **not** deleted from QRZ, but QRZ syncs and LoTW downloads will not bring it back. Importing an ADIF file that holds it does |
 | **Import ADIF** | Reads an `.adi` file (from WSJT-X, another logger, or a QRZ export). Duplicates are merged, not added twice; Costas reports how many were imported, merged and skipped |
 | **Export ADIF** | Writes the whole log to an `.adi` file |
 | **Sync with QRZ now** | Reads your QRZ logbook and uploads anything waiting |
@@ -69,7 +69,9 @@ ARRL's Logbook of the World is where DXCC and WAS credit comes from. Set it up i
   log adds it.
 - **Uploads.** Costas signs and uploads contacts through TQSL, ARRL's signing program, which holds your callsign
   certificate. Choose **LoTW ▾ › Upload new contacts with TQSL**, or turn on uploading each contact as it is logged.
-  TQSL skips contacts LoTW already has. Install TQSL first and set up your Station Location in it.
+  TQSL skips contacts LoTW already has. Install TQSL first and set up your Station Location in it. With uploading as
+  each contact is logged, a contact logged while TQSL is still busy is sent straight after, and an upload that failed
+  (LoTW unreachable, for example) is tried again after 2, 4, 8 and so on up to 60 minutes.
 - **Who uses LoTW.** Costas downloads ARRL's list of LoTW users once a week. Station details then say *LoTW (last
   upload 1 Oct 2026)*, the Why tooltip says *Uses LoTW*, and with only confirmed contacts counting, stations that
   upload to LoTW rank ahead of those that do not.

@@ -65,8 +65,9 @@ log, whether the station is free to call, and whether it can hear you.
 
 1. Download `CostasApp-win-Setup.exe` from the
    [latest release](https://github.com/somedudenamedtony/costas/releases/latest).
-2. Run it. If Windows SmartScreen warns you (the installer is not code-signed yet), click **More info**, then
-   **Run anyway**.
+2. Run it. If Windows shows *Windows protected your PC* with *Publisher: Unknown publisher*, click **More info**,
+   then **Run anyway**. Costas is not code-signed yet, so SmartScreen does not recognise it; the warning goes away
+   once releases are signed.
 3. Start Costas. Setup walks you through six steps: your station, radio, audio, a transmit test, a clock check and
    QRZ.
 

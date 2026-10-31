@@ -19,13 +19,13 @@ public sealed class QsoRepository(SqliteDatabase db)
     private const string Columns = """
         profile_id, call, qso_date_on, qso_date_off, band, freq_hz, mode, submode, rst_sent, rst_rcvd, gridsquare, name, qth, state,
         country, dxcc, entity_key, continent, station_callsign, my_gridsquare, tx_pwr, comment, confirmed, need_tier, source, qrz_logid,
-        upload_state, upload_error, eqsl_upload_state, eqsl_upload_error, eqsl_confirmed, raw_adif, created_utc, modified_utc, lotw_confirmed, lotw_upload_state
+        upload_state, upload_error, eqsl_upload_state, eqsl_upload_error, eqsl_confirmed, raw_adif, created_utc, modified_utc, lotw_confirmed, lotw_upload_state, edited_utc
         """;
 
     private const string Values = """
         @ProfileId, @Call, @QsoDateOn, @QsoDateOff, @Band, @FreqHz, @Mode, @Submode, @RstSent, @RstRcvd, @Gridsquare, @Name, @Qth, @State,
         @Country, @Dxcc, @EntityKey, @Continent, @StationCallsign, @MyGridsquare, @TxPwr, @Comment, @Confirmed, @NeedTier, @Source, @QrzLogid,
-        @UploadState, @UploadError, @EqslUploadState, @EqslUploadError, @EqslConfirmed, @RawAdif, @CreatedUtc, @ModifiedUtc, @LotwConfirmed, @LotwUploadState
+        @UploadState, @UploadError, @EqslUploadState, @EqslUploadError, @EqslConfirmed, @RawAdif, @CreatedUtc, @ModifiedUtc, @LotwConfirmed, @LotwUploadState, @EditedUtc
         """;
 
     private const string Updates = """
@@ -34,7 +34,7 @@ public sealed class QsoRepository(SqliteDatabase db)
         dxcc=@Dxcc, entity_key=@EntityKey, continent=@Continent, station_callsign=@StationCallsign, my_gridsquare=@MyGridsquare, tx_pwr=@TxPwr,
         comment=@Comment, confirmed=@Confirmed, need_tier=@NeedTier, source=@Source, qrz_logid=@QrzLogid, upload_state=@UploadState,
         upload_error=@UploadError, eqsl_upload_state=@EqslUploadState, eqsl_upload_error=@EqslUploadError, eqsl_confirmed=@EqslConfirmed, raw_adif=@RawAdif, modified_utc=@ModifiedUtc,
-        lotw_confirmed=@LotwConfirmed, lotw_upload_state=@LotwUploadState
+        lotw_confirmed=@LotwConfirmed, lotw_upload_state=@LotwUploadState, edited_utc=@EditedUtc
         """;
 
     /// <summary>Inserts a contact and returns its id.</summary>
@@ -52,11 +52,27 @@ public sealed class QsoRepository(SqliteDatabase db)
         c.Execute($"UPDATE qso SET {Updates} WHERE id=@Id", q);
     }
 
-    /// <summary>Deletes a contact locally (QRZ deletion is a separate action).</summary>
+    /// <summary>Saves the operator's edit of a contact. Later QRZ syncs keep the edited fields.</summary>
+    public void SaveEdit(QsoRecord q)
+    {
+        q.EditedUtc = DateTime.UtcNow;
+        Update(q);
+    }
+
+    /// <summary>
+    /// Deletes a contact locally (it stays in QRZ). A later QRZ sync or LoTW download does not bring it back; importing an
+    /// ADIF file that holds it does.
+    /// </summary>
     public void Delete(long id)
     {
         using var c = db.Open();
-        c.Execute("DELETE FROM qso WHERE id=@id", new { id });
+        using var tx = c.BeginTransaction();
+        c.Execute("""
+            INSERT INTO qso_deleted (profile_id, call, band, mode, submode, qso_date_on, station_callsign, qrz_logid, deleted_utc)
+            SELECT profile_id, call, band, mode, submode, qso_date_on, station_callsign, qrz_logid, @now FROM qso WHERE id=@id
+            """, new { id, now = DateTime.UtcNow }, tx);
+        c.Execute("DELETE FROM qso WHERE id=@id", new { id }, tx);
+        tx.Commit();
     }
 
     /// <summary>Finds a contact by id.</summary>
@@ -225,6 +241,8 @@ public sealed class QsoRepository(SqliteDatabase db)
 
     private static (long Id, bool Inserted) Upsert(SqliteConnection c, SqliteTransaction tx, QsoRecord q)
     {
+        // A contact the operator deleted is not brought back by a sync (an ADIF import or a new local contact still adds it).
+        if (q.Source is QsoSource.Qrz or QsoSource.Lotw && Deleted(c, tx, q)) return (0, false);
         QsoRecord? existing = null;
         if (q.QrzLogid is not null)
             existing = c.QuerySingleOrDefault<QsoRecord>("SELECT * FROM qso WHERE qrz_logid=@QrzLogid", q, tx);
@@ -249,8 +267,24 @@ public sealed class QsoRepository(SqliteDatabase db)
         return (existing.Id, false);
     }
 
+    private static bool Deleted(SqliteConnection c, SqliteTransaction tx, QsoRecord q)
+    {
+        var from = q.QsoDateOn - DuplicateRule.Window;
+        var to = q.QsoDateOn + DuplicateRule.Window;
+        return c.Query<QsoRecord>(
+                "SELECT call, band, mode, submode, qso_date_on, station_callsign, qrz_logid FROM qso_deleted WHERE call = @call COLLATE NOCASE AND band = @band COLLATE NOCASE AND qso_date_on BETWEEN @from AND @to",
+                new { call = q.Call, band = q.Band, from, to }, tx)
+            .Any(d => (d.QrzLogid is not null && d.QrzLogid == q.QrzLogid) || DuplicateRule.IsDuplicate(d, q))
+            || (q.QrzLogid is not null && c.ExecuteScalar<int>("SELECT COUNT(*) FROM qso_deleted WHERE qrz_logid=@QrzLogid", q, tx) > 0);
+    }
+
     private static void Merge(QsoRecord target, QsoRecord source)
     {
+        if (target.EditedUtc is not null)
+        {
+            MergeIntoEdited(target, source);
+            return;
+        }
         target.QsoDateOff ??= source.QsoDateOff;
         target.FreqHz ??= source.FreqHz;
         // A submode belongs to its mode: an old MODE=PSK31 row does not take SUBMODE=PSK31 from a PSK/PSK31 copy.
@@ -280,7 +314,7 @@ public sealed class QsoRepository(SqliteDatabase db)
             if (target.UploadState is UploadState.Queued or UploadState.Failed) target.UploadState = UploadState.Uploaded;
             target.UploadError = null;
         }
-        // A newer QRZ copy carries edits and confirmations.
+        // A newer QRZ copy carries edits and confirmations (the operator's own edits are kept: see MergeIntoEdited).
         if (source.Source == QsoSource.Qrz && source.QrzLogid == target.QrzLogid)
         {
             // QRZ's own confirmation can be withdrawn; LoTW and eQSL confirmations stay.
@@ -290,5 +324,23 @@ public sealed class QsoRepository(SqliteDatabase db)
             target.State = source.State ?? target.State;
             target.RawAdif = source.RawAdif ?? target.RawAdif;
         }
+    }
+
+    // A contact the operator edited keeps every field as edited. Only what the other services know better is taken:
+    // confirmations, the QRZ log id and the upload states.
+    private static void MergeIntoEdited(QsoRecord target, QsoRecord source)
+    {
+        target.EqslConfirmed |= source.EqslConfirmed;
+        target.LotwConfirmed |= source.LotwConfirmed;
+        if (source.LotwUploadState == UploadState.Uploaded) target.LotwUploadState = UploadState.Uploaded;
+        if (target.QrzLogid is null && source.QrzLogid is not null)
+        {
+            target.QrzLogid = source.QrzLogid;
+            if (target.UploadState is UploadState.Queued or UploadState.Failed) target.UploadState = UploadState.Uploaded;
+            target.UploadError = null;
+        }
+        target.Confirmed = source.Source == QsoSource.Qrz && source.QrzLogid == target.QrzLogid
+            ? source.Confirmed || target.EqslConfirmed || target.LotwConfirmed
+            : target.Confirmed || source.Confirmed || target.EqslConfirmed || target.LotwConfirmed;
     }
 }
