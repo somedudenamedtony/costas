@@ -59,7 +59,7 @@ extra_css:
 extra:
   owner: Ember Ridge Development
   # Set to the donation page's address to show the Support links on the home page and in the manual footer.
-  support_url: ''
+  support_url: https://ko-fi.com/emberridgedev
 
 nav:
   - Home: index.md
