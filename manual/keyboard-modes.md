@@ -26,7 +26,8 @@ passband at once (up to 20).
 - **Band activity** (right column) and the band summary count the stations read every three minutes, as there are no
   slots to count.
 - **Raw decodes** shows the text, a line per over or per line typed, with the audio frequency and signal strength. The
-  DT column is empty: these modes have no time offset.
+  DT column is empty: these modes have no time offset. Only the current mode's lines are shown, so FT8 lines
+  never mix with PSK or RTTY text.
 - **dB** is measured in a 2,500 Hz bandwidth, the same scale as FT8, so −10 dB means the same in both.
 
 There are no slots, so where FT8 shows the slot countdown the contact card shows how many characters you have typed

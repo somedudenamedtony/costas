@@ -89,6 +89,25 @@ public class KeyboardSessionTests : IDisposable
         snap.RawDecodes.Should().Contain(r => r.Decode.Text.Contains("DE KP4JRS", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Snapshot_ModeChanged_RawDecodesShowOnlyThatModeAndKeepTheOthers()
+    {
+        var t = _clock.UtcNow;
+        _session.ApplyText(Mode.Psk31, [], [new KeyboardLine(t, 1180, 10, "CQ CQ DE KP4JRS KP4JRS PSE K", "KP4JRS", null)], t);
+        _session.SetBand("20m", Mode.Rtty);
+        _session.ApplyText(Mode.Rtty, [], [new KeyboardLine(t, 1500, 8, "CQ CQ DE EA1ABC EA1ABC K", "EA1ABC", null)], t);
+
+        _session.Snapshot.RawDecodes.Should().ContainSingle().Which.Decode.Text.Should().Contain("EA1ABC");
+
+        _session.SetBand("20m", Mode.Psk31);
+        var line = _session.Snapshot.RawDecodes.Should().ContainSingle().Which;
+        line.Decode.Text.Should().Contain("KP4JRS");
+        line.Mode.Should().Be(Mode.Psk31);
+
+        _session.SetBand("20m", Mode.Ft8);
+        _session.Snapshot.RawDecodes.Should().BeEmpty();
+    }
+
     private static float[] Rtty(RttyFormat format, double hz, string text)
     {
         var random = new Random(1);

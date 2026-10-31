@@ -6,6 +6,7 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using Ft8Client.Core;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Messages;
 
@@ -17,7 +18,8 @@ namespace Ft8Client.App.Engine;
 /// <param name="Country">Sender's entity name, if known.</param>
 /// <param name="ToMe">Addressed to my call.</param>
 /// <param name="Transmitted">A line for my own transmission.</param>
-public sealed record RawDecodeLine(Decode Decode, ParsedMessage Message, string? Country, bool ToMe, bool Transmitted = false)
+/// <param name="Mode">The mode it was heard or sent in; Raw decodes shows only the current mode's lines.</param>
+public sealed record RawDecodeLine(Decode Decode, ParsedMessage Message, string? Country, bool ToMe, bool Transmitted = false, Mode Mode = Mode.Ft8)
 {
     /// <summary>True for CQ.</summary>
     public bool IsCq => Message.Kind == MessageKind.Cq;
