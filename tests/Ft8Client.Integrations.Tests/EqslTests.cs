@@ -215,6 +215,26 @@ public sealed class EqslTests
         qsos.Get(secondId)!.Confirmed.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task Inbox_CardTwoMinutesFromMyTime_ConfirmsTheOneContact()
+    {
+        var db = SqliteDatabase.InMemory(out var keepAlive);
+        using var connection = keepAlive;
+        var qsos = new QsoRepository(db);
+        var id = qsos.Insert(Contact("home", "W7LIT"));
+        var card = AdifMapper.ToAdif(Contact("home", "W7LIT"));
+        card["time_on"] = Now.AddMinutes(2).ToString("HHmm", System.Globalization.CultureInfo.InvariantCulture);
+        using var handler = new Handler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        { Content = new StringContent(AdifWriter.Document([card], Now)) }));
+        using var http = HttpFactory.Create("W7LIT", handler);
+        var worker = new EqslSyncService(new EqslClient(http), qsos, new EqslInboxRepository(db), new SyncStateRepository(db), new ManualClock(Now));
+
+        var result = await worker.SyncAsync("home", "W7LIT", "W7LIT", "secret", "Home", TestContext.Current.CancellationToken);
+
+        result.Confirmed.Should().Be(1, "the other station logged its own start time, two minutes from mine");
+        qsos.Get(id)!.EqslConfirmed.Should().BeTrue();
+    }
+
     private static QsoRecord Contact(string profile, string station) => new()
     {
         ProfileId = profile, StationCallsign = station, Call = "K1ABC", Band = "20m", Mode = "FT8", QsoDateOn = Now,
