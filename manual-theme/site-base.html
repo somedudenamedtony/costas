@@ -1,0 +1,88 @@
+{#- Shared frame for the site's own pages (home, about): head, top bar and footer. These pages do not use Material's
+    layout, so the front of the site has its own look; the manual pages keep Material with the same colours
+    (stylesheets/theme.css). -#}
+{%- set releases = config.repo_url ~ '/releases/latest' -%}
+{%- set windows = releases ~ '/download/CostasApp-win-Setup.exe' -%}
+{%- set support = config.extra.support_url -%}
+{%- set home = '.' | url -%}
+{%- set releases = config.repo_url ~ '/releases/latest' -%}
+{%- set windows = releases ~ '/download/CostasApp-win-Setup.exe' -%}
+{%- set support = config.extra.support_url -%}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.meta.title }}</title>
+  <meta name="description" content="{{ page.meta.description }}">
+  {%- if page.canonical_url %}
+  <link rel="canonical" href="{{ page.canonical_url }}">
+  {%- endif %}
+  <meta property="og:title" content="Costas">
+  <meta property="og:description" content="{{ page.meta.description }}">
+  <meta property="og:image" content="{{ config.site_url }}images/contact-in-progress.png">
+  <link rel="icon" href="{{ 'images/costas.svg' | url }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+  <link rel="stylesheet" href="{{ 'stylesheets/site.css' | url }}">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar">
+  <div class="wrap bar__inner">
+    <a class="brand" href="{{ home }}" aria-label="Costas home">
+      <img src="{{ 'images/costas.svg' | url }}" alt="" width="28" height="28">
+      <span>Costas</span>
+    </a>
+    <nav class="bar__nav" aria-label="Site">
+      <a href="{{ home }}#tour">Tour</a>
+      <a href="{{ 'introduction/' | url }}">Manual</a>
+      {%- if support %}
+      <a href="{{ support }}">Support</a>
+      {%- endif %}
+      <a href="{{ config.repo_url }}">GitHub</a>
+      <a href="{{ 'about/' | url }}">About</a>
+      <a class="bar__cta" href="{{ home }}#download">Download</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+{% block content %}{% endblock %}
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__grid">
+    <div>
+      <p class="foot__brand">Costas</p>
+      <p>© 2026 {{ config.extra.owner }}.<br>Free software under the GNU GPL, version 3 or later.</p>
+    </div>
+    <nav aria-label="Manual">
+      <p class="foot__head">Manual</p>
+      <a href="{{ 'install/' | url }}">Install</a>
+      <a href="{{ 'setup/' | url }}">First-run setup</a>
+      <a href="{{ 'operate/' | url }}">The Operate screen</a>
+      <a href="{{ 'troubleshooting/' | url }}">Troubleshooting</a>
+    </nav>
+    <nav aria-label="Project">
+      <p class="foot__head">Project</p>
+      <a href="{{ 'about/' | url }}">About Costas</a>
+      <a href="{{ config.repo_url }}/releases">Release notes</a>
+      <a href="{{ config.repo_url }}/issues">Report a problem</a>
+      <a href="{{ 'code-signing/' | url }}">Code signing policy</a>
+      <a href="{{ 'settings/#privacy' | url }}">Privacy</a>
+      {%- if support %}
+      <a href="{{ support }}">Support Costas</a>
+      {%- endif %}
+    </nav>
+  </div>
+  <p class="wrap foot__fine">Screenshots are from Costas replaying recorded band audio; the callsigns are from those
+    recordings.</p>
+</footer>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
