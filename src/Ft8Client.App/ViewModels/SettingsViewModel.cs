@@ -65,6 +65,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         CqParity = s.Operating.CqParity;
         ClockBlock = s.Operating.ClockBlockSeconds.ToString("0.0", CultureInfo.InvariantCulture);
         CorrectClock = s.Operating.CorrectClock;
+        UsDataSegmentsOnly = s.Operating.UsDataSegmentsOnly;
         foreach (var t in SettingsMapper.ToRanking(s.Ranking).TierOrder) TierOrder.Add(new TierItem(t, StationText.Need(t)));
         PreferHearsMe = s.Ranking.PreferHearsMe;
         OnlyCallingCq = s.Ranking.OnlyCallingCq;
@@ -413,6 +414,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Correct Costas's clock from internet time.</summary>
     [ObservableProperty]
     public partial bool CorrectClock { get; set; }
+
+    /// <summary>Transmit only inside the US data segments.</summary>
+    [ObservableProperty]
+    public partial bool UsDataSegmentsOnly { get; set; }
 
     /// <summary>Clock block seconds.</summary>
     [ObservableProperty]
@@ -935,6 +940,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
             s.Operating.CorrectClock = CorrectClock;
+            s.Operating.UsDataSegmentsOnly = UsDataSegmentsOnly;
             s.Qrz.LogbookEnabled = LogbookEnabled;
             s.Qrz.LookupEnabled = !string.IsNullOrWhiteSpace(QrzUser) && !string.IsNullOrEmpty(QrzPassword);
             s.Qrz.UploadOnComplete = UploadOnComplete;

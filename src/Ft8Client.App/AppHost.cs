@@ -91,6 +91,7 @@ public sealed class AppHost : IAsyncDisposable
         BandStats = new BandStatRepository(Database);
         Countries = ReferenceData.LoadCountries(paths);
         Frequencies = ReferenceData.LoadFrequencies(paths);
+        Frequencies.UsDataSegmentsOnly = Settings.Current.Operating.UsDataSegmentsOnly;
         _rig = new SimulatedRig(Clock);
     }
 
@@ -440,6 +441,7 @@ public sealed class AppHost : IAsyncDisposable
                 confirmedBy = SettingsMapper.ConfirmationSource(Settings.Current);
                 RebuildLogIndex();
             }
+            Frequencies.UsDataSegmentsOnly = Settings.Current.Operating.UsDataSegmentsOnly;
             TxLevel.Apply();
             Pota.Wake();
             if (Settings.Current.Operating.CorrectClock != correctClock)
