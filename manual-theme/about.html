@@ -1,0 +1,67 @@
+{#- The About page: who makes Costas and where the name comes from. -#}
+{% extends "site-base.html" %}
+{% block content %}
+
+<section class="page-head">
+  <div class="wrap">
+    <p class="tag">About</p>
+    <h1>Made by a ham, for the shack.</h1>
+  </div>
+</section>
+
+<section class="about">
+  <div class="wrap about__grid">
+    <div class="about__text">
+      <h2>Who makes it</h2>
+      <p>Costas is written by Tony, <a href="https://www.qrz.com/db/W7LIT">W7LIT</a>, and published by
+        {{ config.extra.owner }}. Tony operates FT8 from grid DN40 on a Yaesu FT-710, and Costas started as a fix for
+        his own station: a cleaner way to see who was worth calling, and transmit audio and keying that just worked.</p>
+      <p>It grew from there. Every feature has been tried against real band recordings first, and the on-air rules are
+        strict: Costas never transmits unless you asked it to, and never changes a message without telling you.</p>
+      <p>Costas is free software under the GNU GPL. Bug reports and ideas are welcome on
+        <a href="{{ config.repo_url }}/issues">GitHub</a>.</p>
+      {%- if support %}
+      <p><a class="more" href="{{ support }}">Support Costas on Ko-fi</a></p>
+      {%- endif %}
+    </div>
+    <aside class="card">
+      <p class="card__call">W7LIT</p>
+      <dl>
+        <div><dt>Operator</dt><dd>Tony</dd></div>
+        <div><dt>Grid</dt><dd>DN40</dd></div>
+        <div><dt>Rig</dt><dd>Yaesu FT-710</dd></div>
+        <div><dt>Modes</dt><dd>FT8, FT4, PSK, RTTY</dd></div>
+        <div><dt>Publisher</dt><dd>{{ config.extra.owner }}</dd></div>
+      </dl>
+    </aside>
+  </div>
+</section>
+
+<section class="about about--alt">
+  <div class="wrap about__grid">
+    <div class="about__text">
+      <h2>Where the name comes from</h2>
+      <p>Every FT8 signal carries the same small pattern three times: at the start, in the middle and at the end of
+        its 12.6 seconds. It is a <b>Costas array</b>, seven tones in the order 3, 1, 4, 0, 6, 5, 2, and it is how a
+        decoder finds a signal in the noise, both when it started and exactly where it sits on the waterfall.</p>
+      <p>The pattern is named after <b>John P. Costas</b>, an engineer at General Electric who worked them out in the
+        1960s for sonar and radar and published them in 1984. Their trick is that no two pairs of dots are the same
+        distance apart in both time and pitch. Slide a copy over itself and it only lines up in one place, so the
+        match is sharp and hard to fool.</p>
+      <p>That is what Costas the program tries to do for you: pick out the stations that matter from a crowded band,
+        quickly and without fuss. The pattern is also the app's icon.</p>
+    </div>
+    <figure class="ca-figure">
+      <svg class="ca" viewBox="-30 -10 320 320" role="img" aria-labelledby="ca-title">
+          <title id="ca-title">FT8's 7 by 7 Costas array: across seven symbol times, the tones used are 3, 1, 4, 0, 6, 5, 2</title>
+          <rect x="1" y="241" width="38" height="38" class="ca__cell"/><rect x="1" y="201" width="38" height="38" class="ca__cell"/><rect x="1" y="161" width="38" height="38" class="ca__cell"/><rect x="1" y="121" width="38" height="38" class="ca__cell"/><rect x="1" y="81" width="38" height="38" class="ca__cell"/><rect x="1" y="41" width="38" height="38" class="ca__cell"/><rect x="1" y="1" width="38" height="38" class="ca__cell"/><rect x="41" y="241" width="38" height="38" class="ca__cell"/><rect x="41" y="201" width="38" height="38" class="ca__cell"/><rect x="41" y="161" width="38" height="38" class="ca__cell"/><rect x="41" y="121" width="38" height="38" class="ca__cell"/><rect x="41" y="81" width="38" height="38" class="ca__cell"/><rect x="41" y="41" width="38" height="38" class="ca__cell"/><rect x="41" y="1" width="38" height="38" class="ca__cell"/><rect x="81" y="241" width="38" height="38" class="ca__cell"/><rect x="81" y="201" width="38" height="38" class="ca__cell"/><rect x="81" y="161" width="38" height="38" class="ca__cell"/><rect x="81" y="121" width="38" height="38" class="ca__cell"/><rect x="81" y="81" width="38" height="38" class="ca__cell"/><rect x="81" y="41" width="38" height="38" class="ca__cell"/><rect x="81" y="1" width="38" height="38" class="ca__cell"/><rect x="121" y="241" width="38" height="38" class="ca__cell"/><rect x="121" y="201" width="38" height="38" class="ca__cell"/><rect x="121" y="161" width="38" height="38" class="ca__cell"/><rect x="121" y="121" width="38" height="38" class="ca__cell"/><rect x="121" y="81" width="38" height="38" class="ca__cell"/><rect x="121" y="41" width="38" height="38" class="ca__cell"/><rect x="121" y="1" width="38" height="38" class="ca__cell"/><rect x="161" y="241" width="38" height="38" class="ca__cell"/><rect x="161" y="201" width="38" height="38" class="ca__cell"/><rect x="161" y="161" width="38" height="38" class="ca__cell"/><rect x="161" y="121" width="38" height="38" class="ca__cell"/><rect x="161" y="81" width="38" height="38" class="ca__cell"/><rect x="161" y="41" width="38" height="38" class="ca__cell"/><rect x="161" y="1" width="38" height="38" class="ca__cell"/><rect x="201" y="241" width="38" height="38" class="ca__cell"/><rect x="201" y="201" width="38" height="38" class="ca__cell"/><rect x="201" y="161" width="38" height="38" class="ca__cell"/><rect x="201" y="121" width="38" height="38" class="ca__cell"/><rect x="201" y="81" width="38" height="38" class="ca__cell"/><rect x="201" y="41" width="38" height="38" class="ca__cell"/><rect x="201" y="1" width="38" height="38" class="ca__cell"/><rect x="241" y="241" width="38" height="38" class="ca__cell"/><rect x="241" y="201" width="38" height="38" class="ca__cell"/><rect x="241" y="161" width="38" height="38" class="ca__cell"/><rect x="241" y="121" width="38" height="38" class="ca__cell"/><rect x="241" y="81" width="38" height="38" class="ca__cell"/><rect x="241" y="41" width="38" height="38" class="ca__cell"/><rect x="241" y="1" width="38" height="38" class="ca__cell"/>
+          <rect x="5" y="125" width="30" height="30" rx="3" class="ca__dot"/><rect x="45" y="205" width="30" height="30" rx="3" class="ca__dot"/><rect x="85" y="85" width="30" height="30" rx="3" class="ca__dot"/><rect x="125" y="245" width="30" height="30" rx="3" class="ca__dot"/><rect x="165" y="5" width="30" height="30" rx="3" class="ca__dot"/><rect x="205" y="45" width="30" height="30" rx="3" class="ca__dot"/><rect x="245" y="165" width="30" height="30" rx="3" class="ca__dot"/>
+          <text x="140" y="300" class="ca__label" text-anchor="middle">time (symbols) →</text>
+          <text x="-14" y="140" class="ca__label" text-anchor="middle" transform="rotate(-90 -14 140)">tone →</text>
+        </svg>
+      <figcaption>FT8's Costas array. Each column is one symbol time, each row a tone.</figcaption>
+    </figure>
+  </div>
+</section>
+
+{% endblock %}
