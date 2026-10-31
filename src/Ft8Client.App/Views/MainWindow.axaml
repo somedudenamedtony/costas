@@ -125,6 +125,7 @@
               <MenuItem Header="Station setup" Command="{Binding OpenCommand}" CommandParameter="setup" />
               <MenuItem Header="Diagnostics" Command="{Binding OpenCommand}" CommandParameter="diagnostics" />
               <MenuItem Header="Keyboard shortcuts" Command="{Binding OpenCommand}" CommandParameter="shortcuts" />
+              <MenuItem Header="Report a problem…" Command="{Binding OpenCommand}" CommandParameter="feedback" />
               <MenuItem Header="About" Command="{Binding OpenCommand}" CommandParameter="about" />
             </MenuFlyout>
           </Button.Flyout>

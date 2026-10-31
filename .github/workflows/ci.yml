@@ -28,6 +28,9 @@ jobs:
         env:
           # Only release builds carry the Aptabase app key (not a secret: it ships inside the app), so test and pull-request builds never send usage statistics.
           APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && 'A-US-6947074211' || '' }}
+          # Where Report a problem sends feedback (not secrets: both ship inside the app). A repository variable of the same name overrides each.
+          FEEDBACK_URL: ${{ vars.FEEDBACK_URL || 'https://formspree.io/f/xaeepqap' }}
+          FEEDBACK_EMAIL: ${{ vars.FEEDBACK_EMAIL || 'Tony@emberridgedev.com' }}
         run: scripts/build-linux.sh ${{ github.run_number }}
       - uses: actions/upload-artifact@v4
         with:
@@ -80,6 +83,9 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ env.COSTAS_SIGN == '1' && secrets.AZURE_CLIENT_SECRET || '' }}
           # Only release builds carry the Aptabase app key (not a secret: it ships inside the app), so test and pull-request builds never send usage statistics.
           APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && 'A-US-6947074211' || '' }}
+          # Where Report a problem sends feedback (not secrets: both ship inside the app). A repository variable of the same name overrides each.
+          FEEDBACK_URL: ${{ vars.FEEDBACK_URL || 'https://formspree.io/f/xaeepqap' }}
+          FEEDBACK_EMAIL: ${{ vars.FEEDBACK_EMAIL || 'Tony@emberridgedev.com' }}
           # Release runs download the latest release's Velopack package so this one carries a delta from it.
           VELOPACK_PREVIOUS: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && '1' || '' }}
         run: ./scripts/build-installer.ps1 -BuildNumber ${{ github.run_number }}
