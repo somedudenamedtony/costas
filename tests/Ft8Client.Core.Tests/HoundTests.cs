@@ -247,4 +247,75 @@ public class HoundTests
         r.Callable.Should().BeTrue("a Fox is always working someone, and is worked as a Hound");
         StationText.DoingNow(r.Station).Should().Be("DXpedition (Fox/Hound), working Hounds");
     }
+
+    [Fact]
+    public void ApplySlot_SameSenderTwoStreams_MarksFox()
+    {
+        var t = new StationTracker("W7LIT", "DN40", TestData.Countries, Mode.Ft8);
+        t.ApplySlot(S(0), [H(S(0), "K1ABC KH1X -11", 420), H(S(0), "W9XYZ KH1X -08", 480), H(S(0), "CQ N0AA EN34", 1500)]);
+        t.Find("KH1X")!.RunsFox.Should().BeTrue("only a Fox sends two messages in one slot, one per stream");
+        t.Find("N0AA")!.RunsFox.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Senders_SameMessageDecodedTwiceClose_NotAFox()
+    {
+        FoxSigns.Senders([H(S(0), "CQ KH1X AJ10", 420), H(S(0), "W9XYZ KH1X -08", 430)]).Should().BeEmpty("one signal, not two streams");
+        FoxSigns.Senders([H(S(0), "CQ KH1X AJ10", 420)]).Should().BeEmpty("a lone CQ says nothing about Fox/Hound");
+    }
+
+    [Fact]
+    public void OnDecodes_CalledAsCqThenFoxSigns_CarriesOnAsHound()
+    {
+        var s = new Sim();
+        string? started = null;
+        s.E.HoundStarted += c => started = c;
+        s.E.CallStation("KH1X", "AJ10", -15, SlotParity.Even, 420, Sim.T0, fox: false);
+        s.E.View!.Flow.Should().Be(ContactFlow.AnswerCq);
+        s.Step(("CQ KH1X AJ10", 420, -15)).Should().BeNull();
+        s.Step()!.Message.Should().Be("KH1X W7LIT DN40");
+
+        // The Fox starts working Hounds, and answers someone else: not a reason to stop calling a Fox.
+        s.Step(("K1ABC RR73; W9XYZ <KH1X> -11", 420, -15)).Should().BeNull();
+        started.Should().Be("KH1X");
+        s.E.InContact.Should().BeTrue();
+        s.E.InHoundContact.Should().BeTrue();
+        s.E.View!.Steps.Should().HaveCount(4, "a Hound sends no 73");
+        s.E.View.Steps[0].Count.Should().Be(1, "the call already sent stays counted");
+        s.Step()!.Message.Should().Be("KH1X W7LIT DN40");
+
+        s.Step(("W9XYZ RR73; W7LIT <KH1X> -09", 480, -7));
+        var report = s.Step()!;
+        report.Message.Should().Be("KH1X W7LIT R-07");
+        report.TxOffsetHz.Should().Be(480);
+        s.Step(("W7LIT KH1X RR73", 480, -7));
+        s.Logs.Should().ContainSingle();
+        s.Step().Should().BeNull("nothing after the Fox's RR73");
+    }
+
+    [Fact]
+    public void OnDecodes_CalledAsCqFoxAnswersMeFirst_RReportOnItsFrequency()
+    {
+        var s = new Sim();
+        s.E.CallStation("KH1X", "AJ10", -15, SlotParity.Even, 420, Sim.T0, fox: false);
+        s.Step(("CQ KH1X AJ10", 420, -15));
+        s.Step();
+        s.Step(("K1ABC RR73; W7LIT <KH1X> -09", 520, -7));
+        s.E.InHoundContact.Should().BeTrue();
+        s.Step()!.TxOffsetHz.Should().Be(520, "the Fox's first sign was its answer to me, which moves me to its frequency");
+    }
+
+    [Fact]
+    public void OnDecodes_CalledAsCqStillOrdinary_StaysAnswerCq()
+    {
+        var s = new Sim();
+        string? started = null;
+        s.E.HoundStarted += c => started = c;
+        s.E.CallStation("KH1X", "AJ10", -15, SlotParity.Even, 420, Sim.T0, fox: false);
+        s.Step(("CQ KH1X AJ10", 420, -15));
+        s.Step();
+        s.Step(("CQ KH1X AJ10", 420, -15));
+        started.Should().BeNull();
+        s.E.View!.Flow.Should().Be(ContactFlow.AnswerCq);
+    }
 }

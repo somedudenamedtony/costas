@@ -62,6 +62,12 @@ public sealed class ContactEngine
     /// <summary>Raised when a contact should be logged.</summary>
     public event Action<ContactLogEntry>? Logged;
 
+    /// <summary>
+    /// Raised (with the DX call) when a station I am calling as an ordinary CQ turns out to be a Fox and the contact carries
+    /// on as a Hound contact, so my calls must move to 1000 Hz or above.
+    /// </summary>
+    public event Action<string>? HoundStarted;
+
     /// <summary>True while calling CQ.</summary>
     public bool CallingCq => _cqRunning;
 
@@ -278,6 +284,7 @@ public sealed class ContactEngine
     public void OnDecodes(DateTime slotStartUtc, Mode mode, IReadOnlyList<HeardMessage> heard, DateTime nowUtc)
     {
         var parity = SlotMath.Parity(slotStartUtc, mode);
+        BecomeHound(heard);
         var toMe = new List<(HeardMessage H, ParsedMessage M)>();
         foreach (var h in heard)
         {
@@ -550,6 +557,23 @@ public sealed class ContactEngine
             default:
                 return false;
         }
+    }
+
+    // A station I am still calling as an ordinary CQ turns out to be a Fox (it was only heard calling CQ when I clicked
+    // Call, and now shows a Fox's signs): carry on as a Hound, as if it had been recognised when I called it. My calls
+    // so far stay counted, and the Hound's 2-minute calling limit starts now.
+    private void BecomeHound(IReadOnlyList<HeardMessage> heard)
+    {
+        if (_c is not { Flow: ContactFlow.AnswerCq, Phase: 0, Outcome: ContactOutcome.InProgress, ReportReceived: null } a) return;
+        if (IsFox?.Invoke(a.DxCall) != true && !FoxSigns.Senders(heard).Contains(a.DxCall)) return;
+        var c = new Contact(ContactFlow.Hound, a.DxCall, a.DxGrid, a.MyParity, a.ReportSent, a.DxOffset)
+        {
+            TimeOnUtc = a.TimeOnUtc, Held = a.Held, AwaitingReply = a.AwaitingReply,
+        };
+        c.Steps.AddRange(StepsFor(c));
+        c.Steps[0] = a.Steps[0];
+        _c = c;
+        HoundStarted?.Invoke(c.DxCall);
     }
 
     // Calling: up to HoundCallLimit from my first call. R-report: up to HoundReportSlots from the Fox's latest report.

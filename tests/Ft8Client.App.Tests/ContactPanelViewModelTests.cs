@@ -124,4 +124,30 @@ public class ContactPanelViewModelTests
         p.Sent.Should().Be("--");
         p.Received.Should().Be("--");
     }
+
+    [Fact]
+    public void From_HoundCalling_ShowsHoundModeAndWhereICall()
+    {
+        var c = new ContactView("C5R", "IK13", ContactFlow.Hound, ContactOutcome.InProgress, null, null,
+        [
+            new ContactStep(true, "C5R W7LIT DN40", StepState.Done, 3, SentAt),
+            new ContactStep(false, "W7LIT C5R ±NN", StepState.Now, 0, null),
+            new ContactStep(true, "C5R W7LIT R-16", StepState.Upcoming, 0, null),
+            new ContactStep(false, "W7LIT C5R RR73", StepState.Upcoming, 0, null),
+        ], false, false, string.Empty);
+        var p = ContactPanelViewModel.From(c, new SessionSnapshot { Mode = Mode.Ft8, Contact = c, TxOffsetHz = 1730 }, Slot.AddSeconds(14), DistanceUnit.Miles, null);
+
+        p.HoundMode.Should().BeTrue();
+        p.HoundNote.Should().Contain("1730 Hz").And.Contain("2 minutes");
+        p.Steps[2].Status.Should().Be("Then logged", "a Hound sends nothing after the Fox's RR73");
+    }
+
+    [Fact]
+    public void From_OrdinaryContact_NoHoundMode()
+    {
+        var p = Panel(AfterGridReply(), false, null, Slot.AddSeconds(14));
+
+        p.HoundMode.Should().BeFalse();
+        p.HoundNote.Should().BeEmpty();
+    }
 }

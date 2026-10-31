@@ -210,7 +210,7 @@ public static class RemoteStateBuilder
         };
     }
 
-    private static RemoteContact Contact(ContactPanelViewModel c) => new(c.Caption, c.Call, c.Need, c.Subline, c.Sent, c.Received, c.Active, c.CanLogNow,
+    private static RemoteContact Contact(ContactPanelViewModel c) => new(c.HoundMode ? $"{c.Caption} · Hound mode" : c.Caption, c.Call, c.Need, c.Subline, c.Sent, c.Received, c.Active, c.CanLogNow,
         [.. c.Steps.Select(x => new RemoteStep(x.Index, x.Mine, x.Who, x.Time, x.Message, x.Status, Look(x.Look), x.CanJump))]);
 
     private static string Look(StepLook look) => look switch

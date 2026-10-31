@@ -124,8 +124,9 @@ arrived in time: a late RR73 logs the contact and sends 73, a late report gets y
 
 Many DXpeditions run **Fox/Hound**: the DXpedition (the Fox) transmits below 1000 Hz, in the first slot of each pair,
 and works several callers (Hounds) at once. Hounds call above 1000 Hz and must follow its rules, or the Fox never
-hears them. Costas spots a Fox when it sends a multi-answer message such as `K1ABC RR73; W7LIT <KH1X> -12`, and
-shows it in Next in line as *DXpedition (Fox/Hound), working Hounds*. There is nothing to switch on:
+hears them. Costas spots a Fox when it sends a multi-answer message such as `K1ABC RR73; W7LIT <KH1X> -12`, or
+two messages in the same slot on different frequencies (one per stream), and shows it in Next in line as
+*DXpedition (Fox/Hound), working Hounds*. There is nothing to switch on:
 
 1. Tune the radio to the DXpedition's frequency (they usually announce it; it is rarely the standard FT8 one).
 2. Click **Call** on the Fox. Costas works it the way WSJT-X's Hound mode does, and every other station as usual:
@@ -137,13 +138,20 @@ shows it in Next in line as *DXpedition (Fox/Hound), working Hounds*. There is n
 | 3 | You | `KH1X W7LIT R-08` | On the **Fox's** frequency; the report is how strong the Fox was when it answered you |
 | 4 | Fox | `W7LIT KH1X RR73`, or `W7LIT RR73; K1ABC <KH1X> -12` | Logged. You send nothing after it |
 
+While you work a Fox, the contact card shows a **Hound mode** tag next to its caption, with a line saying what
+happens now: where you are calling and for how long, then that your report goes back on the Fox's frequency. The
+strip has four boxes instead of five, because a Hound sends no 73. On the phone remote the caption reads
+*Calling · Hound mode*.
+
 - If the Fox doesn't answer within 2 minutes, Costas stops calling and says so. Click **Call** again to keep trying,
   as WSJT-X asks you to re-enable Tx every 2 minutes.
 - Once the Fox has sent your report, Costas keeps sending R-reports until its RR73 arrives, for up to 11 slots
   after its latest report.
 - A Fox is always working someone, so Costas doesn't stop calling it when it answers other Hounds.
-- Until the Fox has sent a multi-answer message, Costas can't tell it is a Fox and calls it the ordinary way.
-  Fox/Hound DXpeditions send them nearly every slot, so this is rarely more than a moment.
+- A Fox that has only been calling CQ looks like any other station, so if you click **Call** then, Costas starts
+  the ordinary way. As soon as the Fox shows its signs while you are still calling, the contact switches to Hound
+  mode: your calls move to 1000 Hz or above and the 2-minute calling limit starts. Fox/Hound DXpeditions send
+  multi-answer messages nearly every slot, so this is rarely more than a moment.
 - Your R-report goes out below 1000 Hz. On some radios very low audio lets harmonics through; keep the transmit
   audio clean (the automatic level helps), and watch the ALC warning.
 - **SuperFox** DXpeditions (WSJT-X 2.7's SuperHound mode) can't be worked yet: their signal needs a decoder that
