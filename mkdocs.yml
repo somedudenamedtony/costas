@@ -3,30 +3,34 @@
 # manual/index.md; the manual starts at manual/introduction.md.
 site_name: Costas
 site_description: Costas is a free FT8, FT4, PSK31, PSK63 and RTTY program for Windows that shows you stations, not messages.
-site_url: https://somedudenamedtony.github.io/costas/
+site_url: https://costasdigi.com/
 repo_url: https://github.com/somedudenamedtony/costas
 repo_name: somedudenamedtony/costas
 edit_uri: edit/main/manual/
 docs_dir: manual
 site_dir: site
-copyright: Costas is free software under the GNU General Public License, version 3 or later.
+copyright: © 2026 Ember Ridge Development. Costas is free software under the GNU General Public License, version 3 or later.
 
 theme:
   name: material
+  custom_dir: manual-theme
+  font:
+    text: IBM Plex Sans
+    code: IBM Plex Mono
   logo: images/costas.svg
   favicon: images/costas.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: blue
-      accent: blue
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: blue
-      accent: blue
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
@@ -50,9 +54,12 @@ markdown_extensions:
   - pymdownx.keys
 
 extra_css:
-  - stylesheets/home.css
-extra_javascript:
-  - javascripts/home.js
+  - stylesheets/theme.css
+
+extra:
+  owner: Ember Ridge Development
+  # Set to the donation page's address to show the Support links on the home page and in the manual footer.
+  support_url: ''
 
 nav:
   - Home: index.md

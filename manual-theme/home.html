@@ -1,0 +1,259 @@
+{#- The Costas home page. A standalone page, not built on Material's layout, so the front door has its own look;
+    the manual pages keep Material with the same colours (stylesheets/theme.css). -#}
+{%- set releases = config.repo_url ~ '/releases/latest' -%}
+{%- set windows = releases ~ '/download/CostasApp-win-Setup.exe' -%}
+{%- set support = config.extra.support_url -%}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.meta.title }}</title>
+  <meta name="description" content="{{ page.meta.description }}">
+  {%- if page.canonical_url %}
+  <link rel="canonical" href="{{ page.canonical_url }}">
+  {%- endif %}
+  <meta property="og:title" content="Costas">
+  <meta property="og:description" content="{{ page.meta.description }}">
+  <meta property="og:image" content="{{ config.site_url }}images/contact-in-progress.png">
+  <link rel="icon" href="{{ 'images/costas.svg' | url }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+  <link rel="stylesheet" href="{{ 'stylesheets/site.css' | url }}">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar">
+  <div class="wrap bar__inner">
+    <a class="brand" href="{{ '.' | url }}" aria-label="Costas home">
+      <img src="{{ 'images/costas.svg' | url }}" alt="" width="28" height="28">
+      <span>Costas</span>
+    </a>
+    <nav class="bar__nav" aria-label="Site">
+      <a href="#tour">Tour</a>
+      <a href="{{ 'introduction/' | url }}">Manual</a>
+      {%- if support %}
+      <a href="{{ support }}">Support</a>
+      {%- endif %}
+      <a href="{{ config.repo_url }}">GitHub</a>
+      <a class="bar__cta" href="#download">Download</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="hero">
+  <div class="wrap hero__grid">
+    <div class="hero__copy">
+      <p class="tag">FT8 &nbsp;FT4 &nbsp;PSK31 &nbsp;PSK63 &nbsp;RTTY</p>
+      <h1>Stations, not messages.</h1>
+      <p class="hero__lede">Costas is a free digital-modes program for Windows. It decodes FT8 and FT4 with the same
+        decoder as WSJT-X, then shows you one line per station: who you still need, who is free to call, and who can
+        hear you.</p>
+      <div class="hero__actions">
+        <a class="btn btn--ember" href="{{ windows }}">Download for Windows</a>
+        <a class="btn btn--quiet" href="{{ 'introduction/' | url }}">Read the manual</a>
+      </div>
+      <p class="hero__fine"><span data-version>Latest release</span> · Windows 10 or 11, 64-bit · Free, open source (GPLv3)</p>
+    </div>
+    <figure class="hero__shot">
+      <img src="{{ 'images/contact-in-progress.png' | url }}" width="1440" height="900"
+        alt="Costas during a contact: a strip shows each message sent and received, with the list of stations to call next underneath">
+    </figure>
+  </div>
+  <div class="hero__waterfall" aria-hidden="true"></div>
+</section>
+
+<section class="tour" id="tour">
+  <div class="wrap">
+
+    <article class="row">
+      <div class="row__text">
+        <p class="row__num">01</p>
+        <h2>It tells you who to call</h2>
+        <p>Every station you hear gets one line, not a scroll of decodes. <em>Next in line</em> puts the ones you need
+          on top: a new country first, then a new band, grid or call, worked out from your log and your QRZ logbook.
+          Stations you have already worked drop into <em>Repeats</em>, with when you last worked them.</p>
+        <a class="more" href="{{ 'operate/' | url }}">The Operate screen</a>
+      </div>
+      <figure class="row__shot">
+        <img src="{{ 'images/operate-idle.png' | url }}" width="1440" height="900" loading="lazy"
+          alt="The Operate screen: a ranked list of stations heard, with why each one is needed">
+      </figure>
+    </article>
+
+    <article class="row row--flip">
+      <div class="row__text">
+        <p class="row__num">02</p>
+        <h2>One click runs the contact</h2>
+        <p>Click <b>Call</b> or press Enter. Costas sends the standard exchange, follows the other station's replies
+          and logs the contact when it completes, in the same slot timing you are used to. A strip along the top shows
+          every message, so you always know where the contact stands. Click Call on a DXpedition Fox and it is worked
+          the Hound way automatically.</p>
+        <a class="more" href="{{ 'contacts/' | url }}">Making contacts</a>
+      </div>
+      <figure class="row__shot">
+        <img src="{{ 'images/contact-on-air.png' | url }}" width="1440" height="900" loading="lazy"
+          alt="A contact on the air, with the transmitted message highlighted on the progress strip">
+      </figure>
+    </article>
+
+    <article class="row">
+      <div class="row__text">
+        <p class="row__num">03</p>
+        <h2>It knows who can hear you</h2>
+        <p>Spots from PSK Reporter and the Reverse Beacon Network show, station by station, whether they (or someone
+          near them) are hearing your signal, and rate your chance of completing as Good, Fair or Long shot. A map
+          centred on your grid shows who you hear and who hears you.</p>
+        <a class="more" href="{{ 'maps/' | url }}">Maps and who hears you</a>
+      </div>
+      <figure class="row__shot row__shot--narrow">
+        <img src="{{ 'images/heard-here-world.png' | url }}" width="300" height="720" loading="lazy"
+          alt="A globe centred on the operator, with dots for stations heard and stations hearing you">
+      </figure>
+    </article>
+
+    <article class="row row--flip">
+      <div class="row__text">
+        <p class="row__num">04</p>
+        <h2>PSK31, PSK63 and RTTY on the same screen</h2>
+        <p>Pick a keyboard mode from the same menu as FT8. Click a trace on the waterfall to read it, type in the
+          line at the bottom, and send your name, QTH and 73 from F-key macros. Callsigns in the text land in the
+          station list just like FT8 decodes. Nothing goes out until you press a key.</p>
+        <a class="more" href="{{ 'keyboard-modes/' | url }}">PSK31, PSK63 and RTTY</a>
+      </div>
+      <figure class="row__shot">
+        <img src="{{ 'images/psk31-operate.png' | url }}" width="1440" height="900" loading="lazy"
+          alt="PSK31 on the Operate screen, with received text and the typing line">
+      </figure>
+    </article>
+
+    <article class="row">
+      <div class="row__text">
+        <p class="row__num">05</p>
+        <h2>Operate from the couch</h2>
+        <p>Costas serves a remote page on your home network. Open it on a phone or tablet to call, answer, change band
+          and halt transmit while the radio stays in the shack. Need the desk back? Mini mode shrinks Costas to a strip
+          that stays on top of your other windows.</p>
+        <a class="more" href="{{ 'phone/' | url }}">Operating from a phone</a>
+      </div>
+      <figure class="row__shot row__shot--phone">
+        <img src="{{ 'images/phone-contact.png' | url }}" width="780" height="1688" loading="lazy"
+          alt="The phone remote during a contact, with a large Halt TX button">
+      </figure>
+    </article>
+
+  </div>
+</section>
+
+<section class="also">
+  <div class="wrap">
+    <h2>Also in the box</h2>
+    <dl class="also__list">
+      <div><dt>Logging</dt><dd>A local log with ADIF import and export, sent to QRZ, LoTW (through TQSL) and eQSL as you
+        go, with confirmations synced back.</dd></div>
+      <div><dt>Awards</dt><dd>DXCC, WAS, WAZ and VUCC progress from your own log, and the hours each needed country is
+        usually heard.</dd></div>
+      <div><dt>Hunt list</dt><dd>Countries, calls, states or grids you are after, with an alert when one shows up on any
+        band. Alerts never transmit.</dd></div>
+      <div><dt>Transmit level</dt><dd>Audio level sets itself per band from your radio's ALC, with live power, ALC and SWR
+        meters while you transmit.</dd></div>
+      <div><dt>Radio control</dt><dd>Hamlib, FLRig or network rigctld. Costas follows your radio when you change band on
+        the front panel.</dd></div>
+      <div><dt>Other programs</dt><dd>Speaks the WSJT-X UDP protocol, so GridTracker, JTAlert and your logger keep
+        working.</dd></div>
+    </dl>
+    <p class="also__promise">Costas never transmits on its own, never changes a message without telling you, and never
+      shows made-up data. With no radio set up, it receives nothing and says so.</p>
+  </div>
+</section>
+
+<section class="download" id="download">
+  <div class="wrap download__grid">
+    <div>
+      <h2>Download</h2>
+      <p>Everything is in the installer, including the <code>jt9</code> decoder and Hamlib. You do not need WSJT-X.
+        Costas installs for your user only and updates itself.</p>
+      <p class="download__note">Windows may say it protected your PC: choose <b>More info</b>, then <b>Run anyway</b>.
+        <a href="{{ 'install/' | url }}">Why, and how to check the download</a>.</p>
+    </div>
+    <div class="download__boxes">
+      <a class="dl" href="{{ windows }}">
+        <span class="dl__os">Windows</span>
+        <span class="dl__detail">10 or 11, 64-bit · <span data-version-short>latest</span></span>
+        <span class="dl__go">Download installer</span>
+      </a>
+      <a class="dl dl--plain" data-linux href="{{ releases }}">
+        <span class="dl__os">Linux preview</span>
+        <span class="dl__detail">x64 · receive only for now</span>
+        <span class="dl__go">Download .tar.gz</span>
+      </a>
+      <p class="download__after">Then follow the <a href="{{ 'setup/' | url }}">six-step setup</a>: station, radio,
+        audio, a transmit test, clock and QRZ. Use low power or a dummy load for your first transmissions.</p>
+    </div>
+  </div>
+</section>
+
+{%- if support %}
+<section class="support">
+  <div class="wrap support__inner">
+    <p>Costas is free and always will be. If it has put a few new countries in your log, you can help keep it going.</p>
+    <a class="btn btn--ember" href="{{ support }}">Support Costas</a>
+  </div>
+</section>
+{%- endif %}
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__grid">
+    <div>
+      <p class="foot__brand">Costas</p>
+      <p>© 2026 {{ config.extra.owner }}.<br>Free software under the GNU GPL, version 3 or later.</p>
+    </div>
+    <nav aria-label="Manual">
+      <p class="foot__head">Manual</p>
+      <a href="{{ 'install/' | url }}">Install</a>
+      <a href="{{ 'setup/' | url }}">First-run setup</a>
+      <a href="{{ 'operate/' | url }}">The Operate screen</a>
+      <a href="{{ 'troubleshooting/' | url }}">Troubleshooting</a>
+    </nav>
+    <nav aria-label="Project">
+      <p class="foot__head">Project</p>
+      <a href="{{ config.repo_url }}/releases">Release notes</a>
+      <a href="{{ config.repo_url }}/issues">Report a problem</a>
+      <a href="{{ 'code-signing/' | url }}">Code signing policy</a>
+      <a href="{{ 'settings/#privacy' | url }}">Privacy</a>
+      {%- if support %}
+      <a href="{{ support }}">Support Costas</a>
+      {%- endif %}
+    </nav>
+  </div>
+  <p class="wrap foot__fine">Screenshots are from Costas replaying recorded band audio; the callsigns are from those
+    recordings.</p>
+</footer>
+
+<script>
+  // Fill in the latest version and the Linux download from GitHub. If this fails the links keep pointing at the
+  // Releases page, which always works.
+  (function () {
+    if (!window.fetch) return;
+    fetch('https://api.github.com/repos/somedudenamedtony/costas/releases/latest')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (release) {
+        if (!release) return;
+        var v = (release.tag_name || '').replace(/^v/, '');
+        document.querySelectorAll('[data-version]').forEach(function (el) { el.textContent = 'Version ' + v; });
+        document.querySelectorAll('[data-version-short]').forEach(function (el) { el.textContent = 'v' + v; });
+        var linux = (release.assets || []).find(function (a) { return /-linux-x64\.tar\.gz$/.test(a.name); });
+        if (linux) document.querySelector('[data-linux]').href = linux.browser_download_url;
+      })
+      .catch(function () {});
+  })();
+</script>
+</body>
+</html>

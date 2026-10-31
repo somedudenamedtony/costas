@@ -33,10 +33,12 @@ build produced.
 
 ## Who can sign
 
+Costas is published by Ember Ridge Development.
+
 | Role | Who |
 | --- | --- |
 | Author, committer and reviewer | Tony, W7LIT ([somedudenamedtony](https://github.com/somedudenamedtony)) |
-| Release approver | Tony, W7LIT |
+| Release approver | Tony, W7LIT, for Ember Ridge Development |
 
 Changes from anyone else come in as pull requests and are reviewed before they are merged. Only the maintainer can
 merge to `main` and start a release.
