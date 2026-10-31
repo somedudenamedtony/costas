@@ -338,6 +338,14 @@ public partial class MainWindow : Window
         // nothing in particular do they move through Next in line and call. Enter on Halt Tx must never call a station.
         var listKeys = vm.Tab == 0 && !typing && !inPopup
                        && e.Source is not (Button or ComboBox or ComboBoxItem or MenuItem or Slider or NumericUpDown);
+        // Ctrl+1 to Ctrl+5 and Ctrl+Tab switch views, even from a text box or the typing line (they type nothing). An open
+        // drop-down or menu keeps its keys.
+        if (!inPopup && TabKeys.Target(e.Key, e.KeyModifiers, vm.Tab) is { } tab)
+        {
+            vm.Tab = tab;
+            e.Handled = true;
+            return;
+        }
         switch (e.Key)
         {
             // Esc aimed at an open dropdown or menu closes it, and halts only when something is on the air.
@@ -358,10 +366,6 @@ public partial class MainWindow : Window
                 break;
             case Key.L when ctrl:
                 vm.LogNow();
-                e.Handled = true;
-                break;
-            case Key.D1 or Key.D2 or Key.D3 or Key.D4 or Key.D5 when ctrl:
-                vm.Tab = e.Key - Key.D1;
                 e.Handled = true;
                 break;
             case Key.M when ctrl:

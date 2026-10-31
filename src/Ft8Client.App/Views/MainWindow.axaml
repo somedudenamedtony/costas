@@ -104,15 +104,15 @@
       </StackPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}"
-                Content="Operate" Command="{Binding ShowTabCommand}" CommandParameter="0" ToolTip.Tip="Who to call next, ranked by what you need, and the contact in progress" />
+                Content="Operate" Command="{Binding ShowTabCommand}" CommandParameter="0" ToolTip.Tip="Who to call next, ranked by what you need, and the contact in progress (Ctrl+1)" />
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}"
-                Content="Raw decodes" Command="{Binding ShowTabCommand}" CommandParameter="1" ToolTip.Tip="Every decoded message, as the decoder printed it" />
+                Content="Raw decodes" Command="{Binding ShowTabCommand}" CommandParameter="1" ToolTip.Tip="Every decoded message, as the decoder printed it (Ctrl+2)" />
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}"
-                Content="Reach" Command="{Binding ShowTabCommand}" CommandParameter="2" ToolTip.Tip="Who is hearing your signal, from PSK Reporter" />
+                Content="Reach" Command="{Binding ShowTabCommand}" CommandParameter="2" ToolTip.Tip="Who is hearing your signal, from PSK Reporter (Ctrl+3)" />
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}"
-                Content="Log" Command="{Binding ShowTabCommand}" CommandParameter="3" ToolTip.Tip="Your contacts: search, edit, import and export" />
+                Content="Log" Command="{Binding ShowTabCommand}" CommandParameter="3" ToolTip.Tip="Your contacts: search, edit, import and export (Ctrl+4)" />
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}"
-                Content="Awards" Command="{Binding ShowTabCommand}" CommandParameter="4" ToolTip.Tip="DXCC, WAS, WAZ and VUCC progress, and when you hear the countries you still need" />
+                Content="Awards" Command="{Binding ShowTabCommand}" CommandParameter="4" ToolTip.Tip="DXCC, WAS, WAZ and VUCC progress, and when you hear the countries you still need (Ctrl+5)" />
         <TextBlock Text="{Binding ClockText}" FontSize="16" FontWeight="SemiBold" Classes="num" Margin="12,0,4,0" VerticalAlignment="Center"
                    Foreground="{Binding ClockKind, Converter={x:Static v:Converters.KindBrush}}" ToolTip.Tip="{Binding ClockTip}"
                    AutomationProperties.Name="UTC clock" />

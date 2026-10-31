@@ -11,9 +11,13 @@ the list from **☰ › Keyboard shortcuts** instead.
 | ++ctrl+q++ | Call CQ / Stop CQ |
 | ++ctrl+r++ | Resend |
 | ++ctrl+l++ | Log now |
-| ++ctrl+1++ to ++ctrl+5++ | Operate, Raw decodes, Reach, Log, [Awards](awards.md) |
+| ++ctrl+1++ to ++ctrl+5++ | Operate, Raw decodes, Reach, Log, [Awards](awards.md). The number pad digits work too |
+| ++ctrl+tab++, ++ctrl+shift+tab++ | Next view, previous view |
 | ++ctrl+m++ | [Mini mode](operate.md#mini-mode): a small strip that stays on top |
 | ++f1++ | This list |
+
+The view keys work wherever you are typing, including the PSK and RTTY typing line, because they type nothing.
+Hover over a view's name at the top right to see its key.
 
 ## PSK31, PSK63 and RTTY
 
