@@ -523,12 +523,12 @@
         </ScrollViewer>
       </TabItem>
 
-      <!-- 4 PSK Reporter -->
-      <TabItem Header="PSK Reporter">
+      <!-- 4 PSK Reporter and the Reverse Beacon Network -->
+      <TabItem Header="PSK Reporter and RBN">
         <ScrollViewer>
           <StackPanel>
-            <TextBlock Classes="page" Text="PSK Reporter" />
-            <TextBlock Classes="intro" Text="PSK Reporter collects reports of who hears whom. It powers the Reach view and the Hears you column." />
+            <TextBlock Classes="page" Text="PSK Reporter and RBN" />
+            <TextBlock Classes="intro" Text="PSK Reporter and the Reverse Beacon Network collect reports of who hears whom. They power the Reach view and the Hears you column." TextWrapping="Wrap" />
             <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Who hears me" />
               <StackPanel Grid.Column="1">
@@ -544,6 +544,13 @@
               <StackPanel Grid.Column="1">
                 <CheckBox Content="Send the stations I decode to PSK Reporter" IsChecked="{Binding UploadSpots}" />
                 <TextBlock Classes="help" Text="Helps other operators see where their signals reach. Sent every few minutes; never in simulation." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Reverse Beacon Network" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Also show skimmers that spot my signal" IsChecked="{Binding RbnEnabled}" />
+                <TextBlock Classes="help" Text="RBN skimmers spot FT8, FT4 and RTTY around the clock, and cover RTTY far better than PSK Reporter. Costas logs in to the RBN feeds with your callsign and keeps only spots of you. A skimmer heard by both networks counts once." TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
           </StackPanel>

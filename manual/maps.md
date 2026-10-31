@@ -84,7 +84,10 @@ The populated Reach view looks like this design mock-up (sample data):
 ## Where the data comes from
 
 Reports of your signal come from [PSK Reporter](https://pskreporter.info/), live through its MQTT feed, with a
-periodic query as a fallback. The caption under *Your signal* says which: *PSK Reporter · live*,
-*· updated 6 min ago* (fallback), or *· unavailable*. Turn the feed on or off in
-[Settings › PSK Reporter](settings.md#psk-reporter). Without it, the maps and the station list still work, but
-Chance comes from the signal alone.
+periodic query as a fallback, and from the [Reverse Beacon Network](https://reversebeacon.net/) (RBN), whose
+skimmers spot FT8, FT4 and RTTY around the clock. The caption under *Your signal* says which: *PSK Reporter · live*,
+*· updated 6 min ago* (fallback), or *· unavailable*, followed by *· RBN live* while RBN spots are arriving. A
+station that reports you to both networks counts once. RBN does not say where its skimmers are, so a skimmer that
+has never reported to PSK Reporter is placed in the middle of its country on the map. Turn either source on or off in
+[Settings › PSK Reporter and RBN](settings.md#psk-reporter). Without them, the maps and the station list still work,
+but Chance comes from the signal alone.

@@ -26,7 +26,8 @@ passband at once (up to 20).
 - **Band activity** (right column) and the band summary count the stations read every three minutes, as there are no
   slots to count.
 - **Raw decodes** shows the text, a line per over or per line typed, with the audio frequency and signal strength. The
-  DT column is empty: these modes have no time offset.
+  DT column is empty: these modes have no time offset. Only the current mode's lines are shown, so FT8 lines
+  never mix with PSK or RTTY text.
 - **dB** is measured in a 2,500 Hz bandwidth, the same scale as FT8, so −10 dB means the same in both.
 
 There are no slots, so where FT8 shows the slot countdown the contact card shows how many characters you have typed
@@ -121,6 +122,8 @@ last added key goes altogether). If every key is empty, the default macros come 
   few lines of the conversation. You cannot type from the phone yet.
 - **PSK Reporter.** With spot uploading on, stations Costas reads are reported as PSK31, PSK63 or RTTY, at the
   frequency of their signal.
+- **Who hears you in RTTY.** PSK Reporter has few RTTY receivers, so RTTY reports come mostly from the
+  [Reverse Beacon Network](maps.md#where-the-data-comes-from) skimmers, which spot you while you call CQ.
 - **GridTracker and loggers** see the mode in the status Costas sends (with the report as RST, for example 599), and
   logged contacts as usual. Costas sends them no PSK or RTTY text, so calling a station from GridTracker works only in
   FT8 and FT4.

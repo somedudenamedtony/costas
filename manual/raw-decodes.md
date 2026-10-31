@@ -17,6 +17,8 @@ bar or ++ctrl+2++.
 | **Why** | What working the sender would add, as in the station list: **New country** (orange), **New band** or **New grid** (blue), **New call**, or **Worked before** |
 
 - The newest slot is at the top, with a blank line between slots.
+- The list shows only the mode you are in. Switch from FT8 to FT4, PSK31, PSK63 or RTTY and it shows that mode's
+  lines; switch back and the earlier lines are still there. The phone remote's Decodes tab does the same.
 - Messages to you are red; CQs are blue.
 - Lines from the station you are in a contact with, and your own transmissions to them, have a tinted background
   and a blue bar on the left, so you can follow the contact through a busy band.
