@@ -1,31 +1,36 @@
-# User manual for Costas, published to GitHub Pages by .github/workflows/manual.yml.
-# The pages live in manual/ (docs/ holds the build specification, not user documentation).
-site_name: Costas user manual
-site_description: How to install, set up and operate Costas, a station-centric FT8 and FT4 client.
-site_url: https://somedudenamedtony.github.io/costas/
+# The Costas website (landing page and user manual), published to GitHub Pages by .github/workflows/manual.yml.
+# The pages live in manual/ (docs/ holds the build specification, not user documentation). The landing page is
+# manual/index.md; the manual starts at manual/introduction.md.
+site_name: Costas
+site_description: Costas is a free FT8, FT4, PSK31, PSK63 and RTTY program for Windows that shows you stations, not messages.
+site_url: https://costasdigi.com/
 repo_url: https://github.com/somedudenamedtony/costas
 repo_name: somedudenamedtony/costas
 edit_uri: edit/main/manual/
 docs_dir: manual
 site_dir: site
-copyright: Costas is free software under the GNU General Public License, version 3 or later.
+copyright: © 2026 Ember Ridge Development. Costas is free software under the GNU General Public License, version 3 or later.
 
 theme:
   name: material
+  custom_dir: manual-theme
+  font:
+    text: IBM Plex Sans
+    code: IBM Plex Mono
   logo: images/costas.svg
   favicon: images/costas.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: blue
-      accent: blue
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: blue
-      accent: blue
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
@@ -48,9 +53,18 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.keys
 
+extra_css:
+  - stylesheets/theme.css
+
+extra:
+  owner: Ember Ridge Development
+  # Set to the donation page's address to show the Support links on the home page and in the manual footer.
+  support_url: ''
+
 nav:
   - Home: index.md
   - Getting started:
+      - Introduction: introduction.md
       - Install: install.md
       - First-run setup: setup.md
   - Operating:
@@ -69,3 +83,4 @@ nav:
       - Keyboard shortcuts: shortcuts.md
       - Troubleshooting: troubleshooting.md
       - Building from source: building.md
+      - Code signing policy: code-signing.md

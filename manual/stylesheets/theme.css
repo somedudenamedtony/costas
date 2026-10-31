@@ -1,0 +1,43 @@
+/* Costas site colours for the manual pages (Material's "custom" palette). The home page has its own sheet, site.css. */
+:root {
+  --cx-ink: #1d1a16;
+  --cx-ember: #c4501c;
+  --cx-ember-deep: #9e3d12;
+}
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: var(--cx-ink);
+  --md-primary-fg-color--light: #3a342c;
+  --md-primary-fg-color--dark: #000;
+  --md-primary-bg-color: #f4eee3;
+  --md-accent-fg-color: var(--cx-ember);
+  --md-default-bg-color: #fbf8f2;
+  --md-code-bg-color: #f1ebe0;
+  --md-typeset-a-color: var(--cx-ember-deep);
+  --md-footer-bg-color: var(--cx-ink);
+  --md-footer-bg-color--dark: #14120f;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-hue: 32;
+  --md-primary-fg-color: #14120f;
+  --md-primary-fg-color--light: #2a251f;
+  --md-primary-fg-color--dark: #000;
+  --md-primary-bg-color: #efe7da;
+  --md-accent-fg-color: #ec7c45;
+  --md-default-bg-color: #191612;
+  --md-code-bg-color: #241f1a;
+  --md-typeset-a-color: #ec8a58;
+  --md-footer-bg-color: #0f0d0b;
+  --md-footer-bg-color--dark: #0a0908;
+}
+
+/* A thin ember rule under the header, the one accent the manual carries from the home page. */
+.md-header { box-shadow: inset 0 -3px 0 var(--cx-ember); }
+.md-header__topic:first-child { font-weight: 600; letter-spacing: 0.01em; }
+
+.md-typeset h1 { font-weight: 600; color: var(--md-default-fg-color); letter-spacing: -0.01em; }
+.md-typeset h2 { font-weight: 600; }
+.md-typeset .md-button--primary { background: var(--cx-ember); border-color: var(--cx-ember); color: #fff; }
+.md-typeset .md-button--primary:hover { background: var(--cx-ember-deep); border-color: var(--cx-ember-deep); }
+.md-typeset img { border-radius: 3px; }

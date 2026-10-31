@@ -8,7 +8,8 @@ Costas uses the same decoder as WSJT-X, so it decodes as well and sounds identic
 screen: instead of a scrolling list of decoded lines, you get one row per station, ranked by what you need for your
 log, whether the station is free to call, and whether it can hear you.
 
-**[Read the user manual](https://somedudenamedtony.github.io/costas/)** ·
+**[Website](https://somedudenamedtony.github.io/costas/)** ·
+**[Read the user manual](https://somedudenamedtony.github.io/costas/introduction/)** ·
 **[Download for Windows](https://github.com/somedudenamedtony/costas/releases/latest)** ·
 **[Download for Linux (preview)](https://github.com/somedudenamedtony/costas/releases/latest)**
 
