@@ -115,7 +115,7 @@ Costas keeps an ear on the radio's audio while it runs. When something is clearl
 | --- | --- |
 | *No audio is arriving from the radio's sound device* | The USB cable came loose, the radio or PC went to sleep, or another program took the device. Check the cable and the radio; Costas reopens the device when it comes back |
 | *The radio's sound device sends only silence* | The radio's USB audio output is turned down to zero or muted, or Windows muted the recording device |
-| *The receive audio is clipping* | The audio is too loud and being cut off, which costs decodes. Turn down the radio's USB audio output level or the Windows recording level until the Setup input meter sits in the shaded band |
+| *The receive audio is clipping* | The audio is too loud and being cut off, which costs decodes. Turn down the radio's USB audio output level or the computer's recording level until the Setup input meter sits in the shaded band |
 
 The message goes away by itself five seconds after the audio is good again. A quiet band is not reported.
 
