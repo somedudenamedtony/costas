@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Ft8Client.App.ViewModels"
+        x:Class="Ft8Client.App.Views.FeedbackWindow"
+        Icon="/Assets/costas.ico"
+        x:DataType="vm:FeedbackViewModel"
+        Title="Report a problem" Width="600" Height="600" WindowStartupLocation="CenterOwner">
+  <Grid RowDefinitions="Auto,*,Auto,Auto,Auto" Margin="20,16" RowSpacing="10">
+    <TextBlock TextWrapping="Wrap"
+               Text="Tell us what went wrong, or what would make Costas better. Say what you were doing and what you expected to happen." />
+    <TextBox Grid.Row="1" Text="{Binding Message}" AcceptsReturn="True" TextWrapping="Wrap" MaxLength="5000"
+             PlaceholderText="What happened?" AutomationProperties.Name="What happened" VerticalContentAlignment="Top" />
+    <StackPanel Grid.Row="2" Spacing="6">
+      <TextBox Text="{Binding ReplyTo}" PlaceholderText="Your email, if you would like a reply (optional)" AutomationProperties.Name="Your email for a reply" />
+      <TextBlock Text="{Binding ReplyToError}" Foreground="{DynamicResource CautionBrush}" IsVisible="{Binding ReplyToError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+      <CheckBox IsChecked="{Binding IncludeSystem}">
+        <TextBlock TextWrapping="Wrap">
+          <Run Text="Include the app version and operating system: " /><Run Text="{x:Static vm:FeedbackViewModel.SystemLine}" Classes="secondary" />
+        </TextBlock>
+      </CheckBox>
+      <CheckBox IsChecked="{Binding IncludeLog}">
+        <TextBlock TextWrapping="Wrap"
+                   Text="Include the recent log (the last 200 lines). It helps with bugs, but can contain your callsign, frequencies and the stations you worked. Passwords and keys are removed." />
+      </CheckBox>
+      <TextBlock Classes="secondary" TextWrapping="Wrap"
+                 Text="Nothing else is sent: not your log of contacts, settings, or callsign unless you type it." />
+    </StackPanel>
+    <TextBlock Grid.Row="3" Text="{Binding Status}" TextWrapping="Wrap" IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+    <TextBlock Grid.Row="3" TextWrapping="Wrap" Classes="secondary" IsVisible="{Binding NoRoute}"
+               Text="This build has no feedback address. Use Copy and paste the report into an issue on GitHub (github.com/somedudenamedtony/costas/issues)." />
+    <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+      <Button Content="Copy" Click="OnCopy" ToolTip.Tip="Copy the whole report, including anything ticked above" />
+      <Button Content="Open in email" Command="{Binding EmailCommand}" IsVisible="{Binding HasEmail}"
+              ToolTip.Tip="Open your own mail program with the report filled in, to send yourself" />
+      <Button Content="Send" Classes="accent" Command="{Binding SendCommand}" IsVisible="{Binding CanSendDirect}" IsDefault="False" />
+      <Button Content="Close" Click="OnClose" />
+    </StackPanel>
+  </Grid>
+</Window>

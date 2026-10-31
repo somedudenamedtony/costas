@@ -29,4 +29,20 @@ public static class Browser
             Serilog.Log.Warning(ex, "Could not open {Url}", url);
         }
     }
+
+    /// <summary>Opens a mailto link in the operator's mail program. Returns false when nothing could open it.</summary>
+    public static bool OpenMail(string mailto)
+    {
+        if (!mailto.StartsWith("mailto:", StringComparison.Ordinal)) return false;
+        try
+        {
+            Process.Start(new ProcessStartInfo(mailto) { UseShellExecute = true });
+            return true;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            Serilog.Log.Warning(ex, "Could not open the mail program");
+            return false;
+        }
+    }
 }

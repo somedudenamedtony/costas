@@ -303,6 +303,19 @@ Privacy. Owner decision 2026-10-15.
   `band_changed`, `view_opened`, `window_opened`, `cq_started`, `station_called`, `caller_answered`, `call_when_free`, `tune`,
   `hunt_go`, `hunt_added`, `contact_logged`. Never a callsign, grid, name, frequency, port, address or log content.
 
+## 10b. Problem reports (Formspree)
+
+**☰ › Report a problem…** posts the operator's report to a form relay that emails it to the project, so no mail
+password ships in the app. Today that is a Formspree form: `POST https://formspree.io/f/<id>` with
+`Accept: application/json` and a JSON body of `message`, `_subject` and, only when the operator gives one, `email`
+(Formspree makes it the reply-to). Any 2xx is success; 429 means the rate limit (20 posts a minute per form) or the
+monthly quota (50 on the free plan) was hit. The endpoint (`FEEDBACK_URL`) and the email button's address (`FEEDBACK_EMAIL`) are set in `ci.yml`, overridable by
+repository variables of the same name; local builds have neither and offer Copy only.
+
+Privacy: nothing is sent without the operator pressing Send. The User-Agent leaves the callsign out (as for usage
+statistics). Version and OS are ticked by default; the log tail (last 200 lines, at most 20,000 characters, secrets
+removed) is off until ticked because it can hold callsigns and frequencies.
+
 ## 11. eQSL
 
 Optional uploads and incoming-card sync, configured per station profile. The account username and password
