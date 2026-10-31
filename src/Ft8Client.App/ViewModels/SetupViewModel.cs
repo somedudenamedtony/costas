@@ -816,6 +816,13 @@ public sealed partial class SetupViewModel : ObservableObject
         SetOrDelete(SecretNames.QrzPassword, QrzPassword);
         _host.RebuildLogIndex();
         await _host.ReopenDevicesAsync();
+        // The rest of setup is saved; stay on this page with the reason so the key can be cleared or skipped.
+        if (_secretProblem is { } why)
+        {
+            _secretProblem = null;
+            Message = SecretStoreProblem.Describe(why);
+            return;
+        }
         if (!string.IsNullOrWhiteSpace(LogbookKey))
         {
             Message = "First sync with QRZ…";
@@ -911,10 +918,19 @@ public sealed partial class SetupViewModel : ObservableObject
         };
     }
 
+    private string? _secretProblem;
+
     private void SetOrDelete(string name, string value)
     {
-        if (string.IsNullOrEmpty(value)) _host.Secrets.Delete(name);
-        else _host.Secrets.Set(name, value);
+        try
+        {
+            if (string.IsNullOrEmpty(value)) _host.Secrets.Delete(name);
+            else _host.Secrets.Set(name, value);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            _secretProblem ??= ex.Message;
+        }
     }
 
     private async Task MeasureClockAsync()

@@ -68,7 +68,8 @@ keyed. Transmit will be turned on once the Linux audio has been checked with a r
 
     `wsjtx` provides the `jt9` decoder, `libhamlib-utils` provides `rigctld` for radio control, `libportaudio2` is
     the audio library, and `libsecret-tools` lets Costas keep your QRZ key in the desktop keyring (without it, the
-    key is asked for again each time Costas starts).
+    key is asked for again each time Costas starts). The keyring itself comes with GNOME and KDE (GNOME Keyring,
+    KWallet); on a desktop without one, Setup and Settings say the key could not be kept and everything else is saved.
 2. For a USB CAT cable, add yourself to the `dialout` group (`sudo usermod -aG dialout $USER`), then log out and in.
 3. Download the tarball from the [Releases page](https://github.com/somedudenamedtony/costas/releases/latest),
    unpack it and run `./Costas`. `README.txt` inside says how to add it to your desktop's menu.
