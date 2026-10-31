@@ -11,8 +11,12 @@ Everything Costas needs is in the installer: the WSJT-X `jt9` decoder and Hamlib
 bundled. You do not need WSJT-X installed.
 
 !!! warning "Windows SmartScreen"
-    The installer is not code-signed yet, so Windows may show *Windows protected your PC*. Click **More info**, then
-    **Run anyway**. Each release also has a `.sha256` file if you want to check the download.
+    Costas is not code-signed yet, so Windows may show *Windows protected your PC* with *Publisher: Unknown
+    publisher* and only a **Don't run** button. Click **More info** (under the message), then **Run anyway**. Edge or
+    Chrome may also say the download "isn't commonly downloaded": choose **Keep** (in Edge, **⋯ › Keep**, then
+    **Keep anyway**). Each release also has a `.sha256` file if you want to check the download. Once releases are
+    signed, the warning names the publisher, and it stops appearing as the signature builds a download history with
+    Microsoft.
 
 Requirements: 64-bit Windows 10 (version 1809) or later, or Windows 11.
 

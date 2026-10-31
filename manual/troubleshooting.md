@@ -144,7 +144,8 @@ running. Carry on, and if it happens again, save a diagnostics bundle (**☰ ›
 
 ## Windows says "Windows protected your PC"
 
-The installer is not code-signed yet. Click **More info**, then **Run anyway**. See [Install](install.md).
+SmartScreen shows this for programs it does not know, and Costas is not code-signed yet (*Unknown publisher*).
+Click **More info**, then **Run anyway**. See [Install](install.md#download).
 
 ## Still stuck
 

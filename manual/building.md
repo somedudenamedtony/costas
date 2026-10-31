@@ -51,6 +51,24 @@ dotnet run --project tools/Ft8Client.DecodeCli -- --live samples/ft8/210703_1334
 it on every push. Releases are cut on demand: running the CI workflow on `main` from the Actions tab (CI > Run
 workflow) publishes that build as a GitHub Release if it passes, and installed copies offer it as an update.
 
+Release runs code-sign every unsigned `.exe` and `.dll` in the app, both installers and the uninstaller with
+Microsoft's [Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/) (formerly Trusted Signing),
+through `scripts/sign.ps1`. Signing turns on when the repository has these settings (**Settings › Secrets and
+variables › Actions**):
+
+| Kind | Name | Value |
+| --- | --- | --- |
+| Variable | `ARTIFACT_SIGNING_ENDPOINT` | The account's endpoint, for example `https://wus2.codesigning.azure.net/` |
+| Variable | `ARTIFACT_SIGNING_ACCOUNT` | The Artifact Signing account name |
+| Variable | `ARTIFACT_SIGNING_PROFILE` | The certificate profile name |
+| Secret | `AZURE_TENANT_ID` | The Microsoft Entra tenant ID |
+| Secret | `AZURE_CLIENT_ID` | The app registration's client ID |
+| Secret | `AZURE_CLIENT_SECRET` | The app registration's client secret |
+
+The app registration needs the *Artifact Signing Certificate Profile Signer* role on the certificate profile.
+Without `ARTIFACT_SIGNING_ACCOUNT` a release goes out unsigned, with a warning on the run; test and pull-request
+builds are never signed. A signed release run fails rather than publish an unsigned installer.
+
 ## This manual
 
 The manual is in `manual/`, built with [MkDocs](https://www.mkdocs.org/) and the Material theme, and published to

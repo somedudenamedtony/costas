@@ -139,7 +139,7 @@ Other notes from M2:
 | Sequencer edge cases cause bad on-air behaviour | Repeated or mistimed transmissions | Pure state machine with exhaustive tests; simulated partner; owner sign-off on any behaviour change |
 | Radio-specific CAT quirks | Setup fails for some radios | Hamlib, port scan, diagnostics bundle, audio-only fallback |
 | USB audio device re-enumeration on Windows | Silent receive | Devices by ID, auto-reopen, visible level and status |
-| Unsigned installer | SmartScreen warnings | Code-signing certificate in M8 |
+| Unsigned installer | SmartScreen warnings | Artifact Signing on release runs (`scripts/sign.ps1`), on once the owner's Azure identity validation is done; until then, the manual explains **More info › Run anyway** |
 | Ranking feels wrong to the operator | The core idea fails | Tier order and filters are settings; the raw decode tab remains; tune thresholds with real use |
 
 ## Questions for the owner
