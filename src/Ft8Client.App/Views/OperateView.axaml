@@ -4,6 +4,22 @@
              xmlns:v="using:Ft8Client.App.Views"
              x:Class="Ft8Client.App.Views.OperateView"
              x:DataType="vm:OperateViewModel">
+  <UserControl.Styles>
+    <!-- The column edge grips in table headers: a faint line, accent while dragged or pointed at. -->
+    <Style Selector="Thumb.column-grip">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="Transparent">
+            <Border x:Name="Line" Width="1" Margin="0,2" HorizontalAlignment="Center" Background="{DynamicResource RowDividerBrush}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="Thumb.column-grip:pointerover /template/ Border#Line, Thumb.column-grip:pressed /template/ Border#Line">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Width" Value="2" />
+    </Style>
+  </UserControl.Styles>
   <Grid x:Name="Root" ColumnDefinitions="*,300" RowDefinitions="*,Auto" Margin="16,0,16,12">
     <DockPanel x:Name="LeftPane" Grid.Column="0" Grid.Row="0">
     <!-- Calling you: pinned above everything else whenever a station is calling me, so it is never scrolled away. -->
@@ -238,8 +254,9 @@
                   </Button>
                 </StackPanel>
               </DockPanel>
-              <!-- Next in line and Repeats share these columns so the two tables line up. -->
-              <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" Margin="14,0,14,4">
+              <!-- Next in line and Repeats share these columns so the two tables line up. Dragging an edge between two
+                   headers resizes both tables; the widths are remembered (Settings.Window.ColumnWidths). -->
+              <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" v:ResizableColumns.Layout="Calls" v:ResizableColumns.IsHeader="True" Margin="14,0,14,4">
                 <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
                 <TextBlock Grid.Column="1" Text="Call" Classes="secondary" />
                 <TextBlock Grid.Column="2" Text="Where" Classes="secondary" />
@@ -271,7 +288,7 @@
                         <Border Width="3" HorizontalAlignment="Left" Background="{Binding IsInContact, Converter={x:Static v:Converters.SelectedBar}}" />
                         <Border BorderThickness="1" CornerRadius="3" Margin="1" IsHitTestVisible="False"
                                 BorderBrush="{Binding IsSelected, Converter={x:Static v:Converters.CursorOutline}}" />
-                        <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" MinHeight="40" Margin="14,0">
+                        <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" v:ResizableColumns.Layout="Calls" MinHeight="40" Margin="14,0">
                           <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -346,7 +363,7 @@
             <TextBlock Text="Repeats" Classes="title" Margin="14,0" />
             <TextBlock Text="{Binding RepeatsSubtitle}" Classes="secondary" Margin="14,2,14,6" />
             <!-- The same columns as Next in line. -->
-            <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" Margin="14,0,14,4" IsVisible="{Binding !!Repeats.Count}">
+            <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" v:ResizableColumns.Layout="Calls" v:ResizableColumns.IsHeader="True" Margin="14,0,14,4" IsVisible="{Binding !!Repeats.Count}">
               <TextBlock Grid.Column="0" Text="#" Classes="secondary" />
               <TextBlock Grid.Column="1" Text="Call" Classes="secondary" />
               <TextBlock Grid.Column="2" Text="Where" Classes="secondary" />
@@ -365,7 +382,7 @@
                           BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
                     <Panel>
                       <Border Width="3" HorizontalAlignment="Left" Background="{Binding IsInContact, Converter={x:Static v:Converters.SelectedBar}}" />
-                      <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" MinHeight="36" Margin="14,0">
+                      <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" v:ResizableColumns.Layout="Calls" MinHeight="36" Margin="14,0">
                         <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -409,11 +426,20 @@
             <TextBlock Text="{Binding WatchingSummaryText}" Classes="secondary" Margin="14,2,14,6" IsVisible="{Binding WatchingFolded}" />
             <TextBlock Text="Needed, but not callable right now. They join the line when that changes." Classes="secondary" Margin="14,2,14,6"
                        IsVisible="{Binding !WatchingFolded}" />
+            <!-- Column headers, so Watching's columns can be resized like the tables above. -->
+            <Grid ColumnDefinitions="100,180,160,64,*,Auto" v:ResizableColumns.Layout="Watching" v:ResizableColumns.IsHeader="True" Margin="14,0,14,4"
+                  IsVisible="{Binding !WatchingFolded}">
+              <TextBlock Grid.Column="0" Text="Call" Classes="secondary" />
+              <TextBlock Grid.Column="1" Text="Where" Classes="secondary" />
+              <TextBlock Grid.Column="2" Text="Why" Classes="secondary" />
+              <TextBlock Grid.Column="3" Text="Signal" Classes="secondary" />
+              <TextBlock Grid.Column="4" Text="Doing now" Classes="secondary" />
+            </Grid>
             <ItemsControl ItemsSource="{Binding Watching}" IsVisible="{Binding !WatchingFolded}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:WatchRowViewModel">
                   <Border BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,1,0,0">
-                    <Grid ColumnDefinitions="100,180,160,64,*,Auto" MinHeight="34" Margin="14,0">
+                    <Grid ColumnDefinitions="100,180,160,64,*,Auto" v:ResizableColumns.Layout="Watching" MinHeight="34" Margin="14,0">
                       <TextBlock Text="{Binding Call}" Classes="secondary" FontWeight="SemiBold" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="1" Text="{Binding Where}" Classes="secondary" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                       <TextBlock Grid.Column="2" Text="{Binding Why}" VerticalAlignment="Center" Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" />

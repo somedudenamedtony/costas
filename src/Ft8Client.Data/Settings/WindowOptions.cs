@@ -46,4 +46,10 @@ public sealed class WindowOptions
 
     /// <summary>Popped-out waterfall window: height.</summary>
     public double WaterfallWindowHeight { get; set; } = 320;
+
+    /// <summary>
+    /// Operate table column widths the operator dragged, by table ("Calls" for Next in line and Repeats, "Watching"),
+    /// in pixels for each resizable column from left to right. A missing table uses the default widths.
+    /// </summary>
+    public Dictionary<string, List<double>> ColumnWidths { get; set; } = [];
 }

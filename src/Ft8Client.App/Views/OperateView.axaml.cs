@@ -42,7 +42,36 @@ public partial class OperateView : UserControl
         };
     }
 
+    private readonly Dictionary<string, ColumnLayout> _columns = [];
+    private IReadOnlyDictionary<string, List<double>> _savedColumns = new Dictionary<string, List<double>>();
+
+    /// <summary>Raised when the operator finishes resizing a table's columns: the layout name and its fixed widths.</summary>
+    public event Action<string, double[]>? ColumnsSaved;
+
     private OperateViewModel? Vm => DataContext as OperateViewModel;
+
+    /// <summary>Applies column widths remembered from an earlier session, by layout name.</summary>
+    public void LoadColumns(IReadOnlyDictionary<string, List<double>> saved)
+    {
+        _savedColumns = saved;
+        foreach (var (name, layout) in _columns)
+            if (saved.TryGetValue(name, out var widths)) layout.Load(widths);
+    }
+
+    /// <summary>The shared widths for a table, made from the first grid that asks (its widths are the defaults).</summary>
+    internal ColumnLayout ColumnsFor(string name, Grid template)
+    {
+        if (_columns.TryGetValue(name, out var layout)) return layout;
+        layout = new ColumnLayout([.. template.ColumnDefinitions.Select(c => c.Width.IsAbsolute ? c.Width.Value : double.NaN)]);
+        if (_savedColumns.TryGetValue(name, out var widths)) layout.Load(widths);
+        _columns[name] = layout;
+        return layout;
+    }
+
+    internal void SaveColumns(string name)
+    {
+        if (_columns.TryGetValue(name, out var layout)) ColumnsSaved?.Invoke(name, layout.ToSaved());
+    }
 
     private void OnRowPressed(object? sender, PointerPressedEventArgs e)
     {

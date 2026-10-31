@@ -99,6 +99,16 @@ it is heard working someone else, and moves to Watching once the time is up.
 | **Last worked** | Your most recent contact with that call on any band or mode (*2026-10-03 · 40 m*), or *Never*. Hover for the details |
 | button | **Call**, or **Answer** when they are calling you |
 
+### Resizing columns
+
+Drag the edge between two column headings to make a column wider or narrower; a faint line marks each edge and turns
+blue under the pointer. *Doing now* takes whatever room is left. Next in line and Repeats share their columns, so
+resizing one resizes the other and they stay lined up. Watching has its own headings and widths. Double-click an edge
+to put that column back to its usual width. Costas remembers your widths the next time it starts.
+
+A column can't grow past the point where *Doing now* would disappear. If the **Call** buttons are cut off on a small
+window, narrow a wide column such as **Chance** or **Where** to bring them back.
+
 How the order works: stations are grouped by need (new country first), then by chance, then by how well they hear
 you, then by their signal. The **ⓘ** beside the title shows the current rules in one sentence; click it to change
 them (the same options as [Settings › Who to call](settings.md#who-to-call)).
