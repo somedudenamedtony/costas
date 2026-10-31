@@ -12,7 +12,7 @@ should not need Settings while operating.
 | **Band** | The band you are on, filled in at start-up, and follows the radio when you change band on it ([below](#changing-band-on-the-radio)). Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
 | **Mode** | FT8, FT4, PSK31, PSK63 or RTTY. Changes the slot length and dial frequency. Locked while transmitting. For PSK31, PSK63 and RTTY see [PSK31, PSK63 and RTTY](keyboard-modes.md) |
 | Frequency | The dial frequency read from the radio, in MHz. Click it to type another frequency or use one you saved ([below](#typing-a-frequency)). Locked while transmitting |
-| **Operate**, **Raw decodes**, **Reach**, **Log**, **Awards** | The five views. ++ctrl+1++ to ++ctrl+5++ |
+| **Operate**, **Raw decodes**, **Reach**, **Log**, **Awards** | The five views. ++ctrl+1++ to ++ctrl+5++, or ++ctrl+tab++ for the next one |
 | Clock | UTC, corrected from internet time when your PC clock is off (the tooltip says by how much). Turns amber with a tooltip when the clock is still off by more than 0.5 s, red above 2 s |
 | **☰** | Mini mode, Settings, Station setup, Diagnostics, Keyboard shortcuts, About |
 
