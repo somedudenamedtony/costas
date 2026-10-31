@@ -47,6 +47,12 @@ public sealed class ContactPanelViewModel
     /// <summary>Report received in dB, "--" until received.</summary>
     public string Received { get; private init; } = string.Empty;
 
+    /// <summary>True when the contact is with a Fox (a Fox/Hound DXpedition) and worked the Hound way.</summary>
+    public bool HoundMode { get; private init; }
+
+    /// <summary>What Hound mode means for this contact right now, in one or two sentences. Empty outside Hound mode.</summary>
+    public string HoundNote { get; private init; } = string.Empty;
+
     /// <summary>Log now is enabled.</summary>
     public bool CanLogNow { get; private init; }
 
@@ -152,6 +158,8 @@ public sealed class ContactPanelViewModel
             Sent = c.ReportSent is { } rs ? Report.Format(rs) : NotYet,
             Received = c.ReportReceived is { } rr ? Report.Format(rr) : NotYet,
             CanLogNow = c.CanLogNow,
+            HoundMode = c.Flow == ContactFlow.Hound,
+            HoundNote = c.Flow == ContactFlow.Hound ? HoundNoteFor(c, s) : string.Empty,
             Active = c.Outcome == ContactOutcome.InProgress,
             Steps = [.. steps.Select((x, i) => x with
             {
@@ -191,6 +199,17 @@ public sealed class ContactPanelViewModel
             if (c.Steps[i] is { Mine: true, TimeUtc: { } sent }) return SlotMath.SlotStart(sent, mode) + slotLen;
         }
         return currentSlot + slotLen;
+    }
+
+    // Calling: where I call and how long; answered: where the R-report goes and that the Fox's RR73 ends it.
+    private static string HoundNoteFor(ContactView c, SessionSnapshot s)
+    {
+        if (c.Outcome == ContactOutcome.Logged) return $"Worked as a Hound: {c.DxCall}'s RR73 logged the contact, so no 73 was sent.";
+        if (c.Outcome != ContactOutcome.InProgress) return $"{c.DxCall} is a DXpedition Fox, worked the Hound way. Call it again to keep trying.";
+        return c.ReportReceived is null
+            ? $"{c.DxCall} is a DXpedition Fox working several stations at once. You call at {s.TxOffsetHz} Hz, above 1000 Hz where it listens, " +
+              $"for up to {ContactEngine.HoundCallLimit.TotalMinutes:0} minutes. Keep waiting: it answers when it gets to you."
+            : $"{c.DxCall} answered. Your report goes back on its frequency; its RR73 logs the contact, and no 73 is sent.";
     }
 
     private static string Time(DateTime? t) => t?.ToString("HH:mm:ss", CultureInfo.InvariantCulture) ?? string.Empty;

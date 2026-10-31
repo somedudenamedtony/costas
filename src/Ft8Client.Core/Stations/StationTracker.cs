@@ -87,8 +87,10 @@ public sealed class StationTracker
     {
         var parity = SlotMath.Parity(slotStartUtc, _mode);
         var seen = new HashSet<string>(StringComparer.Ordinal);
+        var slot = heard as IReadOnlyCollection<HeardMessage> ?? heard.ToList();
+        var foxes = FoxSigns.Senders(slot);
 
-        foreach (var h in heard)
+        foreach (var h in slot)
         {
             if (h.Decode.LowConfidence) continue;
             foreach (var m in h.Message.Expand())
@@ -96,7 +98,7 @@ public sealed class StationTracker
                 var sender = m.SenderCall;
                 if (sender is null || !Callsign.IsValid(sender) || Callsign.EqualsCall(sender, _myCall)) continue;
                 var first = seen.Add(sender);
-                Apply(sender, m, h.Decode.Snr, h.Decode.OffsetHz, slotStartUtc, parity, first, h.Message.Kind == MessageKind.DxpeditionMulti);
+                Apply(sender, m, h.Decode.Snr, h.Decode.OffsetHz, slotStartUtc, parity, first, foxes.Contains(sender));
             }
         }
 

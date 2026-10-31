@@ -113,6 +113,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         _engine = new ContactEngine(config.MyCall, config.MyGrid, config.Contact, clock.UtcNow);
         _engine.Logged += OnLogged;
         _engine.IsFox = call => _tracker.Find(call)?.RunsFox == true; // read under _gate, as every engine call is
+        // A station I was calling as an ordinary CQ turned out to be a Fox: my calls move up to where it listens. Under _gate.
+        _engine.HoundStarted += _ => { if (_engine.View is { } v) HoundCallOffset(v.MyParity); };
         _tx.Started += OnTxStarted;
         _tx.Ended += (_, _) =>
         {
