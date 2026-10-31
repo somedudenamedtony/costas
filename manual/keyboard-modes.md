@@ -156,8 +156,13 @@ last added key goes altogether). If every key is empty, the default macros come 
   change or reconnect.
 - For PSK, automatic transmit level aims for no ALC at all, since any ALC action makes a PSK signal wider. It keeps a
   separate level for PSK on each band, so your FT8 level is not affected.
-- If the radio's speech processor is on, a warning appears under the macro keys. It distorts PSK and RTTY; turn it
-  off on the radio. Costas does not change it.
+- RTTY goes out at the same audio level as FT8 on that band (the power cap above keeps it cool).
+- Costas puts the radio in its data mode (DATA-U on Yaesu) for PSK and RTTY, as for FT8, and makes the tones itself.
+  Leave the radio's own PSK and RTTY modes alone: its RTTY mode needs FSK keying and its PSK mode uses the radio's
+  built-in modem, so neither carries Costas's audio.
+- The speech processor does not touch audio in the data mode, so it can stay on for your phone work. Only if the radio
+  has no data mode and Costas has to use plain USB, and the processor is on, does a warning appear under the macro
+  keys; then turn it off on the radio. Costas does not change it.
 
 ## Tips
 

@@ -274,6 +274,12 @@ public sealed partial class Session
         return $"{macro.Label} not sent: {MacroText.Describe(missing)} {(missing.Count == 1 ? "has" : "have")} no value. {where}";
     }
 
+    // RTTY keeps a steady level, as FT8 does, and shares FT8's level on each band, so it goes out at full scale like FT8
+    // (the RTTY power cap limits the heat). At the modulator's default of half scale it went out 6 dB below FT8, a
+    // quarter of the power, and its lower ALC readings pulled the shared level up for FT8. PSK stays at half scale on a
+    // level of its own, which aims for no ALC at all.
+    private const double RttyPeak = 1.0;
+
     // Under _gate. Starts or adds to an over.
     private string? Queue(string text, int? key, bool returnToReceive, int offset)
     {
@@ -288,7 +294,7 @@ public sealed partial class Session
         int? width = mode == Mode.Rtty ? ModeInfo.RttyBandwidthHz(rtty.ShiftHz, rtty.Baud) : null;
         var why = _keys.Send(text, key, returnToReceive,
             () => mode == Mode.Rtty
-                ? new RttyModulator(rtty, _tx.OutputSampleRate, offset)
+                ? new RttyModulator(rtty, _tx.OutputSampleRate, offset, RttyPeak)
                 : new PskModulator(mode, _tx.OutputSampleRate, offset),
             s => _tx.StartStream(s, mode, offset, guard, lead, width));
         if (why is null) _blockedMacro = null;
