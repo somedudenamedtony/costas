@@ -131,6 +131,17 @@ Costas does not know your log yet. Add your QRZ logbook API key in [Settings ›
 
 Costas works fine without QRZ: the list then ranks by signal only.
 
+## eQSL
+
+**Sync inbox now / test login** in Settings › eQSL shows what eQSL itself answered, in quotes.
+
+| Problem | Fix |
+| --- | --- |
+| *eQSL said "Error: No such Username/Password found"* | The username is your eQSL callsign. Check it and the password by signing in at eqsl.cc |
+| *eQSL said "Error: No such Callsign found"* | eQSL has no account for that username. Use the callsign your eQSL account is under |
+| A message about QTH or multiple accounts | Copy the **QTH nickname** exactly from your eQSL account. It is needed when one callsign has several locations |
+| *eQSL: 0 inbox cards* | The login worked and your eQSL inbox is empty |
+
 ## PSK Reporter shows "unavailable"
 
 The live feed uses MQTT over TLS on TCP port 1884 (`mqtt.pskreporter.info`). Some networks and firewalls block it.
