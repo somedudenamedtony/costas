@@ -309,8 +309,8 @@ Privacy. Owner decision 2026-10-15.
 password ships in the app. Today that is a Formspree form: `POST https://formspree.io/f/<id>` with
 `Accept: application/json` and a JSON body of `message`, `_subject` and, only when the operator gives one, `email`
 (Formspree makes it the reply-to). Any 2xx is success; 429 means the rate limit (20 posts a minute per form) or the
-monthly quota (50 on the free plan) was hit. The endpoint comes from the `FEEDBACK_URL` repository variable at build
-time and the email button's address from `FEEDBACK_EMAIL`; builds without them offer Copy only.
+monthly quota (50 on the free plan) was hit. The endpoint (`FEEDBACK_URL`) and the email button's address (`FEEDBACK_EMAIL`) are set in `ci.yml`, overridable by
+repository variables of the same name; local builds have neither and offer Copy only.
 
 Privacy: nothing is sent without the operator pressing Send. The User-Agent leaves the callsign out (as for usage
 statistics). Version and OS are ticked by default; the log tail (last 200 lines, at most 20,000 characters, secrets
