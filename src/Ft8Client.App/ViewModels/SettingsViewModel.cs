@@ -116,6 +116,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         CompareNeighbours = s.PskReporter.CompareNeighbours;
         BandActivity = s.PskReporter.BandActivity;
         UploadSpots = s.PskReporter.UploadSpots;
+        RbnEnabled = s.ReverseBeacon.Enabled;
         UdpEnabled = s.Udp.Enabled;
         UdpAddress = s.Udp.Address;
         UdpPort = s.Udp.Port.ToString(CultureInfo.InvariantCulture);
@@ -838,6 +839,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool UploadSpots { get; set; }
 
+    /// <summary>Follow Reverse Beacon Network spots of my callsign.</summary>
+    [ObservableProperty]
+    public partial bool RbnEnabled { get; set; }
+
     /// <summary>UDP enabled.</summary>
     [ObservableProperty]
     public partial bool UdpEnabled { get; set; }
@@ -1109,6 +1114,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.PskReporter.CompareNeighbours = CompareNeighbours;
             s.PskReporter.BandActivity = BandActivity;
             s.PskReporter.UploadSpots = UploadSpots;
+            s.ReverseBeacon.Enabled = RbnEnabled;
             s.Udp.Enabled = UdpEnabled;
             s.Udp.Address = UdpAddress.Trim();
             s.Udp.Port = Int(UdpPort, 1, 65535, 2237);

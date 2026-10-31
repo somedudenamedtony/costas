@@ -223,6 +223,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>PSK Reporter feed, query and uploads.</summary>
     public PskReporterService Psk { get; private set; } = null!;
 
+    /// <summary>Reverse Beacon Network spots of my callsign.</summary>
+    public ReverseBeaconService Rbn { get; private set; } = null!;
+
     /// <summary>The audio backend.</summary>
     public IAudioBackend AudioBackend { get; private set; } = new NullAudioBackend();
 
@@ -394,6 +397,9 @@ public sealed class AppHost : IAsyncDisposable
 
         Psk = new PskReporterService(Session, Settings, Spots, Countries, Frequencies, Clock, uploadsAllowed: !Simulating);
         Psk.Start();
+
+        Rbn = new ReverseBeaconService(Session, Settings, Spots, Cache, Countries, Clock);
+        Rbn.Start();
 
         Lotw = new LotwService(Session, Settings, Secrets, Qsos, SyncState, Countries, Paths, Clock, Guard, allowed: !Simulating);
         Lotw.LogChanged += RebuildLogIndex;
@@ -1230,6 +1236,7 @@ public sealed class AppHost : IAsyncDisposable
         Recording?.Dispose();
         NeighbourHistory?.Flush();
         if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);
+        if (Rbn is not null) await Rbn.DisposeAsync().ConfigureAwait(false);
         await _rig.DisposeAsync().ConfigureAwait(false);
         foreach (var d in _disposables) d.Dispose();
         _decoder?.Dispose();

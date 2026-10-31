@@ -121,6 +121,8 @@ last added key goes altogether). If every key is empty, the default macros come 
   few lines of the conversation. You cannot type from the phone yet.
 - **PSK Reporter.** With spot uploading on, stations Costas reads are reported as PSK31, PSK63 or RTTY, at the
   frequency of their signal.
+- **Who hears you in RTTY.** PSK Reporter has few RTTY receivers, so RTTY reports come mostly from the
+  [Reverse Beacon Network](maps.md#where-the-data-comes-from) skimmers, which spot you while you call CQ.
 - **GridTracker and loggers** see the mode in the status Costas sends (with the report as RST, for example 599), and
   logged contacts as usual. Costas sends them no PSK or RTTY text, so calling a station from GridTracker works only in
   FT8 and FT4.

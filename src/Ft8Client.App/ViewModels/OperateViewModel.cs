@@ -720,14 +720,8 @@ public sealed partial class OperateViewModel : ObservableObject
     {
         SignalTitle = $"Your signal on {band}";
         SignalHistory = s.ReceptionHistory;
-        var available = s.Services.TryGetValue(ServiceNames.Psk, out var psk) ? psk : null;
         SignalNeighbours = NeighbourText.Headline(s.Neighbours);
-        SignalSource = available?.Health switch
-        {
-            Core.Services.ServiceHealth.Ok => "PSK Reporter · live",
-            Core.Services.ServiceHealth.Degraded => $"PSK Reporter · updated {StationText.ShortAgo(now - available.SinceUtc)}",
-            _ => "PSK Reporter · unavailable",
-        };
+        SignalSource = SignalSourceText.For(s.Services, now);
         if (Countries is null || Log is null) return;
         var points = ReachPoint.From(s.Reports, now, TimeSpan.FromMinutes(15), s.MyGrid, Countries, Log(), s.Band, ModeInfo.Name(s.Mode));
         var countries = CountryReach.From(points, Countries, Units);

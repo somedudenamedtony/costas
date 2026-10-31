@@ -134,6 +134,8 @@ The password is kept in Windows Credential Manager.
 
 ## PSK Reporter
 
+The page is called **PSK Reporter and RBN** in Settings.
+
 ![Settings: PSK Reporter](images/settings-psk-reporter.png)
 
 - **Who hears me › Receive live reports of stations hearing my signal**: on. Powers the Reach view and
@@ -144,6 +146,10 @@ The password is kept in Windows Credential Manager.
   every band, using the current grid square in **Station**, so Reach and the band menu show which bands are open from your area. Changing the grid switches the area. Nothing about these reports is saved.
 - **Share what I hear › Send the stations I decode to PSK Reporter**: off. Helps other operators see where their
   signals reach. Sent every few minutes, never in simulation.
+- **Reverse Beacon Network › Also show skimmers that spot my signal**: on. Costas logs in to the
+  [Reverse Beacon Network](https://reversebeacon.net/) feeds with your callsign and keeps only spots of you, in FT8,
+  FT4 and RTTY (RBN covers RTTY much better than PSK Reporter). They join PSK Reporter's reports in Reach, the globe,
+  the countries line and Chance. A skimmer heard by both networks counts once. Nothing you decode is sent to RBN.
 
 ## Other programs
 

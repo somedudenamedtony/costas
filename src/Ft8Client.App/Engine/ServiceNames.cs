@@ -32,6 +32,9 @@ public static class ServiceNames
     /// <summary>PSK Reporter.</summary>
     public const string Psk = "psk";
 
+    /// <summary>The Reverse Beacon Network.</summary>
+    public const string Rbn = "rbn";
+
     /// <summary>The POTA spot feed.</summary>
     public const string Pota = "pota";
 }

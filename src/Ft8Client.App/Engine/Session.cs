@@ -67,6 +67,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     private SessionConfig _config;
     private LogIndex _logIndex = LogIndex.Empty;
     private HearsMe _hearsMe;
+    private readonly HashSet<string> _reportSources = new(StringComparer.Ordinal);
     private LotwUsers? _lotwUsers;
     private Core.Pota.PotaParks? _parks;
     private readonly ReceptionHistory _receptionHistory = new();
@@ -129,7 +130,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         _keys = new KeyboardTransmitter(tx, clock);
         _keys.OverEnded += OnKeyboardOverEnded;
         _keys.Changed += Publish;
-        foreach (var name in new[] { ServiceNames.Radio, ServiceNames.Audio, ServiceNames.Decoder, ServiceNames.Qrz, ServiceNames.Psk })
+        foreach (var name in new[] { ServiceNames.Radio, ServiceNames.Audio, ServiceNames.Decoder, ServiceNames.Qrz, ServiceNames.Psk, ServiceNames.Rbn })
             _services[name] = ServiceStatus.Off("Not started");
         Publish();
     }
@@ -1131,10 +1132,18 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
-    /// <summary>PSK Reporter availability.</summary>
-    public void SetReportsAvailable(bool available)
+    /// <summary>
+    /// Whether a source of reports of my signal (<see cref="ServiceNames.Psk"/> or <see cref="ServiceNames.Rbn"/>) is
+    /// working. Reports count as available while either one is.
+    /// </summary>
+    public void SetReportsAvailable(bool available, string source = ServiceNames.Psk)
     {
-        lock (_gate) _hearsMe.Available = available;
+        lock (_gate)
+        {
+            if (available) _reportSources.Add(source);
+            else _reportSources.Remove(source);
+            _hearsMe.Available = _reportSources.Count > 0;
+        }
         Publish();
     }
 

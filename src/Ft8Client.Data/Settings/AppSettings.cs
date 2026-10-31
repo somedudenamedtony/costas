@@ -41,6 +41,9 @@ public sealed class AppSettings
     /// <summary>PSK Reporter.</summary>
     public PskReporterOptions PskReporter { get; set; } = new();
 
+    /// <summary>Reverse Beacon Network.</summary>
+    public ReverseBeaconOptions ReverseBeacon { get; set; } = new();
+
     /// <summary>Parks on the Air spots.</summary>
     public PotaOptions Pota { get; set; } = new();
 

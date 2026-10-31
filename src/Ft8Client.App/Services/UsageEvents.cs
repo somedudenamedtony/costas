@@ -35,6 +35,7 @@ public static class UsageEvents
             ["eqsl"] = OnOff(s.Profile.Eqsl.UploadOnComplete || s.Profile.Eqsl.SyncEnabled),
             ["psk_feed"] = OnOff(s.PskReporter.FeedEnabled),
             ["psk_upload"] = OnOff(s.PskReporter.UploadSpots),
+            ["rbn"] = OnOff(s.ReverseBeacon.Enabled),
             ["pota"] = OnOff(s.Pota.SpotsEnabled),
             ["udp"] = OnOff(s.Udp.Enabled),
             ["remote"] = OnOff(s.Remote.Enabled),

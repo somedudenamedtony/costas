@@ -44,6 +44,14 @@ public sealed class SpotRepository(SqliteDatabase db)
         return c.Query<SpotRecord>("SELECT * FROM spot WHERE time_utc >= @utc AND (@band IS NULL OR band=@band) ORDER BY time_utc", new { utc, band }).ToList();
     }
 
+    /// <summary>The locator a receiver last gave in a stored report, or null.</summary>
+    public string? LatestGrid(string rxCall)
+    {
+        using var c = db.Open();
+        return c.QueryFirstOrDefault<string?>(
+            "SELECT rx_grid FROM spot WHERE rx_call=@rxCall AND rx_grid IS NOT NULL AND rx_grid <> '' ORDER BY time_utc DESC LIMIT 1", new { rxCall });
+    }
+
     /// <summary>Deletes reports older than 24 hours.</summary>
     public int Prune(DateTime nowUtc)
     {
