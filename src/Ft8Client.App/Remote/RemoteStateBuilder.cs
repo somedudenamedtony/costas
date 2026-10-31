@@ -138,7 +138,7 @@ public static class RemoteStateBuilder
     private static string Services(SessionSnapshot s)
     {
         var parts = new List<string>();
-        foreach (var (key, name) in new[] { (ServiceNames.Audio, "Audio"), (ServiceNames.Qrz, "QRZ"), (ServiceNames.Eqsl, "eQSL"), (ServiceNames.Psk, "PSK Reporter") })
+        foreach (var (key, name) in new[] { (ServiceNames.Audio, "Audio"), (ServiceNames.Qrz, "QRZ"), (ServiceNames.Eqsl, "eQSL"), (ServiceNames.Psk, "PSK Reporter"), (ServiceNames.Rbn, "RBN") })
         {
             if (s.Services.TryGetValue(key, out var st) && st.Health is ServiceHealth.Down or ServiceHealth.Degraded) parts.Add($"{name}: {st.Message}");
         }
@@ -157,13 +157,7 @@ public static class RemoteStateBuilder
 
     private static RemoteSignal Signal(SessionSnapshot s, DateTime now, RemoteContext ctx, LogIndex? log, string band)
     {
-        var psk = s.Services.TryGetValue(ServiceNames.Psk, out var p) ? p : null;
-        var source = psk?.Health switch
-        {
-            ServiceHealth.Ok => "PSK Reporter · live",
-            ServiceHealth.Degraded => $"PSK Reporter · updated {StationText.ShortAgo(now - psk.SinceUtc)}",
-            _ => "PSK Reporter · unavailable",
-        };
+        var source = SignalSourceText.For(s.Services, now);
         var points = ctx.Countries is null
             ? []
             : ReachPoint.From(s.Reports, now, TimeSpan.FromMinutes(15), s.MyGrid, ctx.Countries, log ?? LogIndex.Empty, s.Band, ModeInfo.Name(s.Mode));

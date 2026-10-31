@@ -208,7 +208,7 @@ public sealed class PskReporterService : IAsyncDisposable
             _spots.Prune(_clock.UtcNow);
             foreach (var r in _spots.Since(_clock.UtcNow.AddHours(-1)))
             {
-                if (!Callsign.EqualsCall(r.MyCall, _myCall) || r.Snr is not { } snr) continue;
+                if (!Callsign.EqualsCall(r.MyCall, _myCall) || r.Source == ReverseBeaconService.Source || r.Snr is not { } snr) continue;
                 _session.AddReport(new ReceptionReport(r.RxCall, r.RxGrid, r.RxEntityKey, null, r.Band, r.Mode, snr, r.TimeUtc, r.FreqHz));
             }
         }

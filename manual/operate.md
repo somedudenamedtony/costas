@@ -228,7 +228,7 @@ From top to bottom:
 | **Halt Tx** | Always available. Drops PTT at once and stops sequencing. ++esc++ does the same |
 | Slot progress | *Receiving* or *Transmitting*, seconds to the next slot, and a bar. Shown away from Operate, where the contact card has it. Hidden with an instrument skin, whose faceplate shows it |
 | Meter warning | Appears after a transmission whose SWR or ALC was high, for example *SWR 3.4 · ALC 70%*. Hover for advice. The live meters are in the red **ON AIR** bar at the top |
-| Indicators | **Radio**, **Audio**, **QRZ**, **eQSL**, **PSK Reporter**, **POTA**: a dot and a word each. Click to open Diagnostics |
+| Indicators | **Radio**, **Audio**, **QRZ**, **eQSL**, **PSK Reporter**, **RBN**, **POTA**: a dot and a word each. Click to open Diagnostics |
 
 ![Transmit offset flyout](images/tx-offset.png)
 

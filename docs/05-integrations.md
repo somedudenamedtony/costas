@@ -178,6 +178,18 @@ Confirmed live: `GET https://retrieve.pskreporter.info/query?senderCallsign=<MYC
 - **VERIFY** the `receptionReport` attribute names (expected: `receiverCallsign`, `receiverLocator`, `senderCallsign`, `senderLocator`, `frequency`, `flowStartSeconds`, `mode`, `sNR`, `receiverDXCC`).
 - Use it once at start (to fill the last hour) and every 5 minutes only while the live feed is down. Never more often than once per 5 minutes; pass `lastseqno` from the previous answer to get only new reports. **VERIFY** the published limit.
 
+## 5a. Reverse Beacon Network: who hears me (skimmers)
+
+Source: https://reversebeacon.net/pages/Telnet+servers+30 and https://reversebeacon.net/pages/FT8+Announcement+40 (confirmed 2026-10-31). Optional, on by default (Settings › PSK Reporter and RBN). RBN covers RTTY much better than PSK Reporter, and its FT8/FT4 skimmers run around the clock.
+
+- Telnet relays on `telnet.reversebeacon.net`: port 7000 carries CW and RTTY spots, port 7001 FT8 (and FT4) spots. The relays are "stripped down" for throughput and have no filters, so the client reads everything and keeps only lines naming my callsign. RBN may turn the FT8 stream off on big CW/RTTY contest weekends.
+- Login is a callsign prompt (`Please enter your call:`, no new line); the client answers with my callsign (and does so after 5 s if no prompt came). Telnet negotiation bytes are skipped and nothing is agreed to.
+- Spot line, DX-cluster style: `DX de HB9DCO-#:  14011.9  UP2L           CW    17 dB  35 WPM  CQ      1102Z`. Frequency in kHz, SNR in dB, time `HHMMZ` (no date; a time more than 5 minutes ahead is yesterday's). A second skimmer at a station is `W3LPL-2-#`. **VERIFY** the FT8/FT4 line on port 7001 (V-RBN1); the parser accepts the same shape with or without the speed field.
+- Only spots of modes Costas sends are used (FT8, FT4, RTTY, PSK31, PSK63); CW is dropped. Each becomes a reception report like a PSK Reporter one, stored in `spot` with source `rbn`, so a skimmer that reports to both networks in the same 5-minute bucket on the same band counts once (the stronger report is kept).
+- RBN gives no locator. The receiver's grid comes from what is already on disk: a fresh cached QRZ lookup, or the latest stored PSK Reporter report of that receiver. Otherwise the maps place it at its country's position. No lookups are made for skimmers.
+- The connection stays open like a cluster node's (the relays are not made for clients that connect every few minutes). A silent connection is dropped after 5 minutes. After a failure: 30 s back-off doubling to 10 minutes, reset once a connection lasted 2 minutes. With no network the connection simply fails and backs off; the RBN indicator says so.
+- Sending Costas's own decodes to RBN as a skimmer is not done: RBN takes spots only from its Aggregator program, not from clients.
+
 ## 6. PSK Reporter: uploading my spots
 
 Source: https://pskreporter.info/pskdev.html (confirmed rules below).

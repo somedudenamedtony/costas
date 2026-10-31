@@ -44,6 +44,6 @@ public sealed class SpotRecord
     /// <summary>Report time.</summary>
     public DateTime TimeUtc { get; set; }
 
-    /// <summary><c>mqtt</c> or <c>query</c>.</summary>
+    /// <summary><c>mqtt</c> or <c>query</c> (PSK Reporter), or <c>rbn</c> (Reverse Beacon Network).</summary>
     public string Source { get; set; } = "mqtt";
 }
