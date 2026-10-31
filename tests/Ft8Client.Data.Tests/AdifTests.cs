@@ -122,6 +122,20 @@ public sealed class AdifTests : IDisposable
     }
 
     [Fact]
+    public void Upsert_SameContactFromAnotherStationCallsign_IsNewContact()
+    {
+        var home = Sample();
+        home.StationCallsign = "W7LIT";
+        var club = Sample();
+        club.StationCallsign = "W7ABC";
+        club.QsoDateOn = home.QsoDateOn.AddMinutes(10);
+
+        _repo.Upsert(home).Inserted.Should().BeTrue();
+        _repo.Upsert(club).Inserted.Should().BeTrue("a second station profile working the same station is its own contact");
+        _repo.List().Should().HaveCount(2);
+    }
+
+    [Fact]
     public void Upsert_TwoQrzRecordsWithDifferentLogids_StaySeparate()
     {
         var a = Sample();
