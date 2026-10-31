@@ -93,6 +93,6 @@ public class UdpInboundTests
         vm.Highlight(new WsjtxHighlight("Costas", "K1ABC", null, null, false));
         vm.ApplyHighlights();
 
-        vm.Lines.Single().Background.Should().BeNull();
+        vm.Lines.Single(l => l.IsLine).Background.Should().BeNull();
     }
 }
