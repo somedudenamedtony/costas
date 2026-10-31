@@ -72,6 +72,8 @@ public partial class MainWindow : Window
         Height = Math.Max(MinHeight, w.Height);
         if (w.X is { } x && w.Y is { } y) Position = new Avalonia.PixelPoint(x, y);
         SetWaterfallHeight(w.WaterfallHeight, save: false);
+        OperatePage.LoadColumns(w.ColumnWidths);
+        OperatePage.ColumnsSaved += (name, widths) => vm.Host.Settings.Update(s => s.Window.ColumnWidths[name] = [.. widths]);
         if (w.WaterfallOut) Dispatcher.UIThread.Post(PopOutWaterfall);
         vm.Host.Session.Changed += s => Dispatcher.UIThread.Post(() => vm.Apply(s));
         vm.Apply(vm.Host.Session.Snapshot);
