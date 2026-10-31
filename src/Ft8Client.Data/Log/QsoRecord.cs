@@ -122,6 +122,9 @@ public sealed class QsoRecord
     /// <summary>When the row last changed.</summary>
     public DateTime ModifiedUtc { get; set; }
 
+    /// <summary>When the operator last edited the contact in the Log view; a QRZ sync then keeps its fields. Null if never.</summary>
+    public DateTime? EditedUtc { get; set; }
+
     /// <summary>A shallow copy.</summary>
     public QsoRecord Clone() => (QsoRecord)MemberwiseClone();
 }
