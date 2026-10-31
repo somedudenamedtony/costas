@@ -228,7 +228,8 @@ even after restarting Costas. The Log view shows eQSL delivery independently of 
 
 Enable **Read my eQSL inbox** to fetch incoming cards hourly. **Sync inbox now / test login** reads the inbox
 with the values entered on this page, even before saving them. A sync stores incoming cards and confirms a
-local contact when its callsign, band, mode and UTC minute uniquely match. Unmatched cards remain visible in
+local contact when its callsign, band and mode match one contact within 15 minutes (the other station logs its own
+start time, often a minute or two from yours). With several contacts in that time, only one in the same minute is confirmed. Unmatched cards remain visible in
 the recent inbox list; they do not create contacts automatically. FT4 and MFSK/FT4 match as the same mode.
 
 Both automatic features are off by default. Save to apply. Simulation never contacts eQSL.
