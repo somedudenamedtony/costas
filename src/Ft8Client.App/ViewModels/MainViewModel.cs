@@ -413,7 +413,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>Raised when the window should ask for the operator's attention (flash in the taskbar).</summary>
     public event Action? AttentionRequested;
 
-    /// <summary>Raised when a dialog should open: "settings", "setup", "diagnostics", "about", "shortcuts", "ranking", or "mini" for mini mode.</summary>
+    /// <summary>Raised when a dialog should open: "settings", "setup", "diagnostics", "about", "shortcuts", "feedback", "ranking", or "mini" for mini mode.</summary>
     public event Action<string>? OpenDialog;
 
     /// <summary>Applies a snapshot. UI thread.</summary>

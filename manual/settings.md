@@ -219,6 +219,9 @@ Nothing is sent while your computer is offline. Counts wait in memory (never on 
 back; anything still waiting when you close Costas is dropped. Statistics are never sent in simulation, and builds you
 make yourself from the source send nothing at all.
 
+Problem reports are separate: they are only sent when you press **Send** in **☰ › Report a problem…**, and contain
+only what you see there. See [Report a problem](troubleshooting.md#report-a-problem-or-send-feedback).
+
 ## Advanced
 
 ![Settings: Advanced](images/settings-advanced.png)

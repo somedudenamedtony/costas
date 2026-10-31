@@ -13,6 +13,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Ft8Client.App.Services;
 using Ft8Client.App.ViewModels;
 
 namespace Ft8Client.App.Views;
@@ -263,9 +264,26 @@ public partial class MainWindow : Window
             "settings" or "ranking" => new SettingsWindow { DataContext = new SettingsViewModel(vm.Host, name == "ranking") },
             "diagnostics" => new DiagnosticsWindow { DataContext = new DiagnosticsViewModel(vm.Host) },
             "shortcuts" => new ShortcutsWindow(),
+            "feedback" => NewFeedbackWindow(vm.Host),
             _ => new AboutWindow(vm.Host.Settings, vm.Host.Updates),
         };
         w.ShowDialog(this);
+    }
+
+    // The feedback HTTP client leaves the callsign out of its User-Agent: a report identifies the station only if the
+    // operator types their callsign or ticks the log.
+    private static FeedbackWindow NewFeedbackWindow(AppHost host)
+    {
+        var http = AppHost.FeedbackEndpoint is null ? null : Ft8Client.Integrations.Net.HttpFactory.Create(string.Empty, timeout: TimeSpan.FromSeconds(20));
+        var client = http is null ? null : new Ft8Client.Integrations.Feedback.FeedbackClient(http, AppHost.FeedbackEndpoint!);
+        var secrets = Ft8Client.Data.Secrets.SecretNames.All(host.Settings.Current.Profiles.Select(p => p.Id))
+            .Select(host.Secrets.Get).Where(v => v is not null).Select(v => v!).ToList();
+        var w = new FeedbackWindow
+        {
+            DataContext = new FeedbackViewModel(client, AppHost.FeedbackEmail, () => LogTail.Read(host.Paths.Logs, secrets), Browser.OpenMail),
+        };
+        w.Closed += (_, _) => http?.Dispose();
+        return w;
     }
 
     // Mini mode replaces the main window until the operator expands it or closes the strip.

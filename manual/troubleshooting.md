@@ -172,7 +172,28 @@ running. Carry on, and if it happens again, save a diagnostics bundle (**☰ ›
 SmartScreen shows this for programs it does not know, and Costas is not code-signed yet (*Unknown publisher*).
 Click **More info**, then **Run anyway**. See [Install](install.md#download).
 
+## Report a problem or send feedback
+
+**☰ › Report a problem…** sends a note straight to the developer: a bug, something confusing, or an idea.
+
+![Report a problem](images/report-a-problem.png)
+
+Write what you were doing, what you expected and what happened instead. Your radio model helps too. Then choose what
+goes with it:
+
+- **Your email** (optional). Fill it in if you would like a reply; leave it empty to send anonymously.
+- **Include the app version and operating system** (ticked). One line such as *Costas 0.1.0.280 · Windows 11 · X64*.
+- **Include the recent log** (not ticked). The last 200 lines of Costas's own log. It is the most useful thing for a
+  bug, but it can contain your callsign, frequencies and the stations you worked, so it is only added when you tick it.
+  Passwords and API keys are removed first.
+
+Nothing else is sent: not your log of contacts, your settings, or your callsign unless you type it or tick the log.
+
+**Send** delivers the report over the internet in a second or two; you need to be online. **Open in email** opens your
+own mail program with the report filled in, so you can read it and send it yourself (the log is too long for that
+route; use **Copy** and paste it in). **Copy** puts the whole report on the clipboard for an email or a GitHub issue.
+
 ## Still stuck
 
-Open an issue on [GitHub](https://github.com/somedudenamedtony/costas/issues) with what you did, what you expected,
-what happened, your radio model, and the diagnostics bundle.
+Use **☰ › Report a problem…**, or open an issue on [GitHub](https://github.com/somedudenamedtony/costas/issues) with
+what you did, what you expected, what happened, your radio model, and the diagnostics bundle.

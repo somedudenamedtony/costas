@@ -211,6 +211,18 @@ public sealed class AppHost : IAsyncDisposable
             .OfType<System.Reflection.AssemblyMetadataAttribute>()
             .FirstOrDefault(a => a.Key == "AptabaseAppKey")?.Value is { Length: > 0 } k && AptabaseClient.HostFor(k) is not null ? k.Trim() : null;
 
+    /// <summary>The form relay that Report a problem posts to (from CI's <c>FEEDBACK_URL</c>), or null: then only email and Copy are offered.</summary>
+    public static Uri? FeedbackEndpoint { get; } = Ft8Client.Integrations.Feedback.FeedbackClient.EndpointFrom(BuildValue("FeedbackUrl"));
+
+    /// <summary>The address Report a problem's email button writes to (from CI's <c>FEEDBACK_EMAIL</c>), or null.</summary>
+    public static string? FeedbackEmail { get; } =
+        BuildValue("FeedbackEmail") is { } e && Ft8Client.Integrations.Feedback.FeedbackMail.IsAddress(e) ? e.Trim() : null;
+
+    private static string? BuildValue(string key) =>
+        typeof(AppHost).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+            .OfType<System.Reflection.AssemblyMetadataAttribute>()
+            .FirstOrDefault(a => a.Key == key)?.Value is { Length: > 0 } v ? v : null;
+
     /// <summary>WSJT-X UDP interop.</summary>
     public UdpInteropService Udp { get; private set; } = null!;
 

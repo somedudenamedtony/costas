@@ -36,6 +36,14 @@
     <!-- Anonymous usage statistics: CI passes the Aptabase app key (set in .github/workflows/ci.yml) to release builds. Builds without it send nothing. -->
     <AssemblyMetadata Include="AptabaseAppKey" Value="$(APTABASE_APP_KEY)" />
   </ItemGroup>
+  <ItemGroup Condition="'$(FEEDBACK_URL)' != ''">
+    <!-- Report a problem: the form relay's https address (a Formspree form), from the FEEDBACK_URL repository variable in CI. Not a secret: it only accepts form posts. -->
+    <AssemblyMetadata Include="FeedbackUrl" Value="$(FEEDBACK_URL)" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(FEEDBACK_EMAIL)' != ''">
+    <!-- Report a problem: the address its email button fills in, from the FEEDBACK_EMAIL repository variable in CI. -->
+    <AssemblyMetadata Include="FeedbackEmail" Value="$(FEEDBACK_EMAIL)" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.3" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />
