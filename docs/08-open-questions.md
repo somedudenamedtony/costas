@@ -154,10 +154,16 @@ Other notes from M2:
 ### eQSL API verification outstanding
 
 Uploads, inbox downloads and confirmation matching are implemented with synthetic test responses.
-Before release, verify the primary documentation at `https://www.eqsl.cc/qslcard/ImportADIF.cfm` and
-`https://www.eqsl.cc/qslcard/DownloadInBox.cfm`, including QTH selection, upload/duplicate acknowledgment
-wording, empty inbox behavior and the ADIF download-link path. Capture redacted fixtures without credentials.
-This session could not reach the network proxy or run .NET tests (SDK absent).
+Still to verify against a real account: QTH selection and upload/duplicate acknowledgment wording at
+`https://www.eqsl.cc/qslcard/ImportADIF.cfm`.
+
+Inbox download, confirmed 2026-10-31 from eQSL's `https://www.eqsl.cc/qslcard/DownloadInBox.txt` (revised 12 Oct 2025)
+and live replies with a wrong password: `DownloadInBox.cfm` accepts `UserName`, `Password` and `QTHNickname` as POST
+form fields as well as in the URL (both gave the same reply). Success says "Your ADIF log file has been built" and links
+the `.adi` and `.txt` files; since 22 Oct 2019 the files live in `/downloadedfiles/`, above `/qslcard/`, so the link is
+`../downloadedfiles/…`. Costas only followed links under `/qslcard/`, so every working login read as a failure. An
+empty inbox says "You have no log entries". Failures read "Error: No such Username/Password found" (known callsign,
+wrong password) or "Error: No such Callsign found" (unknown username); with no credentials, "You are not yet logged in".
 
 Hamlib network models (Hamlib master, `include/hamlib/riglist.h` and `rigs/dummy/*.c`, read 2026-10-13): NET rigctl is
 model 2, FLRig 4, TRXManager 5, ACLog 8, SDR# 9. Each takes its server as `host:port` in `-r` (rig_pathname) and
