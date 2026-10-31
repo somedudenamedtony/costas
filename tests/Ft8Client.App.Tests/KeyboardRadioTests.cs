@@ -70,11 +70,21 @@ public class KeyboardRadioTests
     }
 
     [Fact]
-    public async Task ApplyAsync_ProcessorOnInPsk_Warns()
+    public async Task ApplyAsync_ProcessorOnInPskOnUsb_Warns()
     {
+        await _rig.SetModeAsync(RigMode.Usb, TestContext.Current.CancellationToken);
         _rig.SpeechProcessor = true;
         (await _radio.ApplyAsync(_rig, Mode.Psk31, 50, TestContext.Current.CancellationToken)).Should().Be(KeyboardRadio.ProcessorWarning);
         (await _radio.ApplyAsync(_rig, Mode.Ft8, 50, TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ApplyAsync_ProcessorOnInDataMode_NoWarning()
+    {
+        // DATA-U audio skips the processor (FT-710), so a processor left on for phone is no reason to warn.
+        _rig.SpeechProcessor = true;
+        (await _radio.ApplyAsync(_rig, Mode.Psk31, 50, TestContext.Current.CancellationToken)).Should().BeNull();
+        (await _radio.ApplyAsync(_rig, Mode.Rtty, 100, TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [Fact]

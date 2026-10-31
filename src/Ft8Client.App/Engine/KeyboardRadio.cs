@@ -18,7 +18,7 @@ namespace Ft8Client.App.Engine;
 /// operator has turned the knob since. The cap is saved as it is made (through the callback given), so a restart after
 /// a crash restores the operator's power instead of capping the cap again; a restore the radio refuses is kept and tried
 /// again. Calls are serialised: a band change, a settings change and a radio reconnect never cap at the same time. In
-/// PSK and RTTY the speech processor is read and a warning given when it is on; Costas never changes it.
+/// PSK and RTTY the speech processor is read and a warning given when it is on outside a data mode; Costas never changes it.
 /// </summary>
 public sealed class KeyboardRadio
 {
@@ -63,11 +63,28 @@ public sealed class KeyboardRadio
                 : await RestoreCoreAsync(rig, ct).ConfigureAwait(false);
             if (ModeInfo.IsSlotted(mode)) return note;
             if (await rig.ReadSpeechProcessorAsync(ct).ConfigureAwait(false) != true) return note;
+            if (await InDataModeAsync(rig, ct).ConfigureAwait(false)) return note;
             return note is null ? ProcessorWarning : $"{note} {ProcessorWarning}";
         }
         finally
         {
             _busy.Release();
+        }
+    }
+
+    // True when the radio is in a data mode (Hamlib PKTUSB, PKTLSB, PKTFM). There the transmit audio comes from the
+    // data input and skips the speech processor (the FT-710 and its Yaesu siblings process only SSB and AM mic audio),
+    // so a processor left on for phone does no harm. In plain USB, the fallback for a radio without a data mode, it does.
+    private static async Task<bool> InDataModeAsync(IRig rig, CancellationToken ct)
+    {
+        try
+        {
+            var state = await rig.GetStateAsync(ct).ConfigureAwait(false);
+            return state.Mode.StartsWith("PKT", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (RigException)
+        {
+            return false;
         }
     }
 

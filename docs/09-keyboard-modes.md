@@ -33,7 +33,7 @@ Picking a mode sets the radio over CAT, the same way FT8 does today (`RigctldRig
 | Passband | Left as the radio has it (`-1`), as for FT8 | Same |
 | Mark and space | n/a | The mark is the higher RF frequency. In USB, that makes the mark the **higher** audio tone: space = mark − shift. A Reverse switch swaps them for stations on the other sideband |
 | Transmit power | Unchanged | Capped at 50 % of the operator's set power by default (`L RFPOWER`), restored when leaving RTTY or closing Costas, unless the operator turned the power since. Changeable in Settings > PSK and RTTY |
-| Speech processor | Read with `u COMP` where the radio supports it. If it is on, a warning is shown; Costas does not change it | Same |
+| Speech processor | Read with `u COMP` where the radio supports it. If it is on while the radio is in plain USB (the fallback), a warning is shown; in a data mode (`PKTUSB`) the transmit audio skips the processor, so there is no warning. Costas does not change it | Same |
 
 Confirmed from Hamlib master (`rigs/yaesu/newcat.c`, `ft710.c`, `ft710.h`, read 2026-10-13):
 - On Yaesu newcat radios, `PKTUSB` is mode `C` (DATA-U). `RTTY` is `6` (RTTY-LSB) and `RTTYR` is `9` (RTTY-USB). Costas uses `PKTUSB` for all three modes, because the radio's own RTTY mode needs FSK keying.
