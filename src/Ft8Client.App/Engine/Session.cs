@@ -495,9 +495,9 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 ApplyKeyboardLine(l);
                 var decode = new Decode(l.Utc, l.Snr, 0, l.OffsetHz, l.Text, LowConfidence: false);
                 _raw.Add(new RawDecodeLine(decode, MessageParser.Parse(l.Text), l.Sender is null ? null : _countries.Lookup(l.Sender)?.Entity.Name,
-                    l.To is not null && Callsign.EqualsCall(l.To, _config.MyCall)));
+                    l.To is not null && Callsign.EqualsCall(l.To, _config.MyCall), Mode: mode));
             }
-            if (_raw.Count > MaxRaw) _raw.RemoveRange(0, _raw.Count - MaxRaw);
+            TrimRaw();
         }
         Publish();
         if (heard.Count > 0) KeyboardHeard?.Invoke(mode, heard);
@@ -512,9 +512,17 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             if (!_rawShown.Texts.Add(h.Decode.Text)) continue;
             var sender = h.Message.SenderCall;
             _raw.Add(new RawDecodeLine(h.Decode, h.Message, sender is null ? null : _countries.Lookup(sender)?.Entity.Name,
-                h.Message.IsAddressedTo(_config.MyCall)));
+                h.Message.IsAddressedTo(_config.MyCall), Mode: _config.Mode));
         }
-        if (_raw.Count > MaxRaw) _raw.RemoveRange(0, _raw.Count - MaxRaw);
+        TrimRaw();
+    }
+
+    // Keeps the newest MaxRaw lines of the current mode. Other modes' lines stay, so their history is there on switching back.
+    private void TrimRaw()
+    {
+        var mode = _config.Mode;
+        var excess = _raw.Count(r => r.Mode == mode) - MaxRaw;
+        if (excess > 0) _raw.RemoveAll(r => r.Mode == mode && excess-- > 0);
     }
 
     private void UpdateTxOffset(Mode mode)
@@ -619,7 +627,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         {
             _engine.OnTransmitted(tx.Plan, startedUtc);
             _raw.Add(new RawDecodeLine(new Decode(tx.Plan.SlotStartUtc, 0, 0, tx.OffsetHz, tx.Plan.Message, false), MessageParser.Parse(tx.Plan.Message),
-                null, false, Transmitted: true));
+                null, false, Transmitted: true, Mode: tx.Mode));
             if (_engine.View is { Outcome: not ContactOutcome.InProgress }) _finishedShownAt = tx.Plan.SlotStartUtc;
         }
         Transmitting?.Invoke(tx, startedUtc);
@@ -1297,7 +1305,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 Rank = rank,
                 Stations = stations,
                 Summary = summary,
-                RawDecodes = _raw.ToList(),
+                RawDecodes = _raw.Where(r => r.Mode == _config.Mode).ToList(),
                 LastDecodedSlot = _lastDecodedSlot,
                 LastDecodeTime = _lastDecodeTime,
                 MedianDt = _medianDt,
