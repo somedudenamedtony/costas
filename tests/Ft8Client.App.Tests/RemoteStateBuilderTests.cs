@@ -78,7 +78,7 @@ public class RemoteStateBuilderTests
     {
         var s = RemoteStateBuilder.Build(Snap(), Now, Ctx, "you", null);
 
-        s.TonightTitle.Should().Be("Worked tonight · 2");
+        s.TonightTitle.Should().Be("Worked this session · 2");
         s.Tonight.Select(t => t.Call).Should().Equal("EA8XX", "VE3AAA");
         s.Tonight[0].Band.Should().Be("40 m PSK31");
         s.Tonight[1].Band.Should().Be("20 m FT8");

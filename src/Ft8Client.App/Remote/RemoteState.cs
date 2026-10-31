@@ -119,7 +119,7 @@ public sealed record RemoteState
     /// <summary>Who hears me.</summary>
     public RemoteSignal? Signal { get; init; }
 
-    /// <summary>"Worked tonight · 4".</summary>
+    /// <summary>"Worked this session · 4".</summary>
     public string TonightTitle { get; init; } = string.Empty;
 
     /// <summary>Contacts made tonight, newest first.</summary>

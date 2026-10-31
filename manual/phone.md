@@ -45,7 +45,7 @@ shows. **HALT TX** is always at the bottom of the screen.
 | **Stations** | The band summary (stations heard, countries, calling CQ, you need), **Repeats** (stations already in your log on this band and mode) and **Watching** (needed, but not callable right now, and why) |
 | **Decodes** | Band activity, newest first. Messages to you are highlighted, CQs are blue and your own transmissions are grey |
 | **Signal** | Who hears you, from PSK Reporter: how many stations and countries in the last 15 minutes, the farthest and best reports, the latest reports, and the last hour of distinct receivers in five-minute intervals (the final interval is incomplete) |
-| **Log** | The contacts you made tonight |
+| **Log** | The contacts you made this session |
 
 When a contact is logged, a one-line **Logged** notice with the call, the reports and where it is shows just above
 **HALT TX** on any tab, with a 5-second countdown; **✕** closes it sooner. The phone cannot alert you while the page is in
@@ -60,7 +60,7 @@ last 15 minutes.
 On an iPad or other tablet (any screen 760 pixels wide or more) the same address opens a fuller layout, close to the
 desk's Operate view. There are two tabs, **Operate** and **Decodes**. Next in line, Repeats and Watching are tables
 with the desk's columns (Call, Where, Doing now, Signal, Chance, Last heard, Last worked). The contact card shows all
-five messages under the strip. In landscape the band summary, your signal and tonight's contacts sit in a column on
+five messages under the strip. In landscape the band summary, your signal and this session's contacts sit in a column on
 the right; in portrait they follow below. Buttons are sized for fingers, station details open in a panel on the
 right, and **HALT TX** sits in the bottom right corner. Turning the tablet switches layouts straight away.
 

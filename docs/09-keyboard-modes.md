@@ -225,7 +225,7 @@ There is a watchdog for the keyboard modes:
 **Right column.**
 - *Heard here* and *Your signal* filter to the current band and mode.
 - *Band activity* counts signals per three minutes instead of decodes per slot.
-- *Tonight* lists contacts in all modes, with the mode on each row.
+- *Worked this session* lists contacts in all modes, with the mode on each row.
 
 **Status line.** Shows the mode (for RTTY, with its speed and shift), how many signals are being read, and the station in contact.
 
@@ -256,7 +256,7 @@ As built (M13):
   - Worked before, need tiers, the confirmed mark and Hunt use one mode key (`LogModeKey`): `FT8`, `FT4`, `PSK31`, `PSK63`, `RTTY`, the same for a contact just made and for it read back from the log. PSK31 and PSK63 are separate keys; `PSK`/`PSK31` and the older `PSK31` mode give the same key (likewise PSK63). No stored row is rewritten.
   - The duplicate rule compares that key, and the submodes when both contacts have one. LoTW's `APP_LoTW_MODE` gives the submode for `MODE=PSK` as it does for `MFSK` (V20).
   - Reports of my signal (Your signal, Reach, Who heard you, hears-you ranking) are for the current band and mode only. The neighbour and band-activity feed follows a band or mode change at once rather than at the next FT8 slot.
-  - Hunt alerts accept PSK Reporter reports in any mode Costas operates. Worked tonight shows the mode on each row.
+  - Hunt alerts accept PSK Reporter reports in any mode Costas operates. Worked this session shows the mode on each row.
   - Not yet: the decode journal and saved WAV files cover FT8 and FT4 only.
 
 ## 12. Code structure

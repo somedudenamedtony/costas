@@ -52,7 +52,7 @@ With a QRZ logbook API key (set in [setup](setup.md#6-qrz-and-psk-reporter) or
 - **Sync down.** Costas reads your whole QRZ logbook, including confirmations, and keeps checking for changes
   (every 15 minutes by default). This is what makes *New country*, *New band* and the log totals right. Without it,
   Costas only knows the contacts made in Costas or imported from ADIF, and every other station shows as a new call.
-- **Upload.** Each contact is uploaded as soon as it is logged. Its status shows in the Log and in **Worked tonight**:
+- **Upload.** Each contact is uploaded as soon as it is logged. Its status shows in the Log and in **Worked this session**:
   *Uploaded to QRZ*, *Waiting to upload · retrying*, or *Upload failed · Retry*. If QRZ is unreachable, uploads wait
   in a queue and retry with back-off; nothing is lost.
 - **Confirmed only.** If you chase confirmations rather than contacts, tick
