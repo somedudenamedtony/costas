@@ -105,7 +105,7 @@ public static class RemoteStateBuilder
                 log?.ContactsWith(x.Station.Call).Count ?? 0, units, nowUtc)))],
             Watching = [.. s.Rank.Watching.Take(MaxRows).Select(x => new WatchRowViewModel(x, nowUtc, units)).Select(x => new RemoteWatch(x.Call, x.Where, x.Why, x.Reason))],
             Signal = Signal(s, nowUtc, ctx, log, band),
-            TonightTitle = $"Worked tonight · {s.Tonight.Count}",
+            TonightTitle = $"Worked this session · {s.Tonight.Count}",
             Tonight = [.. s.Tonight.OrderByDescending(t => t.TimeUtc).Take(MaxRecent).Select(t => new RemoteTonight(t.Call,
                 StationText.Place(ctx.Countries?.Lookup(t.Call), null), $"{BandPlan.Display(t.Band)} {t.ModeKey}", StationText.Need(t.Need), OperateViewModel.Hm(t.TimeUtc)))],
             Logged = Logged(s.LastLogged, nowUtc),

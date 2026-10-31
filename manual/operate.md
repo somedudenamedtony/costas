@@ -68,7 +68,7 @@ in the last slot and the average per slot over the past hour.
 **Heard from**: a bar per continent (N. Am., Europe, Asia, Oceania, S. Am., Africa).
 
 **Your log on 20 m**: countries worked and confirmed on this band, US states worked (and the first few you still
-need), grid squares worked, and **Tonight**: contacts, new countries and new bands this session. A session starts
+need), grid squares worked, and **This session**: contacts, new countries and new bands this session. A session starts
 when you open Costas, or after 2 hours with no contact.
 
 When you call or answer a station, this card becomes the contact panel. See [Making contacts](contacts.md).
@@ -211,7 +211,7 @@ From top to bottom:
   with a sentence saying whether the band is busier or quieter than half an hour ago.
 - **Your signal on 20 m**: how many stations hear you, which countries they are in (*USA 12 · Canada 3 · Japan 1*, most stations first; after six countries it says *+4 more*, and hovering over the line lists every country with its best report and farthest station), the farthest and the best report, plus a graph of distinct receivers in five-minute intervals over the last hour. Each receiver counts once per interval. Times are local and the faded final bar is still incomplete. History stays available when you switch back to a band or mode during this session; recent stored reports refill it at start-up, and changing your station clears the in-memory counts. Reports may arrive late, and transmitting less or losing the feed can lower counts even when the band has not changed.
   **Open reach view** goes to the full view.
-- **Worked tonight**: your latest contacts this session with their QRZ upload state. **Show all in the log** opens
+- **Worked this session**: your latest contacts this session with their QRZ upload state. **Show all in the log** opens
   the Log view.
 
 ![Lower part of the right column](images/right-column-lower.png){ width="320" }

@@ -54,7 +54,7 @@ Reference user: W7LIT, grid DN40, an Icom IC-7300 over USB, Windows 11, a QRZ su
 | QRZ lookup | Name, location, state and grid for the selected or current station, cached |
 | PSK Reporter in | Live feed of who hears me (MQTT), query fallback, signal card, reach view |
 | PSK Reporter out | Upload my reception spots |
-| Worked tonight | Session list with need tag and upload status |
+| Worked this session | Session list with need tag and upload status |
 | Raw decodes | Tab with the classic message list, for when it is wanted |
 | Interop | WSJT-X UDP protocol, outbound (heartbeat, status, decode, clear, logged, logged ADIF, close) and inbound Reply, Halt Tx and Highlight Callsign |
 | Setup | Six-step first-run setup: station, radio, audio, transmit test, clock check, QRZ |

@@ -308,7 +308,7 @@
               <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LogStates}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
               <TextBlock Grid.Row="3" Text="Grid squares" Classes="secondary" Margin="0,2,16,2" />
               <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding LogGrids}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
-              <TextBlock Grid.Row="4" Text="Tonight" Classes="secondary" Margin="0,2,16,2" />
+              <TextBlock Grid.Row="4" Text="This session" Classes="secondary" Margin="0,2,16,2" />
               <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Tonight}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
             </Grid>
           </Grid>

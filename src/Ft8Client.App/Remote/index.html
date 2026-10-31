@@ -634,7 +634,7 @@ function renderSignal(s) {
 }
 
 function renderTonight(s) {
-  list($("tonight"), "tonight", s.tonightTitle, "", s.tonight, "No contacts yet tonight.", t => {
+  list($("tonight"), "tonight", s.tonightTitle, "", s.tonight, "No contacts yet this session.", t => {
     const it = el("div", "it");
     const left = el("div", "left");
     const c = el("div", "c", t.call + " ");

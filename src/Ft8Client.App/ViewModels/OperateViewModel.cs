@@ -269,7 +269,7 @@ public sealed partial class OperateViewModel : ObservableObject
 
     /// <summary>Worked tonight title.</summary>
     [ObservableProperty]
-    public partial string TonightTitle { get; set; } = "Worked tonight · 0";
+    public partial string TonightTitle { get; set; } = "Worked this session · 0";
 
     /// <summary>Worked tonight subline.</summary>
     [ObservableProperty]
@@ -444,7 +444,7 @@ public sealed partial class OperateViewModel : ObservableObject
 
         TonightRows.Clear();
         foreach (var t in tonight.Take(3)) TonightRows.Add(t);
-        TonightTitle = $"Worked tonight · {s.Tonight.Count}";
+        TonightTitle = $"Worked this session · {s.Tonight.Count}";
         TonightSubline = $"{s.Tonight.Count(t => t.Need == NeedTag.NewCountry)} new country · {s.Tonight.Count(t => t.Need == NeedTag.NewBand)} new bands";
         TonightLink = $"Show all {tonightTotal} in the log";
 

@@ -140,7 +140,7 @@ Costas does not know your log yet. Add your QRZ logbook API key in [Settings ›
 | --- | --- |
 | *The QRZ logbook key was refused* | Copy the API key again from your QRZ Logbook's Settings. It belongs to one logbook; check it is the logbook for your current callsign |
 | Names and locations never appear | Lookups need your QRZ **username and password**, not the API key. Full details need a QRZ XML subscription |
-| *Upload failed · Retry* | Click **Retry** in Worked tonight. *Waiting to upload · retrying* means Costas is still retrying by itself |
+| *Upload failed · Retry* | Click **Retry** in Worked this session. *Waiting to upload · retrying* means Costas is still retrying by itself |
 | *QRZ refused the contact* | Diagnostics shows the reason QRZ gave. A contact already in your QRZ logbook is one common cause |
 
 Costas works fine without QRZ: the list then ranks by signal only.

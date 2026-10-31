@@ -135,7 +135,7 @@ last added key goes altogether). If every key is empty, the default macros come 
 - Contacts in older logs that wrote `PSK31` or `PSK63` as the mode count the same as the ADIF 3 form (`PSK` with a
   submode), so importing an older log does not add the same contact twice.
 - *Your signal*, **Reach** and *Who heard you* on the Heard here map show only reports of your signal in the mode you
-  are in. **Worked tonight** names the mode of each contact.
+  are in. **Worked this session** names the mode of each contact.
 
 ## Safety
 
