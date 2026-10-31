@@ -14,7 +14,7 @@ public sealed class OperatingSettings
     /// <summary>Current band.</summary>
     public string Band { get; set; } = "20m";
 
-    /// <summary>FT8 or FT4.</summary>
+    /// <summary>FT8, FT4, PSK31, PSK63 or RTTY.</summary>
     public string Mode { get; set; } = "FT8";
 
     /// <summary>Parity for calling CQ: <c>even</c> or <c>odd</c>.</summary>
@@ -58,6 +58,36 @@ public sealed class OperatingSettings
 
     /// <summary>Dial frequencies in hertz the operator saved from the frequency menu (DXpedition and other off-standard spots).</summary>
     public List<long> SavedFrequencies { get; set; } = [];
+
+    /// <summary>RTTY speed in baud: 45.45 (the amateur standard), 50 or 75.</summary>
+    public double RttyBaud { get; set; } = 45.45;
+
+    /// <summary>RTTY shift in hertz: 170 (the amateur standard), 200, 425 or 850.</summary>
+    public int RttyShiftHz { get; set; } = 170;
+
+    /// <summary>Read RTTY with mark and space swapped, for stations sending upside down.</summary>
+    public bool RttyReverse { get; set; }
+
+    /// <summary>
+    /// Let PSK and RTTY channels follow a drifting signal (the AFC switch beside the macro keys). Off holds each channel on
+    /// the frequency it started on.
+    /// </summary>
+    public bool KeyboardAfc { get; set; } = true;
+
+    /// <summary>Return to letters after a space when reading RTTY, as most stations expect.</summary>
+    public bool RttyUnshiftOnSpace { get; set; } = true;
+
+    /// <summary>
+    /// RTTY transmit power as a percentage of the power set on the radio (docs/09-keyboard-modes.md section 3). RTTY is
+    /// a full-duty mode, so it is capped at half by default; 100 leaves the power alone.
+    /// </summary>
+    public int RttyPowerPercent { get; set; } = 50;
+
+    /// <summary>The RTTY power cap on the radio now, kept until the operator's power is put back; null when none.</summary>
+    public RttyPowerCapOptions? RttyPowerCap { get; set; }
+
+    /// <summary>The PSK and RTTY macros, F1 up. Empty means the defaults.</summary>
+    public List<MacroOptions> Macros { get; set; } = [];
 
     /// <summary>Correct Costas's own clock from internet time when the PC clock is off (the PC clock is never changed).</summary>
     public bool CorrectClock { get; set; } = true;

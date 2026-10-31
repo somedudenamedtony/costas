@@ -44,6 +44,12 @@ public sealed class Transmitter
     private TxHold? _hold;
     private DateTime? _lastStartedSlot;
     private bool _ptt;
+    private AudioStream? _stream;
+    private DateTime? _streamAudioDueUtc;
+    private bool _streamPlaying;
+    private Mode _streamMode;
+    private int _streamOffsetHz;
+    private int? _streamWidthHz;
 
     /// <summary>Creates a transmitter.</summary>
     public Transmitter(IRig rig, IAudioOutput? output, IClock clock, FrequencyTable frequencies)
@@ -64,6 +70,12 @@ public sealed class Transmitter
 
     /// <summary>Raised when a transmission ends; true if it completed, false if it was cut short.</summary>
     public event Action<PreparedTx, bool>? Ended;
+
+    /// <summary>Raised when a keyboard-mode over's audio starts.</summary>
+    public event Action? StreamStarted;
+
+    /// <summary>Raised when a keyboard-mode over ends; true if it played to its end, false if it was cut short.</summary>
+    public event Action<bool>? StreamEnded;
 
     /// <summary>Raised with a fault message after PTT has been released.</summary>
     public event Action<string>? Fault;
@@ -86,7 +98,81 @@ public sealed class Transmitter
     /// <summary>True while PTT is asserted or audio is playing.</summary>
     public bool Transmitting
     {
-        get { lock (_gate) return _ptt || _current is not null; }
+        get { lock (_gate) return _ptt || _current is not null || _stream is not null; }
+    }
+
+    /// <summary>The output's sample rate, for rendering audio ahead (48 kHz when no output is open).</summary>
+    public int OutputSampleRate => _output?.SampleRate ?? 48_000;
+
+    /// <summary>
+    /// Starts a keyboard-mode over (docs/09-keyboard-modes.md section 9): PTT now, the stream's audio after the PTT lead,
+    /// and PTT off a tail after the stream finishes. Returns null once started, or why it was refused: transmitting is
+    /// disabled, no audio output, a radio fault, outside the band, already transmitting, or PTT could not be asserted.
+    /// The clock check does not apply, since these modes have no slots. Rig and audio faults, and Halt, end it like any
+    /// transmission. <paramref name="widthHz"/> is the signal's width for the band-edge check (an RTTY shift wider than
+    /// the standard), or null for the mode's usual width.
+    /// </summary>
+    public string? StartStream(AudioStream stream, Mode mode, int offsetHz, TxGuardInput guard, TimeSpan pttLead, int? widthHz = null)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        ArgumentNullException.ThrowIfNull(guard);
+        if (DisabledReason is not null) return DisabledReason;
+        if (!guard.AudioReady || _output is null) return "No audio output device is open; transmitting is disabled.";
+        if (guard.RigFault is not null) return $"Radio fault: {guard.RigFault}";
+        if (!_frequencies.TransmitAllowed(guard.Band, mode, guard.DialHz, offsetHz, widthHz, out var bandWhy)) return bandWhy;
+        lock (_gate)
+        {
+            if (_ptt || _current is not null || _next is not null || _stream is not null) return "Already transmitting.";
+            _stream = stream;
+            _streamPlaying = false;
+            _streamMode = mode;
+            _streamOffsetHz = offsetHz;
+            _streamWidthHz = widthHz;
+            _ptt = true;
+            _streamAudioDueUtc = _clock.UtcNow + pttLead;
+        }
+        var ptt = SetPttSafe(true);
+        // A radio that refuses PTT at once has already halted the over: say why instead of reporting it started.
+        if (ptt.IsCompletedSuccessfully && ptt.Result is { } failed) return failed;
+        lock (_gate)
+        {
+            if (!ReferenceEquals(_stream, stream)) return "The over was stopped before it started.";
+        }
+        return null;
+    }
+
+    /// <summary>True while <paramref name="stream"/> is the keyboard over this transmitter is sending.</summary>
+    public bool IsStreaming(AudioStream stream)
+    {
+        lock (_gate) return _stream is not null && ReferenceEquals(_stream, stream);
+    }
+
+    /// <summary>
+    /// Checks what is on the air now against the band-edge limits at <paramref name="dialHz"/>. Returns null when
+    /// nothing is on the air or it still fits, otherwise why it must stop (the dial moved during a transmission).
+    /// </summary>
+    public string? OnAirOutsideBand(string band, long dialHz)
+    {
+        Mode mode;
+        int offset;
+        int? width;
+        lock (_gate)
+        {
+            if (_stream is not null)
+            {
+                (mode, offset, width) = (_streamMode, _streamOffsetHz, _streamWidthHz);
+            }
+            else if ((_current ?? (_ptt ? _next : null)) is { } tx)
+            {
+                // A Tune tone is checked as FT8 is when it starts.
+                (mode, offset, width) = (tx.Mode, tx.OffsetHz, null);
+            }
+            else
+            {
+                return null;
+            }
+        }
+        return _frequencies.TransmitAllowed(band, mode, dialHz, offset, width, out var why) ? null : why;
     }
 
     /// <summary>The message on the air now, or null.</summary>
@@ -278,6 +364,7 @@ public sealed class Transmitter
     /// <summary>Releases PTT when the audio and its tail have finished. Called on the slot thread every millisecond.</summary>
     public void Poll()
     {
+        PollStream();
         var keyHeld = false;
         lock (_gate)
         {
@@ -320,6 +407,7 @@ public sealed class Transmitter
         }
 
         PreparedTx? done = null;
+        var streamDone = false;
         lock (_gate)
         {
             if (_pttOffDueUtc is not { } due || _clock.UtcNow < due) return;
@@ -327,17 +415,54 @@ public sealed class Transmitter
             _ptt = false;
             done = _current;
             _current = null;
+            if (_stream is not null && _streamPlaying)
+            {
+                _stream = null;
+                _streamPlaying = false;
+                streamDone = true;
+            }
         }
         _ = SetPttSafe(false);
         if (done is not null) Ended?.Invoke(done, true);
+        if (streamDone) StreamEnded?.Invoke(true);
+    }
+
+    // A keyboard over: audio once the PTT lead has passed, and the PTT tail once the stream has played out.
+    private void PollStream()
+    {
+        AudioStream? start = null;
+        lock (_gate)
+        {
+            if (_stream is null) return;
+            var now = _clock.UtcNow;
+            if (_streamAudioDueUtc is { } due)
+            {
+                if (now < due || !_ptt) return;
+                _streamAudioDueUtc = null;
+                _streamPlaying = true;
+                start = _stream;
+            }
+            else if (_streamPlaying && _pttOffDueUtc is null && _stream.Finished && _output?.IsPlaying != true)
+            {
+                _pttOffDueUtc = now + Tail;
+            }
+        }
+        if (start is null) return;
+        _output!.PlayStream(start);
+        StreamStarted?.Invoke();
     }
 
     /// <summary>Halt: stops audio and drops PTT immediately.</summary>
     public async Task HaltAsync()
     {
         PreparedTx? cut;
+        bool streamCut;
         lock (_gate)
         {
+            streamCut = _stream is not null;
+            _stream = null;
+            _streamAudioDueUtc = null;
+            _streamPlaying = false;
             cut = _current;
             _current = null;
             _next = null;
@@ -350,6 +475,7 @@ public sealed class Transmitter
         _output?.Stop();
         await SetPttSafe(false).ConfigureAwait(false);
         if (cut is not null) Ended?.Invoke(cut, false);
+        if (streamCut) StreamEnded?.Invoke(false);
     }
 
     /// <summary>
@@ -436,7 +562,8 @@ public sealed class Transmitter
     private static string OutputDeadText(string why) =>
         $"The audio output stopped ({why}). Costas opens it again when the device is back, for a radio's USB audio when the radio is on.";
 
-    private async Task AbortAsync(string message)
+    /// <summary>Stops the transmission like Halt, then reports <paramref name="message"/> as a fault.</summary>
+    public async Task AbortAsync(string message)
     {
         await HaltAsync().ConfigureAwait(false);
         Fault?.Invoke(message);

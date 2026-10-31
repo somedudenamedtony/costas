@@ -19,7 +19,7 @@ namespace Ft8Client.Core.Ranking;
 /// <param name="Settings">Ranking settings.</param>
 /// <param name="MyEntity">My entity, for CQ modifier rules.</param>
 /// <param name="Band">Current band.</param>
-/// <param name="ModeKey"><c>FT8</c> or <c>FT4</c>.</param>
+/// <param name="ModeKey">The mode, as <see cref="Logbook.LogModeKey"/> names it (<c>FT8</c>, <c>PSK31</c>, ...).</param>
 /// <param name="NowUtc">Current time.</param>
 /// <param name="Countries">Country file, for country CQ modifiers. Optional.</param>
 /// <param name="Lotw">Who uploads to LoTW; with only confirmed contacts counting, LoTW users rank ahead. Optional.</param>

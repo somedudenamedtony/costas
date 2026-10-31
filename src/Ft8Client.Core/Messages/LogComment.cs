@@ -10,17 +10,21 @@ namespace Ft8Client.Core.Messages;
 
 /// <summary>
 /// The comment written on a logged contact, in the form other FT8 loggers put in QRZ:
-/// <c>FT8 Sent: -01 Rcvd: -13</c>.
+/// <c>FT8 Sent: -01 Rcvd: -13</c>. PSK and RTTY reports are RST, written as they are: <c>RTTY Sent: 599 Rcvd: 579</c>.
 /// </summary>
 public static class LogComment
 {
     /// <summary>
-    /// Builds the comment from the mode and the reports. The received part is left out when no report was received.
+    /// Builds the comment from the mode and the reports. Each part is left out when that report was not exchanged.
     /// </summary>
-    public static string Format(Mode mode, int reportSent, int? reportReceived)
+    public static string Format(Mode mode, int? reportSent, int? reportReceived)
     {
-        var name = mode == Mode.Ft4 ? "FT4" : "FT8";
-        var s = $"{name} Sent: {Report.Format(reportSent)}";
-        return reportReceived is { } r ? $"{s} Rcvd: {Report.Format(r)}" : s;
+        var s = ModeInfo.Name(mode);
+        if (reportSent is { } sent) s = $"{s} Sent: {Rst(mode, sent)}";
+        return reportReceived is { } r ? $"{s} Rcvd: {Rst(mode, r)}" : s;
     }
+
+    /// <summary>A report as logged: signed dB for FT8 and FT4 (<c>-07</c>), plain RST for the keyboard modes (<c>599</c>).</summary>
+    public static string Rst(Mode mode, int report) =>
+        ModeInfo.IsSlotted(mode) ? Report.Format(report) : report.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }

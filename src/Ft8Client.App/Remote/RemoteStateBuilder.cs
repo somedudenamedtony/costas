@@ -32,6 +32,9 @@ public static class RemoteStateBuilder
     /// <summary>Most rows of Repeats and of Watching sent to the phone, as on the Operate view.</summary>
     public const int MaxRows = 8;
 
+    /// <summary>Conversation lines sent to the phone.</summary>
+    public const int MaxConversation = 6;
+
     /// <summary>Most band activity lines sent to the phone.</summary>
     public const int MaxDecodes = 60;
 
@@ -56,10 +59,12 @@ public static class RemoteStateBuilder
         var band = BandPlan.Display(s.Band);
 
         // Same countdown as the contact card: to the slot boundary, the whole slot a transmission went out in counting as transmit.
-        var slotLen = ModeInfo.SlotLength(s.Mode);
-        var into = nowUtc - SlotMath.SlotStart(nowUtc, s.Mode);
+        // A keyboard mode has no slots: a zero length hides the countdown.
+        var slotted = ModeInfo.IsSlotted(s.Mode);
+        var slotLen = slotted ? ModeInfo.SlotLength(s.Mode) : TimeSpan.Zero;
+        var into = slotted ? nowUtc - SlotMath.SlotStart(nowUtc, s.Mode) : TimeSpan.Zero;
         var (meter, meterTip, meterKind) = TxMeterText.Warning(s.TxMeters);
-        var summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty);
+        var summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty, ModeInfo.IsSlotted(s.Mode) ? null : s.Activity);
 
         return new RemoteState
         {
@@ -75,7 +80,10 @@ public static class RemoteStateBuilder
             Fault = s.Fault,
             Hunt = ctx.Hunt(),
             Control = control,
-            Contact = s.Contact is null ? null : Contact(ContactPanelViewModel.From(s.Contact, s, nowUtc, units, ctx.QrzName(s.Contact.DxCall))),
+            Contact = s.Contact is null ? null : Contact(ContactPanelViewModel.For(s.Contact, s, nowUtc, units, ctx.QrzName(s.Contact.DxCall))),
+            Macros = slotted ? [] : [.. s.Macros.Select(m => new RemoteMacro(m.Key, $"F{m.Key} {m.Label}", m.Text, m.Key == s.NextMacro))],
+            Conversation = [.. s.Conversation.TakeLast(MaxConversation)
+                .Select(l => new RemoteLine(l.Utc.ToString("HH:mm:ss", CultureInfo.InvariantCulture), l.Who, l.Text, l.Mine))],
             Callers = [.. s.Waiting.Select(w => Caller(w, s, inContact))],
             Line = [.. s.Rank.Line.Take(MaxLine).Select(x => Row(new StationRowViewModel(x, 0, units, nowUtc, log?.LastContactWith(x.Station.Call))))],
             Band = s.Band,
@@ -99,7 +107,7 @@ public static class RemoteStateBuilder
             Signal = Signal(s, nowUtc, ctx, log, band),
             TonightTitle = $"Worked tonight · {s.Tonight.Count}",
             Tonight = [.. s.Tonight.OrderByDescending(t => t.TimeUtc).Take(MaxRecent).Select(t => new RemoteTonight(t.Call,
-                StationText.Place(ctx.Countries?.Lookup(t.Call), null), BandPlan.Display(t.Band), StationText.Need(t.Need), OperateViewModel.Hm(t.TimeUtc)))],
+                StationText.Place(ctx.Countries?.Lookup(t.Call), null), $"{BandPlan.Display(t.Band)} {t.ModeKey}", StationText.Need(t.Need), OperateViewModel.Hm(t.TimeUtc)))],
             Logged = Logged(s.LastLogged, nowUtc),
             Decodes = [.. s.RawDecodes.Reverse().Take(MaxDecodes).Select(Decode)],
             Details = viewing is null ? null : Details(viewing, s, nowUtc, ctx, log, inContact),

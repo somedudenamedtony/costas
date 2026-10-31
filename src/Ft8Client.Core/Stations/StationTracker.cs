@@ -7,6 +7,7 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Ft8Client.Core.Geo;
+using Ft8Client.Core.Keyboard;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Time;
 
@@ -33,6 +34,7 @@ public sealed class StationTracker
     private readonly Dictionary<string, Station> _stations = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (string? Grid, string? Region, string? City)> _lookups = new(StringComparer.Ordinal);
     private readonly Dictionary<string, DateTime> _lastCqSlot = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _overOpen = new(StringComparer.Ordinal);
     private readonly CountryFile? _countries;
     private readonly Mode _mode;
     private string _myCall;
@@ -68,6 +70,7 @@ public sealed class StationTracker
     {
         _stations.Clear();
         _lastCqSlot.Clear();
+        _overOpen.Clear();
     }
 
     /// <summary>Adds QRZ lookup data. A lookup grid is used only when the station has not sent its own.</summary>
@@ -124,6 +127,76 @@ public sealed class StationTracker
             {
                 _stations.Remove(call);
                 _lastCqSlot.Remove(call);
+            }
+        }
+    }
+
+    /// <summary>A keyboard-mode station is callable this long after its last CQ over (docs/09-keyboard-modes.md section 6).</summary>
+    public static readonly TimeSpan TextCallableFor = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// Applies text heard on a keyboard-mode channel. The station has no parity; its SNR history gets one value per
+    /// over, and its state comes from the over: CQ or QRZ, sent to me, or sent to someone else. Text that says none of
+    /// those keeps the state it had.
+    /// </summary>
+    public void ApplyText(TextHeard h)
+    {
+        var call = Callsign.Normalize(h.Call);
+        if (!Callsign.IsValid(call) || Callsign.EqualsCall(call, _myCall)) return;
+        var existing = _stations.GetValueOrDefault(call);
+        var s = existing ?? new Station { Call = call, FirstHeardUtc = h.Utc, Entity = _countries?.Lookup(call), State = StationState.InContact };
+        if (_lookups.TryGetValue(call, out var lk)) s = s with { Region = lk.Region ?? s.Region, City = lk.City ?? s.City };
+
+        var history = _overOpen.Contains(call) && s.SnrHistory.Count > 0
+            ? [.. s.SnrHistory.Take(s.SnrHistory.Count - 1), h.Snr]
+            : Push(s.SnrHistory, h.Snr);
+        if (h.OverEnded) _overOpen.Remove(call);
+        else _overOpen.Add(call);
+
+        s = s with
+        {
+            Parity = null,
+            LastHeardUtc = h.Utc,
+            LastHeardEndUtc = h.Utc,
+            LastSnr = h.Snr,
+            OffsetHz = h.OffsetHz,
+            SnrHistory = history,
+            MissedSlots = 0,
+            JustFinished = false,
+            RecentText = h.RecentText,
+        };
+        s = s with { Trend = TrendOf(s.SnrHistory) };
+        if (h.To is { } to && Callsign.EqualsCall(to, _myCall))
+            s = s with { State = StationState.CallingMe, Partner = _myCall, PartnerStage = Ft8Client.Core.Stations.PartnerStage.Other, CqStreak = 0 };
+        else if (h.Cq)
+            s = s with { State = StationState.CallingCq, CqStreak = 1, CqModifier = null, Partner = null, PartnerStage = null };
+        else if (h.To is { } other)
+            s = s with { State = StationState.InContact, Partner = Callsign.Normalize(other), PartnerStage = Ft8Client.Core.Stations.PartnerStage.Other, CqStreak = 0 };
+        else if (s.State == StationState.Quiet)
+            s = s with { State = StationState.InContact };
+
+        _stations[call] = Place(s, s.Grid);
+    }
+
+    /// <summary>
+    /// Ages keyboard-mode stations: one not heard for <see cref="TextCallableFor"/> goes quiet (and so stops being
+    /// callable), and one not heard for <see cref="RemoveAfter"/> is removed. Slot stations are aged by
+    /// <see cref="ApplySlot"/>.
+    /// </summary>
+    public void AgeText(DateTime nowUtc)
+    {
+        foreach (var call in _stations.Keys.ToList())
+        {
+            var s = _stations[call];
+            if (s.Parity is not null) continue;
+            if (nowUtc - s.LastHeardUtc >= (KeepFor > RemoveAfter ? KeepFor : RemoveAfter))
+            {
+                _stations.Remove(call);
+                _overOpen.Remove(call);
+            }
+            else if (s.MissedSlots == 0 && nowUtc - s.LastHeardUtc > TextCallableFor)
+            {
+                _stations[call] = s with { MissedSlots = 1, State = StationState.Quiet, SnrHistory = Push(s.SnrHistory, null) };
             }
         }
     }

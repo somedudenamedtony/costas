@@ -46,7 +46,7 @@ public class RemoteStateBuilderTests
             Rank = new RankResult([line], [watching], worked, []),
             Stations = [line.Station, worked[0].Station, worked[1].Station, watching.Station],
             RawDecodes = [Line("CQ VE7XYZ CN89"), Line("W7LIT K5ABC EM10", toMe: true), Line("CQ W7LIT DN40", tx: true)],
-            Tonight = [new TonightContact("VE3AAA", "20m", Now.AddMinutes(-30), NeedTag.NewCall), new TonightContact("EA8XX", "40m", Now.AddMinutes(-10), NeedTag.NewCountry)],
+            Tonight = [new TonightContact("VE3AAA", "20m", Now.AddMinutes(-30), NeedTag.NewCall, "FT8"), new TonightContact("EA8XX", "40m", Now.AddMinutes(-10), NeedTag.NewCountry, "PSK31")],
             TxOffsetHz = 1200,
             TxOffsetAuto = false,
         };
@@ -80,7 +80,8 @@ public class RemoteStateBuilderTests
 
         s.TonightTitle.Should().Be("Worked tonight · 2");
         s.Tonight.Select(t => t.Call).Should().Equal("EA8XX", "VE3AAA");
-        s.Tonight[0].Band.Should().Be("40 m");
+        s.Tonight[0].Band.Should().Be("40 m PSK31");
+        s.Tonight[1].Band.Should().Be("20 m FT8");
     }
 
     [Fact]

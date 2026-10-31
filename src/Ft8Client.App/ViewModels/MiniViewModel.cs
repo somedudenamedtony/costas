@@ -97,6 +97,14 @@ public sealed partial class MiniViewModel : ObservableObject
     [ObservableProperty]
     public partial IReadOnlyList<StepViewModel> Steps { get; set; } = [];
 
+    /// <summary>True in PSK31, PSK63 and RTTY: the macro keys replace the step dots.</summary>
+    [ObservableProperty]
+    public partial bool IsKeyboard { get; set; }
+
+    /// <summary>PSK and RTTY: the macro buttons, the next step's in the accent colour.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<MacroButtonViewModel> Macros { get; set; } = [];
+
     /// <summary>The message on the air now, or the one being waited for.</summary>
     [ObservableProperty]
     public partial string Message { get; set; } = string.Empty;
@@ -144,6 +152,11 @@ public sealed partial class MiniViewModel : ObservableObject
             : _operate.Line.Count > 0 ? string.Create(CultureInfo.InvariantCulture, $"{_operate.Line.Count} in line")
             : string.Empty;
 
+        var keyboard = _operate.Keyboard;
+        IsKeyboard = keyboard.Visible;
+        if (!IsKeyboard) Macros = [];
+        else if (!Macros.SequenceEqual(keyboard.Macros)) Macros = [.. keyboard.Macros];
+
         var contact = _operate.Contact is { Active: true } c ? c : null;
         InContact = contact is not null;
         if (contact is not null)
@@ -152,7 +165,7 @@ public sealed partial class MiniViewModel : ObservableObject
             Detail = string.Empty;
             Why = contact.Need;
             WhyKind = contact.NeedKind;
-            Steps = contact.Steps;
+            Steps = IsKeyboard ? [] : contact.Steps;
             var now = contact.Steps.FirstOrDefault(s => s.Look == StepLook.Transmitting)
                 ?? contact.Steps.FirstOrDefault(s => s.Look == StepLook.Waiting);
             Message = now?.Message ?? string.Empty;
@@ -177,6 +190,13 @@ public sealed partial class MiniViewModel : ObservableObject
     private void CallTop()
     {
         if (HasTop && Call.Length > 0) _commands.Call(Call);
+    }
+
+    /// <summary>Sends a macro (its button, or F1 to F12 while this window has the keyboard).</summary>
+    [RelayCommand]
+    public void SendMacro(int key)
+    {
+        if (IsKeyboard) _commands.SendMacro(key);
     }
 
     /// <summary>Halt Tx: always available.</summary>

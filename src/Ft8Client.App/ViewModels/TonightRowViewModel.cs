@@ -14,6 +14,6 @@ namespace Ft8Client.App.ViewModels;
 /// <param name="UploadKind">Upload colour.</param>
 /// <param name="Need">Need tag at the time.</param>
 /// <param name="NeedKind">Need colour.</param>
-/// <param name="Time">"02:49 UTC".</param>
+/// <param name="Time">Mode and time, "FT8 · 02:49 UTC".</param>
 /// <param name="QsoId">Row id, for retry.</param>
 public sealed record TonightRowViewModel(string CallWhere, string Upload, TextKind UploadKind, string Need, TextKind NeedKind, string Time, long QsoId);

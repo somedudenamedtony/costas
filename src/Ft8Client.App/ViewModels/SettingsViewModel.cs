@@ -17,6 +17,7 @@ using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Data.Secrets;
 using Ft8Client.Data.Settings;
+using Ft8Client.Modems.Rtty;
 
 namespace Ft8Client.App.ViewModels;
 
@@ -50,7 +51,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         (Callsign, Grid, Power, LogbookKey) = (active.Callsign, active.Grid, active.Power, active.LogbookKey);
         _shownProfile = active;
         SelectedProfile = active;
-        TxGain = _loadedTxGain = TxLevelController.LevelFor(s.Profile.Audio, s.Operating.Band).ToString("0.0", CultureInfo.InvariantCulture);
+        TxGain = _loadedTxGain = TxLevelController.LevelFor(s.Profile.Audio, s.Operating.Band, s.Operating.Mode).ToString("0.0", CultureInfo.InvariantCulture);
         TxGainLabel = $"Audio level on {s.Operating.Band} (dB)";
         AutoTxLevel = s.Profile.Audio.AutoTxLevel;
         Watchdog = s.Operating.WatchdogMinutes.ToString(CultureInfo.InvariantCulture);
@@ -62,6 +63,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         FreeTextAfter = s.Operating.FreeTextAfter;
         AutoLog = s.Operating.AutoLog;
         ChimeOnCaller = s.Operating.ChimeOnCaller;
+        var rtty = SettingsMapper.Rtty(s);
+        RttySpeed = rtty.Baud.ToString("0.##", CultureInfo.InvariantCulture);
+        RttyShift = rtty.ShiftHz.ToString(CultureInfo.InvariantCulture);
+        RttyReverse = rtty.Reverse;
+        RttyUnshiftOnSpace = s.Operating.RttyUnshiftOnSpace;
+        RttyPowerPercent = s.Operating.RttyPowerPercent.ToString(CultureInfo.InvariantCulture);
+        OperatorName = s.Profile.OperatorName;
+        Qth = s.Profile.Qth;
+        RigDescription = s.Profile.RigDescription;
+        Antenna = s.Profile.Antenna;
+        LoadMacros(SettingsMapper.Macros(s.Operating));
         CqParity = s.Operating.CqParity;
         ClockBlock = s.Operating.ClockBlockSeconds.ToString("0.0", CultureInfo.InvariantCulture);
         CorrectClock = s.Operating.CorrectClock;
@@ -133,8 +145,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Raised when the window should close.</summary>
     public event Action? Close;
 
-    /// <summary>Index of the Who to call page.</summary>
-    public const int WhoToCallPage = 2;
+    /// <summary>Index of the PSK and RTTY page.</summary>
+    public const int KeyboardPage = 2;
+
+    /// <summary>Index of the Who to call page (after PSK and RTTY).</summary>
+    public const int WhoToCallPage = 3;
 
     /// <summary>The page shown when the window opens (Who to call when opened from "Change").</summary>
     [ObservableProperty]
@@ -403,6 +418,131 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Chime when a new station calls me.</summary>
     [ObservableProperty]
     public partial bool ChimeOnCaller { get; set; }
+
+    /// <summary>RTTY speeds offered, in baud.</summary>
+    public IReadOnlyList<string> RttySpeeds { get; } = [.. RttyFormat.Speeds.Select(b => b.ToString("0.##", CultureInfo.InvariantCulture))];
+
+    /// <summary>RTTY speed.</summary>
+    [ObservableProperty]
+    public partial string RttySpeed { get; set; }
+
+    /// <summary>RTTY shifts offered, in hertz.</summary>
+    public IReadOnlyList<string> RttyShifts { get; } = [.. RttyFormat.Shifts.Select(h => h.ToString(CultureInfo.InvariantCulture))];
+
+    /// <summary>RTTY shift.</summary>
+    [ObservableProperty]
+    public partial string RttyShift { get; set; }
+
+    /// <summary>Read RTTY reversed.</summary>
+    [ObservableProperty]
+    public partial bool RttyReverse { get; set; }
+
+    /// <summary>RTTY unshift-on-space.</summary>
+    [ObservableProperty]
+    public partial bool RttyUnshiftOnSpace { get; set; }
+
+    /// <summary>RTTY power as a share of the radio's setting, in percent.</summary>
+    [ObservableProperty]
+    public partial string RttyPowerPercent { get; set; }
+
+    /// <summary>My first name, for {MYNAME}.</summary>
+    [ObservableProperty]
+    public partial string OperatorName { get; set; }
+
+    /// <summary>Where I am, for {MYQTH}.</summary>
+    [ObservableProperty]
+    public partial string Qth { get; set; }
+
+    /// <summary>My radio, for {MYRIG}.</summary>
+    [ObservableProperty]
+    public partial string RigDescription { get; set; }
+
+    /// <summary>My antenna, for {MYANT}.</summary>
+    [ObservableProperty]
+    public partial string Antenna { get; set; }
+
+    /// <summary>The PSK and RTTY macros, F1 up.</summary>
+    public ObservableCollection<MacroEditViewModel> Macros { get; } = [];
+
+    /// <summary>The fields a macro can hold, for the help line.</summary>
+    public string MacroFields { get; } = string.Join(" ", Core.Keyboard.MacroText.Fields.Select(f => "{" + f + "}"));
+
+    private void LoadMacros(IReadOnlyList<Core.Keyboard.Macro> macros)
+    {
+        Macros.Clear();
+        // F1 to F5 always have a row, so a default can be put back by typing it; more keys can be added below.
+        for (var key = 1; key <= Math.Max(5, macros.Count == 0 ? 0 : macros.Max(m => m.Key)); key++)
+        {
+            var m = macros.FirstOrDefault(x => x.Key == key);
+            Macros.Add(new MacroEditViewModel(key, m?.Label ?? string.Empty, m?.Text ?? string.Empty));
+        }
+    }
+
+    /// <summary>Puts the default macros back.</summary>
+    [RelayCommand]
+    private void RestoreMacros() => LoadMacros(Core.Keyboard.Macro.Defaults);
+
+    /// <summary>Adds a row for the next function key, up to F12.</summary>
+    [RelayCommand]
+    private void AddMacro()
+    {
+        if (Macros.Count < 12) Macros.Add(new MacroEditViewModel(Macros.Count + 1, string.Empty, string.Empty));
+    }
+
+    /// <summary>
+    /// Removes a key's macro: the last row above F5 goes, any other row is emptied (a key with no text has no macro once
+    /// saved).
+    /// </summary>
+    [RelayCommand]
+    private void RemoveMacro(MacroEditViewModel? row)
+    {
+        if (row is null) return;
+        if (row.Key > 5 && ReferenceEquals(row, Macros[^1]))
+        {
+            Macros.Remove(row);
+            return;
+        }
+        row.Label = string.Empty;
+        row.Text = string.Empty;
+    }
+
+    // The last warning about the macros, which a second Save accepts.
+    private string? _macroWarning;
+
+    /// <summary>
+    /// A problem with the macros as typed, or null. Blocking problems stop the save: a name in braces that is not a
+    /// field, or a character neither PSK nor RTTY can send. Warnings stop only the first Save: a character RTTY cannot
+    /// send (that key is then refused in RTTY), and every macro empty (the defaults come back).
+    /// </summary>
+    internal static (string Text, bool Blocking)? MacroCheck(IEnumerable<MacroEditViewModel> rows)
+    {
+        var used = rows.Where(m => !string.IsNullOrWhiteSpace(m.Text)).ToList();
+        if (used.Count == 0)
+            return ("Every macro is empty, so the default macros will come back. Press Save again to use the defaults, or type at least one macro.", false);
+        var all = Core.Keyboard.MacroText.Fields.ToDictionary(f => f, _ => (string?)"X", StringComparer.Ordinal);
+        static string Name(MacroEditViewModel m) => string.IsNullOrWhiteSpace(m.Label) ? m.KeyName : $"{m.KeyName} {m.Label.Trim()}";
+        foreach (var m in used)
+        {
+            var text = Core.Keyboard.MacroText.Expand(m.Text, all, out var unknown);
+            if (unknown.Count > 0)
+            {
+                return ($"{Name(m)}: {string.Join(" ", unknown.Select(u => "{" + u + "}"))} {(unknown.Count == 1 ? "is not a field" : "are not fields")}. "
+                    + $"A macro can hold {string.Join(" ", all.Keys.Select(f => "{" + f + "}"))}.", true);
+            }
+            var never = KeyboardCharacters.Unsendable(false, text);
+            if (never.Count > 0) return ($"{Name(m)}: PSK and RTTY cannot send {KeyboardCharacters.Show(never)}. Remove {(never.Count == 1 ? "it" : "them")}.", true);
+        }
+        foreach (var m in used)
+        {
+            var rtty = KeyboardCharacters.Unsendable(true, Core.Keyboard.MacroText.Expand(m.Text, all, out _));
+            if (rtty.Count > 0)
+            {
+                return ($"{Name(m)}: RTTY cannot send {KeyboardCharacters.Show(rtty)}, so in RTTY that key will be refused. "
+                    + $"Press Save again to keep it, or remove {(rtty.Count == 1 ? "it" : "them")}.", false);
+            }
+        }
+        return null;
+    }
 
     /// <summary>Parities.</summary>
     public IReadOnlyList<string> Parities { get; } = ["even", "odd"];
@@ -896,6 +1036,13 @@ public sealed partial class SettingsViewModel : ObservableObject
             SelectedPage = 0;
             return;
         }
+        if (MacroCheck(Macros) is { } check && (check.Blocking || check.Text != _macroWarning))
+        {
+            Message = check.Text;
+            _macroWarning = check.Blocking ? null : check.Text;
+            SelectedPage = KeyboardPage;
+            return;
+        }
         var activeId = (SelectedProfile ?? Profiles[0]).Id;
         var removed = _host.Settings.Current.Profiles.Select(p => p.Id).Where(id => Profiles.All(d => d.Id != id)).ToList();
         _host.Settings.Update(s =>
@@ -925,7 +1072,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             {
                 var gain = Dbl(TxGain, -40, 0, s.Profile.Audio.TxGainDb);
                 s.Profile.Audio.TxGainDb = gain;
-                s.Profile.Audio.TxGainByBand[s.Operating.Band] = gain;
+                s.Profile.Audio.TxGainByBand[TxLevelController.LevelKey(s.Operating.Band, s.Operating.Mode)] = gain;
             }
             s.Profile.Audio.AutoTxLevel = AutoTxLevel;
             s.Operating.WatchdogMinutes = Int(Watchdog, 1, 60, 6);
@@ -937,6 +1084,17 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.FreeTextAfter = FreeText();
             s.Operating.AutoLog = AutoLog;
             s.Operating.ChimeOnCaller = ChimeOnCaller;
+            s.Operating.RttyBaud = Dbl(RttySpeed, 45, 75, RttyFormat.Standard.Baud);
+            s.Operating.RttyShiftHz = Int(RttyShift, 170, 850, RttyFormat.Standard.ShiftHz);
+            s.Operating.RttyReverse = RttyReverse;
+            s.Operating.RttyUnshiftOnSpace = RttyUnshiftOnSpace;
+            s.Operating.RttyPowerPercent = Int(RttyPowerPercent, 10, 100, 50);
+            s.Profile.OperatorName = OperatorName.Trim();
+            s.Profile.Qth = Qth.Trim();
+            s.Profile.RigDescription = RigDescription.Trim();
+            s.Profile.Antenna = Antenna.Trim();
+            s.Operating.Macros = [.. Macros.Where(m => !string.IsNullOrWhiteSpace(m.Text))
+                .Select(m => new MacroOptions { Key = m.Key, Label = m.Label.Trim(), Text = m.Text.Trim() })];
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
             s.Operating.CorrectClock = CorrectClock;

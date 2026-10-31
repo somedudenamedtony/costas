@@ -1,0 +1,6 @@
+# Synthetic: made by Costas's own PskModulator with Gaussian noise (seed 2026). Hz<TAB>carrier level in dB against the noise in 2500 Hz (PSK averages 1 to 3 dB below its carrier)<TAB>text sent.
+720	-3	CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K
+1180	-6	EA8TL DE JA7QVI GE OM TNX FER CALL UR RST 599 599 NAME TARO QTH SENDAI HW? EA8TL DE JA7QVI KN
+1905	-7	CQ CQ DE 9A1AA 9A1AA K
+720	-3	CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K
+1540	3	VK2DX DE ZL2RPA R R TNX TARO 73 ES GL VK2DX DE ZL2RPA SK

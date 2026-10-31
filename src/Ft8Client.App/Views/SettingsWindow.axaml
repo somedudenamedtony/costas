@@ -217,6 +217,106 @@
         </ScrollViewer>
       </TabItem>
 
+      <TabItem Header="PSK and RTTY">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="PSK and RTTY" />
+            <TextBlock Classes="intro" Text="Your details for the macros, the macros themselves, and how RTTY is sent and read." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Your name" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding OperatorName}" MaxWidth="260" HorizontalAlignment="Left" MinWidth="200" />
+                <TextBlock Classes="help" Text="The first name you give on the air, sent as {MYNAME}." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Your QTH" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding Qth}" MaxWidth="260" HorizontalAlignment="Left" MinWidth="200" />
+                <TextBlock Classes="help" Text="Where you are, in words, such as Boise ID. Sent as {MYQTH}." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Your radio and antenna" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <TextBox Text="{Binding RigDescription}" PlaceholderText="Radio, such as FT-710 at 50 W" MaxWidth="320" HorizontalAlignment="Left" MinWidth="260" />
+                <TextBox Text="{Binding Antenna}" PlaceholderText="Antenna, such as EFHW at 30 ft" MaxWidth="320" HorizontalAlignment="Left" MinWidth="260" />
+                <TextBlock Classes="help" Text="Sent as {MYRIG} and {MYANT}." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Macros" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <ItemsControl ItemsSource="{Binding Macros}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MacroEditViewModel">
+                      <Grid ColumnDefinitions="36,130,*,Auto" ColumnSpacing="8" Margin="0,0,0,6">
+                        <TextBlock Text="{Binding KeyName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" Text="{Binding Label}" PlaceholderText="Name" />
+                        <TextBox Grid.Column="2" Text="{Binding Text}" PlaceholderText="Text" FontFamily="{StaticResource MessageFont}" />
+                        <Button Grid.Column="3" Content="Remove" CommandParameter="{Binding}"
+                                Command="{Binding $parent[Window].((vm:SettingsViewModel)DataContext).RemoveMacroCommand}"
+                                AutomationProperties.Name="{Binding KeyName, StringFormat='Remove the {0} macro'}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="Add a key" Command="{Binding AddMacroCommand}" />
+                  <Button Content="Restore the defaults" Command="{Binding RestoreMacrosCommand}" />
+                </StackPanel>
+                <TextBlock Classes="help" TextWrapping="Wrap"
+                           Text="{Binding MacroFields, StringFormat='F1 calls CQ, F2 answers a CQ, F3 sends your exchange and F4 signs off: the contact strip moves on when they are sent. A macro can hold {0}. A macro with a field that has no value is not sent; Costas says which field is missing. Remove empties a key; with every key empty the defaults come back.'}" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="RTTY power" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBox Text="{Binding RttyPowerPercent}" Width="70" />
+                  <TextBlock Text="% of the power set on the radio" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" TextWrapping="Wrap" Text="RTTY keeps the transmitter at full output for the whole over, which heats it far more than FT8 or PSK. Costas turns the radio's power down to this share when you pick RTTY and puts it back when you leave RTTY or close Costas. 100 leaves the power alone." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="RTTY speed" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <ComboBox ItemsSource="{Binding RttySpeeds}" SelectedItem="{Binding RttySpeed}" MinWidth="110" />
+                  <TextBlock Text="baud" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="Almost all amateur RTTY is 45.45 baud." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="RTTY shift" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <ComboBox ItemsSource="{Binding RttyShifts}" SelectedItem="{Binding RttyShift}" MinWidth="110" />
+                  <TextBlock Text="Hz" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="The distance between the two tones. Almost all amateur RTTY uses 170 Hz." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Reverse" />
+              <StackPanel Grid.Column="1">
+                <CheckBox IsChecked="{Binding RttyReverse}" Content="Swap mark and space" />
+                <TextBlock Classes="help" Text="Turn this on only for a station whose text reads as gibberish while its signal looks clean: it is sending with its tones the wrong way round." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Unshift on space" />
+              <StackPanel Grid.Column="1">
+                <CheckBox IsChecked="{Binding RttyUnshiftOnSpace}" Content="Return to letters after a space" />
+                <TextBlock Classes="help" Text="On by default, as most stations expect. Turn it off if numbers in a station's text keep turning into letters." />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <!-- 2 Who to call -->
       <TabItem Header="Who to call">
         <ScrollViewer>

@@ -12,6 +12,7 @@ using Ft8Client.Core.Bands;
 using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Geo;
+using Ft8Client.Core.Keyboard;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Pileups;
@@ -30,7 +31,7 @@ namespace Ft8Client.App.Engine;
 /// out through the transmitter, immutable snapshots to the UI. Headless; the UI only renders snapshots and sends
 /// commands. State changes happen under one lock; decoding and I/O happen outside it.
 /// </summary>
-public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
+public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
 {
     private const int MaxRaw = 1500;
     private const int QuickSpanHz = 100;
@@ -107,7 +108,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         _log = log;
         _tracker = new StationTracker(config.MyCall, config.MyGrid, countries, config.Mode);
         _pileups = new PileupTracker(config.Mode);
-        _hearsMe = new HearsMe(config.Band, available: false);
+        _hearsMe = new HearsMe(config.Band, available: false, ModeInfo.Name(config.Mode));
         _myEntity = countries.Lookup(config.MyCall);
         _dialHz = frequencies.Find(config.Band, config.Mode)?.DialHz ?? 14_074_000;
         _txOffset = config.FixedTxOffsetHz ?? 1500;
@@ -123,6 +124,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             Publish();
         };
         _tx.Fault += OnTxFault;
+        _kbd = new KeyboardContactEngine(config.MyCall);
+        _kbd.Logged += OnKeyboardLogged;
+        _keys = new KeyboardTransmitter(tx, clock);
+        _keys.OverEnded += OnKeyboardOverEnded;
+        _keys.Changed += Publish;
         foreach (var name in new[] { ServiceNames.Radio, ServiceNames.Audio, ServiceNames.Decoder, ServiceNames.Qrz, ServiceNames.Psk })
             _services[name] = ServiceStatus.Off("Not started");
         Publish();
@@ -133,6 +139,12 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
 
     /// <summary>Raised after each decoded slot with its decodes (for interop and the journal).</summary>
     public event Action<DateTime, Mode, IReadOnlyList<Decode>>? SlotDecoded;
+
+    /// <summary>
+    /// Raised with the stations a keyboard mode named from their text (for PSK Reporter spots). Keyboard text never raises
+    /// <see cref="SlotDecoded"/>: programs listening on WSJT-X UDP understand only FT8 and FT4 decodes.
+    /// </summary>
+    public event Action<Mode, IReadOnlyList<TextHeard>>? KeyboardHeard;
 
     /// <summary>Raised after each decoded slot with its audio and decode count (for WAV saving).</summary>
     public event Action<SlotAudio, int>? SlotAudioDecoded;
@@ -183,6 +195,12 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Slot clock events, on the slot thread. Never waits on I/O.</summary>
     public void OnSlotEvent(SlotEvent e)
     {
+        // In a keyboard mode nothing is cut into slots: text arrives through ApplyText as it is read.
+        if (!ModeInfo.IsSlotted(Config.Mode))
+        {
+            _tx.OnSlotEvent(e);
+            return;
+        }
         switch (e.Mark)
         {
             case SlotMark.Start:
@@ -435,7 +453,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
 
             _slotCounts.Add((slot, result.Decodes.Count));
             _slotCounts.RemoveAll(x => now - x.Slot > TimeSpan.FromHours(1));
-            var modeKey = ModeInfo.Name(_config.Mode);
+            var modeKey = LogModeKey.Of(_config.Mode);
             var needed = _tracker.Stations.Where(st => st.LastHeardUtc == slot)
                 .Count(st => _logIndex.Need(st.Call, st.EntityKey, st.Grid, _config.Band, modeKey, _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly).Tag != NeedTag.Worked);
             _activity.Add(new SlotActivity(slot, result.Decodes.Count, needed));
@@ -456,6 +474,33 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         // while its audio has not started, up to the late-start limit.
         PlanFor(SlotMath.SlotStart(_clock.UtcNow, mode), mode, late: true);
         Publish();
+    }
+
+    /// <summary>
+    /// Applies what <see cref="KeyboardSession"/> read since its last call: text from stations it has named, and finished
+    /// lines for Raw decodes. Keyboard stations are aged at the same time. <paramref name="unnamed"/> are the offsets of
+    /// signals with text but no callsign yet. Ignored unless the session is in that mode.
+    /// </summary>
+    public void ApplyText(Mode mode, IReadOnlyList<TextHeard> heard, IReadOnlyList<KeyboardLine> lines, DateTime utc, IReadOnlyList<int>? unnamed = null)
+    {
+        lock (_gate)
+        {
+            if (mode != _config.Mode) return;
+            if (unnamed is not null) _unnamedSignals = unnamed;
+            foreach (var h in heard) _tracker.ApplyText(h);
+            _tracker.AgeText(utc);
+            KeyboardActivity(utc);
+            foreach (var l in lines)
+            {
+                ApplyKeyboardLine(l);
+                var decode = new Decode(l.Utc, l.Snr, 0, l.OffsetHz, l.Text, LowConfidence: false);
+                _raw.Add(new RawDecodeLine(decode, MessageParser.Parse(l.Text), l.Sender is null ? null : _countries.Lookup(l.Sender)?.Entity.Name,
+                    l.To is not null && Callsign.EqualsCall(l.To, _config.MyCall)));
+            }
+            if (_raw.Count > MaxRaw) _raw.RemoveRange(0, _raw.Count - MaxRaw);
+        }
+        Publish();
+        if (heard.Count > 0) KeyboardHeard?.Invoke(mode, heard);
     }
 
     // Raw decode lines, each message of a slot once: the early pass shows its decodes before the full decode lists them again.
@@ -593,6 +638,15 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
 
     private void OnLogged(ContactLogEntry entry)
     {
+        long freq;
+        lock (_gate) freq = _dialHz + _txOffset;
+        Record(entry, freq, null, null);
+    }
+
+    // Writes a logged contact, with QRZ data and the need it met. Keyboard modes give the name and QTH read from the
+    // conversation; FT8 takes them from QRZ.
+    private void Record(ContactLogEntry entry, long frequencyHz, string? name, string? qth)
+    {
         LogContext ctx;
         string place;
         lock (_gate)
@@ -602,16 +656,16 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             // A caller can skip the grid exchange. Persist the same known grid that we index.
             entry = entry with { Grid = entry.Grid ?? s?.Grid ?? lk?.Grid };
             var entity = s?.Entity ?? _countries.Lookup(entry.Call);
-            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid, _config.Band, ModeInfo.Name(_config.Mode),
+            var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid, _config.Band, LogModeKey.Of(_config.Mode),
                 _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
-            ctx = new LogContext(_config.Band, _config.Mode, _dialHz + _txOffset, _config.MyCall, _config.MyGrid, _config.PowerWatts, need,
-                entity?.Entity.Key, entity?.Entity.Name, lk?.Name, lk?.State, entity?.Continent, lk?.City);
+            ctx = new LogContext(_config.Band, _config.Mode, frequencyHz, _config.MyCall, _config.MyGrid, _config.PowerWatts, need,
+                entity?.Entity.Key, entity?.Entity.Name, name ?? lk?.Name, lk?.State, entity?.Continent, qth ?? lk?.City);
             if (entry.TimeOffUtc - _lastContactUtc > TimeSpan.FromHours(2)) _tonight.Clear();
             _lastContactUtc = entry.TimeOffUtc;
-            _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag));
-            _logIndex.Add(new LogContact(entry.Call, _config.Band, ModeInfo.Name(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
+            _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag, LogModeKey.Of(_config.Mode)));
+            _logIndex.Add(new LogContact(entry.Call, _config.Band, LogModeKey.Of(_config.Mode), entry.Grid, entity?.Entity.Key, lk?.State,
                 false, entry.TimeOnUtc));
-            _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
+            if (ModeInfo.IsSlotted(_config.Mode)) _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
             place = StationText.Place(entity, lk?.State);
         }
         var row = _log?.Write(entry, ctx);
@@ -633,6 +687,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Calls a station from the line or the raw decodes.</summary>
     public bool CallStation(string call)
     {
+        if (!ModeInfo.IsSlotted(Config.Mode)) return CallKeyboardStation(call);
         lock (_gate)
         {
             var now = _clock.UtcNow;
@@ -643,14 +698,14 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             else
             {
                 var s = _tracker.Find(call);
-                if (s is null) return false;
+                if (s?.Parity is not { } parity) return false;
                 _callWhenFree.RemoveAll(c => Callsign.EqualsCall(c, s.Call));
                 // A station heard working someone else (reports or grids exchanged, not signing off) will not hear me:
                 // the contact ends at once and says so rather than calling into its contact.
                 var busyWith = s is { State: StationState.InContact, Partner: { } p } && !Callsign.EqualsCall(p, _config.MyCall) ? p : null;
                 // A Fox (Fox/Hound DXpedition) is worked as a Hound: my calls at 1000 Hz or above, where it listens.
-                if (s.RunsFox) HoundCallOffset(SlotMath.Opposite(s.Parity));
-                _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, busyWith, fox: s.RunsFox);
+                if (s.RunsFox) HoundCallOffset(SlotMath.Opposite(parity));
+                _engine.CallStation(s.Call, s.Grid, s.LastSnr, parity, s.OffsetHz, now, busyWith, fox: s.RunsFox);
             }
             _fault = null;
         }
@@ -690,15 +745,15 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         }
         var input = RankInputAt(_tracker.Stations.ToList(), now);
         var s = CallWhenFree.Next(_callWhenFree, _tracker.Find, st => Ranker.NotCallableReason(st, input));
-        if (s is null) return;
+        if (s?.Parity is not { } parity) return;
         _callWhenFree.Remove(s.Call);
-        if (s.RunsFox) HoundCallOffset(SlotMath.Opposite(s.Parity));
-        _engine.CallStation(s.Call, s.Grid, s.LastSnr, s.Parity, s.OffsetHz, now, fox: s.RunsFox, byOperator: false);
+        if (s.RunsFox) HoundCallOffset(SlotMath.Opposite(parity));
+        _engine.CallStation(s.Call, s.Grid, s.LastSnr, parity, s.OffsetHz, now, fox: s.RunsFox, byOperator: false);
         _fault = null;
     }
 
     private RankInput RankInputAt(List<Station> stations, DateTime now) =>
-        new(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity, _config.Band, ModeInfo.Name(_config.Mode), now,
+        new(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity, _config.Band, LogModeKey.Of(_config.Mode), now,
             _countries, Lotw: _lotwUsers, Parks: _parks);
 
     // Moves my offset to 1000 Hz or above for calling a Fox: the fixed offset if it is that high, else a clear spot there.
@@ -719,6 +774,11 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Starts or stops calling CQ.</summary>
     public void ToggleCq()
     {
+        if (!ModeInfo.IsSlotted(Config.Mode))
+        {
+            ToggleKeyboardCq();
+            return;
+        }
         lock (_gate)
         {
             if (_engine.CallingCq) _engine.StopCq(_clock.UtcNow);
@@ -735,6 +795,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Answers a waiting caller now.</summary>
     public void AnswerCaller(string call)
     {
+        if (RefuseKeyboardTransmit()) return;
         lock (_gate) _engine.AnswerCaller(call, _clock.UtcNow);
         AfterCommand();
     }
@@ -749,6 +810,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Resend the current step.</summary>
     public void Resend()
     {
+        if (RefuseKeyboardTransmit()) return;
         lock (_gate) _engine.Resend(_clock.UtcNow);
         AfterCommand();
     }
@@ -756,13 +818,18 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Log the contact now.</summary>
     public void LogNow()
     {
-        lock (_gate) _engine.LogNow(_clock.UtcNow);
+        lock (_gate)
+        {
+            if (ModeInfo.IsSlotted(_config.Mode)) _engine.LogNow(_clock.UtcNow);
+            else _kbd.LogNow(_clock.UtcNow);
+        }
         Publish();
     }
 
     /// <summary>Jump to one of my upcoming steps.</summary>
     public void JumpTo(int step)
     {
+        if (RefuseKeyboardTransmit()) return;
         lock (_gate) _engine.JumpTo(step, _clock.UtcNow);
         _tx.CancelPending();
         AfterCommand();
@@ -771,8 +838,15 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Abandon the contact: stop transmitting, log nothing.</summary>
     public async Task AbandonAsync()
     {
-        lock (_gate) _engine.Abandon(_clock.UtcNow);
+        lock (_gate)
+        {
+            _engine.Abandon(_clock.UtcNow);
+            _kbd.Abandon();
+            _blockedMacro = null;
+        }
+        _keys.Clear();
         await _tx.HaltAsync().ConfigureAwait(false);
+        _keys.EndIfNotOnAir();
         Publish();
     }
 
@@ -797,11 +871,14 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             _engine.Halt(_clock.UtcNow);
+            _kbd.StopCq();
             _callWhenFree.Clear(); // Halt Tx means nothing new starts on its own
             _rigTuningUntil = null;
             if (reason is not null) _fault = reason;
         }
+        _keys.Clear();
         await _tx.HaltAsync().ConfigureAwait(false);
+        _keys.EndIfNotOnAir();
         Publish();
     }
 
@@ -834,10 +911,12 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         int offset;
         lock (_gate)
         {
-            if (_engine.CallingCq || _engine.InContact || _tx.Transmitting || _rigTuningUntil > _clock.UtcNow)
+            if (_engine.CallingCq || _engine.InContact || _kbd.CallingCq || _kbd.InContact || _keys.Active || _tx.Transmitting
+                || _rigTuningUntil > _clock.UtcNow)
                 return "Tune is only available while nothing else is being sent.";
             offset = _txOffset;
-            guard = new TxGuardInput(_config.Band, _dialHz, ClockEstimate.Offset(_sntpOffset, _medianDt), _config.ClockBlockSeconds,
+            // PSK and RTTY have no slots, so the clock check does not apply to them (docs/09-keyboard-modes.md section 9).
+            guard = new TxGuardInput(_config.Band, _dialHz, KeyboardMode ? null : ClockEstimate.Offset(_sntpOffset, _medianDt), _config.ClockBlockSeconds,
                 _services[ServiceNames.Radio].Health == ServiceHealth.Down ? _services[ServiceNames.Radio].Message : null, true);
         }
         if (await _tx.StartRigTunerAsync(offset, guard).ConfigureAwait(false))
@@ -898,7 +977,12 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             foreach (var (call, e) in _lookups) _tracker.SetLookup(call, e.Grid, e.State, e.City);
             _engine.Abandon(_clock.UtcNow);
             _engine.StopCq(_clock.UtcNow);
-            _hearsMe = new HearsMe(band, _hearsMe.Available);
+            _kbd.Abandon();
+            _conversation.Clear();
+            _blockedMacro = null;
+            // A refusal or fault from the old band or mode no longer applies.
+            _fault = null;
+            _hearsMe = new HearsMe(band, _hearsMe.Available, ModeInfo.Name(mode));
             // Reports of nearby stations cover every band (for the band menu); only a mode change makes them irrelevant.
             if (mode != oldMode)
             {
@@ -910,9 +994,18 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             _recentOffsets.Clear();
             _slotCounts.Clear();
             _activity.Clear();
+            _kbdActivityFrom = default;
+            _unnamedSignals = [];
             _txMeters = null; // SWR belongs to the antenna on the old band
+            _rigTuningUntil = null;
             _txMetersLive = null;
         }
+        // Nothing on the air follows the radio to another band or mode: an FT8 message, a Tune tone or a PSK or RTTY
+        // over is stopped, and anything prepared for the old band is dropped.
+        _keys.Clear();
+        _tx.CancelPending();
+        if (_keys.Active || _tx.Transmitting) _ = _tx.HaltAsync();
+        _keys.EndIfNotOnAir();
         BandChanged?.Invoke();
         Publish();
     }
@@ -920,7 +1013,14 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Records the dial frequency read from the radio.</summary>
     public void SetDial(long hz)
     {
-        lock (_gate) _dialHz = hz;
+        string? outside = null;
+        lock (_gate)
+        {
+            // The dial moved while something is on the air: check it still fits inside the band.
+            if (hz != _dialHz) outside = _tx.OnAirOutsideBand(_config.Band, hz);
+            _dialHz = hz;
+        }
+        if (outside is not null) _ = HaltAsync($"Transmission stopped: the dial moved. {outside}");
         Publish();
     }
 
@@ -932,6 +1032,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
             var stationChanged = config.MyCall != _config.MyCall || config.MyGrid != _config.MyGrid;
             _config = config;
             _engine.Configure(config.MyCall, config.MyGrid, CappedContact());
+            _kbd.Configure(config.MyCall);
             if (stationChanged)
             {
                 _receptionHistory.Clear();
@@ -1098,7 +1199,8 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     // Under _gate.
     private IReadOnlyDictionary<string, BandOpening> SampledOpenings(DateTime now)
     {
-        if (!_samplesDirty && now - _openingsUtc < ModeInfo.SlotLength(_config.Mode)) return _sampledOpenings;
+        if (!_samplesDirty && now - _openingsUtc < (ModeInfo.IsSlotted(_config.Mode) ? ModeInfo.SlotLength(_config.Mode) : TimeSpan.FromSeconds(15)))
+            return _sampledOpenings;
         _samplesDirty = false;
         _sampledOpenings = BandOpenings.BuildSampled(_samples, _config.MyCall, _config.MyGrid, ModeInfo.Name(_config.Mode), _countries, _logIndex, now);
         return _sampledOpenings;
@@ -1108,7 +1210,7 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
     // most once a slot (sooner when it is empty). Under _gate.
     private IReadOnlyDictionary<string, BandOpening> Openings(DateTime now)
     {
-        var stale = now - _openingsUtc >= ModeInfo.SlotLength(_config.Mode);
+        var stale = now - _openingsUtc >= (ModeInfo.IsSlotted(_config.Mode) ? ModeInfo.SlotLength(_config.Mode) : TimeSpan.FromSeconds(15));
         if (!stale && !(_openingsDirty && _openings.Count == 0)) return _openings;
         _openingsUtc = now;
         _openingsDirty = false;
@@ -1146,10 +1248,27 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate) return _lookups.ContainsKey(Callsign.Normalize(call));
     }
 
+    // Commands with no meaning in a keyboard mode, where the operator sends with the macro keys, say so and do nothing.
+    private bool RefuseKeyboardTransmit()
+    {
+        lock (_gate)
+        {
+            if (ModeInfo.IsSlotted(_config.Mode)) return false;
+            _fault = $"In {ModeInfo.Name(_config.Mode)}, send with the macro keys (F1 to F5) or type and press Enter.";
+        }
+        Publish();
+        return true;
+    }
+
     private void AfterCommand()
     {
         // A command may start a transmission in the current slot if its start is still within the late limit.
         var mode = Config.Mode;
+        if (!ModeInfo.IsSlotted(mode))
+        {
+            Publish();
+            return;
+        }
         PlanFor(SlotMath.SlotStart(_clock.UtcNow, mode), mode, late: true, command: true);
         Publish();
     }
@@ -1163,9 +1282,10 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             var now = _clock.UtcNow;
+            var keyboard = !ModeInfo.IsSlotted(_config.Mode);
             var stations = _tracker.Stations.ToList();
             var rank = Ranker.Rank(RankInputAt(stations, now));
-            var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, ModeInfo.Name(_config.Mode), now, _slotCounts, _tonight,
+            var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, LogModeKey.Of(_config.Mode), now, _slotCounts, _tonight,
                 _config.Ranking);
             snap = new SessionSnapshot
             {
@@ -1191,13 +1311,13 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 BandOpenings = Openings(now),
                 BandActivityFeed = _bandFeed,
                 Services = new Dictionary<string, ServiceStatus>(_services),
-                Contact = _engine.View,
+                Contact = keyboard ? KeyboardContactView() : _engine.View,
                 Transmitting = _tx.Transmitting,
                 LastTxSlotUtc = _tx.LastStartedSlot,
                 TransmittingMessage = _tx.CurrentMessage,
-                CallingCq = _engine.CallingCq,
+                CallingCq = keyboard ? _kbd.CallingCq : _engine.CallingCq,
                 RigTuningUntilUtc = _rigTuningUntil is { } until && until > now ? until : null,
-                TxOffsetHz = _txOffset,
+                TxOffsetHz = keyboard && _kbd.InContact ? _kbd.PartnerOffsetHz : _txOffset,
                 TxOffsetClear = _txOffsetClear,
                 TxOffsetAuto = _config.FixedTxOffsetHz is null,
                 LastLogged = _lastLogged,
@@ -1210,6 +1330,15 @@ public sealed class Session : Ft8Client.App.Remote.IRemoteTarget
                 TxMetersLive = _txMetersLive,
                 Activity = _activity.ToList(),
                 Pileups = _pileups.All(now),
+                KeyboardTx = keyboard ? _keys.View : KeyboardTxView.Idle,
+                Conversation = keyboard ? _conversation.ToList() : [],
+                NextMacro = keyboard ? _kbd.NextMacro : null,
+                Macros = _config.Macros,
+                MacroPreviews = keyboard ? MacroPreviews() : new Dictionary<int, string>(),
+                RadioNote = keyboard ? _radioNote : null,
+                BlockedMacro = BlockedMacro(),
+                Received = keyboard && _kbd.Partner is not null ? _kbd.Received : null,
+                UnnamedSignals = keyboard ? _unnamedSignals : [],
             };
             _snapshot = snap;
         }

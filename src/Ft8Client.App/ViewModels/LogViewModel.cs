@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Ft8Client.Core.Bands;
 using Ft8Client.Core.Geo;
+using Ft8Client.Core.Logbook;
 using Ft8Client.Data.Adif;
 using Ft8Client.Data.Log;
 
@@ -24,7 +25,10 @@ public sealed partial class LogViewModel : ObservableObject
     public const string AllBands = "All bands";
 
     /// <summary>The mode choice that shows every mode.</summary>
-    public const string AllModes = "All modes";
+    public const string AllModes = ModeGroups.AllModes;
+
+    /// <summary>The mode choice that shows every digital mode (the default).</summary>
+    public const string AllDigital = ModeGroups.AllDigital;
 
     /// <summary>The date choice that shows every date.</summary>
     public const string AllTime = "All time";
@@ -80,8 +84,8 @@ public sealed partial class LogViewModel : ObservableObject
     /// <summary>Band filter choices: "All bands" then the bands in the log, in band plan order.</summary>
     public ObservableCollection<string> BandChoices { get; } = [AllBands];
 
-    /// <summary>Mode filter choices.</summary>
-    public IReadOnlyList<string> ModeChoices { get; } = [AllModes, "FT8", "FT4"];
+    /// <summary>Mode filter choices: "All digital" (the default), "All modes", then FT8, FT4, PSK and RTTY.</summary>
+    public IReadOnlyList<string> ModeChoices { get; } = ModeGroups.Choices;
 
     /// <summary>Date filter choices.</summary>
     public IReadOnlyList<string> DateChoices { get; } = [AllTime, Today, Last7Days, Last30Days, ThisYear];
@@ -95,7 +99,7 @@ public sealed partial class LogViewModel : ObservableObject
 
     /// <summary>Selected mode filter.</summary>
     [ObservableProperty]
-    public partial string ModeFilter { get; set; } = AllModes;
+    public partial string ModeFilter { get; set; } = AllDigital;
 
     /// <summary>Selected date filter.</summary>
     [ObservableProperty]
@@ -159,7 +163,8 @@ public sealed partial class LogViewModel : ObservableObject
     {
         RefreshBandChoices();
         var filter = BuildFilter(Search, BandFilter, ModeFilter, DateFilter, ConfirmedFilter, DateTime.UtcNow);
-        Filtered = filter.Narrowed;
+        // "All digital" is the default, so it alone is not a filter to clear.
+        Filtered = BandFilter != AllBands || ModeFilter != AllDigital || DateFilter != AllTime || ConfirmedFilter != AnyConfirmation;
         var rows = _qsos.List(filter, MaxRows);
         Rows.Clear();
         foreach (var q in rows) Rows.Add(new LogRowViewModel(q));
@@ -174,7 +179,7 @@ public sealed partial class LogViewModel : ObservableObject
     private void ClearFilters()
     {
         BandFilter = AllBands;
-        ModeFilter = AllModes;
+        ModeFilter = AllDigital;
         DateFilter = AllTime;
         ConfirmedFilter = AnyConfirmation;
     }

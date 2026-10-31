@@ -51,6 +51,18 @@ exchange and the reports are fixed by FT8, so only the parts above can change.
 | **Logging** | on | Log each contact automatically when it completes |
 | **Calling you › Chime** | off | A chime on the computer's default speakers when a new station calls you. Never on the radio's audio device |
 
+## PSK and RTTY
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| **Your name**, **Your QTH** | empty | Sent by the macros as `{MYNAME}` and `{MYQTH}`. A macro that needs one is not sent while it is empty |
+| **Your radio and antenna** | empty | Sent as `{MYRIG}` and `{MYANT}` (the F5 macro) |
+| **Macros** | F1 CQ, F2 Answer, F3 Exchange, F4 73, F5 Rig and antenna | The text of each function key. **Add a key** goes up to F12; **Restore the defaults** puts the five back. See [Macros](keyboard-modes.md#macros) |
+| **RTTY power** | 50 % | The share of the radio's power used in RTTY. 100 leaves it alone |
+
+How RTTY is read: speed (45.45 baud), shift (170 Hz), **Reverse** (off) and **Unshift on space** (on). PSK31 and PSK63
+need no settings. See [RTTY settings](keyboard-modes.md#rtty-settings).
+
 ## Who to call
 
 How the Next in line list on the Operate screen is ordered. The same options open from the **ⓘ** beside *Next in

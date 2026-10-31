@@ -54,10 +54,16 @@ public partial class MainWindow : Window
         });
         SizeChanged += (_, _) => SetWaterfallHeight(WaterfallHeight, save: false);
         AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, OnKeyUp, RoutingStrategies.Tunnel);
+        AddHandler(TextInputEvent, OnText, RoutingStrategies.Tunnel);
+        Deactivated += (_, _) => _held.Reset();
         AddHandler(PointerPressedEvent, (_, _) => Vm?.Activity(), RoutingStrategies.Tunnel);
     }
 
     private MainViewModel? Vm => DataContext as MainViewModel;
+
+    // A held function key repeats: its macro goes once per press.
+    private readonly KeyRepeatFilter _held = new();
 
     /// <inheritdoc />
     protected override void OnOpened(EventArgs e)
@@ -94,16 +100,35 @@ public partial class MainWindow : Window
                 if (_waterfallWindow is { } ww) ww.Title = $"Costas waterfall · {snapshot.Band} {snapshot.Mode.ToString().ToUpperInvariant()}";
             }
             var row = snapshot.Transmitting ? null : pump?.Spectrum.TakeLatest();
-            // Marks the first row of each receive slot, so a tall waterfall can draw the slot boundaries.
-            var slot = vm.Host.Clock.UtcNow.Ticks / TimeSpan.TicksPerMillisecond / Core.ModeInfo.SlotMilliseconds(snapshot.Mode);
-            var slotStart = row is not null && slot != _waterfallSlot;
-            if (row is not null) _waterfallSlot = slot;
+            // Marks the first row of each receive slot, so a tall waterfall can draw the slot boundaries. PSK and RTTY
+            // have no slots.
+            var slotted = Core.ModeInfo.IsSlotted(snapshot.Mode);
+            var slotStart = false;
+            if (slotted)
+            {
+                var slot = vm.Host.Clock.UtcNow.Ticks / TimeSpan.TicksPerMillisecond / Core.ModeInfo.SlotMilliseconds(snapshot.Mode);
+                slotStart = row is not null && slot != _waterfallSlot;
+                if (row is not null) _waterfallSlot = slot;
+            }
             // Both views are fed so the strip and the window each have full history when switching between them.
             ReceiveWaterfall.Update(row, snapshot.TxOffsetHz, slotStart);
             _waterfallWindow?.View.Update(row, snapshot.TxOffsetHz, slotStart);
+            var tags = slotted ? [] : Tags(snapshot);
+            ReceiveWaterfall.SetTags(tags);
+            _waterfallWindow?.View.SetTags(tags);
         };
         _timer.Start();
         if (!vm.Host.Settings.Current.SetupComplete) Dispatcher.UIThread.Post(() => OpenDialog("setup"));
+    }
+
+    // Keyboard modes: a tag over each station being read, "?" over a signal with no callsign yet, the one in contact red.
+    private static List<(int Hz, string Label, bool InContact)> Tags(Engine.SessionSnapshot s)
+    {
+        var partner = s.Contact is { Outcome: Core.Contacts.ContactOutcome.InProgress } c ? c.DxCall : null;
+        var tags = s.Stations.Where(st => st.Parity is null && st.HeardInLastOwnSlot)
+            .Select(st => (st.OffsetHz, st.Call, partner is not null && Core.Messages.Callsign.EqualsCall(st.Call, partner))).ToList();
+        tags.AddRange(s.UnnamedSignals.Where(hz => tags.All(t => Math.Abs(t.Item1 - hz) > 20)).Select(hz => (hz, "?", false)));
+        return tags;
     }
 
     /// <inheritdoc />
@@ -138,6 +163,8 @@ public partial class MainWindow : Window
         vm.OffsetManualCommand.Execute(null);
         ReceiveWaterfall.Update(null, hz);
         _waterfallWindow?.View.Update(null, hz);
+        // In a keyboard mode a click also reads the signal there, and keeps reading it while it is quiet.
+        if (!Core.ModeInfo.IsSlotted(vm.Host.Session.Config.Mode)) vm.Host.Keyboard.Listen(hz);
     }
 
     private double WaterfallHeight => BottomGrid.RowDefinitions[2].Height.Value;
@@ -274,8 +301,33 @@ public partial class MainWindow : Window
 
     private void CloseMini() => _mini?.Close();
 
+    // True for a key aimed at an open dropdown, menu or flyout, which handles it itself (Esc closes it).
+    private bool InPopup(object? source) => source switch
+    {
+        ComboBox { IsDropDownOpen: true } or MenuItem => true,
+        Visual v => TopLevel.GetTopLevel(v) != this || v.FindAncestorOfType<OverlayPopupHost>(includeSelf: true) is not null,
+        _ => false,
+    };
+
+    // PSK and RTTY on Operate: typing belongs to the type-ahead line wherever the keyboard is.
+    private bool KeyboardTyping(MainViewModel vm, object? source) =>
+        vm.Tab == 0 && vm.Operate.Keyboard.Visible && source is not TextBox && !InPopup(source);
+
+    private void OnText(object? sender, TextInputEventArgs e)
+    {
+        if (Vm is not { } vm || string.IsNullOrEmpty(e.Text) || !KeyboardTyping(vm, e.Source)) return;
+        if (OperatePage.TakeText(e.Text)) e.Handled = true;
+    }
+
+    private void OnKeyUp(object? sender, KeyEventArgs e)
+    {
+        _held.Release(e.Key);
+        if (Vm is { } vm && vm.Operate.Keyboard.Visible) OperatePage.TakeKeyUp(e);
+    }
+
     private void OnKey(object? sender, KeyEventArgs e)
     {
+        var fresh = _held.Press(e.Key);
         if (Vm is not { } vm) return;
         vm.Activity();
         var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
@@ -288,7 +340,11 @@ public partial class MainWindow : Window
                        && e.Source is not (Button or ComboBox or ComboBoxItem or MenuItem or Slider or NumericUpDown);
         switch (e.Key)
         {
-            case Key.Escape when !inPopup:
+            // Esc aimed at an open dropdown or menu closes it, and halts only when something is on the air.
+            case Key.Escape when inPopup:
+                if (vm.Host.Session.Snapshot.Transmitting) vm.HaltCommand.Execute(null);
+                break;
+            case Key.Escape:
                 vm.Escape();
                 e.Handled = true;
                 break;
@@ -312,11 +368,22 @@ public partial class MainWindow : Window
                 OpenDialog("mini");
                 e.Handled = true;
                 break;
+            // PSK and RTTY: the function keys send their macros.
+            case >= Key.F1 and <= Key.F12 when vm.Operate.Keyboard.Visible:
+                if (fresh) vm.Operate.Keyboard.SendMacro(e.Key - Key.F1 + 1);
+                e.Handled = true;
+                break;
             case Key.F1:
                 OpenDialog("shortcuts");
                 e.Handled = true;
                 break;
-            case Key.Enter when listKeys:
+            // PSK and RTTY: Enter does what it does in the type-ahead line (sends what is typed, or the next step's
+            // macro, which the hint names) wherever the keyboard is.
+            case Key.Enter when KeyboardTyping(vm, e.Source):
+                vm.Operate.Keyboard.Enter();
+                e.Handled = true;
+                break;
+            case Key.Enter when listKeys && !vm.Operate.Keyboard.Visible:
                 vm.Operate.CallSelected();
                 e.Handled = true;
                 break;
@@ -328,16 +395,10 @@ public partial class MainWindow : Window
                 vm.Operate.MoveSelection(1);
                 e.Handled = true;
                 break;
+            // PSK and RTTY: Space and Backspace go to the type-ahead line, not to the button that has the keyboard.
+            case Key.Space or Key.Back when !ctrl && !e.KeyModifiers.HasFlag(KeyModifiers.Alt) && KeyboardTyping(vm, e.Source):
+                e.Handled = OperatePage.TakeKey(e);
+                break;
         }
-    }
-
-    private static bool InPopup(object? source)
-    {
-        if (source is ComboBox { IsDropDownOpen: true }) return true;
-        for (var v = source as Visual; v is not null; v = v.GetVisualParent())
-        {
-            if (v is PopupRoot or OverlayPopupHost) return true;
-        }
-        return false;
     }
 }

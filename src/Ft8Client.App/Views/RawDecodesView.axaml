@@ -15,7 +15,7 @@
           <TextBlock Text="{Binding Count}" Classes="secondary" VerticalAlignment="Center" IsVisible="{Binding Filtered}" />
         </StackPanel>
       </DockPanel>
-      <Grid Grid.Row="1" ColumnDefinitions="70,70,50,50,60,320,170,90,*" Margin="8,10,0,4">
+      <Grid Grid.Row="1" ColumnDefinitions="70,70,50,50,60,*,170,90,150" Margin="8,10,0,4">
         <TextBlock Text="UTC" Classes="secondary" />
         <TextBlock Grid.Column="1" Text="Local" Classes="secondary" />
         <TextBlock Grid.Column="2" Text="dB" Classes="secondary" />
@@ -41,13 +41,15 @@
           <DataTemplate x:DataType="vm:RawLineViewModel">
             <Panel Background="{Binding ., Converter={x:Static v:Converters.RawBackground}}">
               <Border Width="3" HorizontalAlignment="Left" Background="{Binding IsPartner, Converter={x:Static v:Converters.SelectedBar}}" />
-              <Grid ColumnDefinitions="70,70,50,50,60,320,170,90,*" MinHeight="20" Margin="8,0,0,0">
+              <Grid ColumnDefinitions="70,70,50,50,60,*,170,90,150" MinHeight="20" Margin="8,0,0,0">
                 <TextBlock Text="{Binding Utc}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
                 <TextBlock Grid.Column="1" Text="{Binding Local}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
                 <TextBlock Grid.Column="2" Text="{Binding Db}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
                 <TextBlock Grid.Column="3" Text="{Binding Dt}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
                 <TextBlock Grid.Column="4" Text="{Binding Hz}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
-                <TextBlock Grid.Column="5" Text="{Binding Message}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}" />
+                <!-- Message takes the width left and is trimmed, so PSK and RTTY lines (up to 80 characters) never run into Country. -->
+                <TextBlock Grid.Column="5" Text="{Binding Message}" Classes="message" Foreground="{Binding ., Converter={x:Static v:Converters.RawForeground}}"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,12,0" ToolTip.Tip="{Binding Message}" />
                 <TextBlock Grid.Column="6" Text="{Binding Country}" Classes="secondary" TextTrimming="CharacterEllipsis" />
                 <TextBlock Grid.Column="7" Text="{Binding Distance}" Classes="secondary" />
                 <TextBlock Grid.Column="8" Text="{Binding Need}" Foreground="{Binding NeedKind, Converter={x:Static v:Converters.KindBrush}}" TextTrimming="CharacterEllipsis" />

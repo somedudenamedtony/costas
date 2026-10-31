@@ -11,7 +11,7 @@ namespace Ft8Client.App.Remote;
 /// <summary>A contact made tonight.</summary>
 /// <param name="Call">The call.</param>
 /// <param name="Place">Its country.</param>
-/// <param name="Band">"20 m".</param>
+/// <param name="Band">Band and mode, "20 m FT8".</param>
 /// <param name="Need">What it was new for.</param>
 /// <param name="Time">"20:31" UTC.</param>
 public sealed record RemoteTonight(string Call, string Place, string Band, string Need, string Time);

@@ -95,6 +95,8 @@ public sealed class ContactPanelViewModel
         if (station is not null) parts.Add(StationText.Where(station, units));
         // Why it stopped, on the card itself: "N8WCR answered K1ABC instead. Stopped calling."
         if (c.Outcome == ContactOutcome.AnsweredOther) parts = [c.StatusText];
+        // A contact is always FT8 or FT4 for now; one left over after a switch to a keyboard mode keeps FT8 timing.
+        if (!ModeInfo.IsSlotted(s.Mode)) s = s with { Mode = Mode.Ft8 };
         var slotLen = ModeInfo.SlotLength(s.Mode);
         var currentSlot = SlotMath.SlotStart(nowUtc, s.Mode);
         var txIndex = TransmittingIndex(c, s, currentSlot);
@@ -161,6 +163,91 @@ public sealed class ContactPanelViewModel
             HoundMode = c.Flow == ContactFlow.Hound,
             HoundNote = c.Flow == ContactFlow.Hound ? HoundNoteFor(c, s) : string.Empty,
             Active = c.Outcome == ContactOutcome.InProgress,
+            Steps = [.. steps.Select((x, i) => x with
+            {
+                First = i == 0,
+                Last = i == steps.Count - 1,
+                NextReached = i + 1 < steps.Count && steps[i + 1].Reached,
+            })],
+        };
+    }
+
+    /// <summary>
+    /// Builds the panel for the mode the contact is in: <see cref="FromKeyboard"/> for PSK and RTTY (RST reports, no
+    /// slots), else <see cref="From"/>. The Operate card and the phone use this, so both show a contact the same way.
+    /// </summary>
+    public static ContactPanelViewModel For(ContactView c, SessionSnapshot s, DateTime nowUtc, DistanceUnit units, string? qrzName)
+    {
+        ArgumentNullException.ThrowIfNull(c);
+        ArgumentNullException.ThrowIfNull(s);
+        return ModeInfo.IsSlotted(c.Mode ?? s.Mode) ? From(c, s, nowUtc, units, qrzName) : FromKeyboard(c, s, units, qrzName);
+    }
+
+    /// <summary>
+    /// Builds the panel for a PSK or RTTY contact (docs/09-keyboard-modes.md section 7): the same strip, moved on by
+    /// macros sent and text read rather than by slots, with RST reports.
+    /// </summary>
+    public static ContactPanelViewModel FromKeyboard(ContactView c, SessionSnapshot s, DistanceUnit units, string? qrzName)
+    {
+        ArgumentNullException.ThrowIfNull(c);
+        ArgumentNullException.ThrowIfNull(s);
+        var station = s.Stations.FirstOrDefault(x => Callsign.EqualsCall(x.Call, c.DxCall));
+        var need = s.Rank.Line.Concat(s.Rank.Watching).Concat(s.Rank.Worked).FirstOrDefault(x => Callsign.EqualsCall(x.Station.Call, c.DxCall))?.Need;
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(qrzName)) parts.Add(qrzName);
+        if (station is not null) parts.Add(StationText.Where(station, units));
+        // The name and QTH the log will take: read from their text or clicked (docs/09-keyboard-modes.md section 7).
+        if (s.Received?.Name is { Length: > 0 } name) parts.Add($"Name {name}");
+        if (s.Received?.Qth is { Length: > 0 } qth) parts.Add($"QTH {qth}");
+        var active = c.Outcome == ContactOutcome.InProgress;
+        // The next step of mine is the one on the air while transmitting, else the one Enter sends.
+        var mineNext = active ? Enumerable.Range(0, c.Steps.Count).FirstOrDefault(i => c.Steps[i] is { Mine: true, State: not StepState.Done }, -1) : -1;
+        var steps = new List<StepViewModel>();
+        for (var i = 0; i < c.Steps.Count; i++)
+        {
+            var st = c.Steps[i];
+            var who = st.Mine ? "You" : c.DxCall;
+            StepLook look;
+            string status;
+            if (st.State == StepState.Done)
+            {
+                look = StepLook.Done;
+                status = st.Mine ? "Sent" : "Received";
+            }
+            else if (i == mineNext && s.KeyboardTx.Active)
+            {
+                look = StepLook.Transmitting;
+                status = $"Sending · {s.KeyboardTx.Waiting.Length} characters left";
+            }
+            else if (!active)
+            {
+                // An ended contact (abandoned, say) waits for nothing.
+                look = StepLook.Upcoming;
+                status = st.Mine ? "Not sent" : "Not received";
+            }
+            else if (st.State == StepState.Now)
+            {
+                look = StepLook.Waiting;
+                status = st.Mine ? (i == mineNext && s.NextMacro is { } k ? $"Enter sends F{k}" : "Next") : "Waiting for reply";
+            }
+            else
+            {
+                look = StepLook.Upcoming;
+                status = st.Mine ? (i == c.Steps.Count - 1 ? "Then logged" : "Next") : "Expected";
+            }
+            steps.Add(new StepViewModel(i, st.Mine, who, Time(st.TimeUtc), st.Message, status, look, false));
+        }
+        return new ContactPanelViewModel
+        {
+            Caption = $"{ModeInfo.Name(c.Mode ?? s.Mode)} · {c.Caption}",
+            Call = c.DxCall,
+            Need = need is { } n ? StationText.Need(n.Tag) : string.Empty,
+            NeedKind = need is { } n2 ? StationRowViewModel.KindOf(n2.Tag) : TextKind.Normal,
+            Subline = string.Join(" · ", parts),
+            Sent = c.ReportSent is { } rs ? rs.ToString(CultureInfo.InvariantCulture) : NotYet,
+            Received = c.ReportReceived is { } rr ? rr.ToString(CultureInfo.InvariantCulture) : NotYet,
+            CanLogNow = c.CanLogNow,
+            Active = active,
             Steps = [.. steps.Select((x, i) => x with
             {
                 First = i == 0,

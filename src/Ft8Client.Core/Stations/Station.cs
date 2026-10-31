@@ -39,8 +39,8 @@ public sealed record Station
     /// <summary>Initial bearing from my grid in degrees, if a position is known.</summary>
     public int? Bearing { get; init; }
 
-    /// <summary>The slot parity it transmits in.</summary>
-    public SlotParity Parity { get; init; }
+    /// <summary>The slot parity it transmits in; null for a station heard in a keyboard mode, which has no slots.</summary>
+    public SlotParity? Parity { get; init; }
 
     /// <summary>When it was first decoded.</summary>
     public DateTime FirstHeardUtc { get; init; }
@@ -90,6 +90,9 @@ public sealed record Station
     /// running a Fox/Hound DXpedition, which only a Hound can work.
     /// </summary>
     public bool RunsFox { get; init; }
+
+    /// <summary>The last characters of its text, for a station heard in a keyboard mode; otherwise null.</summary>
+    public string? RecentText { get; init; }
 
     /// <summary>Its latest message.</summary>
     public ParsedMessage? LastMessage { get; init; }

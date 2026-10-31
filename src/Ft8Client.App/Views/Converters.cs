@@ -153,6 +153,9 @@ public static class Converters
         _ => Brush("TextSecondaryBrush"),
     });
 
+    /// <summary>My own overs in the conversation box are dimmed.</summary>
+    public static readonly IValueConverter MineOpacity = new FuncValueConverter<bool, double>(mine => mine ? 0.6 : 1.0);
+
     /// <summary>Progress track: accent where reached, a plain line ahead.</summary>
     public static readonly IValueConverter TrackBrush = new FuncValueConverter<bool, IBrush?>(b => Brush(b ? "AccentBrush" : "ControlBorderBrush"));
 
@@ -195,7 +198,8 @@ public static class Converters
         _ => Brushes.White,
     });
 
-    private static IBrush? Brush(string key) => ThemeBrush.Get(key);
+    /// <summary>A theme brush by key, for the current theme variant; null when there is none.</summary>
+    internal static IBrush? Brush(string key) => ThemeBrush.Get(key);
 
     private sealed class IntEqualsConverter : IValueConverter
     {

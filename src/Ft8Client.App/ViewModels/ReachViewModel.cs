@@ -217,7 +217,10 @@ public sealed partial class ReachViewModel : ObservableObject
     {
         var now = _now();
         var window = Window switch { "1 hour" => TimeSpan.FromHours(1), "24 hours" => TimeSpan.FromHours(24), _ => TimeSpan.FromMinutes(15) };
-        var all = _spots.Since(now.AddHours(-24)).Where(s => Callsign.EqualsCall(s.MyCall, MyCall)).Select(ToReport).ToList();
+        // Reports of my FT8 signal say nothing about my PSK31 or RTTY signal: only the mode I am in.
+        var all = _spots.Since(now.AddHours(-24))
+            .Where(s => Callsign.EqualsCall(s.MyCall, MyCall) && string.Equals(s.Mode?.Trim(), Mode, StringComparison.OrdinalIgnoreCase))
+            .Select(ToReport).ToList();
         var pts = ReachPoint.From(all.Where(r => r.Band == Band), now, window, MyGrid, _countries, _log(), Band, Mode);
         Points = pts;
         Centre = Grid.ToLatLon(MyGrid);

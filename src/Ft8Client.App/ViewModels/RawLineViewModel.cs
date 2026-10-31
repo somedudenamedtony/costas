@@ -31,8 +31,9 @@ public sealed class RawLineViewModel
     /// <param name="sender">What the station list knows about the sender, if anything.</param>
     /// <param name="units">Distance units.</param>
     /// <param name="partner">True when the line is from or to the station I am in a contact with.</param>
+    /// <param name="keyboard">A PSK or RTTY line, which has no time offset (DT is left empty).</param>
     public RawLineViewModel(RawDecodeLine l, TimeZoneInfo? localZone = null, WsjtxHighlight? highlight = null,
-                            RankedStation? sender = null, DistanceUnit units = DistanceUnit.Miles, bool partner = false)
+                            RankedStation? sender = null, DistanceUnit units = DistanceUnit.Miles, bool partner = false, bool keyboard = false)
     {
         Background = highlight?.Background;
         Foreground = highlight?.Foreground;
@@ -41,7 +42,7 @@ public sealed class RawLineViewModel
         Utc = utc.ToString("HHmmss", CultureInfo.InvariantCulture);
         Local = TimeZoneInfo.ConvertTimeFromUtc(utc, localZone ?? TimeZoneInfo.Local).ToString("HHmmss", CultureInfo.InvariantCulture);
         Db = l.Transmitted ? "Tx" : d.Snr.ToString("+0;-0;0", CultureInfo.InvariantCulture);
-        Dt = l.Transmitted ? string.Empty : d.Dt.ToString("0.0", CultureInfo.InvariantCulture);
+        Dt = l.Transmitted || keyboard ? string.Empty : d.Dt.ToString("0.0", CultureInfo.InvariantCulture);
         Hz = d.OffsetHz.ToString(CultureInfo.InvariantCulture);
         Message = d.Text + (d.LowConfidence ? " ?" : string.Empty) + (d.APriori > 0 ? $" a{d.APriori}" : string.Empty);
         Country = l.Country ?? string.Empty;

@@ -12,6 +12,7 @@ using Ft8Client.Core;
 using Ft8Client.Core.Bands;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Geo;
+using Ft8Client.Core.Keyboard;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Neighbours;
 using Ft8Client.Core.Ranking;
@@ -118,6 +119,9 @@ public sealed class PskReporterService : IAsyncDisposable
         _settings.Changed += OnSettingsChanged;
         _session.BandChanged += FollowNeighbours;
         _session.SlotDecoded += OnSlotDecoded;
+        _session.KeyboardHeard += OnKeyboardHeard;
+        // PSK31, PSK63 and RTTY have no slots to catch up on, so follow a band or mode change when it happens.
+        _session.BandChanged += FollowNeighbours;
         _ = Task.Run(() => UploadLoopAsync(_cts.Token));
         _identity = Task.Run(() => FollowIdentityAsync(_settings.Current));
         _identity.Wait();
@@ -230,6 +234,7 @@ public sealed class PskReporterService : IAsyncDisposable
         var settings = _settings.Current;
         var o = settings.PskReporter;
         var on = o.FeedEnabled && (o.CompareNeighbours || o.BandActivity);
+        // The configuration, not the snapshot: on a band change the snapshot is published after BandChanged is raised.
         var config = _session.Config;
         feed.FollowNeighbours(on ? config.Band : null, on ? ModeInfo.Name(config.Mode) : null, on ? settings.Profile.Grid : null, o.BandActivity,
             _frequencies.Bands(config.Mode));
@@ -329,11 +334,7 @@ public sealed class PskReporterService : IAsyncDisposable
     {
         // Band, mode and the setting can change at any time; catching up once a slot is soon enough.
         FollowNeighbours();
-        var s = _settings.Current;
-        if (!_uploadsAllowed || !s.PskReporter.UploadSpots || _myCall.Length == 0) return;
-        var dial = _session.Snapshot.DialHz;
-        if (dial <= 0) return;
-        _uploader.Receiver = new PskReceiver(_myCall, s.Profile.Grid, $"{AppInfo.ProductName} {AppInfo.Version}");
+        if (UploadDial() is not { } dial) return;
         foreach (var d in decodes)
         {
             if (d.LowConfidence) continue;
@@ -341,6 +342,25 @@ public sealed class PskReporterService : IAsyncDisposable
             if (m.SenderCall is not { } call) continue;
             _uploader.Add(new PskSpot(call, dial + d.OffsetHz, d.Snr, ModeInfo.Name(mode), m.Grid ?? string.Empty, slot));
         }
+    }
+
+    // PSK31, PSK63 and RTTY stations named from their text, spotted like fldigi does: the ADIF mode name and the dial plus
+    // the channel's audio frequency (V23). The uploader's once-per-call rule keeps a long over to one spot.
+    private void OnKeyboardHeard(Mode mode, IReadOnlyList<TextHeard> heard)
+    {
+        if (UploadDial() is not { } dial) return;
+        foreach (var h in heard) _uploader.Add(new PskSpot(h.Call, dial + h.OffsetHz, h.Snr, ModeInfo.Name(mode), string.Empty, h.Utc));
+    }
+
+    // The dial to spot against, with my station set on the uploader; null when spots are not to be uploaded.
+    private long? UploadDial()
+    {
+        var s = _settings.Current;
+        if (!_uploadsAllowed || !s.PskReporter.UploadSpots || _myCall.Length == 0) return null;
+        var dial = _session.Snapshot.DialHz;
+        if (dial <= 0) return null;
+        _uploader.Receiver = new PskReceiver(_myCall, s.Profile.Grid, $"{AppInfo.ProductName} {AppInfo.Version}");
+        return dial;
     }
 
     private async Task UploadLoopAsync(CancellationToken ct)
@@ -390,6 +410,7 @@ public sealed class PskReporterService : IAsyncDisposable
         _settings.Changed -= OnSettingsChanged;
         _session.BandChanged -= FollowNeighbours;
         _session.SlotDecoded -= OnSlotDecoded;
+        _session.KeyboardHeard -= OnKeyboardHeard;
         await FlushOnExitAsync().ConfigureAwait(false);
         await _cts.CancelAsync().ConfigureAwait(false);
         await _identityGate.WaitAsync().ConfigureAwait(false);

@@ -100,6 +100,10 @@
       <Setter Property="MinHeight" Value="32" />
       <Setter Property="CornerRadius" Value="4" />
     </Style>
+    <Style Selector="Button.macro.next">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
     <!-- Small buttons laid over the waterfall's frequency scale (pop out, pop in). The waterfall is always dark. -->
     <Style Selector="Button.wfoverlay">
       <Setter Property="MinHeight" Value="0" />

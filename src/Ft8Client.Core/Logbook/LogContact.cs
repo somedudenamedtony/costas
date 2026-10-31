@@ -11,7 +11,7 @@ namespace Ft8Client.Core.Logbook;
 /// <summary>The parts of a logged contact that need tiers and band statistics use.</summary>
 /// <param name="Call">DX callsign, upper case.</param>
 /// <param name="Band">ADIF band, e.g. <c>20m</c>.</param>
-/// <param name="ModeKey"><c>FT8</c>, <c>FT4</c>, or the ADIF mode for other modes.</param>
+/// <param name="ModeKey">The mode key from <see cref="LogModeKey"/>: <c>FT8</c>, <c>FT4</c>, <c>PSK31</c>, <c>PSK63</c>, <c>RTTY</c>, or the ADIF mode for other modes.</param>
 /// <param name="Grid">DX grid, if logged.</param>
 /// <param name="EntityKey">Country-file entity key, if known.</param>
 /// <param name="Region">US state or Canadian province, if logged.</param>

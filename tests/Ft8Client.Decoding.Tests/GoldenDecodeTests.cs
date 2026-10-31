@@ -19,6 +19,7 @@ public class GoldenDecodeTests
         var data = new TheoryData<string>();
         foreach (var f in Directory.EnumerateFiles(TestPaths.Samples, "*.wav", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
         {
+            if (SampleFile.IsKeyboardMode(f)) continue;
             data.Add(Path.GetRelativePath(TestPaths.Samples, f));
         }
         return data;

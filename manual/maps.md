@@ -35,7 +35,8 @@ Press **Reach** in the top bar (++ctrl+3++), or **Open reach view** under *Your 
 
 ![Reach view, before any reports](images/reach-empty.png)
 
-- **Band** and **Window** (15 minutes, 1 hour, 24 hours) choose which reports to show.
+- **Band** and **Window** (15 minutes, 1 hour, 24 hours) choose which reports to show. Only reports in the mode you are
+  in are shown.
 - **Headline**: heard by how many stations, in how many countries, the farthest and the best report.
 - **World**: switches the plot for the globe, with a ring for each station that reported you. Drag to turn it,
   double-click to come back to your station (see [the globe](#heard-here) above).

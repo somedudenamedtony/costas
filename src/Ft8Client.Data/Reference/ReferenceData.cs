@@ -71,7 +71,10 @@ public static class ReferenceData
         }
     }
 
-    /// <summary>Loads <c>frequencies.json</c> beside the settings if the operator edited one, else the bundled table.</summary>
+    /// <summary>
+    /// Loads <c>frequencies.json</c> beside the settings if the operator edited one, else the bundled table. Modes the
+    /// edited copy has no rows for are taken from the bundled table.
+    /// </summary>
     public static FrequencyTable LoadFrequencies(AppPaths? paths = null)
     {
         if (paths is not null)
@@ -81,7 +84,10 @@ public static class ReferenceData
             {
                 try
                 {
-                    return ParseFrequencies(File.ReadAllText(path));
+                    // A copy edited before a mode was added has no rows for it: those come from the bundled table.
+                    var edited = ParseFrequencies(File.ReadAllText(path));
+                    var bundled = ParseFrequencies(ReadResource("frequencies.json"));
+                    return new FrequencyTable([.. edited.Entries, .. bundled.Entries.Where(b => edited.Entries.All(e => e.Mode != b.Mode))]);
                 }
                 catch (JsonException)
                 {

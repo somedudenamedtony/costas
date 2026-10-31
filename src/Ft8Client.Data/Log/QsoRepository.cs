@@ -228,7 +228,7 @@ public sealed class QsoRepository(SqliteDatabase db)
 
     /// <summary>Maps a row to the index form.</summary>
     public static LogContact ToLogContact(QsoRecord q) =>
-        new(q.Call, q.Band, DuplicateRule.ModeKey(q.Mode, q.Submode), q.Gridsquare, q.EntityKey, q.State, q.Confirmed, q.QsoDateOn, q.LotwConfirmed);
+        new(q.Call, q.Band, LogModeKey.Of(q.Mode, q.Submode), q.Gridsquare, q.EntityKey, q.State, q.Confirmed, q.QsoDateOn, q.LotwConfirmed);
 
     private static long Insert(SqliteConnection c, SqliteTransaction? tx, QsoRecord q)
     {
@@ -287,7 +287,8 @@ public sealed class QsoRepository(SqliteDatabase db)
         }
         target.QsoDateOff ??= source.QsoDateOff;
         target.FreqHz ??= source.FreqHz;
-        target.Submode ??= source.Submode;
+        // A submode belongs to its mode: an old MODE=PSK31 row does not take SUBMODE=PSK31 from a PSK/PSK31 copy.
+        if (string.Equals(target.Mode, source.Mode, StringComparison.OrdinalIgnoreCase)) target.Submode ??= source.Submode;
         target.RstSent ??= source.RstSent;
         target.RstRcvd ??= source.RstRcvd;
         target.Gridsquare ??= source.Gridsquare;

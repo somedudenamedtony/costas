@@ -8,8 +8,10 @@
 
 using Ft8Client.Core;
 using Ft8Client.Core.Contacts;
+using Ft8Client.Core.Keyboard;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Time;
+using Ft8Client.Modems.Rtty;
 
 namespace Ft8Client.App.Engine;
 
@@ -58,4 +60,22 @@ public sealed record SessionConfig
 
     /// <summary>Transmit power in watts, for the log.</summary>
     public int PowerWatts { get; init; } = 25;
+
+    /// <summary>My first name, for PSK and RTTY macros.</summary>
+    public string MyName { get; init; } = string.Empty;
+
+    /// <summary>Where I am, in words, for PSK and RTTY macros.</summary>
+    public string MyQth { get; init; } = string.Empty;
+
+    /// <summary>My radio, for PSK and RTTY macros.</summary>
+    public string MyRig { get; init; } = string.Empty;
+
+    /// <summary>My antenna, for PSK and RTTY macros.</summary>
+    public string MyAntenna { get; init; } = string.Empty;
+
+    /// <summary>The PSK and RTTY macros.</summary>
+    public IReadOnlyList<Macro> Macros { get; init; } = Macro.Defaults;
+
+    /// <summary>The RTTY speed, shift and polarity to send.</summary>
+    public RttyFormat Rtty { get; init; } = RttyFormat.Standard;
 }

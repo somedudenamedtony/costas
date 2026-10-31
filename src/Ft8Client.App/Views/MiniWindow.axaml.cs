@@ -22,15 +22,28 @@ public partial class MiniWindow : Window
     {
         InitializeComponent();
         AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, (_, e) => _held.Release(e.Key), RoutingStrategies.Tunnel);
+        Deactivated += (_, _) => _held.Reset();
     }
 
-    /// <summary>Esc does here what it does in the main window.</summary>
+    /// <summary>Esc does here what it does in the main window; in PSK and RTTY, F1 to F12 send macros.</summary>
     public Action? Escape { get; init; }
+
+    // A held function key repeats: its macro goes once per press.
+    private readonly KeyRepeatFilter _held = new();
 
     private void OnKey(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Escape) return;
-        Escape?.Invoke();
-        e.Handled = true;
+        var fresh = _held.Press(e.Key);
+        if (e.Key == Key.Escape)
+        {
+            Escape?.Invoke();
+            e.Handled = true;
+        }
+        else if (e.Key is >= Key.F1 and <= Key.F12 && DataContext is MiniViewModel { IsKeyboard: true } vm)
+        {
+            if (fresh) vm.SendMacro(e.Key - Key.F1 + 1);
+            e.Handled = true;
+        }
     }
 }

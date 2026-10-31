@@ -73,14 +73,18 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
     /// <summary>Raised when the view should scroll to the newest line, at the top.</summary>
     public event Action? ScrollToNewest;
 
+    private bool _keyboard;
+
     /// <summary>Applies new decodes.</summary>
     /// <param name="lines">Every raw line, oldest first.</param>
     /// <param name="rank">The station list, for each sender's need and distance.</param>
     /// <param name="partner">The station I am in a contact with, if any.</param>
-    public void Apply(IReadOnlyList<RawDecodeLine> lines, RankResult? rank = null, string? partner = null)
+    /// <param name="keyboard">True for PSK and RTTY lines, which have no DT.</param>
+    public void Apply(IReadOnlyList<RawDecodeLine> lines, RankResult? rank = null, string? partner = null, bool keyboard = false)
     {
         var partnerChanged = !string.Equals(partner, _partner, StringComparison.Ordinal);
-        if (!partnerChanged && lines.Count == _all.Count && (lines.Count == 0 || ReferenceEquals(lines[^1], _all[^1]))) return;
+        if (!partnerChanged && keyboard == _keyboard && lines.Count == _all.Count && (lines.Count == 0 || ReferenceEquals(lines[^1], _all[^1]))) return;
+        _keyboard = keyboard;
         _all = lines;
         if (rank is not null) _stations = ByCall(rank);
         _partner = partner;
@@ -179,7 +183,7 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
             if (!Shows(l, sender)) continue;
             if (slot is not null && slot != l.Decode.SlotStartUtc) Lines.Add(RawLineViewModel.Blank);
             slot = l.Decode.SlotStartUtc;
-            Lines.Add(new RawLineViewModel(l, highlight: HighlightOf(l, newest), sender: sender, units: Units, partner: IsPartner(l)));
+            Lines.Add(new RawLineViewModel(l, highlight: HighlightOf(l, newest), sender: sender, units: Units, partner: IsPartner(l), keyboard: _keyboard));
             shown++;
         }
         Filtered = f.Length > 0 || Show != ShowAll;

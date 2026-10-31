@@ -252,6 +252,8 @@ public sealed class PortAudioBackend : IAudioBackend
         private readonly float[] _buffer;
         private readonly Thread _thread;
         private float[]? _current;
+        private IAudioStream? _source;
+        private readonly float[] _mono = new float[OutputFrames];
         private int _pos;
         private volatile bool _running = true;
         private bool _disposed;
@@ -277,17 +279,28 @@ public sealed class PortAudioBackend : IAudioBackend
 
         public int SampleRate { get; }
 
-        public bool IsPlaying => Volatile.Read(ref _current) is not null;
+        public bool IsPlaying => Volatile.Read(ref _current) is not null || Volatile.Read(ref _source) is not null;
 
         public event EventHandler<string>? Faulted;
 
         public void Play(float[] samples)
         {
+            Volatile.Write(ref _source, null);
             _pos = 0;
             Volatile.Write(ref _current, samples);
         }
 
-        public void Stop() => Volatile.Write(ref _current, null);
+        public void PlayStream(IAudioStream stream)
+        {
+            Volatile.Write(ref _current, null);
+            Volatile.Write(ref _source, stream);
+        }
+
+        public void Stop()
+        {
+            Volatile.Write(ref _current, null);
+            Volatile.Write(ref _source, null);
+        }
 
         // Audio thread: plays the current buffer, silence otherwise. Keeps the stream open for low start latency.
         private unsafe void Run()
@@ -296,7 +309,16 @@ public sealed class PortAudioBackend : IAudioBackend
             {
                 Array.Clear(_buffer);
                 var cur = Volatile.Read(ref _current);
-                if (cur is not null)
+                if (Volatile.Read(ref _source) is { } stream)
+                {
+                    var got = stream.Read(_mono);
+                    for (var i = 0; i < got; i++)
+                    {
+                        for (var c = 0; c < _channels; c++) _buffer[i * _channels + c] = _mono[i];
+                    }
+                    if (stream.Finished) Interlocked.CompareExchange(ref _source, null, stream);
+                }
+                else if (cur is not null)
                 {
                     var n = Math.Min(OutputFrames, cur.Length - _pos);
                     for (var i = 0; i < n; i++)
@@ -312,6 +334,7 @@ public sealed class PortAudioBackend : IAudioBackend
                 if (err != NoError && err != OutputUnderflowed)
                 {
                     Volatile.Write(ref _current, null);
+                    Volatile.Write(ref _source, null);
                     if (_running) ThreadPool.QueueUserWorkItem(_ => Faulted?.Invoke(this, $"Audio output stopped: {ErrorText(err)}"));
                     return;
                 }

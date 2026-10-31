@@ -60,6 +60,16 @@ public class RawDecodesTests
     }
 
     [Fact]
+    public void Apply_KeyboardLines_LeavesDtEmpty()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+
+        vm.Apply([Line(new DateTime(2026, 10, 13, 18, 0, 0, DateTimeKind.Utc), "CQ CQ DE KP4JRS KP4JRS K")], keyboard: true);
+
+        vm.Lines.Should().ContainSingle().Which.Dt.Should().BeEmpty();
+    }
+
+    [Fact]
     public void Show_Cq_ShowsOnlyCqLines()
     {
         var vm = new RawDecodesViewModel(_ => { });

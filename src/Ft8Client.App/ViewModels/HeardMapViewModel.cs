@@ -103,6 +103,10 @@ public sealed partial class HeardMapViewModel : ObservableObject
     [ObservableProperty]
     public partial string ActivityText { get; set; } = string.Empty;
 
+    /// <summary>The legend for the grey bars: decodes per slot, or in PSK and RTTY stations read per three minutes.</summary>
+    [ObservableProperty]
+    public partial string ActivityLegend { get; set; } = "Decodes per slot";
+
     /// <summary>Applies a snapshot. UI thread.</summary>
     public void Apply(SessionSnapshot s, DateTime nowUtc)
     {
@@ -151,7 +155,9 @@ public sealed partial class HeardMapViewModel : ObservableObject
         if (HearsMe) Legend.Add(new LegendItem(TextKind.Success, "Heard you (PSK Reporter)", Ring: true));
 
         Activity = s.Activity;
-        ActivityText = ActivitySentence(s.Activity, _now);
+        var slotted = ModeInfo.IsSlotted(s.Mode);
+        ActivityText = ActivitySentence(s.Activity, _now, slotted);
+        ActivityLegend = slotted ? "Decodes per slot" : "Stations per three minutes";
     }
 
     /// <summary>Dots for stations I heard in the window, filtered and coloured by the choices.</summary>
@@ -220,16 +226,18 @@ public sealed partial class HeardMapViewModel : ObservableObject
 
     /// <summary>
     /// One line about the trend: the last 10 minutes against 30 to 40 minutes ago, by average decodes per slot, with the
-    /// needed stations per slot. Decodes per slot are left out: the band summary already shows them.
+    /// needed stations per slot. Decodes per slot are left out: the band summary already shows them. PSK and RTTY have no
+    /// slots: each entry is three minutes of stations read (<paramref name="slotted"/> false).
     /// </summary>
-    public static string ActivitySentence(IReadOnlyList<SlotActivity> activity, DateTime nowUtc)
+    public static string ActivitySentence(IReadOnlyList<SlotActivity> activity, DateTime nowUtc, bool slotted = true)
     {
+        var per = slotted ? "slot" : "three minutes";
         var recent = activity.Where(a => nowUtc - a.SlotStartUtc <= TimeSpan.FromMinutes(10)).ToList();
         var earlier = activity.Where(a => nowUtc - a.SlotStartUtc is var t && t > TimeSpan.FromMinutes(30) && t <= TimeSpan.FromMinutes(40)).ToList();
-        if (recent.Count < 2) return "Band activity appears here as slots are decoded.";
+        if (recent.Count < 2) return slotted ? "Band activity appears here as slots are decoded." : "Band activity appears here every three minutes, as stations are read.";
         var now = recent.Average(a => a.Decodes);
         var needed = recent.Average(a => a.Needed);
-        var head = Math.Round(needed) == 1 ? "About 1 needed station per slot." : $"About {Math.Round(needed):0} needed stations per slot.";
+        var head = Math.Round(needed) == 1 ? $"About 1 needed station per {per}." : $"About {Math.Round(needed):0} needed stations per {per}.";
         if (earlier.Count < 2) return head;
         var then = earlier.Average(a => a.Decodes);
         var change = then <= 0 ? (now > 0 ? 1 : 0) : (now - then) / then;

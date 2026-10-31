@@ -33,6 +33,9 @@ public sealed class TxMeterMonitor
         tx.Started += (p, _) => Watch(p.Duration);
         tx.ToneStarted += p => Watch(p.Duration);
         tx.Ended += (_, _) => Stop();
+        // A PSK or RTTY over has no set length: it is read until it ends, at most the keyboard watchdog's limit.
+        tx.StreamStarted += () => Watch(KeyboardTransmitter.MaxOver);
+        tx.StreamEnded += _ => Stop();
     }
 
     /// <summary>Wait after audio starts before the first reading.</summary>

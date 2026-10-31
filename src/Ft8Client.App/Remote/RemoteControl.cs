@@ -171,6 +171,8 @@ public sealed class RemoteControl
             case "resend":
                 _target.Resend();
                 return null;
+            case "macro" when cmd.Key is { } key:
+                return ModeInfo.IsSlotted(_target.Snapshot.Mode) ? "Macros are for PSK and RTTY." : _target.SendMacro(key);
             case "logNow":
                 if (_target.Snapshot.Contact?.CanLogNow == true) _target.LogNow();
                 return null;
@@ -203,6 +205,7 @@ public sealed class RemoteControl
         "jump" => cmd.Step is not null,
         "offset" => cmd.Hz is not null,
         "power" => cmd.Watts is not null,
+        "macro" => cmd.Key is not null,
         _ => false,
     };
 

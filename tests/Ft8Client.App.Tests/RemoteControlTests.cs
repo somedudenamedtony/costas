@@ -6,7 +6,9 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using Ft8Client.App.Engine;
 using Ft8Client.App.Remote;
+using Ft8Client.Core;
 using Ft8Client.Core.Remote;
 using Ft8Client.Core.Time;
 
@@ -84,6 +86,23 @@ public class RemoteControlTests
 
         token.Should().NotBeNull();
         rc.SignIn(token).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task HandleAsync_MacroInPsk_SendsIt()
+    {
+        _target.Snapshot = new SessionSnapshot { Mode = Mode.Psk31 };
+        var note = await Make().HandleAsync("phone", new RemoteCommand("macro", Key: 2));
+        note.Should().BeNull();
+        _target.Calls.Should().Equal("macro 2");
+    }
+
+    [Fact]
+    public async Task HandleAsync_MacroInFt8_Refused()
+    {
+        var note = await Make().HandleAsync("phone", new RemoteCommand("macro", Key: 2));
+        note.Should().Be("Macros are for PSK and RTTY.");
+        _target.Calls.Should().BeEmpty();
     }
 
     [Fact]

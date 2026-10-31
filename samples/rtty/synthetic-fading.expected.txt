@@ -1,0 +1,4 @@
+# Synthetic: made by Costas's own RttyModulator (45.45 Bd, 170 Hz). The mark and space tones fade independently (to -26 dB, periods 2.3 s and 3.1 s) as on a skywave path, then Gaussian noise (seed 2026). Hz (centre)<TAB>peak level in dB against the noise in 2500 Hz<TAB>text sent.
+# limit: 0.12 (selective fading this deep costs some characters in every receiver)
+1500	6	CQ CQ CQ DE ZS6CCY ZS6CCY ZS6CCY K
+1500	6	ZS6CCY QTH JOHANNESBURG 73 ES GUD DX

@@ -138,8 +138,9 @@ child processes. Rules for working on the code are in [`CLAUDE.md`](CLAUDE.md); 
 | [`docs/04-domain-logic.md`](docs/04-domain-logic.md) | Message parsing, station tracking, need tiers, ranking, contact state machine, transmit encoding |
 | [`docs/05-integrations.md`](docs/05-integrations.md) | jt9, Hamlib, QRZ, PSK Reporter, WSJT-X UDP, time check, update check |
 | [`docs/06-data-model.md`](docs/06-data-model.md) | SQLite schema, settings, files on disk, ADIF mapping |
-| [`docs/07-milestones.md`](docs/07-milestones.md) | Build order, M0 to M8, with acceptance tests |
+| [`docs/07-milestones.md`](docs/07-milestones.md) | Build order, M0 to M13, with acceptance tests |
 | [`docs/08-open-questions.md`](docs/08-open-questions.md) | Decisions assumed, facts not yet verified, known risks |
+| [`docs/09-keyboard-modes.md`](docs/09-keyboard-modes.md) | PSK31, PSK63 and RTTY on the same Operate screen (planned) |
 | [`docs/09-next-up.md`](docs/09-next-up.md) | Proposed next features and fixes, for the owner to pick from |
 | [`mockups/`](mockups/) | The original approved screen designs |
 
@@ -177,6 +178,20 @@ publishes a GitHub Release when the owner runs the CI workflow on `main` by hand
 | M6 PSK Reporter | IPFIX byte for byte; feed against a local broker incl. reconnect and de-dupe; query fallback | Live MQTT subscription (V7); spot upload seen on pskreporter.info |
 | M7 setup, settings, log, interop | UDP datagrams for every type; settings migration; secrets kept out of settings, logs and the bundle | GridTracker on Windows; first-run timing with an IC-7300 |
 | M8 FT4, hardening, release | FT4 vectors and decode round trip; user manual | 24-hour soak, code signing |
+| M10 PSK31 and PSK63 receive (feature branch) | Demodulators against generated signals in noise; synthetic recordings with three stations; stations found from text | Real recordings against fldigi (V25); transmit is M12 |
+| M11 RTTY receive (feature branch) | Demodulator with ATC against noise, fading, one lost tone and Reverse; synthetic recordings (busy, fading, reversed) | Real recordings against fldigi or MMTTY (V25); transmit is M12 |
+| M12 PSK and RTTY transmit and contacts (feature branch) | Modulators read back by our demodulators; watchdog, fault and Halt PTT release; both contact flows; a whole PSK31 contact logged; RTTY power cap; PSK zero-ALC level | Contacts on the air with the owner's radio; LoTW confirmation |
+| M13 Keyboard modes everywhere else (feature branch) | PSK Reporter spots and WSJT-X UDP status (V23, V24 from fldigi and GridTracker source); macro keys in Mini mode and on the phone; Mode filters in Log and Awards; AFC switch; missing macro fields in red | A spot seen on pskreporter.info; a Status seen in GridTracker |
+
+### Test builds
+
+Every CI run builds a Windows installer and keeps it for 90 days as the run's **Costas-Setup** artifact, on any
+branch. Only a manual run on `main` publishes a release, so a test build never reaches installed apps, and only
+release builds carry the usage-statistics key. To try a branch (the PSK and RTTY work on `feature/keyboard-modes`,
+say): Actions > CI > Run workflow, pick the branch, wait for the green tick, open the run and download
+**Costas-Setup** from Artifacts (signed in to GitHub). Unzip it and run `Costas-Setup-<version>.exe`; it installs over
+the current Costas and keeps settings and the log. A test build is numbered from the same run counter, so the next
+release from `main` is newer and the app offers it as usual, which also takes the machine back to `main`.
 
 ### The manual
 

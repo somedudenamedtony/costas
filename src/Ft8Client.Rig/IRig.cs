@@ -71,6 +71,24 @@ public interface IRig : IAsyncDisposable
     /// </summary>
     Task<bool> StartTunerAsync(CancellationToken ct);
 
+    /// <summary>
+    /// Reads the radio's power setting as a fraction of its maximum (Hamlib's <c>l RFPOWER</c>, 0 to 1). Null when it
+    /// cannot be read. Never raises <see cref="Faulted"/> and never throws <see cref="RigException"/>.
+    /// </summary>
+    Task<double?> ReadPowerLevelAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Sets the radio's power setting as a fraction of its maximum (<c>L RFPOWER</c>). True when the radio took it.
+    /// Never raises <see cref="Faulted"/> and never throws <see cref="RigException"/>.
+    /// </summary>
+    Task<bool> SetPowerLevelAsync(double level, CancellationToken ct);
+
+    /// <summary>
+    /// Reads whether the radio's speech processor is on (<c>u COMP</c>). Null when the radio cannot say. Never raises
+    /// <see cref="Faulted"/> and never throws <see cref="RigException"/>.
+    /// </summary>
+    Task<bool?> ReadSpeechProcessorAsync(CancellationToken ct);
+
     /// <summary>Turns split on or off with a transmit frequency.</summary>
     Task SetSplitAsync(bool on, long txHz, CancellationToken ct);
 

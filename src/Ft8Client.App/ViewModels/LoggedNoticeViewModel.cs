@@ -221,6 +221,6 @@ public sealed partial class LoggedNoticeViewModel : ObservableObject
 
     /// <summary>"Sent -12 · Received -08 · 14:30 UTC", shared with the phone (which leaves the time off).</summary>
     public static string ReportsOf(LoggedContact c, bool withTime = true) =>
-        $"Sent {Report.Format(c.ReportSent)} · Received {(c.ReportReceived is { } r ? Report.Format(r) : ContactPanelViewModel.NotYet)}"
+        $"Sent {(c.ReportSent is { } s ? LogComment.Rst(c.Mode, s) : ContactPanelViewModel.NotYet)} · Received {(c.ReportReceived is { } r ? LogComment.Rst(c.Mode, r) : ContactPanelViewModel.NotYet)}"
         + (withTime ? $" · {OperateViewModel.Hm(c.LoggedUtc)}" : string.Empty);
 }

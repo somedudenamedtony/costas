@@ -10,7 +10,7 @@ should not need Settings while operating.
 | Item | What it does |
 | --- | --- |
 | **Band** | The band you are on, filled in at start-up, and follows the radio when you change band on it ([below](#changing-band-on-the-radio)). Changes band: Costas sets the radio's dial frequency, clears the station list and loads your log totals for the new band. Locked while transmitting |
-| **Mode** | FT8 or FT4. Changes the slot length and dial frequency. Locked while transmitting |
+| **Mode** | FT8, FT4, PSK31, PSK63 or RTTY. Changes the slot length and dial frequency. Locked while transmitting. For PSK31, PSK63 and RTTY see [PSK31, PSK63 and RTTY](keyboard-modes.md) |
 | Frequency | The dial frequency read from the radio, in MHz. Click it to type another frequency or use one you saved ([below](#typing-a-frequency)). Locked while transmitting |
 | **Operate**, **Raw decodes**, **Reach**, **Log**, **Awards** | The five views. ++ctrl+1++ to ++ctrl+5++ |
 | Clock | UTC, corrected from internet time when your PC clock is off (the tooltip says by how much). Turns amber with a tooltip when the clock is still off by more than 0.5 s, red above 2 s |
@@ -264,6 +264,8 @@ The top row shows the band, the slot countdown and how many stations are in line
 During a contact the strip shows who you're working, a dot for each step of the contact, and the message on the air or the one you're waiting for. The strip is outlined in red while you transmit.
 
 ![Mini mode, in a contact](images/mini-contact.png){ width="480" }
+
+In PSK and RTTY the dots give way to a row of macro keys, and F1 to F12 send them from the strip.
 
 When a station on your [Hunt list](hunt.md) is heard, the strip adds a line saying where, with ✕ to dismiss it.
 

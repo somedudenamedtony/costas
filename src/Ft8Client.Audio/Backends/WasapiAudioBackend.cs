@@ -145,6 +145,8 @@ public sealed class WasapiAudioBackend : IAudioBackend
         private readonly WasapiOut _out;
         private readonly int _channels;
         private float[]? _current;
+        private IAudioStream? _stream;
+        private float[] _mono = [];
         private int _pos;
         private volatile bool _stopping;
 
@@ -156,6 +158,7 @@ public sealed class WasapiAudioBackend : IAudioBackend
             SampleRate = mix.SampleRate;
             _channels = mix.Channels;
             WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(SampleRate, _channels);
+            _mono = new float[SampleRate];
             _out = new WasapiOut(device, AudioClientShareMode.Shared, true, 30);
             _out.Init(new SampleToWaveProvider(this));
             _out.PlaybackStopped += (_, a) =>
@@ -169,25 +172,52 @@ public sealed class WasapiAudioBackend : IAudioBackend
 
         public WaveFormat WaveFormat { get; }
 
-        public bool IsPlaying => Volatile.Read(ref _current) is not null;
+        public bool IsPlaying => Volatile.Read(ref _current) is not null || Volatile.Read(ref _stream) is not null;
 
         public event EventHandler<string>? Faulted;
 
         public void Play(float[] samples)
         {
+            Volatile.Write(ref _stream, null);
             _pos = 0;
             Volatile.Write(ref _current, samples);
         }
 
-        public void Stop() => Volatile.Write(ref _current, null);
+        public void PlayStream(IAudioStream stream)
+        {
+            Volatile.Write(ref _current, null);
+            Volatile.Write(ref _stream, stream);
+        }
 
-        // Audio thread: plays the current buffer, silence otherwise. Keeps the stream open for low start latency.
+        public void Stop()
+        {
+            Volatile.Write(ref _current, null);
+            Volatile.Write(ref _stream, null);
+        }
+
+        // Audio thread: plays the current buffer or stream, silence otherwise. Keeps the device open for low start latency.
         public int Read(Span<float> buffer)
         {
             buffer.Clear();
+            var frames = buffer.Length / _channels;
+            if (Volatile.Read(ref _stream) is { } stream)
+            {
+                for (var done = 0; done < frames;)
+                {
+                    var want = Math.Min(frames - done, _mono.Length);
+                    var got = stream.Read(_mono.AsSpan(0, want));
+                    for (var i = 0; i < got; i++)
+                    {
+                        for (var c = 0; c < _channels; c++) buffer[(done + i) * _channels + c] = _mono[i];
+                    }
+                    done += want;
+                    if (got < want) break;
+                }
+                if (stream.Finished) Interlocked.CompareExchange(ref _stream, null, stream);
+                return buffer.Length;
+            }
             var cur = Volatile.Read(ref _current);
             if (cur is null) return buffer.Length;
-            var frames = buffer.Length / _channels;
             var n = Math.Min(frames, cur.Length - _pos);
             for (var i = 0; i < n; i++)
             {

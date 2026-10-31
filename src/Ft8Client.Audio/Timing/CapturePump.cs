@@ -41,6 +41,12 @@ public sealed class CapturePump : IDisposable
     /// <summary>Live receive spectrum, fed outside the audio callback.</summary>
     public ReceiveSpectrum Spectrum { get; } = new();
 
+    /// <summary>
+    /// Receives every 12 kHz sample as well as the slot recorder, for the keyboard modes, which read audio continuously.
+    /// Its reader drains it on its own thread.
+    /// </summary>
+    public SpscRingBuffer? Continuous { get; set; }
+
     /// <summary>Recent RMS input level in dBFS.</summary>
     public double LevelDbfs { get; private set; } = -120;
 
@@ -81,6 +87,7 @@ public sealed class CapturePump : IDisposable
             var m = _resampler.Process(_in.AsSpan(0, n), _out);
             _recorder.Append(_out.AsSpan(0, m));
             Spectrum.Append(_out.AsSpan(0, m));
+            Continuous?.Write(_out.AsSpan(0, m));
             total += m;
         }
         var over = _input.Buffer.Overruns;

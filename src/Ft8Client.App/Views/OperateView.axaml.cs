@@ -7,10 +7,14 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Data.Converters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Threading;
 using Ft8Client.App.ViewModels;
+using Ft8Client.Core.Keyboard;
 
 namespace Ft8Client.App.Views;
 
@@ -40,6 +44,132 @@ public partial class OperateView : UserControl
         {
             if (e.Property == IsVisibleProperty) FitPinned();
         };
+        TypeAhead.AddHandler(KeyDownEvent, OnTypeAheadKey, RoutingStrategies.Tunnel);
+        TypeAhead.AddHandler(TextInputEvent, OnTypeAheadText, RoutingStrategies.Tunnel);
+        DataContextChanged += (_, _) =>
+        {
+            if (Vm is not { } vm) return;
+            // Follow new text only while the operator is at the end; scrolled back to read, the box stays put.
+            vm.Keyboard.Conversation.CollectionChanged += (_, _) =>
+            {
+                var s = ConversationScroll;
+                if (s.Offset.Y >= s.Extent.Height - s.Viewport.Height - 4) Dispatcher.UIThread.Post(() => s.ScrollToEnd());
+            };
+            vm.Keyboard.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(KeyboardPanelViewModel.BlockedMacro)) ShowBlocked(vm.Keyboard.BlockedMacro);
+            };
+        };
+    }
+
+    // PSK and RTTY: Enter sends; on the air, Backspace takes back what has not gone yet.
+    private void OnTypeAheadKey(object? sender, KeyEventArgs e)
+    {
+        if (Vm?.Keyboard is not { } k) return;
+        if (e.Key == Key.Enter)
+        {
+            k.Enter();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Back && k.OnAir)
+        {
+            k.Backspace();
+            e.Handled = true;
+        }
+    }
+
+    // The refused macro as it would go out, each field with no value in red (docs/09-keyboard-modes.md section 8).
+    private void ShowBlocked(IReadOnlyList<MacroSegment> segments)
+    {
+        var inlines = BlockedLine.Inlines ??= [];
+        inlines.Clear();
+        foreach (var s in segments)
+        {
+            var run = new Run(s.Text);
+            if (s.Missing)
+            {
+                // FindResource does not see the theme dictionaries, so it returned null and the field showed blank.
+                run.Foreground = Converters.Brush("CriticalBrush");
+                run.FontWeight = FontWeight.SemiBold;
+            }
+            inlines.Add(run);
+        }
+    }
+
+    // On the air every key goes straight to the transmitter instead of into the box; a key it cannot take is kept in
+    // the box or, if the mode cannot send it, named under the line. Receiving in RTTY, the box shows capitals.
+    private void OnTypeAheadText(object? sender, TextInputEventArgs e)
+    {
+        _spacePending = false;
+        if (Vm?.Keyboard is not { } k || string.IsNullOrEmpty(e.Text)) return;
+        if (k.OnAir)
+        {
+            k.TypeOnAir(e.Text);
+            TypeAhead.CaretIndex = k.Typed.Length;
+            e.Handled = true;
+        }
+        else if (k.IsRtty)
+        {
+            e.Text = e.Text.ToUpperInvariant();
+        }
+    }
+
+    // Space pressed while another control had the keyboard: the type-ahead line now has it. Set until the space arrives
+    // as text; a platform that sends no text for a handled key gets the space on key up instead.
+    private bool _spacePending;
+
+    /// <summary>
+    /// PSK and RTTY: a key pressed while the keyboard is with another control on this view (a button, a row, the
+    /// window). Typing belongs to the type-ahead line, so it takes the keyboard. Space must not click the focused button
+    /// (which could key the radio again), and Backspace edits the line. Returns true when the key was taken.
+    /// </summary>
+    public bool TakeKey(KeyEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        if (Vm?.Keyboard is not { Visible: true } k) return false;
+        switch (e.Key)
+        {
+            case Key.Space:
+                FocusTypeAhead();
+                _spacePending = true;
+                return true;
+            case Key.Back:
+                FocusTypeAhead();
+                k.BackspaceAnywhere();
+                TypeAhead.CaretIndex = k.Typed.Length;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>Key up after <see cref="TakeKey"/>: a space that never arrived as text is typed now.</summary>
+    public void TakeKeyUp(KeyEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        if (e.Key != Key.Space || !_spacePending) return;
+        _spacePending = false;
+        TakeText(" ");
+    }
+
+    /// <summary>
+    /// PSK and RTTY: text typed while another control had the keyboard goes to the type-ahead line (or, on the air, to
+    /// the transmitter), and the line takes the keyboard. Returns true when the text was taken.
+    /// </summary>
+    public bool TakeText(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        _spacePending = false;
+        if (Vm?.Keyboard is not { Visible: true } k || text.Length == 0) return false;
+        FocusTypeAhead();
+        k.TypeAnywhere(text);
+        TypeAhead.CaretIndex = k.Typed.Length;
+        return true;
+    }
+
+    private void FocusTypeAhead()
+    {
+        if (!TypeAhead.IsFocused) TypeAhead.Focus();
     }
 
     private readonly Dictionary<string, ColumnLayout> _columns = [];

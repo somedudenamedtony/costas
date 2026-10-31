@@ -25,6 +25,13 @@ public static class TxLevelTuner
     /// <summary>ALC at or above this is more than the level needs, so the level goes down.</summary>
     public const double High = 0.25;
 
+    /// <summary>
+    /// With zero ALC as the target (PSK, docs/09-keyboard-modes.md section 8), any reading at or above this counts as
+    /// ALC acting and lowers the level: ALC compression spreads a PSK signal over its neighbours. It is below the
+    /// FT-710's first meter step of 1/64.
+    /// </summary>
+    public const double ZeroTarget = 0.01;
+
     /// <summary>The level never goes below this, in dBFS.</summary>
     public const double FloorDb = -40;
 
@@ -36,31 +43,35 @@ public static class TxLevelTuner
 
     /// <summary>
     /// The state for the next transmission after one that read <paramref name="alc"/>. The level never goes above
-    /// <paramref name="maxDb"/> (at most 0 dBFS) or below <paramref name="minDb"/> (at least <see cref="FloorDb"/>).
+    /// <paramref name="maxDb"/> (at most 0 dBFS) or below <paramref name="minDb"/> (at least <see cref="FloorDb"/>). With
+    /// <paramref name="zeroAlc"/> the level aims for no ALC at all (see <see cref="ZeroTarget"/>) instead of the point
+    /// where it starts to act.
     /// </summary>
-    public static TxLevelStep Next(TxLevelState state, double alc, double maxDb, double minDb = FloorDb)
+    public static TxLevelStep Next(TxLevelState state, double alc, double maxDb, double minDb = FloorDb, bool zeroAlc = false)
     {
         ArgumentNullException.ThrowIfNull(state);
         maxDb = Math.Min(maxDb, 0);
         var floor = Math.Max(FloorDb, minDb);
         var g = state.GainDb;
+        var high = zeroAlc ? ZeroTarget : High;
+        var quiet = zeroAlc ? ZeroTarget : Quiet;
 
-        if (alc >= High)
+        if (alc >= high)
         {
             var drop = alc >= 0.75 ? 6.0 : alc >= 0.5 ? 3.0 : 1.0;
             var ceiling = Math.Min(state.CeilingDb ?? g, g);
             return new(new(Round(Math.Max(floor, g - drop)), ceiling, 0), TxLevelChange.Lowered);
         }
-        if (alc >= Quiet) return new(state with { QuietAtCeiling = 0 }, TxLevelChange.Held);
+        if (alc >= quiet) return new(state with { QuietAtCeiling = 0 }, TxLevelChange.Held);
 
         var limit = state.CeilingDb is { } c ? Math.Min(maxDb, c - RaiseStepDb) : maxDb;
         if (limit > g + 0.05) return new(new(Round(Math.Min(g + RaiseStepDb, limit)), state.CeilingDb, 0), TxLevelChange.Raised);
         if (state.CeilingDb is null || maxDb <= limit) return new(state with { QuietAtCeiling = 0 }, TxLevelChange.AtMaximum);
 
-        var quiet = state.QuietAtCeiling + 1;
-        return quiet >= RelaxAfter
+        var quietCount = state.QuietAtCeiling + 1;
+        return quietCount >= RelaxAfter
             ? new(new(g, null, 0), TxLevelChange.AtCeiling)
-            : new(state with { QuietAtCeiling = quiet }, TxLevelChange.AtCeiling);
+            : new(state with { QuietAtCeiling = quietCount }, TxLevelChange.AtCeiling);
     }
 
     private static double Round(double db) => Math.Round(db, 1);

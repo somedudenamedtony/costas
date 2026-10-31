@@ -171,7 +171,7 @@ public sealed class Jt9PersistentDecoder : IDecoder, IEarlyDecoder, IDisposable
         }
     }
 
-    private static int FullStep(Mode mode) => mode == Mode.Ft8 ? Jt9SharedLayout.FullStep : 21;
+    private static int FullStep(Mode mode) => ModeInfo.Slotted(mode) == Mode.Ft8 ? Jt9SharedLayout.FullStep : 21;
 
     private TimeSpan Timeout(Mode mode) => _options.Timeout ?? ModeInfo.SlotLength(mode);
 }

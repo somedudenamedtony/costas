@@ -16,7 +16,7 @@ namespace Ft8Client.Core.Hunting;
 /// <param name="Region">Its US state, if known.</param>
 /// <param name="Grid">Its grid, if known.</param>
 /// <param name="Band">ADIF band, lower case.</param>
-/// <param name="ModeKey"><c>FT8</c> or <c>FT4</c>.</param>
+/// <param name="ModeKey">The mode, as <see cref="Logbook.LogModeKey"/> names it (<c>FT8</c>, <c>PSK31</c>, ...).</param>
 /// <param name="Snr">dB: at my station, or at the receiver near me.</param>
 /// <param name="TimeUtc">When it was heard.</param>
 /// <param name="ReceiverCall">The receiver near me that heard it, or null when I heard it myself.</param>

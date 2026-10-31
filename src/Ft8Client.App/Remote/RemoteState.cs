@@ -50,6 +50,12 @@ public sealed record RemoteState
     /// <summary>The contact card, or null when not in a contact.</summary>
     public RemoteContact? Contact { get; init; }
 
+    /// <summary>PSK and RTTY: the macro keys (empty in FT8 and FT4). Pressing one sends it, as on the desk.</summary>
+    public IReadOnlyList<RemoteMacro> Macros { get; init; } = [];
+
+    /// <summary>PSK and RTTY: the latest lines of the conversation with the station in contact, oldest first.</summary>
+    public IReadOnlyList<RemoteLine> Conversation { get; init; } = [];
+
     /// <summary>Stations calling me.</summary>
     public IReadOnlyList<RemoteCaller> Callers { get; init; } = [];
 

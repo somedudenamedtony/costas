@@ -28,7 +28,7 @@ public static class FtxEncoder
         if (!SameMessage(back, norm))
             return new TxEncodeResult([], back, $"It would be received as \"{back}\", not as shown.", packed.Bits);
 
-        var tones = mode == Mode.Ft8 ? Ft8Tones(packed.Payload) : Ft4Tones(packed.Payload);
+        var tones = ModeInfo.Slotted(mode) == Mode.Ft8 ? Ft8Tones(packed.Payload) : Ft4Tones(packed.Payload);
         return new TxEncodeResult(tones, back, null, packed.Bits);
     }
 

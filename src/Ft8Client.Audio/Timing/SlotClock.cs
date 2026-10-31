@@ -37,7 +37,7 @@ public sealed class SlotClock
     public SlotClock(IClock clock, Mode mode, int pttLeadMs = 200)
     {
         _clock = clock;
-        _mode = mode;
+        _mode = ModeInfo.IsSlotted(mode) ? mode : Mode.Ft8;
         PttLeadMs = pttLeadMs;
     }
 
@@ -79,9 +79,13 @@ public sealed class SlotClock
         }
     }
 
-    /// <summary>Changes mode at the next slot boundary.</summary>
+    /// <summary>
+    /// Changes mode at the next slot boundary. A keyboard mode has no slots: the clock keeps the last slotted mode's
+    /// timing (the transmitter still takes its marks) and the session ignores its slots.
+    /// </summary>
     public void SetMode(Mode mode)
     {
+        if (!ModeInfo.IsSlotted(mode)) return;
         lock (_gate) _pendingMode = mode;
     }
 
@@ -92,7 +96,7 @@ public sealed class SlotClock
         SlotMark.PttOn => TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode) - PttLeadMs),
         SlotMark.TxStart => TimeSpan.FromMilliseconds(ModeInfo.TxStartMilliseconds(mode)),
         SlotMark.EarlyDecode when mode == Mode.Ft8 => TimeSpan.FromSeconds(11.85),
-        _ => mode == Mode.Ft8 ? TimeSpan.FromSeconds(13.6) : TimeSpan.FromSeconds(6.1),
+        _ => ModeInfo.Slotted(mode) == Mode.Ft8 ? TimeSpan.FromSeconds(13.6) : TimeSpan.FromSeconds(6.1),
     };
 
     /// <summary>Checks the time and raises any marks that are due, in order.</summary>

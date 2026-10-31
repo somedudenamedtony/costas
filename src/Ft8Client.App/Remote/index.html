@@ -25,6 +25,7 @@ body{min-height:100vh;display:flex;flex-direction:column}
 button{font:inherit;color:inherit;border:0;border-radius:8px;background:var(--btn);padding:10px 12px;font-weight:600;cursor:pointer}
 button:disabled{opacity:.45}
 button.red{background:var(--red);color:#fff}
+button.next{background:var(--accent);color:#fff}
 .top{padding:calc(12px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 10px calc(16px + env(safe-area-inset-left));border-bottom:1px solid var(--line);font-size:13px;color:var(--mut);position:sticky;top:0;background:var(--bg);z-index:2}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:12px;white-space:nowrap}
@@ -376,14 +377,25 @@ function renderContact(s) {
   const c = s.contact;
   const idle = !c || !c.active && c.steps.length === 0;
   const cqOff = !s.radioOk && !s.callingCq;
-  const btns = idle || !c.active
+  // PSK and RTTY: the macro keys take the place of Resend and Call CQ (F1 is CQ); the next step's key is highlighted.
+  const kbd = s.macros.length > 0;
+  const btns = kbd
+    ? s.macros.map(m => [m.caption, m.next ? "next" : "", "macro", false, m.key])
+        .concat(!idle && c.active ? (c.canLogNow ? [["Log now", "", "logNow", false]] : []).concat([["Abandon", "red", "abandon", false]]) : [])
+    : idle || !c.active
     ? [[s.callingCq ? "Stop CQ" : "Call CQ", s.callingCq ? "red" : "", "cq", cqOff]]
     : [["Resend", "", "resend", false]].concat(c.canLogNow ? [["Log now", "", "logNow", false]] : [], [["Abandon", "red", "abandon", false]]);
   if (changed("contactBtns", btns)) {
-    $("contactBtns").replaceChildren(...btns.map(([text, cls, type, off]) => button(text, cls, () => cmd(type), off)));
+    $("contactBtns").replaceChildren(...btns.map(([text, cls, type, off, key]) => button(text, cls, () => cmd(type, key ? { key } : {}), off)));
   }
-  if (!changed("contactBody", { c, cq: s.callingCq, wide })) return;
+  if (!changed("contactBody", { c, cq: s.callingCq, wide, talk: s.conversation })) return;
   const box = $("contactBody"); box.replaceChildren();
+  if (idle && kbd) {
+    box.append(el("div", "lbl", s.callingCq ? "Calling CQ" : "Not in a contact"));
+    box.append(el("div", "sub", s.callingCq ? "Waiting for a station to answer." : "Call a station in Next in line, or press F1 to call CQ."));
+    box.append(conversation(s.conversation));
+    return;
+  }
   if (idle) {
     box.append(el("div", "lbl", s.callingCq ? "Calling CQ" : "Not in a contact"));
     box.append(el("div", "sub", s.callingCq ? "Waiting for a station to answer." : "Call a station in Next in line, or call CQ."));
@@ -407,6 +419,12 @@ function renderContact(s) {
   });
   box.append(strip);
 
+  // PSK and RTTY: the latest of the conversation instead of the step messages.
+  if (kbd) {
+    box.append(conversation(s.conversation));
+    return;
+  }
+
   // The messages around the current step (the strip shows the rest), so Calling you and Next in line stay near the top.
   const msgs = el("div", "msgs");
   let cur = c.steps.findIndex(x => x.look === "sending" || x.look === "waiting");
@@ -423,6 +441,18 @@ function renderContact(s) {
     msgs.append(m);
   });
   box.append(msgs);
+}
+
+// The latest lines exchanged in a PSK or RTTY contact, mine dimmed as on the desk.
+function conversation(lines) {
+  const msgs = el("div", "msgs");
+  lines.forEach(l => {
+    const m = el("div", "msg done " + (l.mine ? "mine" : "theirs"));
+    m.append(el("div", "s", l.who + " · " + l.time), el("div", "m", l.text));
+    if (l.mine) m.style.opacity = ".7";
+    msgs.append(m);
+  });
+  return msgs;
 }
 
 function renderCallers(s) {
@@ -711,7 +741,10 @@ function renderPower(box, p) {
 // The slot countdown runs on the phone between states, from the station's position in the slot.
 let slotAt = 0;
 function renderSlot() {
-  const s = state; if (!s || !s.slotLengthMs) return;
+  const s = state; if (!s) return;
+  // PSK and RTTY have no slots: the station sends a zero length, and the bar is hidden rather than left frozen.
+  $("slot").classList.toggle("hidden", !s.slotLengthMs);
+  if (!s.slotLengthMs) return;
   const into = Math.min(s.slotLengthMs, s.slotIntoMs + (Date.now() - slotAt));
   $("slot").classList.toggle("tx", s.transmitting);
   $("slotLabel").textContent = s.slotLabel;

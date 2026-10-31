@@ -1,0 +1,4 @@
+# Synthetic: made by Costas's own PskModulator with Gaussian noise (seed 2026). Hz<TAB>carrier level in dB against the noise in 2500 Hz (PSK averages 1 to 3 dB below its carrier)<TAB>text sent.
+900	0	CQ CQ CQ DE OH8XYZ OH8XYZ OH8XYZ PSE K
+1650	-3	OH8XYZ DE DL1ABC GE UR 599 599 NAME HANS QTH BERLIN HW? OH8XYZ DE DL1ABC KN
+900	0	CQ CQ CQ DE OH8XYZ OH8XYZ OH8XYZ PSE K

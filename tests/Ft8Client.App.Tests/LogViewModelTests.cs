@@ -27,10 +27,17 @@ public class LogViewModelTests
     }
 
     [Fact]
-    public void BuildFilter_DefaultChoices_IsAll()
+    public void BuildFilter_AllModes_IsAll()
     {
         LogViewModel.BuildFilter("", LogViewModel.AllBands, LogViewModel.AllModes, LogViewModel.AllTime, LogViewModel.AnyConfirmation, Now)
             .Should().Be(LogFilter.All);
+    }
+
+    [Fact]
+    public void BuildFilter_AllDigital_FiltersOnDigitalModes()
+    {
+        LogViewModel.BuildFilter("", LogViewModel.AllBands, LogViewModel.AllDigital, LogViewModel.AllTime, LogViewModel.AnyConfirmation, Now)
+            .Should().Be(new LogFilter(ModeKey: LogViewModel.AllDigital));
     }
 
     [Fact]

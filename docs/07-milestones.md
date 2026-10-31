@@ -103,6 +103,60 @@ Accept:
 - Manual: every quality bar in `01-product-spec.md` is met on Windows 10 and 11.
 - Manual: five FT4 contacts on the air.
 
+## M9 · Keyboard modes groundwork (no visible change)
+
+Spec: `09-keyboard-modes.md`, owner decision D18. Step 1 of its section 12: the mode definitions. Every FT-only helper (slot timing, `jt9` arguments, the FT8/FT4 encoder, the slot clock) refuses the keyboard modes instead of treating them as FT4, and `ModeInfo.TryParse` accepts only the modes that can be operated, so nothing can select PSK or RTTY before M10. Steps 2 and 3 (`IContactEngine` and heard events from text) moved to M12 and M10, where their second implementations arrive.
+
+Accept:
+- Automated: every existing test passes unchanged. FT8 and FT4 behaviour, timing and messages are identical.
+- Automated: `ModeInfo` tests cover all five modes, and the slot helpers refuse the unslotted ones.
+
+## M10 · PSK31 and PSK63 receive
+
+Build:
+- `Ft8Client.Modems`: channel finder, PSK demodulator with AFC and squelch, Varicode.
+- Heard events from text (section 12 step 3), `KeyboardSession` (receive only), stations from text, `ModeInfo.Operable` gains PSK31 and PSK63, the mode in the Mode menu with its dial frequencies and radio mode.
+- Operate: Next in line, waterfall tags and Raw decodes in PSK.
+
+Resolve VERIFY: V22 (dial frequencies) for 20 m and 40 m.
+
+Accept:
+- Automated: golden text from the PSK31 and PSK63 recordings in `samples/`, each with a character error rate under 2 % on the clean files.
+- Automated: three simultaneous signals in one recording all decode.
+- Manual: on the owner's radio, PSK31 on 20 m shows the same callsigns as fldigi on the same audio over 10 minutes.
+
+Status (2026-10-13, `feature/keyboard-modes`): built. The golden-text and three-signal tests pass on synthetic recordings; the fldigi recordings and the manual check on the radio are still to do (V25). Not yet built: the "signal without a callsign yet" row under Next in line, and the developer-mode Record button.
+
+## M11 · RTTY receive
+
+Build: RTTY demodulator (ATC, unshift-on-space, Reverse), and the speed and shift settings.
+
+Accept:
+- Automated: golden text from RTTY recordings, including a fading one and a reversed one.
+- Manual: as M10, against fldigi or MMTTY.
+
+Status (2026-10-14, `feature/keyboard-modes`): built. The demodulator, the RTTY channel finder (tone pairs one shift apart) and the settings are in; the bank, channel and text types are shared with PSK. Golden text passes on three synthetic recordings (busy band with a weak station, selective fading, reversed). Real recordings checked against fldigi or MMTTY are still to do (V25).
+
+## M12 · Keyboard transmit and contacts
+
+Build:
+- `IContactEngine` (section 12 step 2), PSK and RTTY modulators, type-ahead, macros with fields, and the keyboard contact engine with exchange capture.
+- The conversation box, logging, the keyboard watchdog, the RTTY power cap and the PSK ALC target.
+
+Accept:
+- Automated: our modulator's audio decodes through our demodulator and through fldigi's test harness, if one is available. Otherwise the modulated audio is checked against fldigi recordings for symbol timing and spectrum.
+- Automated: the watchdog stops at 3 min and after 20 s idle. A rig or audio error releases PTT. Unsendable characters are refused with the reason shown.
+- Automated: contact-engine tests for both flows, using recorded partner text.
+- Manual: five PSK31 contacts and three RTTY contacts on the air, logged correctly and confirmed on LoTW.
+
+Status (2026-10-14, `feature/keyboard-modes`): built. Automated: modulator audio decodes through our demodulators (no fldigi harness is available here); the watchdog (3 min, 20 s idle, and a stalled audio device), PTT release on rig and audio faults, Halt and refused characters; both contact flows in the engine and a whole PSK31 contact through the session, logged with name, QTH, RST and the signal's frequency; the RTTY power cap and restore; the PSK zero-ALC level. Not yet done: the contacts on the air, the red marking of a missing field in the type-ahead line, and the AFC switch. `IContactEngine` was not extracted (see `09-keyboard-modes.md` section 12).
+
+## M13 · Keyboard modes everywhere else
+
+Build: PSK Reporter spots (V23), WSJT-X UDP status (V24), Mini mode, the phone remote's strip and macros, Log and Awards mode filters, and manual pages.
+
+Status (2026-10-14, `feature/keyboard-modes`): built. V23 and V24 confirmed from fldigi and GridTracker source. Automated: stations named from text raise spots; a phone macro is sent in PSK and refused in FT8; the refused macro's empty fields are marked for the red display; AFC off reaches every channel; the All digital and PSK filters in SQL and in Awards. Also the two M12 leftovers: the AFC switch and the red missing-field marking. Not yet done: a spot seen on pskreporter.info and a Status seen in GridTracker.
+
 ## After v1
 
 In order of value: band advice, alerts, Hound mode, inbound UDP, LoTW, streaming decode, awards page, then macOS and Linux builds.

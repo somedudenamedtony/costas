@@ -37,6 +37,8 @@ public sealed class WaterfallView : Control
         var b = (int)(25 + 180 * Math.Sin(t * Math.PI));
         return unchecked((int)0xFF000000) | (r << 16) | (g << 8) | b;
     }).ToArray();
+    private static readonly IBrush TagBackground = new SolidColorBrush(Color.FromArgb(170, 7, 18, 30));
+    private static readonly IBrush ContactTag = new SolidColorBrush(Color.FromRgb(196, 43, 28));
     private static readonly IBrush Background = new SolidColorBrush(Color.Parse("#07121E"));
     private static readonly IPen SlotPen = new Pen(new SolidColorBrush(Color.FromArgb(56, 200, 215, 230)), 1);
     private static readonly IPen MarkerPen = new Pen(Brushes.OrangeRed, 1.5);
@@ -51,6 +53,18 @@ public sealed class WaterfallView : Control
     private int _bitmapRows = -1;
     private bool _dirty;
     private int _offset = 1500;
+    private IReadOnlyList<(int Hz, string Label, bool InContact)> _tags = [];
+
+    /// <summary>
+    /// Callsign tags drawn above the signals they belong to (keyboard modes, docs/09-keyboard-modes.md section 10): "?"
+    /// for a signal with no callsign yet, and the station in contact in red.
+    /// </summary>
+    public void SetTags(IReadOnlyList<(int Hz, string Label, bool InContact)> tags)
+    {
+        if (tags.SequenceEqual(_tags)) return;
+        _tags = tags;
+        InvalidateVisual();
+    }
 
     /// <summary>Raised for an explicit click in the selectable 200–2900 Hz range.</summary>
     public event Action<int>? ChannelSelected;
@@ -150,9 +164,21 @@ public sealed class WaterfallView : Control
             if (hz == 3000 && LabelInset > 0 && x < 2500 / 3000.0 * width + 30) continue;
             context.DrawText(text, new Point(x, 1));
         }
+        var lastRight = double.MinValue;
+        foreach (var (hz, label, inContact) in _tags.OrderBy(t => t.Hz))
+        {
+            var text = new FormattedText(label, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Inter", FontStyle.Normal, FontWeight.SemiBold),
+                11, Brushes.White);
+            var tx = Math.Clamp(hz / 3000.0 * width - text.Width / 2, 2, Math.Max(2, width - text.Width - 2));
+            // Neighbours too close to label side by side take turns in two rows.
+            var ty = tx < lastRight + 4 ? ScaleHeight + 16 : ScaleHeight + 2;
+            if (ty == ScaleHeight + 2) lastRight = tx + text.Width;
+            context.FillRectangle(inContact ? ContactTag : TagBackground, new Rect(tx - 2, ty - 1, text.Width + 4, text.Height + 2));
+            context.DrawText(text, new Point(tx, ty));
+        }
         var marker = _offset / 3000.0 * width;
         context.DrawLine(MarkerPen, new Point(marker, ScaleHeight), new Point(marker, height));
-        if (_count == 0)
+        if (_count == 0 && _tags.Count == 0)
         {
             var text = new FormattedText("Waiting for receive audio", CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight, new Typeface("Inter"), 11, Brushes.LightGray);

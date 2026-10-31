@@ -40,6 +40,8 @@ public sealed partial class OperateViewModel : ObservableObject
     private readonly IOperateCommands _commands;
     private readonly Func<DateTime> _now;
     private readonly LineStabilizer<IReadOnlyList<RankedStation>> _line;
+    private static readonly TimeSpan KeyboardRankEvery = TimeSpan.FromSeconds(3);
+    private DateTime _lastKeyboardRank;
     private readonly LineStabilizer<IReadOnlyList<RankedStation>> _repeats;
     private DateTime? _lastRankedSlot;
     private (string Band, Ft8Client.Core.Mode Mode) _lastRankedBand;
@@ -55,7 +57,57 @@ public sealed partial class OperateViewModel : ObservableObject
         _line.AppliedChanged += ApplyLine;
         _repeats = new LineStabilizer<IReadOnlyList<RankedStation>>(now);
         _repeats.AppliedChanged += ApplyRepeats;
+        Keyboard = new KeyboardPanelViewModel(commands);
     }
+
+    /// <summary>The PSK and RTTY conversation box, type-ahead line and macro keys.</summary>
+    public KeyboardPanelViewModel Keyboard { get; }
+
+    /// <summary>RTTY: mark and space swapped (the Reverse switch beside the macro keys). Saved as the setting.</summary>
+    [ObservableProperty]
+    public partial bool RttyReverse { get; set; }
+
+    /// <summary>Called when the operator flips Reverse.</summary>
+    public Action<bool>? RttyReverseChanged { get; set; }
+
+    private bool _applyingReverse;
+
+    partial void OnRttyReverseChanged(bool value)
+    {
+        if (!_applyingReverse) RttyReverseChanged?.Invoke(value);
+    }
+
+    /// <summary>Shows the stored Reverse setting without saving it again.</summary>
+    public void ShowRttyReverse(bool value)
+    {
+        _applyingReverse = true;
+        RttyReverse = value;
+        _applyingReverse = false;
+    }
+
+    /// <summary>PSK and RTTY: channels follow a drifting signal (the AFC switch beside the macro keys). Saved as the setting.</summary>
+    [ObservableProperty]
+    public partial bool KeyboardAfc { get; set; } = true;
+
+    /// <summary>Called when the operator flips AFC.</summary>
+    public Action<bool>? KeyboardAfcChanged { get; set; }
+
+    partial void OnKeyboardAfcChanged(bool value)
+    {
+        if (!_applyingReverse) KeyboardAfcChanged?.Invoke(value);
+    }
+
+    /// <summary>Shows the stored AFC setting without saving it again.</summary>
+    public void ShowKeyboardAfc(bool value)
+    {
+        _applyingReverse = true;
+        KeyboardAfc = value;
+        _applyingReverse = false;
+    }
+
+    /// <summary>The unit after the reports: dB in FT8 and FT4, none for an RST.</summary>
+    [ObservableProperty]
+    public partial string ReportUnit { get; set; } = "dB";
 
     /// <summary>Distance units.</summary>
     public DistanceUnit Units { get; set; } = DistanceUnit.Miles;
@@ -141,6 +193,19 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>Empty-state text for the line.</summary>
     [ObservableProperty]
     public partial bool LineEmpty { get; set; } = true;
+
+    /// <summary>PSK and RTTY: the signals with no callsign yet, under Next in line; empty when none.</summary>
+    [ObservableProperty]
+    public partial string UnnamedText { get; set; } = string.Empty;
+
+    /// <summary>"A signal without a callsign yet, at 1240 Hz", or "3 signals ... at 1240, 1500 and 1890 Hz"; empty for none.</summary>
+    internal static string UnnamedSignalsText(IReadOnlyList<int> offsets)
+    {
+        if (offsets.Count == 0) return string.Empty;
+        var hz = offsets.Select(o => o.ToString(CultureInfo.InvariantCulture)).ToList();
+        var at = hz.Count == 1 ? hz[0] : string.Join(", ", hz.Take(hz.Count - 1)) + " and " + hz[^1];
+        return hz.Count == 1 ? $"A signal without a callsign yet, at {at} Hz." : $"{hz.Count} signals without a callsign yet, at {at} Hz.";
+    }
 
     /// <summary>"List updated" pill.</summary>
     [ObservableProperty]
@@ -261,6 +326,10 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial string SlotLeft { get; set; } = string.Empty;
 
+    /// <summary>The word after the countdown: "left", or for PSK and RTTY "characters left" or "characters ready".</summary>
+    [ObservableProperty]
+    public partial string SlotUnit { get; set; } = "left";
+
     /// <summary>Slot progress 0 to 1.</summary>
     [ObservableProperty]
     public partial double SlotProgress { get; set; }
@@ -297,14 +366,19 @@ public sealed partial class OperateViewModel : ObservableObject
         var now = _now();
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
         Transmitting = s.Transmitting;
+        Keyboard.Apply(s);
+        ReportUnit = ModeInfo.IsSlotted(s.Mode) ? "dB" : string.Empty;
         UpdateSlot(now);
 
         // Re-rank only when a new slot has been decoded, or the band or mode changed (the old band's stations, with
-        // Call buttons that no longer work, stayed until the next decode).
+        // Call buttons that no longer work, stayed until the next decode). A keyboard mode has no slots, so it re-ranks
+        // every few seconds.
         var bandMode = (s.Band, s.Mode);
-        if (_lastRankedSlot != s.LastDecodedSlot || _line.Applied is null || _lastRankedBand != bandMode)
+        var keyboardDue = !ModeInfo.IsSlotted(s.Mode) && now - _lastKeyboardRank >= KeyboardRankEvery;
+        if (_lastRankedSlot != s.LastDecodedSlot || _line.Applied is null || _lastRankedBand != bandMode || keyboardDue)
         {
             _lastRankedSlot = s.LastDecodedSlot;
+            _lastKeyboardRank = now;
             _lastRankedBand = bandMode;
             _line.Offer(s.Rank.Line);
             var log = Log?.Invoke();
@@ -336,8 +410,9 @@ public sealed partial class OperateViewModel : ObservableObject
         RepeatsSubtitle = $"Heard now and already in your log on {band} {ModeInfo.Name(s.Mode)}.";
         RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {band} is on the air right now.";
 
-        Summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty);
-        Contact = s.Contact is null ? null : ContactPanelViewModel.From(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall));
+        UnnamedText = ModeInfo.IsSlotted(s.Mode) ? string.Empty : UnnamedSignalsText(s.UnnamedSignals);
+        Summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty, ModeInfo.IsSlotted(s.Mode) ? null : s.Activity);
+        Contact = s.Contact is null ? null : ContactPanelViewModel.For(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall));
         OnPropertyChanged(nameof(InContact));
         OnPropertyChanged(nameof(Panel));
         Calling = s.Contact is null ? null : DetailsFor(s.Contact.DxCall, s, now);
@@ -390,6 +465,16 @@ public sealed partial class OperateViewModel : ObservableObject
     private void UpdateSlot(DateTime now)
     {
         var mode = _snap?.Mode ?? Mode.Ft8;
+        if (!ModeInfo.IsSlotted(mode))
+        {
+            // Keyboard modes have no slot to count down: the readout counts what is typed ahead or still to send.
+            SlotProgress = Keyboard.ReadoutProgress;
+            SlotLeft = Keyboard.ReadoutCount;
+            SlotLabel = Keyboard.ReadoutLabel;
+            SlotUnit = Keyboard.ReadoutUnit;
+            return;
+        }
+        SlotUnit = "left";
         // Count down to the slot boundary, and call the whole slot a transmission went out in the transmit slot.
         var len = ModeInfo.SlotLength(mode);
         var into = now - SlotMath.SlotStart(now, mode);

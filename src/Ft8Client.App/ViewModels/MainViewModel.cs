@@ -24,6 +24,7 @@ using Ft8Client.Core.Time;
 using Ft8Client.Core.Transmit;
 using Ft8Client.Data.Log;
 using Ft8Client.Data.Settings;
+using Ft8Client.Modems.Rtty;
 
 namespace Ft8Client.App.ViewModels;
 
@@ -32,6 +33,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 {
     private readonly AppHost _host;
     private readonly CallerAlert _callers = new();
+    private bool _escArmed;
     private readonly HashSet<string> _cacheChecked = new(StringComparer.Ordinal);
     private bool _updatingBand;
 
@@ -50,6 +52,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         };
         host.MostWanted.Changed += list => Dispatch(() => Operate.MostWanted = list);
         host.Pota.Changed += parks => Dispatch(() => Operate.Parks = parks);
+        Operate.ShowRttyReverse(host.Settings.Current.Operating.RttyReverse);
+        Operate.RttyReverseChanged = on => host.Settings.Update(x => x.Operating.RttyReverse = on);
+        Operate.ShowKeyboardAfc(host.Settings.Current.Operating.KeyboardAfc);
+        Operate.KeyboardAfcChanged = on => host.Settings.Update(x => x.Operating.KeyboardAfc = on);
         Operate.Lotw = host.Lotw.Users;
         host.Lotw.UsersChanged += list => Dispatch(() => Operate.Lotw = list);
         host.Hunt.Alert += s => Dispatch(() => ShowHunt(s));
@@ -80,7 +86,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Logged = new LoggedNoticeViewModel(() => host.Clock.UtcNow, new LoggedContactStore(host.Qsos, host.Countries, host.LogHold, host.RebuildLogIndex));
         Mini = new MiniViewModel(Operate, this, () => HaltCommand.Execute(null));
         Mini.HuntDismissed += () => HuntDismissCommand.Execute(null);
-        Modes = ["FT8", "FT4"];
+        Modes = [.. ModeInfo.Operable.Select(ModeInfo.Name)];
         ApplySettings();
         _host.Settings.Changed += _ => Dispatch(ApplySettings);
         _host.Remote.Changed += () => Dispatch(UpdateRemote);
@@ -95,6 +101,11 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         switch (m)
         {
+            case Integrations.Wsjtx.WsjtxReply r when !ModeInfo.IsSlotted(_host.Session.Snapshot.Mode):
+                // Keyboard text is never sent as decodes, so a Reply cannot name one; calling from it would key the radio
+                // on another program's guess.
+                StatusText = "Another program asked to reply, which works only in FT8 and FT4. Call PSK and RTTY stations here.";
+                break;
             case Integrations.Wsjtx.WsjtxReply r:
                 if (UdpReplyRule.Sender(r, _host.Session.Snapshot.RawDecodes) is { } call) Call(call);
                 else StatusText = $"Another program asked to reply to \"{r.Message.Trim()}\". Only a recent CQ or a station calling you can be called that way.";
@@ -417,10 +428,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         BarShowsCqAndSlot = ShowCqAndSlotInBar(Tab);
         FillLookups(s);
         ApplyBandOpenings(s);
-        RefreshHuntGo();
         if (_callers.Update(s.Waiting) && _host.Settings.Current.Operating.ChimeOnCaller) _host.Chime.Play(_host.Clock.UtcNow);
         Raw.Units = Operate.Units;
-        Raw.Apply(s.RawDecodes, s.Rank, s.Contact?.DxCall);
+        Raw.Apply(s.RawDecodes, s.Rank, s.Contact?.DxCall, keyboard: !ModeInfo.IsSlotted(s.Mode));
         Logged.Apply(s.LastLogged);
         Frequency = FormatFrequency(s.DialHz);
         FollowBand(s.Band);
@@ -430,12 +440,16 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         NoRadio = !s.Transmitting && radio is not null && radio.Health != ServiceHealth.Ok;
         NoRadioText = radio is null ? string.Empty : $"Radio not connected · {radio.Message}";
         CanChangeBand = !s.Transmitting;
+        RefreshHuntGo(); // after CanChangeBand, so Go hides as soon as a transmission starts
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
         UpdateTune(s);
         TxOffsetText = (s.TxOffsetAuto ? string.Empty : "Manual · ") + TxOffsetPicker.Describe(new TxOffsetChoice(s.TxOffsetHz, s.TxOffsetClear));
         // A line set by an operator action ("Added to your Hunt list", "not in the station list") stays for a few seconds;
         // the snapshot that the action itself publishes used to replace it before it could be read. A fault still shows.
-        var (statusText, statusKind) = Status(s);
+        var (statusText, statusKind) = Status(s, SettingsMapper.Rtty(_host.Settings.Current));
+        // After a first Esc in PSK or RTTY the bar keeps saying that the next Esc abandons, until the contact ends.
+        if (s.Contact is not { Outcome: ContactOutcome.InProgress }) _escArmed = false;
+        else if (_escArmed && s.Fault is null && !s.Transmitting) (statusText, statusKind) = (EscapeText(s.Contact, true), TextKind.Critical);
         if (DateTime.UtcNow >= _noteUntilUtc || statusKind == TextKind.Critical)
         {
             _applyingStatus = true;
@@ -473,13 +487,22 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var now = _host.Clock.UtcNow;
         ClockText = now.ToString("HH:mm:ss", CultureInfo.InvariantCulture) + " UTC";
         var mode = _host.Session.Config.Mode;
-        var len = ModeInfo.SlotLength(mode);
-        var start = SlotMath.SlotStart(now, mode);
-        var into = now - start;
-        SlotProgress = into / len;
-        var left = (int)Math.Ceiling((len - into).TotalSeconds);
-        SlotRemaining = $"{left} s to next slot";
-        SlotLabel = _host.Session.Snapshot.InTransmitSlot(now) ? "Transmitting" : "Receiving";
+        if (ModeInfo.IsSlotted(mode))
+        {
+            var len = ModeInfo.SlotLength(mode);
+            var start = SlotMath.SlotStart(now, mode);
+            var into = now - start;
+            SlotProgress = into / len;
+            var left = (int)Math.Ceiling((len - into).TotalSeconds);
+            SlotRemaining = $"{left} s to next slot";
+            SlotLabel = _host.Session.Snapshot.InTransmitSlot(now) ? "Transmitting" : "Receiving";
+        }
+        else
+        {
+            SlotProgress = 0;
+            SlotRemaining = "Reading continuously";
+            SlotLabel = Transmitting ? "Transmitting" : "Receiving";
+        }
         UpdateTune(_host.Session.Snapshot);
         Operate.Tick();
         Logged.Tick();
@@ -542,6 +565,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (value == 2)
         {
             Reach.Band = _host.Session.Config.Band;
+            Reach.Mode = ModeInfo.Name(_host.Session.Config.Mode);
             Reach.Refresh();
         }
         if (value == 3) LogView.Refresh();
@@ -684,6 +708,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     private void HuntGo()
     {
         if (_hunt is not { } h || !CanChangeBand || !ModeInfo.TryParse(h.Heard.ModeKey, out var mode)) return;
+        // The button can be a tick behind the radio: never change band under a transmission.
+        if (_host.Session.Snapshot.Transmitting)
+        {
+            StatusText = "Wait until this transmission ends to change band.";
+            return;
+        }
         Activity();
         if (_host.Frequencies.Find(h.Heard.Band, mode) is null)
         {
@@ -730,6 +760,39 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (!_host.Session.Snapshot.CallingCq) _host.Usage.Track("cq_started", "mode", SelectedMode);
         _host.Session.ToggleCq();
     }
+
+    /// <inheritdoc />
+    public void SendMacro(int key)
+    {
+        Activity();
+        _escArmed = false;
+        _host.Session.SendMacro(key);
+    }
+
+    /// <inheritdoc />
+    public string? KeyboardEnter(string typed, bool onAir)
+    {
+        Activity();
+        _escArmed = false;
+        return _host.Session.KeyEnter(typed, onAir);
+    }
+
+    /// <inheritdoc />
+    public bool KeyboardType(char c)
+    {
+        Activity();
+        return _host.Session.TypeKey(c);
+    }
+
+    /// <inheritdoc />
+    public void KeyboardBackspace()
+    {
+        Activity();
+        _host.Session.BackspaceKey();
+    }
+
+    /// <inheritdoc />
+    public void Capture(Core.Keyboard.ExchangeField field, string word) => _host.Session.CaptureWord(field, word);
 
     /// <summary>How long a Tune tone lasts unless stopped sooner (the Tune watchdog).</summary>
     public const double TuneSeconds = 10;
@@ -866,7 +929,23 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// </summary>
     public void Escape()
     {
-        var c = _host.Session.Snapshot.Contact;
+        var s = _host.Session.Snapshot;
+        if (!ModeInfo.IsSlotted(s.Mode))
+        {
+            // PSK and RTTY: the first Esc stops the over and keeps the contact, the second abandons.
+            var action = EscapeDecision(s, _escArmed);
+            if (action == EscapeAction.Abandon)
+            {
+                _escArmed = false;
+                _ = _host.Session.AbandonAsync();
+                return;
+            }
+            _escArmed = action == EscapeAction.HaltAndArm;
+            _ = _host.Session.HaltAsync();
+            (StatusText, StatusKind) = (EscapeText(s.Contact, _escArmed), TextKind.Critical);
+            return;
+        }
+        var c = s.Contact;
         if (c is { Outcome: ContactOutcome.InProgress, Held: false } && c.ReportSent is not null && c.ReportReceived is not null)
         {
             _ = _host.Session.HoldAsync();
@@ -876,6 +955,37 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         }
         _ = _host.Session.AbandonAsync();
     }
+
+    /// <summary>What Esc does.</summary>
+    internal enum EscapeAction
+    {
+        /// <summary>Stop transmitting; nothing else.</summary>
+        Halt,
+
+        /// <summary>Stop transmitting and keep the contact; the next Esc abandons it.</summary>
+        HaltAndArm,
+
+        /// <summary>Abandon the contact (which also stops transmitting).</summary>
+        Abandon,
+    }
+
+    /// <summary>
+    /// What Esc does now. PSK and RTTY: the first Esc stops the over on the air and keeps the contact; the second
+    /// abandons it. A contact with both reports exchanged also asks for a second Esc. Otherwise Esc abandons.
+    /// </summary>
+    internal static EscapeAction EscapeDecision(SessionSnapshot s, bool armed)
+    {
+        var inContact = s.Contact is { Outcome: ContactOutcome.InProgress };
+        if (s.KeyboardTx.Active) return inContact ? EscapeAction.HaltAndArm : EscapeAction.Halt;
+        if (armed && inContact) return EscapeAction.Abandon;
+        if (s.Contact is { Outcome: ContactOutcome.InProgress, ReportSent: not null, ReportReceived: not null }) return EscapeAction.HaltAndArm;
+        return EscapeAction.Abandon;
+    }
+
+    // The bottom bar after an Esc that did not abandon.
+    internal static string EscapeText(ContactView? contact, bool armed) => armed && contact is { } c
+        ? $"Transmitting stopped. Press Esc again to abandon the contact with {c.DxCall}."
+        : "Transmitting stopped.";
 
     /// <summary>Any key or click: resets the Tx watchdog, and makes the desk the control point again.</summary>
     public void Activity()
@@ -887,6 +997,8 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     private void ApplySettings()
     {
         var s = _host.Settings.Current;
+        Operate.ShowRttyReverse(s.Operating.RttyReverse);
+        Operate.ShowKeyboardAfc(s.Operating.KeyboardAfc);
         _updatingBand = true;
         SelectedMode = s.Operating.Mode;
         ModeInfo.TryParse(s.Operating.Mode, out var mode);
@@ -982,12 +1094,15 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             };
             var where = StationText.Place(_host.Countries.Lookup(q.Call), q.State);
             return new TonightRowViewModel($"{q.Call} · {where}", upload, kind, StationText.Need(tag), StationRowViewModel.KindOf(tag),
-                OperateViewModel.Hm(q.QsoDateOff ?? q.QsoDateOn), q.Id);
+                TonightTime(q), q.Id);
         }).ToList();
         return (list, rows.Count);
     }
 
-    internal static (string, TextKind) Status(SessionSnapshot s)
+    /// <summary>A Worked tonight row's mode and time: "PSK31 · 02:49 UTC".</summary>
+    internal static string TonightTime(QsoRecord q) => $"{Core.Logbook.LogModeKey.Of(q.Mode, q.Submode)} · {OperateViewModel.Hm(q.QsoDateOff ?? q.QsoDateOn)}";
+
+    internal static (string, TextKind) Status(SessionSnapshot s, RttyFormat? rtty = null)
     {
         if (s.Fault is { } f) return (f, TextKind.Critical);
         if (s.RigTuningUntilUtc is not null) return ("The radio's antenna tuner is tuning.", TextKind.Critical);
@@ -998,6 +1113,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         if (s.Contact is { Outcome: ContactOutcome.InProgress } c)
         {
             if (!s.Transmitting) return ($"Waiting for {c.DxCall}.", TextKind.Normal);
+            if (!ModeInfo.IsSlotted(s.Mode)) return ($"Transmitting to {c.DxCall}.", TextKind.Critical);
             // An answer decoded after the slot began cannot change what is already on the air (usually still the CQ).
             var onAir = s.TransmittingMessage;
             var toDx = onAir is not null && Callsign.EqualsCall(onAir.Split(' ')[0].Trim('<', '>'), c.DxCall);
@@ -1006,10 +1122,22 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         // Shown while the ended contact stays in the top slot: "ZL2RPA answered K1ABC instead. Stopped calling."
         if (s.Contact is { Outcome: ContactOutcome.AnsweredOther } other) return (other.StatusText, TextKind.Caution);
         if (s.CallingCq) return (s.Transmitting ? "Transmitting CQ." : "Calling CQ.", s.Transmitting ? TextKind.Critical : TextKind.Normal);
+        if (s.KeyboardTx.Active) return ("Transmitting.", TextKind.Critical);
         if (s.Contact is { Outcome: ContactOutcome.NoReply, Flow: ContactFlow.Hound } fox) return (fox.StatusText, TextKind.Caution);
         var top = s.Rank.Line.FirstOrDefault();
+        if (!ModeInfo.IsSlotted(s.Mode))
+        {
+            var name = KeyboardModeName(s.Mode, rtty ?? RttyFormat.Standard);
+            if (s.Transmitting) return ($"Transmitting {name}.", TextKind.Critical);
+            return (top is null ? $"Reading {name}. Not in a contact." : $"Reading {name}. Not in a contact. Call answers {top.Station.Call}, F1 calls CQ.", TextKind.Normal);
+        }
         return (top is null ? "Not in a contact." : $"Not in a contact. Enter calls {top.Station.Call}, the top of the line.", TextKind.Normal);
     }
+
+    // "PSK31", or for RTTY its speed and shift: "RTTY 45.45 Bd, 170 Hz shift, reversed".
+    internal static string KeyboardModeName(Mode mode, RttyFormat rtty) => mode != Mode.Rtty
+        ? ModeInfo.Name(mode)
+        : $"RTTY {rtty.Baud.ToString("0.##", CultureInfo.InvariantCulture)} Bd, {rtty.ShiftHz} Hz shift{(rtty.Reverse ? ", reversed" : "")}";
 
     private static IndicatorViewModel Indicator(string label, SessionSnapshot s, string key)
     {

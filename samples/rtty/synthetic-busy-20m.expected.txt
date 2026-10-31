@@ -1,0 +1,4 @@
+# Synthetic: made by Costas's own RttyModulator (45.45 Bd, 170 Hz) with Gaussian noise (seed 2026). Hz (centre)<TAB>peak level in dB against the noise in 2500 Hz<TAB>text sent.
+700	0	CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K
+1250	-3	W7LIT DE EA8TL EA8TL GE TONY UR 599 599 NAME JUAN QTH LAS PALMAS HW? W7LIT DE EA8TL KN
+2050	-6	CQ TEST DE JA7QVI JA7QVI JA7QVI TEST

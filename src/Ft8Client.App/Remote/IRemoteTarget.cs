@@ -37,6 +37,9 @@ public interface IRemoteTarget
     /// <summary>Resends the current step.</summary>
     void Resend();
 
+    /// <summary>PSK and RTTY: sends the macro on a function key. Returns why it was refused, or null.</summary>
+    string? SendMacro(int key);
+
     /// <summary>Logs the contact now.</summary>
     void LogNow();
 
