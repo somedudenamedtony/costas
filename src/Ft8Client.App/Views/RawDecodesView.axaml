@@ -7,7 +7,13 @@
   <Border Classes="card" Margin="16,0,16,12" Padding="14,10">
     <Grid RowDefinitions="Auto,Auto,*">
       <DockPanel>
-        <Button DockPanel.Dock="Right" Content="Jump to live" Command="{Binding JumpToLiveCommand}" IsVisible="{Binding ScrolledAway}" />
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <Button Content="Jump to live" Command="{Binding JumpToLiveCommand}" IsVisible="{Binding ScrolledAway}" />
+          <TextBlock Text="{Binding ClearedAt}" Classes="secondary" VerticalAlignment="Center" IsVisible="{Binding Cleared}" />
+          <Button Classes="link" Content="Show earlier lines" Command="{Binding ShowEarlierCommand}" IsVisible="{Binding Cleared}" VerticalAlignment="Center" />
+          <Button Content="Clear" Command="{Binding ClearCommand}" AutomationProperties.Name="Clear raw decodes"
+                  ToolTip.Tip="Empty this list. New lines keep arriving; the station list and the log are not touched." />
+        </StackPanel>
         <StackPanel Orientation="Horizontal" Spacing="8">
           <TextBox Text="{Binding Filter}" PlaceholderText="Filter by callsign, text or country" Width="260" AutomationProperties.Name="Filter" />
           <ComboBox ItemsSource="{Binding ShowChoices}" SelectedItem="{Binding Show}" MinWidth="150" AutomationProperties.Name="Show" />

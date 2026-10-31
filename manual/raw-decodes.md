@@ -28,6 +28,10 @@ bar or ++ctrl+2++.
 - The **Show** menu beside it narrows the list to **CQs**, lines **To or from me** (messages to you and your own
   transmissions), or **New country, band or grid**. While anything is hidden, the count reads, for example,
   "5 of 212 lines", and **Clear filters** shows everything again.
+- **Clear** (top right) empties the list. New lines keep arriving, the top bar of the page reads, for example, "Cleared at 174515 UTC", and
+  **Show earlier lines** brings back what you cleared. Clear only tidies this page: the station list, the log, the
+  phone remote and programs such as JTAlert still see every line. It clears the mode you are in; other modes keep
+  their lines.
 - Double-click a line to call its sender.
 - Right-click a line for **Call** its sender, **Show only** that callsign, or **Copy line** (laid out as WSJT-X
   prints it, for pasting into a chat or a bug report).

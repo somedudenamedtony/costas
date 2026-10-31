@@ -121,6 +121,74 @@ public class RawDecodesTests
     }
 
     [Fact]
+    public void Clear_ThenNewSlot_ShowsOnlyLinesAfterTheClear()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        var before = Mixed();
+        vm.Apply(before);
+        vm.ClearAt(T0.AddSeconds(14));
+        vm.Lines.Should().BeEmpty();
+        vm.Cleared.Should().BeTrue();
+        vm.ClearedAt.Should().Be("Cleared at 025414 UTC");
+        vm.Apply([.. before, Line(T0.AddSeconds(15), "CQ G4AAA IO91")]);
+        Messages(vm).Should().Equal("CQ G4AAA IO91");
+    }
+
+    [Fact]
+    public void Clear_LaterLineInTheSameSlot_StillShows()
+    {
+        // The full decode pass adds lines to the slot the early pass already printed.
+        var vm = new RawDecodesViewModel(_ => { });
+        var early = Mixed();
+        vm.Apply(early);
+        vm.ClearAt(T0.AddSeconds(14));
+        vm.Apply([.. early, Line(T0, "CQ W9XYZ EN52")]);
+        Messages(vm).Should().Equal("CQ W9XYZ EN52");
+    }
+
+    [Fact]
+    public void ShowEarlier_AfterClear_ShowsEveryLineAgain()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed());
+        vm.ClearAt(T0);
+        vm.ShowEarlierCommand.Execute(null);
+        Messages(vm).Should().HaveCount(4);
+        vm.Cleared.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Clear_ThenFilter_CountsOnlyLinesAfterTheClear()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        var before = Mixed();
+        vm.Apply(before);
+        vm.ClearAt(T0);
+        vm.Apply([.. before, Line(T0.AddSeconds(15), "CQ G4AAA IO91"), Line(T0.AddSeconds(15), "VE3AAA W9XYZ RR73")]);
+        vm.Show = RawDecodesViewModel.ShowCq;
+        vm.Count.Should().Be("1 of 2 lines");
+    }
+
+    [Fact]
+    public void Clear_OldLinesDroppedBySession_ForgetsTheClear()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed());
+        vm.ClearAt(T0);
+        vm.Apply([Line(T0.AddSeconds(15), "CQ G4AAA IO91")]);
+        vm.Cleared.Should().BeFalse();
+        Messages(vm).Should().Equal("CQ G4AAA IO91");
+    }
+
+    [Fact]
+    public void Clear_EmptyList_StaysUncleared()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.ClearAt(T0);
+        vm.Cleared.Should().BeFalse();
+    }
+
+    [Fact]
     public void Apply_KnownSender_ShowsNeedAndDistance()
     {
         var vm = new RawDecodesViewModel(_ => { });

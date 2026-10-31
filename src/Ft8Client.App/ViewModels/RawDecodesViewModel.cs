@@ -41,6 +41,10 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
     private string? _partner;
     private bool _highlightsChanged;
 
+    // Lines on screen when the operator pressed Clear. Kept by reference: a later line with the same text and
+    // slot (the full decode pass after the early one) is a different line and still shows.
+    private readonly HashSet<RawDecodeLine> _cleared = new(ReferenceEqualityComparer.Instance);
+
     /// <summary>Lines, newest slot first, with a blank line between slots.</summary>
     public ObservableCollection<RawLineViewModel> Lines { get; } = [];
 
@@ -62,6 +66,14 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
     /// <summary>"34 of 212 lines" while filtered.</summary>
     [ObservableProperty]
     public partial string Count { get; private set; } = string.Empty;
+
+    /// <summary>True after Clear, until Show earlier lines brings the cleared lines back.</summary>
+    [ObservableProperty]
+    public partial bool Cleared { get; private set; }
+
+    /// <summary>"Cleared at 174515 UTC" after Clear.</summary>
+    [ObservableProperty]
+    public partial string ClearedAt { get; private set; } = string.Empty;
 
     /// <summary>Distance units for the Distance column.</summary>
     public DistanceUnit Units { get; set; } = DistanceUnit.Miles;
@@ -86,9 +98,21 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
         if (!partnerChanged && keyboard == _keyboard && lines.Count == _all.Count && (lines.Count == 0 || ReferenceEquals(lines[^1], _all[^1]))) return;
         _keyboard = keyboard;
         _all = lines;
+        PruneCleared();
         if (rank is not null) _stations = ByCall(rank);
         _partner = partner;
         Rebuild();
+    }
+
+    // The session drops a mode's oldest lines past its limit; forget those here too. Lines of other modes stay,
+    // so switching back to a cleared mode keeps it cleared.
+    private void PruneCleared()
+    {
+        if (_cleared.Count == 0 || _all.Count == 0) return;
+        var mode = _all[^1].Mode;
+        var live = new HashSet<RawDecodeLine>(_all, ReferenceEqualityComparer.Instance);
+        _cleared.RemoveWhere(l => l.Mode == mode && !live.Contains(l));
+        if (_cleared.Count == 0) (Cleared, ClearedAt) = (false, string.Empty);
     }
 
     private static Dictionary<string, RankedStation> ByCall(RankResult rank)
@@ -108,6 +132,34 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
     {
         Filter = string.Empty;
         Show = ShowAll;
+    }
+
+    /// <summary>
+    /// Clears the list: the lines of the current mode received so far are hidden from this page. Nothing is deleted;
+    /// the station list, the phone remote and other programs still see every line, and
+    /// <see cref="ShowEarlierCommand"/> brings them back.
+    /// </summary>
+    [RelayCommand]
+    private void Clear() => ClearAt(DateTime.UtcNow);
+
+    /// <summary>Clears as <see cref="ClearCommand"/> does, stamping the given time.</summary>
+    public void ClearAt(DateTime utcNow)
+    {
+        foreach (var l in _all) _cleared.Add(l);
+        Cleared = _cleared.Count > 0;
+        ClearedAt = Cleared ? $"Cleared at {utcNow:HHmmss} UTC" : string.Empty;
+        ScrolledAway = false;
+        Rebuild();
+    }
+
+    /// <summary>Shows the lines hidden by Clear again.</summary>
+    [RelayCommand]
+    private void ShowEarlier()
+    {
+        _cleared.Clear();
+        Cleared = false;
+        ClearedAt = string.Empty;
+        Rebuild();
     }
 
     /// <summary>Right-click, Show only: filters to the line's sender.</summary>
@@ -175,8 +227,11 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
         DateTime? slot = null;
         var shown = 0;
         // Newest slot first; within a slot, lines keep the order they arrived in.
+        var total = 0;
         foreach (var l in _all.OrderByDescending(x => x.Decode.SlotStartUtc))
         {
+            if (_cleared.Contains(l)) continue;
+            total++;
             var sender = l.Message.SenderCall is { } c && _stations.TryGetValue(c, out var st) ? st : null;
             if (f.Length > 0 && !l.Decode.Text.Contains(f, StringComparison.OrdinalIgnoreCase)
                 && !(l.Country?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false)) continue;
@@ -187,7 +242,7 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
             shown++;
         }
         Filtered = f.Length > 0 || Show != ShowAll;
-        Count = Filtered ? $"{shown:N0} of {_all.Count:N0} lines" : string.Empty;
+        Count = Filtered ? $"{shown:N0} of {total:N0} lines" : string.Empty;
         if (!ScrolledAway) ScrollToNewest?.Invoke();
     }
 
