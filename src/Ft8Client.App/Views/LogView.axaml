@@ -22,45 +22,100 @@
           </Button.Flyout>
         </Button>
       </StackPanel>
-      <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-        <ComboBox ItemsSource="{Binding BandChoices}" SelectedItem="{Binding BandFilter}" MinWidth="110" AutomationProperties.Name="Band filter" />
-        <ComboBox ItemsSource="{Binding ModeChoices}" SelectedItem="{Binding ModeFilter}" MinWidth="110" AutomationProperties.Name="Mode filter" />
-        <ComboBox ItemsSource="{Binding DateChoices}" SelectedItem="{Binding DateFilter}" MinWidth="130" AutomationProperties.Name="Date filter" />
-        <ComboBox ItemsSource="{Binding ConfirmedChoices}" SelectedItem="{Binding ConfirmedFilter}" MinWidth="150" AutomationProperties.Name="Confirmed filter" />
-        <Button Classes="link" Content="Clear filters" Command="{Binding ClearFiltersCommand}" IsVisible="{Binding Filtered}" VerticalAlignment="Center" />
-      </StackPanel>
+      <DockPanel Grid.Row="1" Margin="0,10,0,0">
+        <!-- Totals for what the filters show, as tiles; the line under the list keeps only the sync state. -->
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <Border Classes="tile">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="{Binding ContactsTotal}" Classes="tilevalue" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding ContactsOf}" Classes="secondary" VerticalAlignment="Center" IsVisible="{Binding ContactsOf, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <TextBlock Text="contacts" Classes="secondary" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <Border Classes="tile">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="{Binding CountriesTotal}" Classes="tilevalue" VerticalAlignment="Center" />
+              <TextBlock Text="countries" Classes="secondary" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <Border Classes="tile">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="{Binding ConfirmedTotal}" Classes="tilevalue" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+              <TextBlock Text="confirmed" Classes="secondary" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <ComboBox ItemsSource="{Binding BandChoices}" SelectedItem="{Binding BandFilter}" MinWidth="110" AutomationProperties.Name="Band filter" />
+          <ComboBox ItemsSource="{Binding ModeChoices}" SelectedItem="{Binding ModeFilter}" MinWidth="110" AutomationProperties.Name="Mode filter" />
+          <ComboBox ItemsSource="{Binding DateChoices}" SelectedItem="{Binding DateFilter}" MinWidth="130" AutomationProperties.Name="Date filter" />
+          <ComboBox ItemsSource="{Binding ConfirmedChoices}" SelectedItem="{Binding ConfirmedFilter}" MinWidth="150" AutomationProperties.Name="Confirmed filter" />
+          <Button Classes="link" Content="Clear filters" Command="{Binding ClearFiltersCommand}" IsVisible="{Binding Filtered}" VerticalAlignment="Center" />
+        </StackPanel>
+      </DockPanel>
       <TextBlock Grid.Row="2" Text="{Binding Message}" Margin="0,6,0,0" TextWrapping="Wrap"
                  IsVisible="{Binding Message, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-      <Grid Grid.Row="3" ColumnDefinitions="90,56,100,50,56,50,56,64,150,140,100,90,*,*" Margin="0,10,0,4">
-        <TextBlock Text="Date" Classes="secondary" /><TextBlock Grid.Column="1" Text="Time" Classes="secondary" />
-        <TextBlock Grid.Column="2" Text="Call" Classes="secondary" /><TextBlock Grid.Column="3" Text="Band" Classes="secondary" />
-        <TextBlock Grid.Column="4" Text="Mode" Classes="secondary" /><TextBlock Grid.Column="5" Text="Sent" Classes="secondary" />
-        <TextBlock Grid.Column="6" Text="Rcvd" Classes="secondary" /><TextBlock Grid.Column="7" Text="Grid" Classes="secondary" />
-        <TextBlock Grid.Column="8" Text="Country" Classes="secondary" /><TextBlock Grid.Column="9" Text="Name" Classes="secondary" />
-        <TextBlock Grid.Column="10" Text="Why" Classes="secondary" /><TextBlock Grid.Column="11" Text="LoTW" Classes="secondary" />
-        <TextBlock Grid.Column="12" Text="QRZ" Classes="secondary" />
-        <TextBlock Grid.Column="13" Text="eQSL" Classes="secondary" />
-      </Grid>
-      <ListBox Grid.Row="4" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" Background="Transparent" AutomationProperties.Name="Log">
-        <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="0,2" /></Style></ListBox.Styles>
-        <ListBox.ItemTemplate>
-          <DataTemplate x:DataType="vm:LogRowViewModel">
-            <Grid ColumnDefinitions="90,56,100,50,56,50,56,64,150,140,100,90,*,*">
-              <TextBlock Text="{Binding Date}" Classes="num" /><TextBlock Grid.Column="1" Text="{Binding Time}" Classes="num" />
-              <TextBlock Grid.Column="2" Text="{Binding Call}" FontWeight="SemiBold" /><TextBlock Grid.Column="3" Text="{Binding Band}" />
-              <TextBlock Grid.Column="4" Text="{Binding Mode}" /><TextBlock Grid.Column="5" Text="{Binding Sent}" Classes="num" />
-              <TextBlock Grid.Column="6" Text="{Binding Received}" Classes="num" /><TextBlock Grid.Column="7" Text="{Binding Grid}" />
-              <TextBlock Grid.Column="8" Text="{Binding Country}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Grid.Column="9" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Grid.Column="10" Text="{Binding Need}" />
-              <TextBlock Grid.Column="11" Text="{Binding Lotw}" Foreground="{Binding LotwKind, Converter={x:Static v:Converters.KindBrush}}" />
-              <TextBlock Grid.Column="12" Text="{Binding Qrz}" Foreground="{Binding QrzKind, Converter={x:Static v:Converters.KindBrush}}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Grid.Column="13" Text="{Binding Eqsl}" ToolTip.Tip="{Binding Eqsl}" TextTrimming="CharacterEllipsis" />
+      <Border Grid.Row="3" BorderBrush="{DynamicResource RowDividerBrush}" BorderThickness="0,0,0,1" Margin="0,12,0,0" Padding="8,0,0,6">
+        <Grid ColumnDefinitions="92,52,100,64,64,48,48,60,150,130,120,96,*,*">
+          <TextBlock Text="Date" Classes="colhead" /><TextBlock Grid.Column="1" Text="Time" Classes="colhead" />
+          <TextBlock Grid.Column="2" Text="Call" Classes="colhead" /><TextBlock Grid.Column="3" Text="Band" Classes="colhead" />
+          <TextBlock Grid.Column="4" Text="Mode" Classes="colhead" />
+          <TextBlock Grid.Column="5" Text="Sent" Classes="colhead" TextAlignment="Right" Margin="0,0,8,0" />
+          <TextBlock Grid.Column="6" Text="Rcvd" Classes="colhead" TextAlignment="Right" Margin="0,0,8,0" />
+          <TextBlock Grid.Column="7" Text="Grid" Classes="colhead" />
+          <TextBlock Grid.Column="8" Text="Country" Classes="colhead" /><TextBlock Grid.Column="9" Text="Name" Classes="colhead" />
+          <TextBlock Grid.Column="10" Text="Why" Classes="colhead" /><TextBlock Grid.Column="11" Text="LoTW" Classes="colhead" />
+          <TextBlock Grid.Column="12" Text="QRZ" Classes="colhead" />
+          <TextBlock Grid.Column="13" Text="eQSL" Classes="colhead" />
+        </Grid>
+      </Border>
+      <ListBox Grid.Row="4" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Background="Transparent" AutomationProperties.Name="Log">
+        <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="0" /><Setter Property="MinHeight" Value="0" /></Style></ListBox.Styles>
+        <ListBox.DataTemplates>
+          <!-- Day heading: the UTC date and what was worked that day, on a thin rule. -->
+          <DataTemplate DataType="vm:LogDayViewModel">
+            <DockPanel Margin="8,12,0,4">
+              <TextBlock DockPanel.Dock="Left" Text="{Binding Heading}" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <TextBlock DockPanel.Dock="Left" Text="{Binding Summary}" Classes="secondary" FontSize="12" Margin="14,0,12,0" VerticalAlignment="Center" />
+              <Border Height="1" Background="{DynamicResource RowDividerBrush}" VerticalAlignment="Center" />
+            </DockPanel>
+          </DataTemplate>
+          <DataTemplate DataType="vm:LogRowViewModel">
+            <Grid ColumnDefinitions="92,52,100,64,64,48,48,60,150,130,120,96,*,*" MinHeight="26" Margin="8,0,0,0">
+              <TextBlock Text="{Binding Date}" Classes="num secondary" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding Time}" Classes="num secondary" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="2" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <Border Grid.Column="3" Classes="badge" HorizontalAlignment="Left" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Band}" FontSize="12" TextAlignment="Center" />
+              </Border>
+              <TextBlock Grid.Column="4" Text="{Binding Mode}" Classes="secondary" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="5" Text="{Binding Sent}" Classes="num" TextAlignment="Right" Margin="0,0,8,0" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="6" Text="{Binding Received}" Classes="num" TextAlignment="Right" Margin="0,0,8,0" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="7" Text="{Binding Grid}" Classes="secondary" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="8" Text="{Binding Country}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="9" Text="{Binding Name}" Classes="secondary" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <Panel Grid.Column="10" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding HasNeed}">
+                <Border CornerRadius="9" Background="{Binding NeedKind, Converter={x:Static v:Converters.KindBrush}}" Opacity="0.16" />
+                <TextBlock Text="{Binding Need}" FontSize="12" Margin="8,1" Foreground="{Binding NeedKind, Converter={x:Static v:Converters.KindBrush}}" TextTrimming="CharacterEllipsis" />
+              </Panel>
+              <!-- LoTW: a green tag when confirmed, quiet text when only uploaded. -->
+              <Panel Grid.Column="11" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding LotwConfirmed}">
+                <Border CornerRadius="9" Background="{DynamicResource SuccessBrush}" Opacity="0.16" />
+                <TextBlock Text="✓ Confirmed" FontSize="12" Margin="8,1" Foreground="{DynamicResource SuccessBrush}" />
+              </Panel>
+              <TextBlock Grid.Column="11" Text="{Binding Lotw}" Classes="secondary" VerticalAlignment="Center" IsVisible="{Binding !LotwConfirmed}" />
+              <!-- QRZ: waiting and failed uploads stand out as tags; the rest stays quiet. -->
+              <Panel Grid.Column="12" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding QrzFlag}" Margin="0,0,8,0">
+                <Border CornerRadius="9" Background="{Binding QrzKind, Converter={x:Static v:Converters.KindBrush}}" Opacity="0.16" />
+                <TextBlock Text="{Binding Qrz}" FontSize="12" Margin="8,1" Foreground="{Binding QrzKind, Converter={x:Static v:Converters.KindBrush}}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Qrz}" />
+              </Panel>
+              <TextBlock Grid.Column="12" Text="{Binding Qrz}" Classes="secondary" VerticalAlignment="Center" IsVisible="{Binding !QrzFlag}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="13" Text="{Binding Eqsl}" Classes="secondary" ToolTip.Tip="{Binding Eqsl}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             </Grid>
           </DataTemplate>
-        </ListBox.ItemTemplate>
+        </ListBox.DataTemplates>
       </ListBox>
-      <TextBlock Grid.Row="5" Text="{Binding Status}" Classes="secondary num" Margin="0,6,0,0" />
+      <TextBlock Grid.Row="5" Text="{Binding SyncText}" Classes="secondary num" Margin="0,6,0,0" />
 
       <Border Grid.Column="1" Grid.RowSpan="6" Width="260" Margin="12,0,0,0" Padding="12" Classes="card"
               IsVisible="{Binding Editing, Converter={x:Static ObjectConverters.IsNotNull}}">

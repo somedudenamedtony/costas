@@ -52,6 +52,18 @@ public sealed class LogRowViewModel(QsoRecord q)
     /// <summary>Need tag at the time.</summary>
     public string Need { get; } = q.NeedTier is { } t and >= 1 and <= 5 ? StationText.Need((NeedTag)(t - 1)) : string.Empty;
 
+    /// <summary>Colour of the Why tag, as in the station list.</summary>
+    public TextKind NeedKind { get; } = q.NeedTier is { } k and >= 1 and <= 5 ? StationRowViewModel.KindOf((NeedTag)(k - 1)) : TextKind.Secondary;
+
+    /// <summary>True when the Why column has a tag.</summary>
+    public bool HasNeed => Need.Length > 0;
+
+    /// <summary>True when LoTW confirmed the contact (shown as a green tag).</summary>
+    public bool LotwConfirmed { get; } = q.LotwConfirmed;
+
+    /// <summary>True when the QRZ column needs attention (waiting or failed), shown as a tag.</summary>
+    public bool QrzFlag { get; } = q.UploadState is UploadState.Queued or UploadState.Failed;
+
     /// <summary>QRZ status.</summary>
     public string Qrz { get; } = q.UploadState switch
     {

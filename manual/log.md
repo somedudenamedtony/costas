@@ -5,8 +5,15 @@ Press **Log** in the top bar or ++ctrl+4++.
 ![The Log view](images/log.png)
 
 Every contact, newest first: date, time (UTC), call, band, mode, report sent and received, grid, country, name, the
-need tag it had when you worked it, and its LoTW, QRZ and eQSL status. The status line at the bottom counts
-the contacts shown, their countries and how many are confirmed, and says when the log was last synced with QRZ.
+need tag it had when you worked it, and its LoTW, QRZ and eQSL status.
+
+- Contacts are grouped by UTC day. Each day opens with a heading such as "Today · Sun 1 Nov  ·  4 contacts  ·
+  4 countries  ·  1 confirmed  ·  20m".
+- The tiles at the right of the filters count the contacts shown, their countries and how many are confirmed.
+  While a filter is on, the contacts tile reads, for example, "120 of 3,400 contacts".
+- The need tag shows as a coloured tag, as in the station list. A LoTW confirmation is a green **✓ Confirmed** tag.
+  A QRZ upload that is waiting (amber) or failed (red) is a tag too, so it stands out; everything else stays quiet.
+- The line at the bottom says when the log was last synced with QRZ.
 
 ## Filters
 
