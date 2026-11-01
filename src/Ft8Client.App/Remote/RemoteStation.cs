@@ -21,4 +21,8 @@ namespace Ft8Client.App.Remote;
 /// <param name="LastWorked">"Today · 20 m", or "Never".</param>
 /// <param name="ChanceReason">What the chance is based on, "hears you at -07", as beside Chance on the desk.</param>
 public sealed record RemoteStation(string Call, string Where, string Need, string Doing, string Db, string Button,
-                                   string HearsYou = "", string Chance = "", string LastHeard = "", string LastWorked = "", string ChanceReason = "");
+                                   string HearsYou = "", string Chance = "", string LastHeard = "", string LastWorked = "", string ChanceReason = "")
+{
+    /// <summary>Other stations calling this one right now, "3 calling", or blank; as the tag on the desk's rows.</summary>
+    public string Calling { get; init; } = string.Empty;
+}

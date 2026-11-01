@@ -23,4 +23,7 @@ public sealed record RemoteSignal(string Title, string Headline, string Source, 
 {
     /// <summary>Five-minute distinct receiver counts for the current band and mode.</summary>
     public IReadOnlyList<ReceptionBucket> History { get; init; } = [];
+
+    /// <summary>Stations that reported hearing me in the last 15 minutes, the number in <see cref="Headline"/>.</summary>
+    public int Heard { get; init; }
 }

@@ -33,15 +33,31 @@ new address.
 
 ## What the phone can do
 
-The top of the page shows the band and frequency, the radio, the clock and the decoder, who is in control, and a
-countdown bar for the current slot (red while you transmit). Below it, five tabs cover what the desk's Operate view
+The top of the page shows the band and frequency (tap it to change band, offset or power), the link to the station and
+the radio, the clock and the decoder, and who is in control. Below it, five tabs cover what the desk's Operate view
 shows. **HALT TX** is always at the bottom of the screen.
+
+The phone's **Operate** tab is a set of tiles built for a small screen rather than a copy of the desk:
+
+- **Contact**, across the top: the station, where it is and why you need it, the message going out (or the one you are
+  waiting for), the reports, a five-part progress bar labelled CQ, Grid, Report, R-rpt and RR73, the seconds left in
+  the slot, and **Resend**, **Log now** and **Abandon**. The tile turns red while you transmit. Tap an underlined step to
+  send it next. With no contact it shows **Call CQ** or **Stop CQ**.
+- **Calling you**: who is answering you, with **Answer** or **Answer next**. It turns amber when someone is calling.
+- **Hearing you**: how many stations heard you in the last 15 minutes, a small chart of the last hour, and the farthest.
+  Tap it for the Signal tab.
+- **Band now**: stations heard, countries, calling CQ, you need, and contacts logged this session. Tap it for the Stations tab.
+- **Next in line**: a compact table with each station's signal, why you need it, how many others are calling it, and
+  **Call**. Tap **Best first** to sort by signal or by call instead; the phone remembers your choice.
+- **Logged this session**: the count and the last few calls. Tap it for the Log tab.
+
+On the other tabs the slot countdown bar sits under the top bar instead (red while you transmit).
 
 ![The Stations tab](images/phone-stations.png){ width="320" }
 
 | Tab | What it shows |
 |---|---|
-| **Operate** | The contact on the same five-step strip as the desk (tap one of your upcoming steps to send it next), with **Resend**, **Log now** and **Abandon**; **Call CQ** or **Stop CQ**; **Calling you**; and **Next in line** with the same columns as the desk: what each station is doing, where it is, its signal, your chance, and when you last worked it. In PSK and RTTY the macro keys take the place of Resend and Call CQ, and the last lines of the conversation show under the strip ([PSK and RTTY](keyboard-modes.md#away-from-the-desk)) |
+| **Operate** | The tiles above. In PSK and RTTY the macro keys take the place of Resend and Call CQ, and the last lines of the conversation show in the contact tile ([PSK and RTTY](keyboard-modes.md#away-from-the-desk)) |
 | **Stations** | The band summary (stations heard, countries, calling CQ, you need), **Repeats** (stations already in your log on this band and mode) and **Watching** (needed, but not callable right now, and why) |
 | **Decodes** | Band activity, newest first. Messages to you are highlighted, CQs are blue and your own transmissions are grey |
 | **Signal** | Who hears you, from PSK Reporter: how many stations and countries in the last 15 minutes, the farthest and best reports, the latest reports, and the last hour of distinct receivers in five-minute intervals (the final interval is incomplete) |

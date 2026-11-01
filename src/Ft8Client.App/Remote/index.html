@@ -106,7 +106,61 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 .warnline{font-size:13px}
 .board{display:flex;flex-direction:column;gap:12px}
 .board .col{display:contents}
-[data-pane=operate]{order:1}[data-pane=heard]{order:2}[data-pane=stations]{order:3}[data-pane=decodes]{order:4}[data-pane=signal]{order:5}[data-pane=log]{order:6}
+[data-pane=dash]{order:0}[data-pane=operate]{order:1}[data-pane=heard]{order:2}[data-pane=stations]{order:3}[data-pane=decodes]{order:4}[data-pane=signal]{order:5}[data-pane=log]{order:6}
+
+/* The phone's Operate screen: tiles. */
+.dash{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dash .t{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:11px 12px;min-width:0}
+.dash .span2{grid-column:span 2}
+.dash .tap{cursor:pointer}
+.dash .th{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px}
+.dash .k{font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--mut)}
+.dash .big{font-size:30px;font-weight:800;line-height:1.1;letter-spacing:.3px}
+.dash .big2{font-size:21px;font-weight:800}
+.dash .sub{font-size:13px;color:var(--mut);margin-top:2px}
+.dash .mono,.dash .txline{font-family:Consolas,monospace}
+.hero .callrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hero .where{text-align:right;font-size:12px;color:var(--mut);min-width:0}
+.hero .txline{margin-top:6px;font-size:15px;overflow-wrap:anywhere}
+.hero .reps{font-size:12px;color:var(--mut);margin-top:3px}
+.hero .seg{display:flex;gap:3px;margin-top:9px}.hero .seg i{flex:1;height:5px;border-radius:3px;background:var(--line)}
+.hero .seg i.done{background:var(--mut)}.hero .seg i.sending{background:var(--red)}.hero .seg i.waiting{background:var(--accent)}
+.hero .seglab{display:flex;justify-content:space-between;font-size:10.5px;color:var(--mut);margin-top:3px}
+.hero .seglab span{flex:1;text-align:center}.hero .seglab span:first-child{text-align:left}.hero .seglab span:last-child{text-align:right}
+.hero .seglab .cur{color:var(--tx);font-weight:700}.hero .seglab .jump{text-decoration:underline;cursor:pointer}
+.hero .hint{margin-top:4px}
+.hero .hbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.hero .hbtns button{flex:1 1 30%;padding:9px 6px}
+.hero .hbtns.one button{padding:13px;font-size:17px;background:var(--accent);color:#fff}
+.hero .hbtns.one button.red{background:var(--red)}
+.hero .msgs{margin-top:8px}
+.hero.live{border:1.5px solid var(--accent)}
+.hero.tx{background:var(--red);border-color:var(--red);color:#fff}
+.hero.tx .k,.hero.tx .where,.hero.tx .reps,.hero.tx .sub,.hero.tx .seglab,.hero.tx .s{color:#fff;opacity:.9}
+.hero.tx .seglab .cur{color:#fff;opacity:1}
+.hero.tx .seg i{background:rgba(255,255,255,.3)}.hero.tx .seg i.done,.hero.tx .seg i.sending{background:#fff}.hero.tx .seg i.sending{opacity:.65}
+.hero.tx .tag{background:rgba(255,255,255,.22);color:#fff}
+.hero.tx .hbtns button{background:rgba(255,255,255,.2);color:#fff}
+.hero.tx .msg{border-color:rgba(255,255,255,.5)}
+.callers.on{border-color:var(--amb);background:var(--warn-bg)}.callers.on .k{color:var(--warn-tx)}
+.callers .cl{display:flex;align-items:center;gap:8px;padding:5px 0}.callers .cl + .cl{border-top:1px solid var(--warn-line)}
+.callers .left{flex:1;min-width:0;cursor:pointer}.callers .s{overflow:hidden;text-overflow:ellipsis}
+.callers:not(.span2) .cl{flex-direction:column;align-items:stretch}.callers:not(.span2) .cl button{width:100%;padding:8px}
+.spark{display:flex;align-items:flex-end;gap:2px;height:30px;margin:4px 0}.spark i{flex:1;background:var(--accent);border-radius:2px;opacity:.85}
+.nums{display:flex;justify-content:space-between;gap:4px;margin-top:4px}.nums div{text-align:center}.nums div:first-child{text-align:left}
+.nums b{display:block;font-size:21px}.nums span{font-size:10.5px;color:var(--mut)}.nums .need b{color:var(--grn)}
+.lr{display:grid;grid-template-columns:minmax(0,1fr) 34px 70px 30px 62px;gap:0 6px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.lr.lh{font-size:10.5px;color:var(--mut);border-top:0;padding:4px 0 2px}
+.lr .lc{min-width:0;cursor:pointer}.lr .lc b{display:block;font-size:16px}.lr .lc .s{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lr .db{font-family:Consolas,monospace}
+.lr button{padding:7px 0;font-size:13px}
+.pile{display:inline-block;min-width:20px;text-align:center;font-size:11.5px;font-weight:700;padding:1px 5px;border-radius:5px;background:var(--warn-bg);color:var(--warn-tx);border:1px solid var(--warn-line)}
+button.sort{background:none;padding:0;font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--accent)}
+.logrow{display:flex;justify-content:space-between;align-items:center;gap:10px}.logrow b{color:var(--tx);font-size:15px;letter-spacing:0}
+.logrow .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+body.dashon #slot,body.dashon #onair{display:none!important}
+#dashLeft{text-transform:none;font-variant-numeric:tabular-nums}
+.top .row > span:first-child{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#control{white-space:nowrap}
 
 /* Tablet: the desk's Operate layout, sized for fingers. Portrait gets one wide column with table rows; landscape adds
    the desk's right-hand column. */
@@ -162,9 +216,8 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 
 <section id="opView" class="hidden">
   <div class="top">
-    <div class="row"><span id="station">Costas</span><span class="pill"><span id="linkDot" class="dot"></span><span id="link">Connecting…</span></span></div>
-    <div class="row"><button id="freq" class="freq tunebtn" title="Band, mode, Tx offset and radio power">—</button><span class="pill"><span id="radioDot" class="dot"></span>Radio</span></div>
-    <div class="row" style="margin-top:3px"><span id="health"></span><span id="control"></span></div>
+    <div class="row"><button id="freq" class="freq tunebtn" title="Band, mode, Tx offset and radio power">—</button><span class="pill"><span id="linkDot" class="dot"></span><span id="link">Connecting…</span><span id="radioDot" class="dot" style="margin-left:6px"></span>Radio</span></div>
+    <div class="row" style="margin-top:3px"><span><span id="station"></span><span id="health"></span></span><span id="control"></span></div>
     <div id="slot" class="slot"><span id="slotLabel">Receiving</span><div class="track"><div id="slotFill" class="fill"></div></div><span id="slotLeft"></span></div>
   </div>
   <div id="onair" class="onair hidden"></div>
@@ -177,6 +230,16 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
     <div id="meter" class="banner warnline hidden"></div>
     <div id="services" class="mini hidden"></div>
     <div id="board" class="board"><div class="col">
+    <div data-pane="dash">
+      <div id="dash" class="dash">
+        <div id="tContact" class="t span2"></div>
+        <div id="tCallers" class="t"></div>
+        <div id="tHear" class="t tap"></div>
+        <div id="tBand" class="t span2 tap"></div>
+        <div id="tLine" class="t span2"></div>
+        <div id="tLog" class="t span2 tap"></div>
+      </div>
+    </div>
     <div data-pane="operate">
       <div class="card"><div id="contactBody"></div><div id="contactBtns" class="btns"></div></div>
       <div id="callers" class="card list hidden" style="margin-top:12px"></div>
@@ -276,7 +339,7 @@ function connect() {
     if (m.type === "state") {
       state = m.state; slotAt = Date.now(); render();
       if (m.note) note(m.note);
-      if ($("link").textContent === "Connecting…" || $("link").textContent === "Reconnecting…") setLink("grn", "Connected");
+      if ($("link").textContent !== "Link") setLink("grn", "Connected");
     }
   };
   sock.onclose = ev => {
@@ -305,9 +368,11 @@ document.addEventListener("visibilitychange", () => {
   if (!ws || ws.readyState > 1 || stale()) connect();
 });
 
+// The pill says just "Link" while all is well; the full text is its tooltip.
 function setLink(color, text) {
   $("linkDot").style.background = "var(--" + color + ")";
-  $("link").textContent = text;
+  $("link").textContent = color === "grn" ? "Link" : text;
+  $("link").parentElement.title = text;
 }
 function note(text) {
   const n = $("note");
@@ -319,11 +384,13 @@ $("halt").onclick = () => cmd("halt");
 
 function render() {
   const s = state; if (!s) return;
-  $("station").textContent = "Costas · " + (s.myCall || "no callsign");
+  $("station").textContent = (s.myCall || "No callsign") + " · ";
   $("freq").textContent = s.frequency;
   $("radioDot").style.background = s.radioOk ? "var(--grn)" : "var(--red)";
-  $("radioDot").parentElement.title = s.radio;
-  $("health").textContent = s.utc + " UTC · " + s.health;
+  $("radioDot").title = s.radio;
+  // The phone drops the seconds: its contact tile counts down the slot.
+  $("health").textContent = (wide ? s.utc : s.utc.slice(0, 5)) + " UTC · " + s.health;
+  $("health").parentElement.title = s.health;
   $("control").textContent = s.control === "you" ? "You control" : s.control === "other" ? "Another phone controls" : "Desk controls";
 
   const onair = $("onair");
@@ -356,6 +423,7 @@ function render() {
   renderDetails(s);
   renderTune(s);
   renderLogged(s);
+  if (!wide) renderDash(s);
 
   const busy = s.transmitting || s.callingCq || (s.contact && s.contact.active);
   const h = $("halt");
@@ -373,18 +441,27 @@ function changed(key, data) {
   return true;
 }
 
-function renderContact(s) {
+// The contact's buttons as [text, class, command, disabled, macro key]; the tablet's contact card and the phone's
+// contact tile both use them.
+function contactButtons(s) {
   const c = s.contact;
   const idle = !c || !c.active && c.steps.length === 0;
   const cqOff = !s.radioOk && !s.callingCq;
   // PSK and RTTY: the macro keys take the place of Resend and Call CQ (F1 is CQ); the next step's key is highlighted.
   const kbd = s.macros.length > 0;
-  const btns = kbd
+  return kbd
     ? s.macros.map(m => [m.caption, m.next ? "next" : "", "macro", false, m.key])
         .concat(!idle && c.active ? (c.canLogNow ? [["Log now", "", "logNow", false]] : []).concat([["Abandon", "red", "abandon", false]]) : [])
     : idle || !c.active
     ? [[s.callingCq ? "Stop CQ" : "Call CQ", s.callingCq ? "red" : "", "cq", cqOff]]
     : [["Resend", "", "resend", false]].concat(c.canLogNow ? [["Log now", "", "logNow", false]] : [], [["Abandon", "red", "abandon", false]]);
+}
+
+function renderContact(s) {
+  const c = s.contact;
+  const idle = !c || !c.active && c.steps.length === 0;
+  const kbd = s.macros.length > 0;
+  const btns = contactButtons(s);
   if (changed("contactBtns", btns)) {
     $("contactBtns").replaceChildren(...btns.map(([text, cls, type, off, key]) => button(text, cls, () => cmd(type, key ? { key } : {}), off)));
   }
@@ -738,18 +815,198 @@ function renderPower(box, p) {
   box.append(row, el("div", "s", "Up to " + p.maxWatts + " W. This changes the radio's power setting only; it does not transmit."));
 }
 
+// ---- The phone's Operate screen: tiles that show the whole station at a glance. ----
+
+// A short name for each step of an FT8 or FT4 contact, from its message.
+function stepLabel(m, i) {
+  return /^CQ /.test(m) ? "CQ" : /RR73$|RRR$/.test(m) ? "RR73" : / 73$/.test(m) ? "73" : / R[+-]\d\d$/.test(m) ? "R-rpt"
+    : / [+-]\d\d$/.test(m) ? "Report" : / [A-R]{2}\d\d$/.test(m) ? "Grid" : String(i + 1);
+}
+// The Why tag, shortened for the table: "New country" reads "Country".
+function shortNeed(n) { return !n || n === "Worked before" ? "" : n.replace(/^New (\w)/, (_, x) => x.toUpperCase()); }
+function tileHead(text, right) {
+  const h = el("div", "th"); h.append(el("span", "k", text));
+  if (right) h.append(right);
+  return h;
+}
+
+function renderDash(s) {
+  dashContact(s);
+  dashCallers(s);
+  dashHear(s);
+  dashBand(s);
+  dashLine(s);
+  dashLog(s);
+}
+
+function dashContact(s) {
+  const c = s.contact;
+  const idle = !c || !c.active && c.steps.length === 0;
+  const kbd = s.macros.length > 0;
+  const btns = contactButtons(s);
+  if (!changed("dContact", { c, cq: s.callingCq, tx: s.transmitting, on: s.onAir, talk: s.conversation, btns, ok: s.radioOk })) return;
+  const box = $("tContact"); box.replaceChildren();
+  box.className = "t span2 hero" + (s.transmitting ? " tx" : !idle && c.active ? " live" : "");
+  const cur = idle ? -1 : c.steps.findIndex(x => x.look === "sending" || x.look === "waiting");
+  const state = s.transmitting ? "● On air" : idle ? (s.callingCq ? "Calling CQ" : "Not in a contact") : c.active ? "Listening" : c.caption;
+  const step = !idle && !kbd && cur >= 0 ? " · step " + (cur + 1) + "/" + c.steps.length : "";
+  box.append(tileHead(state + step, el("span", "k", "")));
+  box.querySelector(".th").lastChild.id = "dashLeft";
+  if (idle) {
+    if (s.transmitting && s.onAir) box.append(el("div", "txline mono", "→ " + s.onAir));
+    box.append(el("div", "sub", s.callingCq ? "Waiting for a station to answer." : kbd ? "Call a station below, or press F1 to call CQ." : "Call a station below, or call CQ."));
+    if (kbd) box.append(conversation(s.conversation));
+  } else {
+    const top = el("div", "callrow");
+    const call = el("span", "big", c.call);
+    const where = el("span", "where");
+    if (c.need) where.append(el("span", "tag", c.need));
+    if (c.subline) where.append(el("div", null, c.subline));
+    top.append(call, where);
+    box.append(top);
+    const now = s.transmitting && s.onAir ? "→ " + s.onAir : cur >= 0 && !c.steps[cur].mine ? "← waiting for " + c.steps[cur].message : "";
+    if (now) box.append(el("div", "txline mono", now));
+    box.append(el("div", "reps", "Sent " + c.sent + " · Received " + c.received));
+    if (kbd) box.append(conversation(s.conversation));
+    else {
+      const seg = el("div", "seg"), lab = el("div", "seglab");
+      c.steps.forEach((st, i) => {
+        seg.append(el("i", st.look));
+        const l = el("span", (i === cur ? "cur" : "") + (st.canJump ? " jump" : ""), stepLabel(st.message, i));
+        if (st.canJump) { l.title = "Send " + st.message + " next"; l.onclick = () => cmd("jump", { step: st.index }); }
+        lab.append(l);
+      });
+      box.append(seg, lab);
+      if (c.steps.some(st => st.canJump)) box.append(el("div", "s hint", "Tap an underlined step to send it next."));
+    }
+  }
+  const row = el("div", "hbtns" + (idle && !kbd ? " one" : ""));
+  row.append(...btns.map(([text, cls, type, off, key]) => button(text, cls, () => cmd(type, key ? { key } : {}), off)));
+  box.append(row);
+}
+
+function dashCallers(s) {
+  const many = s.callers.length > 1;
+  if (!changed("dCallers", { w: s.callers, ok: s.radioOk })) return;
+  const box = $("tCallers"); box.replaceChildren();
+  box.className = "t callers" + (many ? " span2" : "") + (s.callers.length ? " on" : "");
+  box.append(tileHead("Calling you", many ? el("span", "k", String(s.callers.length)) : null));
+  if (s.callers.length === 0) { box.append(el("div", "s", "Nobody right now.")); return; }
+  s.callers.forEach(w => {
+    const it = el("div", "cl");
+    const left = el("div", "left");
+    left.onclick = () => openDetails(w.call);
+    const c = el("div", "big2", w.call + " ");
+    if (w.need) c.append(el("span", "tag", w.need));
+    left.append(c, el("div", "s", [w.place, w.line].filter(Boolean).join(" · ")));
+    if (w.note) left.append(el("div", "s", w.note));
+    it.append(left, button(w.button, "next", () => cmd(w.command, { call: w.call }), w.queued));
+    box.append(it);
+  });
+}
+
+function dashHear(s) {
+  const g = s.signal;
+  const span = s.callers.length > 1;
+  if (!changed("dHear", { g, span })) return;
+  const box = $("tHear"); box.replaceChildren();
+  box.className = "t tap" + (span ? " span2" : "");
+  box.onclick = () => showTab("signal");
+  box.append(tileHead("Hearing you"));
+  if (!g) { box.append(el("div", "s", "No reports yet.")); return; }
+  box.append(el("div", "big", String(g.heard)));
+  const hist = g.history || [];
+  if (hist.length) {
+    const spark = el("div", "spark");
+    const max = Math.max(1, ...hist.map(b => b.stations));
+    hist.forEach(b => { const i = el("i"); i.style.height = Math.max(4, 100 * b.stations / max) + "%"; if (b.isCurrent) i.style.opacity = ".45"; spark.append(i); });
+    spark.title = "Stations hearing you, every 5 minutes over the last hour";
+    box.append(spark);
+  }
+  box.append(el("div", "s", g.heard ? "Farthest " + g.farthest : "Reports appear a few minutes after you transmit."));
+}
+
+// "Worked this session · 4" carries the session's full count; the list itself is cut short.
+function sessionCount(s) { const m = /(\d+)\s*$/.exec(s.tonightTitle || ""); return m ? m[1] : String(s.tonight.length); }
+
+function dashBand(s) {
+  const u = s.summary;
+  const logged = sessionCount(s);
+  if (!changed("dBand", { u, logged })) return;
+  const box = $("tBand"); box.replaceChildren();
+  box.onclick = () => showTab("stations");
+  box.append(tileHead(u ? u.title : "Band now"));
+  if (!u) { box.append(el("div", "s", "Nothing decoded yet on this band.")); return; }
+  const n = el("div", "nums");
+  [[u.stationsHeard, "heard"], [u.countries, "countries"], [u.callingCq, "calling CQ"], [u.youNeed, "you need", "need"], [logged, "logged"]].forEach(([v, l, cls]) => {
+    const d = el("div", cls); d.append(el("b", null, v), el("span", null, l)); n.append(d);
+  });
+  box.append(n);
+}
+
+// Next in line as a table; the sort is kept on this phone.
+const SORTS = [["best", "Best first"], ["db", "Strongest"], ["call", "Call"]];
+let lineSort = "best";
+try { lineSort = localStorage.getItem("costas-remote-sort") || "best"; } catch { }
+function dashLine(s) {
+  if (!changed("dLine", { l: s.line, ok: s.radioOk, lineSort })) return;
+  const box = $("tLine"); box.replaceChildren();
+  const i = Math.max(0, SORTS.findIndex(x => x[0] === lineSort));
+  const sortBtn = button(SORTS[i][1] + " ▾", "sort", () => {
+    lineSort = SORTS[(i + 1) % SORTS.length][0];
+    try { localStorage.setItem("costas-remote-sort", lineSort); } catch { }
+    dashLine(state);
+  });
+  box.append(tileHead("Next in line · " + s.line.length, sortBtn));
+  if (s.line.length === 0) { box.append(el("div", "s", "Nobody you need is calling CQ right now.")); return; }
+  const rows = s.line.slice();
+  if (lineSort === "db") rows.sort((a, b) => (parseInt(b.db, 10) || -99) - (parseInt(a.db, 10) || -99));
+  if (lineSort === "call") rows.sort((a, b) => a.call < b.call ? -1 : a.call > b.call ? 1 : 0);
+  const head = el("div", "lr lh");
+  ["Call", "dB", "Why", "Pile", ""].forEach(t => head.append(el("span", null, t)));
+  box.append(head);
+  rows.forEach(r => {
+    const row = el("div", "lr");
+    const cl = el("div", "lc");
+    cl.append(el("b", null, r.call), el("span", "s", [r.where, r.chance ? r.chance + " chance" : ""].filter(Boolean).join(" · ")));
+    cl.onclick = () => openDetails(r.call);
+    const why = el("span");
+    if (shortNeed(r.need)) why.append(el("span", "tag", shortNeed(r.need)));
+    const pile = el("span");
+    const n = parseInt(r.calling, 10);
+    if (n > 0) { const p = el("span", "pile", String(n)); p.title = r.calling; pile.append(p); } else pile.append(el("span", "s", "–"));
+    row.append(cl, el("span", "db", r.db), why, pile,
+      r.button ? button(r.button, "next", () => cmd("call", { call: r.call }), !state.radioOk) : el("span"));
+    box.append(row);
+  });
+}
+
+function dashLog(s) {
+  const count = sessionCount(s);
+  if (!changed("dLog", { count, t: s.tonight.slice(0, 3) })) return;
+  const box = $("tLog"); box.replaceChildren();
+  box.onclick = () => showTab("log");
+  const h = el("div", "logrow");
+  const k = el("span", "k", "Logged this session"); k.append(el("b", null, " " + count));
+  h.append(k, el("span", "s", s.tonight.slice(0, 3).map(t => t.call + " " + t.time).join(" · ") + (s.tonight.length > 3 ? " · …" : "")));
+  box.append(h);
+}
+
 // The slot countdown runs on the phone between states, from the station's position in the slot.
 let slotAt = 0;
 function renderSlot() {
   const s = state; if (!s) return;
   // PSK and RTTY have no slots: the station sends a zero length, and the bar is hidden rather than left frozen.
   $("slot").classList.toggle("hidden", !s.slotLengthMs);
+  if ($("dashLeft")) $("dashLeft").classList.toggle("hidden", !s.slotLengthMs);
   if (!s.slotLengthMs) return;
   const into = Math.min(s.slotLengthMs, s.slotIntoMs + (Date.now() - slotAt));
   $("slot").classList.toggle("tx", s.transmitting);
   $("slotLabel").textContent = s.slotLabel;
   $("slotFill").style.width = (100 * into / s.slotLengthMs).toFixed(1) + "%";
   $("slotLeft").textContent = Math.max(0, Math.ceil((s.slotLengthMs - into) / 1000)) + " s";
+  const left = $("dashLeft");
+  if (left) left.textContent = $("slotLeft").textContent;
 }
 setInterval(renderSlot, 200);
 
@@ -794,7 +1051,7 @@ const TAB = "costas-remote-tab";
 let tab = "operate";
 try { tab = localStorage.getItem(TAB) || "operate"; } catch { }
 // Which parts each tab shows. A tablet shows the whole Operate view at once, like the desk, so it has two tabs.
-const PHONE_TABS = { operate: ["operate"], stations: ["heard", "stations"], decodes: ["decodes"], signal: ["signal"], log: ["log"] };
+const PHONE_TABS = { operate: ["dash"], stations: ["heard", "stations"], decodes: ["decodes"], signal: ["signal"], log: ["log"] };
 const TABLET_TABS = { operate: ["operate", "heard", "stations", "signal", "log"], decodes: ["decodes"] };
 const wideQuery = matchMedia("(min-width: 760px)");
 let wide = wideQuery.matches;
@@ -805,6 +1062,8 @@ function showTab(t) {
   try { localStorage.setItem(TAB, t); } catch { }
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
   document.querySelectorAll("[data-pane]").forEach(p => p.classList.toggle("hidden", !tabs[t].includes(p.dataset.pane)));
+  // The phone's Operate screen carries the slot and what is on the air in its contact tile.
+  document.body.classList.toggle("dashon", tabs[t].includes("dash"));
 }
 document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
 showTab(tab);
