@@ -45,6 +45,10 @@ Press **Reach** in the top bar (++ctrl+3++), or **Open reach view** under *Your 
   better), fair (-11 to -17), weak (-18 or below).
 - **Who heard you**: the reporting stations with where, distance, bearing, dB, age and whether they are in your log.
   Sortable. Double-click a row for that station's details.
+- **Tabs beside the plot**: the panel to the right of the plot has five tabs, so you can see everything it holds
+  without scrolling: **Activity** ([band activity near you](#band-activity-near-you)), **Countries** (By country),
+  **Bands** (By band, last 24 hours), **Nearby** (Compared with stations near you) and **Changes** (Did a change
+  help?). Each is described below. Tips for the map stay under the tabs.
 - **By country**: each country that heard you on this band in the selected window, with how many stations, the best report and the farthest distance. Most stations first. Hover over a row for who gave the best report and who was farthest.
 - **By band, last 24 hours**: how many stations heard you on each band, the farthest and the median report.
 - **Compared with stations near you**: is it the band, or your station? PSK Reporter also hears the other stations

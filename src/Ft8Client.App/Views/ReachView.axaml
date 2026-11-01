@@ -4,6 +4,15 @@
              xmlns:v="using:Ft8Client.App.Views"
              x:Class="Ft8Client.App.Views.ReachView"
              x:DataType="vm:ReachViewModel">
+  <UserControl.Styles>
+    <!-- Compact tabs so all five fit across the 380 px column. -->
+    <Style Selector="TabControl.reach > TabItem">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Padding" Value="8,2" />
+      <Setter Property="Margin" Value="0" />
+    </Style>
+  </UserControl.Styles>
   <!-- Map and stats take the top two thirds; Who heard you takes the bottom third and scrolls on its own. -->
   <Grid RowDefinitions="2*,*" Margin="16,0,16,12">
     <Border Grid.Row="0" Classes="card" Padding="14,12" Margin="0,0,0,12">
@@ -29,151 +38,186 @@
             <TextBlock x:Name="ZoomText" Classes="secondary" FontSize="12" HorizontalAlignment="Center" />
           </StackPanel>
         </Panel>
-        <ScrollViewer Grid.Row="2" Grid.Column="1" VerticalScrollBarVisibility="Auto">
-          <StackPanel Spacing="6">
-            <TextBlock Text="Band activity near you" Classes="title" />
-            <TextBlock Text="Spots of stations near you, last 15 minutes, by the continent that heard them. Hover over a row for details."
-                       Classes="secondary" FontSize="12" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding BandActivityStatus}" Classes="secondary" TextWrapping="Wrap"
-                       IsVisible="{Binding BandActivityStatus, Converter={x:Static v:Converters.NotEmpty}}" />
-            <!-- One compact row per band with spots: a continent heat map, the total and the countries I still need there.
-                 Bands with no spots fold into a single line underneath. -->
-            <StackPanel Spacing="2" IsVisible="{Binding HasBandActivityRows}" AutomationProperties.Name="Band activity near you">
-              <Grid ColumnDefinitions="46,190,50,*" Margin="0,4,0,0">
-                <TextBlock Text="Band" Classes="secondary" FontSize="11" />
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
-                  <TextBlock Text="NA" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
-                  <TextBlock Text="SA" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
-                  <TextBlock Text="EU" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
-                  <TextBlock Text="AF" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
-                  <TextBlock Text="AS" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
-                  <TextBlock Text="OC" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
-                </StackPanel>
-                <TextBlock Grid.Column="2" Text="Spots" Classes="secondary" FontSize="11" TextAlignment="Right" Margin="0,0,8,0" />
-                <TextBlock Grid.Column="3" Text="You need" Classes="secondary" FontSize="11" />
-              </Grid>
-              <ItemsControl ItemsSource="{Binding BandActivity}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:BandChoiceViewModel">
-                    <Border IsVisible="{Binding InGrid}" CornerRadius="3" Margin="0,1"
-                            Background="{Binding IsCurrent, Converter={x:Static v:Converters.SelectedBackground}}"
-                            ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Name}">
-                      <Grid ColumnDefinitions="46,190,50,*" MinHeight="24">
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="2,0,0,0" />
-                        <ItemsControl Grid.Column="1" ItemsSource="{Binding Continents}" VerticalAlignment="Center" IsVisible="{Binding !NotFollowed}"
-                                      AutomationProperties.Name="Heard in">
-                          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:ContinentChip">
-                              <Border Width="29" Height="20" CornerRadius="3" BorderThickness="1" ToolTip.Tip="{Binding Tip}"
-                                      Background="{Binding Level, Converter={x:Static v:Converters.ShadeBackground}}"
-                                      BorderBrush="{Binding Level, Converter={x:Static v:Converters.ShadeBorder}}">
-                                <TextBlock Text="{Binding Count}" FontSize="11" Classes="num" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           Foreground="{Binding Level, Converter={x:Static v:Converters.ShadeForeground}}" />
-                              </Border>
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding SpotsText}" Classes="secondary" FontSize="12" FontStyle="Italic"
-                                   VerticalAlignment="Center" IsVisible="{Binding NotFollowed}" />
-                        <TextBlock Grid.Column="2" Text="{Binding SpotsCount}" Classes="num" FontSize="12" TextAlignment="Right" Margin="0,0,8,0"
-                                   VerticalAlignment="Center" IsVisible="{Binding !NotFollowed}" />
-                        <TextBlock Grid.Column="3" Text="{Binding NeedShort}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                   Foreground="{DynamicResource CautionBrush}" ToolTip.Tip="{Binding NeedTip}" IsVisible="{Binding !NotFollowed}" />
-                      </Grid>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-            <TextBlock Text="{Binding QuietBands}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="2,2,0,0"
-                       IsVisible="{Binding QuietBands, Converter={x:Static v:Converters.NotEmpty}}" />
-            <TextBlock Text="{Binding ByCountryTitle}" Classes="title" IsVisible="{Binding !Empty}" />
-            <Grid ColumnDefinitions="*,70,60,100" IsVisible="{Binding !Empty}">
-              <TextBlock Text="Country" Classes="secondary" /><TextBlock Grid.Column="1" Text="Stations" Classes="secondary" />
-              <TextBlock Grid.Column="2" Text="Best" Classes="secondary" /><TextBlock Grid.Column="3" Text="Farthest" Classes="secondary" />
-            </Grid>
-            <ItemsControl ItemsSource="{Binding ByCountry}" AutomationProperties.Name="Countries that heard you">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:CountryReachRowViewModel">
-                  <Grid ColumnDefinitions="*,70,60,100" MinHeight="28" Background="Transparent" ToolTip.Tip="{Binding Tip}">
-                    <TextBlock Text="{Binding Country}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Grid.Column="1" Text="{Binding StationsText}" Classes="num" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="2" Text="{Binding Best}" Classes="num" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="3" Text="{Binding Farthest}" Classes="num" VerticalAlignment="Center" />
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="By band, last 24 hours" Classes="title" Margin="0,12,0,0" />
-            <Grid ColumnDefinitions="70,90,110,*">
-              <TextBlock Text="Band" Classes="secondary" /><TextBlock Grid.Column="1" Text="Stations" Classes="secondary" />
-              <TextBlock Grid.Column="2" Text="Farthest" Classes="secondary" /><TextBlock Grid.Column="3" Text="Median report" Classes="secondary" />
-            </Grid>
-            <ItemsControl ItemsSource="{Binding ByBand}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:BandReachRowViewModel">
-                  <Border Background="{Binding Current, Converter={x:Static v:Converters.SelectedBackground}}">
-                    <Grid ColumnDefinitions="70,90,110,*" MinHeight="28">
-                      <TextBlock Text="{Binding Band}" VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="1" Text="{Binding Stations}" Classes="num" VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="2" Text="{Binding Farthest}" Classes="num" VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="3" Text="{Binding Median}" Classes="num" VerticalAlignment="Center" />
+        <!-- The right column used to be one long scroll whose lower sections were easy to miss; each is now a tab
+             (owner request 2026-11-01), so every section is named on screen. Map tips stay underneath. -->
+        <Grid Grid.Row="2" Grid.Column="1" RowDefinitions="*,Auto">
+          <TabControl Classes="reach" Padding="0,8,0,0" AutomationProperties.Name="Reach details">
+            <TabItem Header="Activity" ToolTip.Tip="Band activity near you: which bands are open from your area right now">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="6" Margin="0,0,10,0">
+                  <TextBlock Text="Band activity near you" Classes="title" />
+                  <TextBlock Text="Spots of stations near you, last 15 minutes, by the continent that heard them. Hover over a row for details."
+                             Classes="secondary" FontSize="12" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding BandActivityStatus}" Classes="secondary" TextWrapping="Wrap"
+                             IsVisible="{Binding BandActivityStatus, Converter={x:Static v:Converters.NotEmpty}}" />
+                  <!-- One compact row per band with spots: a continent heat map, the total and the countries I still need there.
+                       Bands with no spots fold into a single line underneath. -->
+                  <StackPanel Spacing="2" IsVisible="{Binding HasBandActivityRows}" AutomationProperties.Name="Band activity near you">
+                    <Grid ColumnDefinitions="46,190,50,*" Margin="0,4,0,0">
+                      <TextBlock Text="Band" Classes="secondary" FontSize="11" />
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                        <TextBlock Text="NA" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
+                        <TextBlock Text="SA" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
+                        <TextBlock Text="EU" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
+                        <TextBlock Text="AF" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
+                        <TextBlock Text="AS" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
+                        <TextBlock Text="OC" Width="29" TextAlignment="Center" Classes="secondary" FontSize="11" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="2" Text="Spots" Classes="secondary" FontSize="11" TextAlignment="Right" Margin="0,0,8,0" />
+                      <TextBlock Grid.Column="3" Text="You need" Classes="secondary" FontSize="11" />
                     </Grid>
-                  </Border>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="Compared with stations near you" Classes="title" Margin="0,12,0,0" />
-            <TextBlock Text="{Binding NeighbourHeadline}" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding NeighbourBasis}" Classes="secondary" FontSize="12" TextWrapping="Wrap"
-                       IsVisible="{Binding NeighbourBasis, Converter={x:Static v:Converters.NotEmpty}}" />
-            <Grid ColumnDefinitions="110,50,50,70,*" IsVisible="{Binding HasNeighbourRows}">
-              <TextBlock Text="Toward" Classes="secondary" /><TextBlock Grid.Column="1" Text="You" Classes="secondary" />
-              <TextBlock Grid.Column="2" Text="Them" Classes="secondary" /><TextBlock Grid.Column="3" Text="Receivers" Classes="secondary" />
-              <TextBlock Grid.Column="4" Text="Difference" Classes="secondary" />
-            </Grid>
-            <ItemsControl ItemsSource="{Binding NeighbourRows}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:NeighbourRowViewModel">
-                  <Grid ColumnDefinitions="110,50,50,70,*" MinHeight="28">
-                    <TextBlock Text="{Binding Toward}" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Text="{Binding Mine}" Classes="num" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="2" Text="{Binding Theirs}" Classes="num secondary" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="3" Text="{Binding Receivers}" Classes="num secondary" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="4" Text="{Binding Difference}" VerticalAlignment="Center" FontWeight="SemiBold"
-                               Foreground="{Binding Weaker, Converter={x:Static v:Converters.CautionWhen}}" />
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="Did a change help?" Classes="title" Margin="0,12,0,0" />
-            <TextBlock Text="{Binding HistoryNote}" Classes="secondary" FontSize="12" TextWrapping="Wrap" />
-            <ItemsControl ItemsSource="{Binding HistoryRows}" IsVisible="{Binding HasHistory}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:NeighbourHistoryRowViewModel">
-                  <StackPanel Spacing="2" Margin="0,4,0,4">
-                    <TextBlock Text="{Binding Sentence}" TextWrapping="Wrap" />
-                    <v:NeighbourHistoryChart Values="{Binding Days}" MarkIndex="{Binding MarkIndex}" Height="64"
-                                             ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Sentence}" />
+                    <ItemsControl ItemsSource="{Binding BandActivity}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BandChoiceViewModel">
+                          <Border IsVisible="{Binding InGrid}" CornerRadius="3" Margin="0,1"
+                                  Background="{Binding IsCurrent, Converter={x:Static v:Converters.SelectedBackground}}"
+                                  ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Name}">
+                            <Grid ColumnDefinitions="46,190,50,*" MinHeight="24">
+                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="2,0,0,0" />
+                              <ItemsControl Grid.Column="1" ItemsSource="{Binding Continents}" VerticalAlignment="Center" IsVisible="{Binding !NotFollowed}"
+                                            AutomationProperties.Name="Heard in">
+                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="vm:ContinentChip">
+                                    <Border Width="29" Height="20" CornerRadius="3" BorderThickness="1" ToolTip.Tip="{Binding Tip}"
+                                            Background="{Binding Level, Converter={x:Static v:Converters.ShadeBackground}}"
+                                            BorderBrush="{Binding Level, Converter={x:Static v:Converters.ShadeBorder}}">
+                                      <TextBlock Text="{Binding Count}" FontSize="11" Classes="num" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                 Foreground="{Binding Level, Converter={x:Static v:Converters.ShadeForeground}}" />
+                                    </Border>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                              <TextBlock Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding SpotsText}" Classes="secondary" FontSize="12" FontStyle="Italic"
+                                         VerticalAlignment="Center" IsVisible="{Binding NotFollowed}" />
+                              <TextBlock Grid.Column="2" Text="{Binding SpotsCount}" Classes="num" FontSize="12" TextAlignment="Right" Margin="0,0,8,0"
+                                         VerticalAlignment="Center" IsVisible="{Binding !NotFollowed}" />
+                              <TextBlock Grid.Column="3" Text="{Binding NeedShort}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                         Foreground="{DynamicResource CautionBrush}" ToolTip.Tip="{Binding NeedTip}" IsVisible="{Binding !NotFollowed}" />
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                   </StackPanel>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="{Binding MarkText}" Classes="secondary" FontSize="12" TextWrapping="Wrap"
-                       IsVisible="{Binding MarkText, Converter={x:Static v:Converters.NotEmpty}}" />
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
-              <TextBox Text="{Binding ChangeNote}" PlaceholderText="What changed? (optional)" MaxLength="60"
-                       IsVisible="{Binding !MarkedToday}" AutomationProperties.Name="What changed" />
-              <Button Grid.Column="1" Content="{Binding MarkButtonText}" Command="{Binding ToggleMarkCommand}"
-                      ToolTip.Tip="Mark today as the day you changed your antenna or station. The lines above then compare before and after." />
-            </Grid>
-            <TextBlock x:Name="MapHelp" Text="You are at the centre, north is up. Bigger, darker dots are stronger reports. Hover over a dot for its call."
-                       Classes="secondary" TextWrapping="Wrap" Margin="0,12,0,0" />
-            <TextBlock x:Name="ZoomHelp" Text="Scroll or use + and − to zoom, drag to move around, double-click to see the whole map."
+                  <TextBlock Text="{Binding QuietBands}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="2,2,0,0"
+                             IsVisible="{Binding QuietBands, Converter={x:Static v:Converters.NotEmpty}}" />
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Countries" ToolTip.Tip="Countries that heard you, for the selected band and window">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="6" Margin="0,0,10,0">
+                  <TextBlock Text="{Binding ByCountryTitle}" Classes="title" />
+                  <TextBlock Text="No reports yet. Reports appear a few minutes after you transmit." Classes="secondary" TextWrapping="Wrap" IsVisible="{Binding Empty}" />
+                  <Grid ColumnDefinitions="*,70,60,100" IsVisible="{Binding !Empty}">
+                    <TextBlock Text="Country" Classes="secondary" /><TextBlock Grid.Column="1" Text="Stations" Classes="secondary" />
+                    <TextBlock Grid.Column="2" Text="Best" Classes="secondary" /><TextBlock Grid.Column="3" Text="Farthest" Classes="secondary" />
+                  </Grid>
+                  <ItemsControl ItemsSource="{Binding ByCountry}" AutomationProperties.Name="Countries that heard you">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:CountryReachRowViewModel">
+                        <Grid ColumnDefinitions="*,70,60,100" MinHeight="28" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                          <TextBlock Text="{Binding Country}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="1" Text="{Binding StationsText}" Classes="num" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2" Text="{Binding Best}" Classes="num" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="3" Text="{Binding Farthest}" Classes="num" VerticalAlignment="Center" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Bands" ToolTip.Tip="Stations that heard you on each band, last 24 hours">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="6" Margin="0,0,10,0">
+                  <TextBlock Text="By band, last 24 hours" Classes="title" />
+                  <Grid ColumnDefinitions="70,90,110,*">
+                    <TextBlock Text="Band" Classes="secondary" /><TextBlock Grid.Column="1" Text="Stations" Classes="secondary" />
+                    <TextBlock Grid.Column="2" Text="Farthest" Classes="secondary" /><TextBlock Grid.Column="3" Text="Median report" Classes="secondary" />
+                  </Grid>
+                  <ItemsControl ItemsSource="{Binding ByBand}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:BandReachRowViewModel">
+                        <Border Background="{Binding Current, Converter={x:Static v:Converters.SelectedBackground}}">
+                          <Grid ColumnDefinitions="70,90,110,*" MinHeight="28">
+                            <TextBlock Text="{Binding Band}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding Stations}" Classes="num" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2" Text="{Binding Farthest}" Classes="num" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="3" Text="{Binding Median}" Classes="num" VerticalAlignment="Center" />
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Nearby" ToolTip.Tip="How your signal compares with stations near you">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="6" Margin="0,0,10,0">
+                  <TextBlock Text="Compared with stations near you" Classes="title" />
+                  <TextBlock Text="{Binding NeighbourHeadline}" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding NeighbourBasis}" Classes="secondary" FontSize="12" TextWrapping="Wrap"
+                             IsVisible="{Binding NeighbourBasis, Converter={x:Static v:Converters.NotEmpty}}" />
+                  <Grid ColumnDefinitions="110,50,50,70,*" IsVisible="{Binding HasNeighbourRows}">
+                    <TextBlock Text="Toward" Classes="secondary" /><TextBlock Grid.Column="1" Text="You" Classes="secondary" />
+                    <TextBlock Grid.Column="2" Text="Them" Classes="secondary" /><TextBlock Grid.Column="3" Text="Receivers" Classes="secondary" />
+                    <TextBlock Grid.Column="4" Text="Difference" Classes="secondary" />
+                  </Grid>
+                  <ItemsControl ItemsSource="{Binding NeighbourRows}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:NeighbourRowViewModel">
+                        <Grid ColumnDefinitions="110,50,50,70,*" MinHeight="28">
+                          <TextBlock Text="{Binding Toward}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Text="{Binding Mine}" Classes="num" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2" Text="{Binding Theirs}" Classes="num secondary" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="3" Text="{Binding Receivers}" Classes="num secondary" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="4" Text="{Binding Difference}" VerticalAlignment="Center" FontWeight="SemiBold"
+                                     Foreground="{Binding Weaker, Converter={x:Static v:Converters.CautionWhen}}" />
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Changes" ToolTip.Tip="Did a change to your antenna or station help?">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="6" Margin="0,0,10,0">
+                  <TextBlock Text="Did a change help?" Classes="title" />
+                  <TextBlock Text="{Binding HistoryNote}" Classes="secondary" FontSize="12" TextWrapping="Wrap" />
+                  <ItemsControl ItemsSource="{Binding HistoryRows}" IsVisible="{Binding HasHistory}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:NeighbourHistoryRowViewModel">
+                        <StackPanel Spacing="2" Margin="0,4,0,4">
+                          <TextBlock Text="{Binding Sentence}" TextWrapping="Wrap" />
+                          <v:NeighbourHistoryChart Values="{Binding Days}" MarkIndex="{Binding MarkIndex}" Height="64"
+                                                   ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Sentence}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="{Binding MarkText}" Classes="secondary" FontSize="12" TextWrapping="Wrap"
+                             IsVisible="{Binding MarkText, Converter={x:Static v:Converters.NotEmpty}}" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                    <TextBox Text="{Binding ChangeNote}" PlaceholderText="What changed? (optional)" MaxLength="60"
+                             IsVisible="{Binding !MarkedToday}" AutomationProperties.Name="What changed" />
+                    <Button Grid.Column="1" Content="{Binding MarkButtonText}" Command="{Binding ToggleMarkCommand}"
+                            ToolTip.Tip="Mark today as the day you changed your antenna or station. The lines above then compare before and after." />
+                  </Grid>
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+          </TabControl>
+          <StackPanel Grid.Row="1" Margin="0,8,0,0">
+            <TextBlock x:Name="MapHelp" FontSize="12" Text="You are at the centre, north is up. Bigger, darker dots are stronger reports. Hover over a dot for its call."
+                       Classes="secondary" TextWrapping="Wrap" />
+            <TextBlock x:Name="ZoomHelp" FontSize="12" Text="Scroll or use + and − to zoom, drag to move around, double-click to see the whole map."
                        Classes="secondary" TextWrapping="Wrap" />
           </StackPanel>
-        </ScrollViewer>
+        </Grid>
       </Grid>
     </Border>
     <Border Grid.Row="1" Classes="card" Padding="14,12">
