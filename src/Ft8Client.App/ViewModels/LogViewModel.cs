@@ -126,6 +126,43 @@ public sealed partial class LogViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(EditCommand))]
     public partial LogRowViewModel? Selected { get; set; }
 
+    /// <summary>What the list shows: day headings (<see cref="LogDayViewModel"/>) and rows, newest first.</summary>
+    public ObservableCollection<object> Items { get; } = [];
+
+    /// <summary>The list's selected item; a day heading cannot be selected.</summary>
+    public object? SelectedItem
+    {
+        get => Selected;
+        set
+        {
+            if (value is LogRowViewModel r) Selected = r;
+            else if (value is null) Selected = null;
+            OnPropertyChanged();
+        }
+    }
+
+    partial void OnSelectedChanged(LogRowViewModel? oldValue, LogRowViewModel? newValue) => OnPropertyChanged(nameof(SelectedItem));
+
+    /// <summary>Contacts shown, for the summary tile.</summary>
+    [ObservableProperty]
+    public partial string ContactsTotal { get; set; } = "0";
+
+    /// <summary>Countries among the contacts shown.</summary>
+    [ObservableProperty]
+    public partial string CountriesTotal { get; set; } = "0";
+
+    /// <summary>Confirmed contacts shown.</summary>
+    [ObservableProperty]
+    public partial string ConfirmedTotal { get; set; } = "0";
+
+    /// <summary>"of 3,400" under the contacts tile while filtered; empty otherwise.</summary>
+    [ObservableProperty]
+    public partial string ContactsOf { get; set; } = string.Empty;
+
+    /// <summary>Line under the list: how many are listed and when QRZ last synced.</summary>
+    [ObservableProperty]
+    public partial string SyncText { get; set; } = string.Empty;
+
     /// <summary>Status line.</summary>
     [ObservableProperty]
     public partial string Status { get; set; } = string.Empty;
@@ -158,6 +195,7 @@ public sealed partial class LogViewModel : ObservableObject
 
     partial void OnSelectedChanged(LogRowViewModel? value) => ConfirmingDelete = false;
 
+
     /// <summary>Reloads rows.</summary>
     public void Refresh()
     {
@@ -168,10 +206,25 @@ public sealed partial class LogViewModel : ObservableObject
         var rows = _qsos.List(filter, MaxRows);
         Rows.Clear();
         foreach (var q in rows) Rows.Add(new LogRowViewModel(q));
+        Items.Clear();
+        var today = DateTime.UtcNow.Date;
+        foreach (var day in Rows.GroupBy(r => r.Record.QsoDateOn.Date))
+        {
+            var dayRows = day.ToList();
+            Items.Add(new LogDayViewModel(day.Key, dayRows, today));
+            foreach (var r in dayRows) Items.Add(r);
+        }
         var shown = _qsos.Totals(filter);
         var total = filter == LogFilter.All ? shown.Contacts : _qsos.Count();
         var last = _lastSync();
-        Status = StatusText(shown, total, rows.Count) + " · " + (last is { } t ? $"last synced {t:HH:mm} UTC" : "not synced with QRZ");
+        var sync = last is { } t ? $"last synced with QRZ {t:HH:mm} UTC" : "not synced with QRZ";
+        Status = StatusText(shown, total, rows.Count) + " · " + sync;
+        var inv = CultureInfo.InvariantCulture;
+        ContactsTotal = shown.Contacts.ToString("N0", inv);
+        ContactsOf = shown.Contacts == total ? string.Empty : $"of {total.ToString("N0", inv)}";
+        CountriesTotal = shown.Countries.ToString("N0", inv);
+        ConfirmedTotal = shown.Confirmed.ToString("N0", inv);
+        SyncText = (rows.Count < shown.Contacts ? $"Newest {rows.Count.ToString("N0", inv)} listed · " : string.Empty) + char.ToUpperInvariant(sync[0]) + sync[1..];
     }
 
     /// <summary>Clears the band, mode, date and confirmation filters (the search text stays).</summary>

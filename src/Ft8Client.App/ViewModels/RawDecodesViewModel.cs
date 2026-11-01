@@ -55,6 +55,16 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
     /// <summary>Choices for <see cref="Show"/>.</summary>
     public IReadOnlyList<string> ShowChoices { get; } = [ShowAll, ShowCq, ShowMine, ShowNeeded];
 
+    /// <summary>The show choices as chips with counts.</summary>
+    public IReadOnlyList<ShowOptionViewModel> ShowOptions { get; } =
+    [
+        new(ShowAll, "All"), new(ShowCq, "CQs"), new(ShowMine, "To or from me"), new(ShowNeeded, "New for me"),
+    ];
+
+    /// <summary>Chip click.</summary>
+    [RelayCommand]
+    private void PickShow(string choice) => Show = choice;
+
     /// <summary>Which lines to show.</summary>
     [ObservableProperty]
     public partial string Show { get; set; } = ShowAll;
@@ -224,29 +234,39 @@ public sealed partial class RawDecodesViewModel(Action<string> call) : Observabl
         var f = Filter.Trim();
         Lines.Clear();
         var newest = _all.Count == 0 ? DateTime.MinValue : _all.Max(x => x.Decode.SlotStartUtc);
-        DateTime? slot = null;
         var shown = 0;
-        // Newest slot first; within a slot, lines keep the order they arrived in.
         var total = 0;
-        foreach (var l in _all.OrderByDescending(x => x.Decode.SlotStartUtc))
+        var counts = new int[4];
+        // Newest slot first; within a slot, lines keep the order they arrived in. Each slot opens with a heading.
+        foreach (var group in _all.Where(l => !_cleared.Contains(l)).GroupBy(l => GroupOf(l.Decode.SlotStartUtc)).OrderByDescending(g => g.Key))
         {
-            if (_cleared.Contains(l)) continue;
-            total++;
-            var sender = l.Message.SenderCall is { } c && _stations.TryGetValue(c, out var st) ? st : null;
-            if (f.Length > 0 && !l.Decode.Text.Contains(f, StringComparison.OrdinalIgnoreCase)
-                && !(l.Country?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false)) continue;
-            if (!Shows(l, sender)) continue;
-            if (slot is not null && slot != l.Decode.SlotStartUtc) Lines.Add(RawLineViewModel.Blank);
-            slot = l.Decode.SlotStartUtc;
-            Lines.Add(new RawLineViewModel(l, highlight: HighlightOf(l, newest), sender: sender, units: Units, partner: IsPartner(l), keyboard: _keyboard));
-            shown++;
+            var slotLines = group.ToList();
+            var rows = new List<RawLineViewModel>();
+            foreach (var l in slotLines)
+            {
+                total++;
+                var sender = l.Message.SenderCall is { } c && _stations.TryGetValue(c, out var st) ? st : null;
+                if (f.Length > 0 && !l.Decode.Text.Contains(f, StringComparison.OrdinalIgnoreCase)
+                    && !(l.Country?.Contains(f, StringComparison.OrdinalIgnoreCase) ?? false)) continue;
+                for (var i = 0; i < ShowChoices.Count; i++) if (Shows(ShowChoices[i], l, sender)) counts[i]++;
+                if (!Shows(Show, l, sender)) continue;
+                rows.Add(new RawLineViewModel(l, highlight: HighlightOf(l, newest), sender: sender, units: Units, partner: IsPartner(l), keyboard: _keyboard));
+            }
+            if (rows.Count == 0) continue;
+            Lines.Add(RawLineViewModel.SlotHeading(group.Key, slotLines, _keyboard));
+            foreach (var r in rows) Lines.Add(r);
+            shown += rows.Count;
         }
+        for (var i = 0; i < ShowOptions.Count; i++) ShowOptions[i].Update(counts[i], ShowChoices[i] == Show);
         Filtered = f.Length > 0 || Show != ShowAll;
         Count = Filtered ? $"{shown:N0} of {total:N0} lines" : string.Empty;
         if (!ScrolledAway) ScrollToNewest?.Invoke();
     }
 
-    private bool Shows(RawDecodeLine l, RankedStation? sender) => Show switch
+    // FT8 and FT4 group by slot. PSK and RTTY lines carry their own times, so they group by minute.
+    private DateTime GroupOf(DateTime utc) => _keyboard ? new DateTime(utc.Ticks - utc.Ticks % TimeSpan.TicksPerMinute, utc.Kind) : utc;
+
+    private static bool Shows(string show, RawDecodeLine l, RankedStation? sender) => show switch
     {
         ShowCq => l.IsCq && !l.Transmitted,
         ShowMine => l.ToMe || l.Transmitted,

@@ -8,6 +8,8 @@
 
 
 using Ft8Client.App.ViewModels;
+using Ft8Client.Core.Geo;
+using Ft8Client.Data.Database;
 using Ft8Client.Data.Log;
 
 namespace Ft8Client.App.Tests;
@@ -66,5 +68,58 @@ public class LogViewModelTests
     {
         LogViewModel.StatusText(new LogTotals(6000, 200, 10), 6000, 5000)
             .Should().Be("6,000 contacts · 200 countries · 10 confirmed · newest 5,000 listed");
+    }
+
+    private static LogRowViewModel Row(DateTime on, string call, string band, string country, bool confirmed = false) =>
+        new(new QsoRecord { Call = call, QsoDateOn = on, Band = band, Mode = "FT8", Country = country, Confirmed = confirmed });
+
+    [Fact]
+    public void LogDay_Today_SaysTodayAndSummarisesTheDay()
+    {
+        var day = new LogDayViewModel(Now.Date, [Row(Now, "K1ABC", "20m", "United States", true), Row(Now, "JA1XYZ", "20m", "Japan"), Row(Now, "W9XYZ", "40m", "United States")], Now.Date);
+        day.Heading.Should().Be("Today · Mon 12 Oct");
+        day.Summary.Should().Be("3 contacts  ·  2 countries  ·  1 confirmed  ·  20m 40m");
+    }
+
+    [Fact]
+    public void LogDay_EarlierYear_ShowsTheYear()
+    {
+        var day = new LogDayViewModel(new DateTime(2025, 12, 2, 0, 0, 0, DateTimeKind.Utc), [Row(Now, "K1ABC", "20m", "")], Now.Date);
+        day.Heading.Should().Be("Tue 2 Dec 2025");
+        day.Summary.Should().Be("1 contact  ·  20m");
+    }
+
+    [Fact]
+    public void Refresh_TwoDays_PutsADayHeadingAboveEachDay()
+    {
+        var db = SqliteDatabase.InMemory(out var keep);
+        using var _ = keep;
+        var repo = new QsoRepository(db);
+        var today = DateTime.UtcNow.Date;
+        foreach (var (call, on) in new[] { ("K1ABC", today.AddHours(1)), ("W9XYZ", today.AddDays(-3).AddHours(5)), ("JA1XYZ", today.AddDays(-3).AddHours(4)) })
+            repo.Insert(new QsoRecord { ProfileId = "p", Call = call, QsoDateOn = on, Band = "20m", Mode = "FT8", StationCallsign = "W7LIT", CreatedUtc = on, ModifiedUtc = on });
+        var vm = new LogViewModel(repo, CountryFile.Parse("United States:  05:  08:  NA:   37.53:    91.67:     5.0:  K:\n    K,W;\n"), () => ("p", "W7LIT"),
+            _ => Task.FromResult(""), () => null, () => { });
+        vm.Refresh();
+        vm.Items.Select(i => i is LogDayViewModel d ? "day" : ((LogRowViewModel)i).Call).Should().Equal("day", "K1ABC", "day", "W9XYZ", "JA1XYZ");
+        vm.ContactsTotal.Should().Be("3");
+        vm.SyncText.Should().Be("Not synced with QRZ");
+    }
+
+    [Fact]
+    public void SelectedItem_DayHeading_KeepsTheSelectedRow()
+    {
+        var db = SqliteDatabase.InMemory(out var keep);
+        using var _ = keep;
+        var repo = new QsoRepository(db);
+        var on = DateTime.UtcNow;
+        repo.Insert(new QsoRecord { ProfileId = "p", Call = "K1ABC", QsoDateOn = on, Band = "20m", Mode = "FT8", StationCallsign = "W7LIT", CreatedUtc = on, ModifiedUtc = on });
+        var vm = new LogViewModel(repo, CountryFile.Parse("United States:  05:  08:  NA:   37.53:    91.67:     5.0:  K:\n    K,W;\n"), () => ("p", "W7LIT"),
+            _ => Task.FromResult(""), () => null, () => { });
+        vm.Refresh();
+        vm.SelectedItem = vm.Items[1];
+        vm.SelectedItem = vm.Items[0];
+        vm.Selected!.Call.Should().Be("K1ABC");
+        vm.SelectedItem.Should().BeSameAs(vm.Selected);
     }
 }

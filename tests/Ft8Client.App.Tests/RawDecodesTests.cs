@@ -55,8 +55,8 @@ public class RawDecodesTests
         var t1 = t0.AddSeconds(15);
         var vm = new RawDecodesViewModel(_ => { });
         vm.Apply([Line(t0, "CQ K1ABC FN42", 900), Line(t0, "CQ W9XYZ EN52", 1200), Line(t1, "CQ N0CALL EM12", 500), Line(t1, "CQ G4AAA IO91", 2000)]);
-        vm.Lines.Select(l => l.IsBlank ? "-" : l.Message).Should().Equal(
-            "CQ N0CALL EM12", "CQ G4AAA IO91", "-", "CQ K1ABC FN42", "CQ W9XYZ EN52");
+        vm.Lines.Select(l => l.IsBlank ? l.Heading : l.Message).Should().Equal(
+            "02:54:15", "CQ N0CALL EM12", "CQ G4AAA IO91", "02:54:00", "CQ K1ABC FN42", "CQ W9XYZ EN52");
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class RawDecodesTests
 
         vm.Apply([Line(new DateTime(2026, 10, 13, 18, 0, 0, DateTimeKind.Utc), "CQ CQ DE KP4JRS KP4JRS K")], keyboard: true);
 
-        vm.Lines.Should().ContainSingle().Which.Dt.Should().BeEmpty();
+        vm.Lines.Where(l => l.IsLine).Should().ContainSingle().Which.Dt.Should().BeEmpty();
     }
 
     [Fact]
@@ -118,6 +118,36 @@ public class RawDecodesTests
         Messages(vm).Should().HaveCount(4);
         vm.Filtered.Should().BeFalse();
         vm.Count.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Apply_Slot_HeadingCountsDecodesCqsAndMedianDt()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed());
+        var heading = vm.Lines[0];
+        heading.IsHeading.Should().BeTrue();
+        heading.Summary.Should().Be("3 decodes  ·  1 CQ  ·  1 to you  ·  you transmitted  ·  DT +0.1 s");
+    }
+
+    [Fact]
+    public void Apply_KeyboardLines_GroupsByMinute()
+    {
+        var t = new DateTime(2026, 10, 13, 18, 0, 5, DateTimeKind.Utc);
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply([Line(t, "CQ CQ DE KP4JRS K"), Line(t.AddSeconds(20), "KP4JRS DE W7LIT K"), Line(t.AddSeconds(70), "TU 73")], keyboard: true);
+        vm.Lines.Where(l => l.IsHeading).Select(l => l.Heading).Should().Equal("18:01", "18:00");
+    }
+
+    [Fact]
+    public void Apply_Mixed_ShowChipsCountEachChoice()
+    {
+        var vm = new RawDecodesViewModel(_ => { });
+        vm.Apply(Mixed(), Rank(Ranked("JA1XYZ", NeedTag.NewCountry)));
+        vm.ShowOptions.Select(o => o.Count).Should().Equal("4", "1", "2", "1");
+        vm.PickShowCommand.Execute(RawDecodesViewModel.ShowCq);
+        vm.ShowOptions[1].IsSelected.Should().BeTrue();
+        Messages(vm).Should().Equal("CQ JA1XYZ PM95");
     }
 
     [Fact]
