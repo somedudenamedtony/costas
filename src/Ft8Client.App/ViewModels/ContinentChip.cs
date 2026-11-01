@@ -9,8 +9,9 @@
 
 namespace Ft8Client.App.ViewModels;
 
-/// <summary>One continent chip in a band menu row.</summary>
+/// <summary>One continent chip in a band menu row, and one cell of Reach's band activity grid.</summary>
 /// <param name="Label">"EU".</param>
 /// <param name="Level">Shade: 0 for no spots, up to 3 for many.</param>
 /// <param name="Tip">"EU · 12 spots".</param>
-public sealed record ContinentChip(string Label, int Level, string Tip);
+/// <param name="Count">The spots in a few characters for the grid cell ("140", "1.2k"), empty for none.</param>
+public sealed record ContinentChip(string Label, int Level, string Tip, string Count = "");

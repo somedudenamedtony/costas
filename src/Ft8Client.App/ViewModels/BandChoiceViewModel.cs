@@ -7,6 +7,7 @@
 // see the GNU General Public License in LICENSE for details.
 
 
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ft8Client.Core;
 using Ft8Client.Core.Bands;
@@ -39,6 +40,7 @@ public sealed partial class BandChoiceViewModel : ObservableObject
 
     /// <summary>True when the row has activity to show.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(InGrid))]
     public partial bool HasActivity { get; set; }
 
     /// <summary>
@@ -47,6 +49,30 @@ public sealed partial class BandChoiceViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     public partial string SpotsText { get; set; } = string.Empty;
+
+    /// <summary>The spot count alone for Reach's grid: "1,240", "~1,240", or empty when there are none.</summary>
+    [ObservableProperty]
+    public partial string SpotsCount { get; set; } = string.Empty;
+
+    /// <summary>True when the feed is live but nobody near me is heard on this band; Reach folds these into one line.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(InGrid))]
+    public partial bool IsQuiet { get; set; }
+
+    /// <summary>True when the band has a row in Reach's activity grid: it has numbers, or a reason it has none yet.</summary>
+    public bool InGrid => HasActivity && !IsQuiet;
+
+    /// <summary>True when this band has a reason in place of numbers ("Checking soon").</summary>
+    [ObservableProperty]
+    public partial bool NotFollowed { get; set; }
+
+    /// <summary>True when this is the band the radio is on.</summary>
+    [ObservableProperty]
+    public partial bool IsCurrent { get; set; }
+
+    /// <summary>"Brazil +2" for Reach's narrow Need column, or empty.</summary>
+    [ObservableProperty]
+    public partial string NeedShort { get; set; } = string.Empty;
 
     /// <summary>Activity bar width in pixels, scaled to the busiest band.</summary>
     [ObservableProperty]
@@ -103,8 +129,12 @@ public sealed partial class BandChoiceViewModel : ObservableObject
     public void Apply(BandOpening? opening, int maxSpots, bool live, DistanceUnit units)
     {
         HasActivity = live;
+        NotFollowed = false;
         if (!live)
         {
+            IsQuiet = false;
+            SpotsCount = string.Empty;
+            NeedShort = string.Empty;
             SpotsText = string.Empty;
             BarWidth = 0;
             Continents = [];
@@ -116,13 +146,16 @@ public sealed partial class BandChoiceViewModel : ObservableObject
         var spots = opening?.Spots ?? 0;
         var estimated = opening?.Estimated == true;
         SpotsText = spots == 0 ? "No spots" : BandOpeningText.Spots(spots, estimated);
+        IsQuiet = spots == 0;
+        SpotsCount = spots == 0 ? string.Empty : string.Create(CultureInfo.InvariantCulture, $"{(estimated ? "~" : "")}{spots:N0}");
         BarWidth = maxSpots <= 0 ? 0 : Math.Max(spots > 0 ? 2 : 0, MaxBar * spots / maxSpots);
         Continents = [.. BandOpenings.Continents.Select(c =>
         {
             var n = opening?.SpotsByContinent.GetValueOrDefault(c) ?? 0;
-            return new ContinentChip(c, BandOpenings.Level(n), $"{c} · {BandOpeningText.Spots(n, estimated)}");
+            return new ContinentChip(c, BandOpenings.Level(n), $"{c} · {BandOpeningText.Spots(n, estimated)}", BandOpeningText.Compact(n));
         })];
         NeedText = opening is null ? string.Empty : BandOpeningText.Need(opening.NeededEntities);
+        NeedShort = opening is null ? string.Empty : BandOpeningText.NeedShort(opening.NeededEntities);
         NeedTip = opening is null ? string.Empty : BandOpeningText.NeedTip(opening.NeededEntities);
         Tip = BandOpeningText.Basis(units, opening?.SampledFor);
     }
@@ -133,6 +166,10 @@ public sealed partial class BandChoiceViewModel : ObservableObject
     public void ApplyNotFollowed(string text, string tip)
     {
         HasActivity = true;
+        NotFollowed = true;
+        IsQuiet = false;
+        SpotsCount = string.Empty;
+        NeedShort = string.Empty;
         SpotsText = text;
         BarWidth = 0;
         Continents = [];

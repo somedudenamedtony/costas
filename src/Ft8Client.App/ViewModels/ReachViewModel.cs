@@ -79,6 +79,14 @@ public sealed partial class ReachViewModel : ObservableObject
     [ObservableProperty]
     public partial string BandActivityStatus { get; set; } = "Waiting for reports of nearby stations.";
 
+    /// <summary>"No spots on 160 m, 80 m and 60 m.": the quiet bands folded into one line under the activity grid.</summary>
+    [ObservableProperty]
+    public partial string QuietBands { get; set; } = string.Empty;
+
+    /// <summary>True when the activity grid has rows to show.</summary>
+    [ObservableProperty]
+    public partial bool HasBandActivityRows { get; set; }
+
     /// <summary>By country, for the selected band and window.</summary>
     public ObservableCollection<CountryReachRowViewModel> ByCountry { get; } = [];
 
