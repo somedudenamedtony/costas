@@ -102,6 +102,34 @@ public class BandOpeningsTests
     }
 
     [Fact]
+    public void NeedShort_SeveralCountries_NamesTheTopAndCounts()
+    {
+        BandOpeningText.NeedShort(["Brazil", "Chile", "Peru"]).Should().Be("Brazil +2");
+        BandOpeningText.NeedShort(["Mongolia"]).Should().Be("Mongolia");
+        BandOpeningText.NeedShort([]).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(0, "")]
+    [InlineData(7, "7")]
+    [InlineData(999, "999")]
+    [InlineData(1000, "1k")]
+    [InlineData(1290, "1.2k")]
+    [InlineData(12_400, "12k")]
+    public void Compact_Spots_FitsACell(int spots, string text)
+    {
+        BandOpeningText.Compact(spots).Should().Be(text);
+    }
+
+    [Fact]
+    public void Quiet_SeveralBands_ListsThemInOneLine()
+    {
+        BandOpeningText.Quiet(["160 m", "80 m", "60 m"]).Should().Be("No spots on 160 m, 80 m and 60 m.");
+        BandOpeningText.Quiet(["6 m"]).Should().Be("No spots on 6 m.");
+        BandOpeningText.Quiet([]).Should().BeEmpty();
+    }
+
+    [Fact]
     public void Spots_Thousands_UsesSeparator()
     {
         BandOpeningText.Spots(1240).Should().Be("1,240 spots");

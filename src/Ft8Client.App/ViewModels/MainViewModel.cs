@@ -1048,7 +1048,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             var reason = BandOpeningText.NotFollowed(feed, Followed(b.Band) || openings.ContainsKey(b.Band));
             if (reason.Length > 0) b.ApplyNotFollowed(reason, tip);
             else b.Apply(openings.GetValueOrDefault(b.Band), max, live, units);
+            b.IsCurrent = b.Band == current;
         }
+        Reach.QuietBands = BandOpeningText.Quiet([.. Bands.Where(b => b.IsQuiet).Select(b => b.Name)]);
+        Reach.HasBandActivityRows = Bands.Any(b => b.InGrid);
         Reach.BandActivityStatus = !on ? "Turn on live reports and band activity in Settings, PSK Reporter."
             : Bands.Any(b => b.HasActivity) ? string.Empty : "Waiting for reports of nearby stations.";
         ApplyHuntToBands();

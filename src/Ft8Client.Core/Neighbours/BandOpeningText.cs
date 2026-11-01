@@ -28,6 +28,32 @@ public static class BandOpeningText
         _ => string.Create(CultureInfo.InvariantCulture, $"You need {needed[0]} +{needed.Count - 1}"),
     };
 
+    /// <summary>The need text for a narrow column: "Mongolia", "Brazil +2", or empty when there are none.</summary>
+    public static string NeedShort(IReadOnlyList<string> needed) => needed.Count switch
+    {
+        0 => string.Empty,
+        1 => needed[0],
+        _ => string.Create(CultureInfo.InvariantCulture, $"{needed[0]} +{needed.Count - 1}"),
+    };
+
+    /// <summary>A spot count for a small grid cell: empty for none, "140", "1.2k", "12k".</summary>
+    public static string Compact(int spots) => spots switch
+    {
+        <= 0 => string.Empty,
+        < 1000 => spots.ToString(CultureInfo.InvariantCulture),
+        < 10_000 => string.Create(CultureInfo.InvariantCulture, $"{Math.Floor(spots / 100.0) / 10:0.#}k"),
+        _ => string.Create(CultureInfo.InvariantCulture, $"{spots / 1000}k"),
+    };
+
+    /// <summary>The line that stands in for bands with no spots: "No spots on 160 m, 80 m and 60 m.", or empty.</summary>
+    /// <param name="bands">Display names of the quiet bands, in band order.</param>
+    public static string Quiet(IReadOnlyList<string> bands) => bands.Count switch
+    {
+        0 => string.Empty,
+        1 => $"No spots on {bands[0]}.",
+        _ => $"No spots on {string.Join(", ", bands.Take(bands.Count - 1))} and {bands[^1]}.",
+    };
+
     /// <summary>The tooltip for the need text: every country, most spots first.</summary>
     public static string NeedTip(IReadOnlyList<string> needed) =>
         needed.Count == 0 ? string.Empty : $"Stations near you are heard in these countries, which you have no contact with on this band: {string.Join(", ", needed)}.";

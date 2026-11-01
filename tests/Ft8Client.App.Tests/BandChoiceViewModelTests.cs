@@ -42,6 +42,35 @@ public class BandChoiceViewModelTests
         b.NeedText.Should().Be("You need Brazil +1");
         b.NeedTip.Should().Contain("Brazil, Chile");
         b.Tip.Should().Contain("300 miles");
+        b.SpotsCount.Should().Be("60");
+        b.NeedShort.Should().Be("Brazil +1");
+        b.Continents.Select(c => c.Count).Should().Equal("50", "10", "", "", "", "");
+        b.InGrid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Apply_NoSpotsOnThisBand_IsQuietAndLeavesTheGrid()
+    {
+        var b = new BandChoiceViewModel("10m");
+
+        b.Apply(null, 120, true, DistanceUnit.Miles);
+
+        b.IsQuiet.Should().BeTrue();
+        b.InGrid.Should().BeFalse();
+        b.SpotsCount.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ApplyNotFollowed_Reason_StaysInTheGridWithTheReason()
+    {
+        var b = new BandChoiceViewModel("10m");
+        b.Apply(null, 120, true, DistanceUnit.Miles);
+
+        b.ApplyNotFollowed("Checking soon", "tip");
+
+        b.NotFollowed.Should().BeTrue();
+        b.IsQuiet.Should().BeFalse();
+        b.InGrid.Should().BeTrue();
     }
 
     [Fact]
