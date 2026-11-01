@@ -88,7 +88,7 @@ it is heard working someone else, and moves to Watching once the time is up.
 | Column | Meaning |
 | --- | --- |
 | **#** | Rank |
-| **Call** | Callsign |
+| **Call** | Callsign. A small amber tag under it, such as *3 calling*, means you can hear other stations calling them right now, so you know it is a pileup before you click **Call**. Hover the tag to see who, with their signal at your station |
 | **Where** | Country (or state for the USA, province for Canada) and distance |
 | **Why** | Why you need them: **New country**, **New band** (hover to see which bands you already have that country on), **New grid** with the grid, such as **New grid DO62**, or **New call**. A new country also gets a small rarity meter, five cells from common to very rare, from Club Log's most-wanted list. Hover for its rank. A station activating a park for Parks on the Air gets a second line: **New park US-1234** when that park is not in your log yet, *Park US-1234* when it is, or *POTA* when it is calling CQ POTA but nobody has spotted it on this band yet. Hover for the park's name. A station at a new park moves up: it comes right after your first need (new countries, unless you changed the order), and it is listed even if you have already worked that call on this band, because a new park is a new contact for park hunters. You can turn this off in Settings › Who to call |
 | **Doing now** | *Calling CQ, 3 slots*, *Calling CQ DX*, *Calling you*, and *fading* when their signal is dropping |
@@ -127,7 +127,7 @@ location, grid, bearing and your past contacts with that call. For a station at 
 
 ### Who else is calling
 
-When other stations are calling the one you selected, the details card adds a **Who else is calling** section, shaded yellow so it stands out (the same box shows under your contact when you call a busy station, and on the phone's station sheet):
+The *3 calling* tag on a row is the short version. When other stations are calling the one you selected, the details card adds a **Who else is calling** section, shaded yellow so it stands out (the same box shows under your contact when you call a busy station, and on the phone's station sheet):
 
 - how many stations called it in its latest answer slot, with each caller's signal at your station and audio offset;
 - whether your transmit offset is clear of them, or which caller is sitting on top of it;
@@ -148,7 +148,7 @@ Directly under Next in line: stations you can hear now that are already in your 
 line leaves them out because you do not need them, but you may still want to work them again: a friend, a regular,
 or someone you owe a better report. At most 8 rows; the rest are counted underneath.
 
-It has the same columns as Next in line, lined up under them, with two differences:
+It has the same columns as Next in line, lined up under them (including the amber *calling* tag under a busy station's call), with two differences:
 
 - **Why** says whether your contact with them on this band and mode is confirmed: ***Not confirmed*** or *Confirmed*.
   Stations not confirmed are listed first, as working them again is the usual reason to call.
