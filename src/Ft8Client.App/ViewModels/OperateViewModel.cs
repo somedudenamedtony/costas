@@ -397,6 +397,7 @@ public sealed partial class OperateViewModel : ObservableObject
         {
             if (byCall.TryGetValue(row.Call, out var st)) row.UpdatePlace(st, Units);
         }
+        MarkCallers();
 
         Watching.Clear();
         var marked = s.CallWhenFree.ToHashSet(StringComparer.Ordinal);
@@ -676,6 +677,15 @@ public sealed partial class OperateViewModel : ObservableObject
         foreach (var r in Line) r.IsSelected = ReferenceEquals(r, sel);
         Selected = sel;
         MarkInContact();
+        MarkCallers();
+    }
+
+    // Marks rows with other stations calling them, so a pileup shows before the operator clicks Call.
+    private void MarkCallers()
+    {
+        if (_snap is null) return;
+        foreach (var r in Line) r.UpdateCallers(_snap.Pileups.GetValueOrDefault(Callsign.Normalize(r.Call)));
+        foreach (var r in Repeats) r.UpdateCallers(_snap.Pileups.GetValueOrDefault(Callsign.Normalize(r.Call)));
     }
 
     // Highlights the station in contact in Next in line and Repeats.
@@ -695,6 +705,7 @@ public sealed partial class OperateViewModel : ObservableObject
             Repeats.Add(new RepeatRowViewModel(r, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0, Units, now, i++,
                 _snap is not null && (log?.CallConfirmed(r.Station.Call, _snap.Band, ModeInfo.Name(_snap.Mode)) ?? false)));
         MarkInContact();
+        MarkCallers();
         RepeatsMoreText = list.Count > MaxRepeats ? $"and {list.Count - MaxRepeats} more" : string.Empty;
         if (_snap is not null)
             RepeatsEmptyText = Repeats.Count > 0 ? string.Empty : $"Nobody you have worked on {BandPlan.Display(_snap.Band)} is on the air right now.";

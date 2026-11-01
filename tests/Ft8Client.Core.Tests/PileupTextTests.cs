@@ -78,4 +78,42 @@ public class PileupTextTests
     {
         PileupText.Offset(P(), 1650, Mode.Ft8).Should().BeEmpty();
     }
+
+    [Fact]
+    public void RowBadge_ThreeCallers_CountsThem()
+    {
+        PileupText.RowBadge(P(C("W7XQ", -6, 1330), C("K6ODE", -9, 1560), C("N0QRT", -12, 1610))).Should().Be("3 calling");
+    }
+
+    [Fact]
+    public void RowBadge_PicksOnly_Blank()
+    {
+        PileupText.RowBadge(P() with { Picks = [Pick(true), Pick(true)] }).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RowBadge_Null_Blank()
+    {
+        PileupText.RowBadge(null).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RowTip_TwoCallers_NamesThemWithReports()
+    {
+        PileupText.RowTip(P(C("W7XQ", -6, 1330), C("K6ODE", -12, 1560)))
+            .Should().Be("Calling JA6VQA at 20:29:30: W7XQ -06, K6ODE -12.");
+    }
+
+    [Fact]
+    public void RowTip_MoreThanMax_CountsTheRest()
+    {
+        PileupText.RowTip(P(C("W7XQ", -6, 1330), C("K6ODE", -9, 1560), C("N0QRT", -12, 1610)), max: 2)
+            .Should().Be("Calling JA6VQA at 20:29:30: W7XQ -06, K6ODE -09 and 1 more.");
+    }
+
+    [Fact]
+    public void RowTip_NoCallers_Blank()
+    {
+        PileupText.RowTip(P()).Should().BeEmpty();
+    }
 }

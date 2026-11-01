@@ -52,4 +52,24 @@ public static class PileupText
             ? $"{nearest.Call} is calling {diff} Hz from your offset."
             : $"Your offset, {myOffsetHz} Hz, is clear of them.";
     }
+
+    /// <summary>
+    /// The short marker on a station's row in the call list: "1 calling" or "3 calling"; blank with no current
+    /// callers. Picks alone do not mark a row: they say how a station chooses, not that anyone is calling it now.
+    /// </summary>
+    public static string RowBadge(Pileup? p) =>
+        p is null || p.Callers.Count == 0 ? string.Empty : $"{p.Callers.Count} calling";
+
+    /// <summary>
+    /// Tooltip for <see cref="RowBadge"/>: "Calling JA6VQA at 20:29:30: W7XQ -06, K1ABC -12." with at most
+    /// <paramref name="max"/> calls named, strongest first, then "and 2 more"; blank with no current callers.
+    /// </summary>
+    public static string RowTip(Pileup? p, int max = 6)
+    {
+        if (p is null || p.Callers.Count == 0 || p.CallersSlotUtc is not { } slot) return string.Empty;
+        var at = slot.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+        var named = string.Join(", ", p.Callers.Take(max).Select(c => $"{c.Call} {Messages.Report.Format(c.Snr)}"));
+        var more = p.Callers.Count > max ? $" and {p.Callers.Count - max} more" : string.Empty;
+        return $"Calling {p.Target} at {at}: {named}{more}.";
+    }
 }

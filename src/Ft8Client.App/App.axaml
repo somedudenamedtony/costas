@@ -65,6 +65,20 @@
       <Setter Property="CornerRadius" Value="8" />
     </Style>
     <!-- Something the operator should look at now, such as other stations calling the one I'm calling. -->
+    <!-- The small "3 calling" tag on a call-list row: the attention colours of the Who else is calling box, in a pill. -->
+    <Style Selector="Border.callers">
+      <Setter Property="Background" Value="{DynamicResource CautionBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CautionBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.callers > TextBlock">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource CautionBrush}" />
+    </Style>
     <Style Selector="Border.attention">
       <Setter Property="Background" Value="{DynamicResource CautionBackgroundBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource CautionBorderBrush}" />

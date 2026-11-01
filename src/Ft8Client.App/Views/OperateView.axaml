@@ -379,7 +379,14 @@
                                 BorderBrush="{Binding IsSelected, Converter={x:Static v:Converters.CursorOutline}}" />
                         <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" v:ResizableColumns.Layout="Calls" MinHeight="40" Margin="14,0">
                           <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
-                          <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                          <!-- The call, with an amber "3 calling" tag under it while others are calling this station. -->
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="{Binding Call}" FontWeight="SemiBold" />
+                            <Border Classes="callers" IsVisible="{Binding HasCallers}" ToolTip.Tip="{Binding CallersTip}"
+                                    AutomationProperties.Name="{Binding CallersTip}">
+                              <TextBlock Text="{Binding Callers}" />
+                            </Border>
+                          </StackPanel>
                           <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                           <StackPanel Grid.Column="3" VerticalAlignment="Center">
                           <StackPanel Orientation="Horizontal" Spacing="6">
@@ -475,7 +482,13 @@
                       <Border Width="3" HorizontalAlignment="Left" Background="{Binding IsInContact, Converter={x:Static v:Converters.SelectedBar}}" />
                       <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" v:ResizableColumns.Layout="Calls" MinHeight="36" Margin="14,0">
                         <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1" Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                          <TextBlock Text="{Binding Call}" FontWeight="SemiBold" />
+                          <Border Classes="callers" IsVisible="{Binding HasCallers}" ToolTip.Tip="{Binding CallersTip}"
+                                  AutomationProperties.Name="{Binding CallersTip}">
+                            <TextBlock Text="{Binding Callers}" />
+                          </Border>
+                        </StackPanel>
                         <TextBlock Grid.Column="2" Text="{Binding Where}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         <TextBlock Grid.Column="3" Text="{Binding Why}" VerticalAlignment="Center"
                                    Foreground="{Binding WhyKind, Converter={x:Static v:Converters.KindBrush}}" FontWeight="{Binding WhyBold, Converter={x:Static v:Converters.Bold}}" />

@@ -176,6 +176,25 @@ public sealed partial class StationRowViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsInContact { get; set; }
 
+    /// <summary>Other stations calling this one right now: "3 calling", or blank. Updated every snapshot.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCallers))]
+    public partial string Callers { get; private set; } = string.Empty;
+
+    /// <summary>Who is calling, strongest first, with their reports at my station.</summary>
+    [ObservableProperty]
+    public partial string CallersTip { get; private set; } = string.Empty;
+
+    /// <summary>The callers marker is shown.</summary>
+    public bool HasCallers => Callers.Length > 0;
+
+    /// <summary>Shows the current pileup on this station (from my own decodes), or clears it.</summary>
+    public void UpdateCallers(Core.Pileups.Pileup? p)
+    {
+        Callers = Core.Pileups.PileupText.RowBadge(p);
+        CallersTip = Core.Pileups.PileupText.RowTip(p);
+    }
+
     /// <summary>Updates the age text. Called on every timer tick so a held list does not show a stale age.</summary>
     public void Refresh(DateTime nowUtc) => LastHeard = StationText.Ago(nowUtc - _heardEndUtc);
 
