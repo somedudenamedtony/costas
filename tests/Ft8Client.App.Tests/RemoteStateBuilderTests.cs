@@ -12,6 +12,7 @@ using Ft8Client.Core;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
+using Ft8Client.Core.Pileups;
 using Ft8Client.Core.Ranking;
 using Ft8Client.Core.Stations;
 using Ft8Client.Core.Time;
@@ -61,6 +62,23 @@ public class RemoteStateBuilderTests
         s.Repeats.Select(r => r.Call).Should().Equal("W1AW", "N0XYZ");
         s.Repeats[1].Button.Should().BeEmpty();
         s.Watching.Should().ContainSingle().Which.Reason.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void Build_StationWithCallers_RowCarriesCallingTag()
+    {
+        var pile = new Pileup
+        {
+            Target = "VE7XYZ",
+            CallersSlotUtc = Now.AddSeconds(-6),
+            Callers = [new PileupCaller("W6ABC", Now.AddSeconds(-6), -5, 1400), new PileupCaller("K7XYZ", Now.AddSeconds(-6), -9, 1500)],
+        };
+        var snap = Snap() with { Pileups = new Dictionary<string, Pileup> { ["VE7XYZ"] = pile } };
+
+        var s = RemoteStateBuilder.Build(snap, Now, Ctx, "you", null);
+
+        s.Line.Single().Calling.Should().Be("2 calling");
+        s.Repeats.Should().OnlyContain(r => r.Calling.Length == 0);
     }
 
     [Fact]

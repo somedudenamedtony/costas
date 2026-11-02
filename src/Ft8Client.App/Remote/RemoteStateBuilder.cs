@@ -85,7 +85,7 @@ public static class RemoteStateBuilder
             Conversation = [.. s.Conversation.TakeLast(MaxConversation)
                 .Select(l => new RemoteLine(l.Utc.ToString("HH:mm:ss", CultureInfo.InvariantCulture), l.Who, l.Text, l.Mine))],
             Callers = [.. s.Waiting.Select(w => Caller(w, s, inContact))],
-            Line = [.. s.Rank.Line.Take(MaxLine).Select(x => Row(new StationRowViewModel(x, 0, units, nowUtc, log?.LastContactWith(x.Station.Call))))],
+            Line = [.. s.Rank.Line.Take(MaxLine).Select(x => Row(new StationRowViewModel(x, 0, units, nowUtc, log?.LastContactWith(x.Station.Call)), s))],
             Band = s.Band,
             Mode = ModeInfo.Name(s.Mode),
             Bands = [.. ctx.Bands(s.Mode).Select(b => new RemoteBand(b, BandPlan.Display(b)))],
@@ -102,7 +102,7 @@ public static class RemoteStateBuilder
             Services = Services(s),
             Summary = summary is null ? null : new RemoteSummary(summary.Title, summary.StationsHeard, summary.Countries, summary.CallingCq, summary.YouNeed, summary.Caption),
             Repeats = [.. OperateViewModel.RepeatOrder(s.Rank.Worked).Take(MaxRows).Select(x => Repeat(new RepeatRowViewModel(x, log?.LastContactWith(x.Station.Call),
-                log?.ContactsWith(x.Station.Call).Count ?? 0, units, nowUtc)))],
+                log?.ContactsWith(x.Station.Call).Count ?? 0, units, nowUtc), s))],
             Watching = [.. s.Rank.Watching.Take(MaxRows).Select(x => new WatchRowViewModel(x, nowUtc, units)).Select(x => new RemoteWatch(x.Call, x.Where, x.Why, x.Reason))],
             Signal = Signal(s, nowUtc, ctx, log, band),
             TonightTitle = $"Worked this session · {s.Tonight.Count}",
@@ -114,12 +114,20 @@ public static class RemoteStateBuilder
         };
     }
 
-    private static RemoteStation Row(StationRowViewModel x) =>
-        new(x.Call, x.Where, x.Why, x.DoingNow, x.Db, x.CallText, x.HearsYou, x.Chance, x.LastHeard, x.LastWorked, x.ChanceReason);
+    // Rows carry the pileup on each station ("3 calling"), as the desk's call-list rows do.
+    private static RemoteStation Row(StationRowViewModel x, SessionSnapshot s)
+    {
+        x.UpdateCallers(s.Pileups.GetValueOrDefault(Callsign.Normalize(x.Call)));
+        return new(x.Call, x.Where, x.Why, x.DoingNow, x.Db, x.CallText, x.HearsYou, x.Chance, x.LastHeard, x.LastWorked, x.ChanceReason)
+            { Calling = x.Callers };
+    }
 
-    private static RemoteStation Repeat(RepeatRowViewModel x) =>
-        new(x.Call, x.Where, x.Why, x.DoingNow, x.Db, x.CanCall ? x.CallText : string.Empty, x.HearsYou, x.Chance, x.LastHeard, x.LastWorked,
-            x.ChanceReason);
+    private static RemoteStation Repeat(RepeatRowViewModel x, SessionSnapshot s)
+    {
+        x.UpdateCallers(s.Pileups.GetValueOrDefault(Callsign.Normalize(x.Call)));
+        return new(x.Call, x.Where, x.Why, x.DoingNow, x.Db, x.CanCall ? x.CallText : string.Empty, x.HearsYou, x.Chance, x.LastHeard, x.LastWorked,
+            x.ChanceReason) { Calling = x.Callers };
+    }
 
     private static RemoteDecode Decode(RawDecodeLine l)
     {
@@ -170,7 +178,11 @@ public static class RemoteStateBuilder
             far is null ? "—" : $"{far.Call} · {StationText.Distance(far.Km, ctx.Units)}",
             best is null ? "—" : $"{Report.Format(best.Snr)} from {best.Call}",
             NeighbourText.Headline(s.Neighbours),
-            [.. points.OrderByDescending(x => x.TimeUtc).Take(MaxRecent).Select(x => new RemoteReport(x.Call, x.Where, Report.Format(x.Snr), StationText.ShortAgo(now - x.TimeUtc)))]) { History = s.ReceptionHistory };
+            [.. points.OrderByDescending(x => x.TimeUtc).Take(MaxRecent).Select(x => new RemoteReport(x.Call, x.Where, Report.Format(x.Snr), StationText.ShortAgo(now - x.TimeUtc)))])
+        {
+            History = s.ReceptionHistory,
+            Heard = points.Count,
+        };
     }
 
     // The Operate view's details flyout, plus a button that does what Call or Answer would do for this station there.
