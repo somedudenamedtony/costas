@@ -7,6 +7,9 @@
 // see the GNU General Public License in LICENSE for details.
 
 using FluentAssertions;
+using Ft8Client.App.Engine;
+using Ft8Client.Core.Contacts;
+using Ft8Client.Core.Messages;
 using Ft8Client.App.ViewModels;
 using Ft8Client.App.Views;
 using Ft8Client.Core;
@@ -19,6 +22,39 @@ namespace Ft8Client.App.Tests;
 public class HeardMapTests
 {
     private static readonly DateTime Now = new(2026, 10, 11, 19, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public void ActiveContact_RemainsVisibleDespiteFiltersAndClearsWhenFinished()
+    {
+        var vm = new HeardMapViewModel { Show = "Calling CQ", HearsMe = false };
+        var contact = new ContactView("JA1AAA", "PM95", ContactFlow.AnswerCq, ContactOutcome.InProgress,
+            null, null, [], false, false, "Calling");
+        var snapshot = new SessionSnapshot { MyGrid = "DM79", Contact = contact };
+        vm.Apply(snapshot, Now);
+        vm.Points.Should().BeEmpty();
+        vm.Centre.Should().Be(Grid.ToLatLon("DM79"));
+        vm.ContactPoint.Should().NotBeNull();
+        vm.ContactPoint!.Position.Should().Be(Grid.ToLatLon("PM95")!.Value);
+        vm.ContactPoint.Kind.Should().Be(TextKind.Critical);
+
+        vm.Apply(snapshot with { Contact = contact with { Outcome = ContactOutcome.NoReply } }, Now);
+        vm.ContactPoint.Should().BeNull();
+        vm.Apply(snapshot with { Contact = null }, Now);
+        vm.ContactPoint.Should().BeNull();
+    }
+
+    [Fact]
+    public void ActiveContact_UsesHeardStationGridWhenContactGridUnknown()
+    {
+        var vm = new HeardMapViewModel();
+        vm.Apply(new SessionSnapshot
+        {
+            Contact = new ContactView("ja1aaa", null, ContactFlow.AnswerCq, ContactOutcome.InProgress,
+                null, null, [], false, false, "Calling"),
+            Stations = [new Station { Call = "JA1AAA", Grid = "PM95" }],
+        }, Now);
+        vm.ContactPoint!.Position.Should().Be(Grid.ToLatLon("PM95")!.Value);
+    }
 
     private static RankedStation Ranked(string call, string grid, NeedTag need, StationState state = StationState.CallingCq, int snr = -12, int minutesAgo = 0) =>
         new(new Station { Call = call, Grid = grid, LastSnr = snr, State = state, LastHeardUtc = Now.AddMinutes(-minutesAgo) },

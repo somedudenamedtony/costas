@@ -10,6 +10,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ft8Client.App.Engine;
 using Ft8Client.Core;
+using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Logbook;
 using Ft8Client.Core.Messages;
@@ -80,6 +81,10 @@ public sealed partial class HeardMapViewModel : ObservableObject
     [ObservableProperty]
     public partial LatLon? Centre { get; set; }
 
+    /// <summary>The active contact, independent of the map filters.</summary>
+    [ObservableProperty]
+    public partial MapPoint? ContactPoint { get; set; }
+
     /// <summary>Now, for the night shading and the activity chart.</summary>
     [ObservableProperty]
     public partial DateTime NowUtc { get; set; }
@@ -140,6 +145,17 @@ public sealed partial class HeardMapViewModel : ObservableObject
         if (_snap is not { } s) return;
         NowUtc = _now;
         Centre = Grid.ToLatLon(s.MyGrid);
+        ContactPoint = null;
+        if (s.Contact is { Outcome: ContactOutcome.InProgress } contact)
+        {
+            var station = s.Stations.FirstOrDefault(x => Callsign.EqualsCall(x.Call, contact.DxCall))
+                ?? s.Rank.Line.Concat(s.Rank.Watching).Concat(s.Rank.Worked)
+                    .Select(x => x.Station).FirstOrDefault(x => Callsign.EqualsCall(x.Call, contact.DxCall));
+            var position = Grid.ToLatLon(contact.DxGrid) ?? Grid.ToLatLon(station?.Grid)
+                ?? station?.Entity?.Position ?? Countries?.Lookup(contact.DxCall)?.Position;
+            if (position is { } at)
+                ContactPoint = new MapPoint(at, contact.DxCall, $"Calling {contact.DxCall}", TextKind.Critical, 6, 1, false);
+        }
         Notice = Centre is null ? "Set your grid in Settings to centre the map on you." : string.Empty;
 
         var all = s.Rank.Line.Concat(s.Rank.Watching).Concat(s.Rank.Worked);
@@ -153,6 +169,7 @@ public sealed partial class HeardMapViewModel : ObservableObject
         Legend.Clear();
         foreach (var item in LegendFor(Colour)) Legend.Add(item);
         if (HearsMe) Legend.Add(new LegendItem(TextKind.Success, "Heard you (PSK Reporter)", Ring: true));
+        if (ContactPoint is not null) Legend.Add(new LegendItem(TextKind.Critical, "You and your contact"));
 
         Activity = s.Activity;
         var slotted = ModeInfo.IsSlotted(s.Mode);
