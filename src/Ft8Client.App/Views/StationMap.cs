@@ -15,6 +15,7 @@ using Avalonia.Threading;
 using Ft8Client.App.ViewModels;
 using Ft8Client.Core;
 using Ft8Client.Core.Geo;
+using Ft8Client.Core.Messages;
 using Ft8Client.Core.Ranking;
 
 namespace Ft8Client.App.Views;
@@ -32,6 +33,16 @@ public sealed class StationMap : Control
 
     /// <summary>My position.</summary>
     public static readonly StyledProperty<LatLon?> CentreProperty = AvaloniaProperty.Register<StationMap, LatLon?>(nameof(Centre));
+
+    /// <summary>Active contact to highlight and connect to my position.</summary>
+    public static readonly StyledProperty<MapPoint?> ContactPointProperty = AvaloniaProperty.Register<StationMap, MapPoint?>(nameof(ContactPoint));
+
+    /// <inheritdoc cref="ContactPointProperty" />
+    public MapPoint? ContactPoint
+    {
+        get => GetValue(ContactPointProperty);
+        set => SetValue(ContactPointProperty, value);
+    }
 
     /// <summary>Rotating globe instead of centred on me.</summary>
     public static readonly StyledProperty<bool> WorldProperty = AvaloniaProperty.Register<StationMap, bool>(nameof(World));
@@ -95,7 +106,7 @@ public sealed class StationMap : Control
 
     static StationMap()
     {
-        AffectsRender<StationMap>(PointsProperty, CentreProperty, WorldProperty, DayNightProperty, NowUtcProperty, UnitsProperty, ReportsProperty);
+        AffectsRender<StationMap>(PointsProperty, CentreProperty, WorldProperty, DayNightProperty, NowUtcProperty, UnitsProperty, ReportsProperty, ContactPointProperty);
         CentreProperty.Changed.AddClassHandler<StationMap>((map, _) =>
         {
             if (!map._turned) map.FaceMe();
@@ -211,7 +222,46 @@ public sealed class StationMap : Control
                 var p = MapGeometry.GlobePoint(me, _longitude, _latitude);
                 if (p.Depth > 0) DrawMe(ctx, new Point(centre.X + p.X * radius, centre.Y - p.Y * radius));
             }
+            if (ContactPoint is { } contact)
+            {
+                Point Screen((double X, double Y, double Depth) p) => new(centre.X + p.X * radius, centre.Y - p.Y * radius);
+                if (Centre is { } origin)
+                {
+                    // Sample the shortest great-circle arc and omit its hidden hemisphere.
+                    var a = VectorOnSphere(origin);
+                    var b = VectorOnSphere(contact.Position);
+                    var angle = Math.Acos(Math.Clamp(a.X * b.X + a.Y * b.Y + a.Z * b.Z, -1, 1));
+                    var sin = Math.Sin(angle);
+                    (double X, double Y, double Depth)? previous = null;
+                    for (var i = 0; i <= 128; i++)
+                    {
+                        var t = i / 128.0;
+                        var wa = Math.Abs(sin) < 1e-8 ? 1 - t : Math.Sin((1 - t) * angle) / sin;
+                        var wb = Math.Abs(sin) < 1e-8 ? t : Math.Sin(t * angle) / sin;
+                        var x = wa * a.X + wb * b.X;
+                        var y = wa * a.Y + wb * b.Y;
+                        var z = wa * a.Z + wb * b.Z;
+                        var location = new LatLon(Math.Atan2(z, Math.Sqrt(x * x + y * y)) * 180 / Math.PI,
+                            Math.Atan2(y, x) * 180 / Math.PI);
+                        var next = MapGeometry.GlobePoint(location, _longitude, _latitude);
+                        if (previous is { Depth: > 0 } last && next.Depth > 0)
+                            ctx.DrawLine(new Pen(ContactBrush, 2), Screen(last), Screen(next));
+                        previous = next;
+                    }
+                    var start = MapGeometry.GlobePoint(origin, _longitude, _latitude);
+                    if (start.Depth > 0) DrawContactDot(ctx, Screen(start));
+                }
+                var end = MapGeometry.GlobePoint(contact.Position, _longitude, _latitude);
+                if (end.Depth > 0) DrawContact(ctx, Screen(end), contact);
+            }
         }
+    }
+
+    private static (double X, double Y, double Z) VectorOnSphere(LatLon p)
+    {
+        var lat = p.Lat * Math.PI / 180;
+        var lon = p.Lon * Math.PI / 180;
+        return (Math.Cos(lat) * Math.Cos(lon), Math.Cos(lat) * Math.Sin(lon), Math.Sin(lat));
     }
 
     private void RenderAround(DrawingContext ctx, LatLon me, IReadOnlyList<MapPoint> pts)
@@ -220,6 +270,7 @@ public sealed class StationMap : Control
         var c = new Point(Bounds.Width / 2, Bounds.Height / 2);
         var ring = ReachPlot.RingKm(Units);
         var far = pts.Select(p => GreatCircle.DistanceKm(me, p.Position)).DefaultIfEmpty(0).Max();
+        if (ContactPoint is { } target) far = Math.Max(far, GreatCircle.DistanceKm(me, target.Position));
         var scale = Math.Max(1, Math.Ceiling(far / ring)) * ring;
         var rings = (int)Math.Round(scale / ring);
         var line = new Pen(MapGeometry.Brush("ControlBorderBrush") ?? Brushes.Gray, 1);
@@ -245,6 +296,26 @@ public sealed class StationMap : Control
             DrawDot(ctx, new Point(c.X + x * r, c.Y - y * r), p);
         }
         DrawMe(ctx, c);
+        if (ContactPoint is { } contact)
+        {
+            var (x, y) = AzimuthalProjection.Project(me, contact.Position, scale);
+            var end = new Point(c.X + x * r, c.Y - y * r);
+            ctx.DrawLine(new Pen(ContactBrush, 2), c, end);
+            DrawContactDot(ctx, c);
+            DrawContact(ctx, end, contact);
+        }
+    }
+
+    private static IBrush ContactBrush => MapGeometry.Brush("CriticalBrush") ?? Brushes.Red;
+
+    private static void DrawContactDot(DrawingContext ctx, Point at) =>
+        ctx.DrawEllipse(ContactBrush, new Pen(MapGeometry.Brush("CardBackgroundBrush") ?? Brushes.White, 1.5), at, 6, 6);
+
+    private void DrawContact(DrawingContext ctx, Point at, MapPoint contact)
+    {
+        _placed.RemoveAll(p => Callsign.EqualsCall(p.M.Call, contact.Call));
+        DrawContactDot(ctx, at);
+        _placed.Insert(0, (at, contact));
     }
 
     private void DrawDot(DrawingContext ctx, Point at, MapPoint p)
