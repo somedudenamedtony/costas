@@ -15,7 +15,10 @@ namespace Ft8Client.App.Engine;
 /// <summary>
 /// Reads the radio's ALC, SWR and power output meters while a transmission or test tone is on the air, reports each
 /// reading as it comes for the live display, and reports the result when it ends. Readings start once the radio has
-/// settled and stop shortly before the audio ends, so no meter command is in flight when PTT is released. Display only (owner decision D13): it never stops, refuses or changes a transmission.
+/// settled and stop shortly before the audio ends, so no meter command is in flight when PTT is released. The readings
+/// are display only (owner decision D13) with one exception, asked for by the owner on 2026-11-07: when
+/// <see cref="SwrStopAt"/> gives a limit, an SWR held at or above it raises <see cref="SwrTripped"/> so the transmission
+/// can be stopped. A Tune tone is never tripped: an antenna tuner looks at a high SWR on purpose while it tunes.
 /// It also reads the radio's power setting once per transmission, for the log.
 /// </summary>
 public sealed class TxMeterMonitor
@@ -30,11 +33,11 @@ public sealed class TxMeterMonitor
     {
         ArgumentNullException.ThrowIfNull(tx);
         _rig = rig;
-        tx.Started += (p, _) => Watch(p.Duration);
-        tx.ToneStarted += p => Watch(p.Duration);
+        tx.Started += (p, _) => Watch(p.Duration, guarded: true);
+        tx.ToneStarted += p => Watch(p.Duration, guarded: false);
         tx.Ended += (_, _) => Stop();
         // A PSK or RTTY over has no set length: it is read until it ends, at most the keyboard watchdog's limit.
-        tx.StreamStarted += () => Watch(KeyboardTransmitter.MaxOver);
+        tx.StreamStarted += () => Watch(KeyboardTransmitter.MaxOver, guarded: true);
         tx.StreamEnded += _ => Stop();
     }
 
@@ -46,6 +49,12 @@ public sealed class TxMeterMonitor
 
     /// <summary>No reading starts later than this before the audio ends.</summary>
     public TimeSpan StopBeforeEnd { get; init; } = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>The SWR at or above which a transmission is stopped, read at the start of each one; null to never stop.</summary>
+    public Func<double?> SwrStopAt { get; init; } = () => null;
+
+    /// <summary>Raised once, from the reader, with the SWR that should stop the transmission now on the air.</summary>
+    public event Action<double>? SwrTripped;
 
     /// <summary>Raised with each reading that has at least one meter value, while the transmission is on the air.</summary>
     public event Action<TxMeterReading>? Read;
@@ -65,14 +74,15 @@ public sealed class TxMeterMonitor
     /// <summary>Completes when the current watch (if any) has reported, with its result (null when no meter was read).</summary>
     public Task<TxMeterResult?> Idle { get; private set; } = Task.FromResult<TxMeterResult?>(null);
 
-    private void Watch(TimeSpan duration)
+    private void Watch(TimeSpan duration, bool guarded)
     {
         var cts = new CancellationTokenSource();
+        var guard = guarded && SwrStopAt() is { } limit ? new SwrGuard(limit) : null;
         lock (_gate)
         {
             _cts?.Cancel();
             _cts = cts;
-            Idle = Task.Run(() => ReadAsync(duration, cts.Token));
+            Idle = Task.Run(() => ReadAsync(duration, guard, cts.Token));
         }
     }
 
@@ -81,7 +91,7 @@ public sealed class TxMeterMonitor
         lock (_gate) _cts?.Cancel();
     }
 
-    private async Task<TxMeterResult?> ReadAsync(TimeSpan duration, CancellationToken ct)
+    private async Task<TxMeterResult?> ReadAsync(TimeSpan duration, SwrGuard? guard, CancellationToken ct)
     {
         var readings = new List<TxMeterReading>();
         var sw = Stopwatch.StartNew();
@@ -96,6 +106,7 @@ public sealed class TxMeterMonitor
                 var reading = await _rig().ReadTxMetersAsync(ct).ConfigureAwait(false);
                 readings.Add(reading);
                 if (reading.Any && !ct.IsCancellationRequested) Read?.Invoke(reading);
+                if (guard is not null && !ct.IsCancellationRequested && guard.Add(reading)) SwrTripped?.Invoke(guard.TrippedAt!.Value);
                 await Task.Delay(Interval, ct).ConfigureAwait(false);
             }
         }

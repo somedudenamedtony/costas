@@ -17,6 +17,7 @@ using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Time;
+using Ft8Client.Core.Transmit;
 using Ft8Client.Data;
 using Ft8Client.Data.Adif;
 using Ft8Client.Data.Database;
@@ -381,7 +382,15 @@ public sealed class AppHost : IAsyncDisposable
             () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band),
             LogHold);
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
-        TxMeters = new TxMeterMonitor(Transmitter, () => _rig);
+        TxMeters = new TxMeterMonitor(Transmitter, () => _rig)
+        {
+            SwrStopAt = () => Settings.Current.Profile.Audio.StopOnHighSwr ? SwrGuard.DefaultLimit : null,
+        };
+        TxMeters.SwrTripped += swr =>
+        {
+            Log.Warning("Transmit stopped: SWR {Swr:0.0} held at or above {Limit}", swr, SwrGuard.DefaultLimit);
+            _ = Session.HaltAsync(SwrGuard.StopText(swr));
+        };
         TxMeters.Measured += r => Session.SetTxMeters(TxLevel.OnMeasured(r));
         TxMeters.Read += Session.SetTxMetersLive;
         if (partner is not null) Session.Transmitting += partner.OnTransmitted;

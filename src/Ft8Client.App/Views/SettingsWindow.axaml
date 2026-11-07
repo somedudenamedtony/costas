@@ -106,6 +106,13 @@
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="High SWR" />
+              <StackPanel Grid.Column="1">
+                <CheckBox IsChecked="{Binding StopOnHighSwr}" Content="Stop transmitting when the SWR stays at 3.0 or above" />
+                <TextBlock Classes="help" Text="Costas reads the radio's SWR meter twice a second while it sends. Two readings in a row at 3.0 or above stop the transmission and say so in the bottom bar. Tune is never stopped, so the radio's tuner can do its work. Needs a radio that reports SWR over CAT." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="CQ" />
               <StackPanel Grid.Column="1">
                 <TextBox Text="{Binding CqModifier}" Width="90" MaxLength="4" Watermark="modifier" HorizontalAlignment="Left" />

@@ -54,6 +54,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         TxGain = _loadedTxGain = TxLevelController.LevelFor(s.Profile.Audio, s.Operating.Band, s.Operating.Mode).ToString("0.0", CultureInfo.InvariantCulture);
         TxGainLabel = $"Audio level on {s.Operating.Band} (dB)";
         AutoTxLevel = s.Profile.Audio.AutoTxLevel;
+        StopOnHighSwr = s.Profile.Audio.StopOnHighSwr;
         Watchdog = s.Operating.WatchdogMinutes.ToString(CultureInfo.InvariantCulture);
         RetryLimit = s.Operating.RetryLimit.ToString(CultureInfo.InvariantCulture);
         Signoff = s.Operating.Signoff;
@@ -334,6 +335,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Adjust the transmit level from the radio's ALC.</summary>
     [ObservableProperty]
     public partial bool AutoTxLevel { get; set; }
+
+    /// <summary>Stop a transmission when the SWR stays at 3.0 or above.</summary>
+    [ObservableProperty]
+    public partial bool StopOnHighSwr { get; set; }
 
     /// <summary>Watchdog minutes.</summary>
     [ObservableProperty]
@@ -1095,6 +1100,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                 s.Profile.Audio.TxGainByBand[TxLevelController.LevelKey(s.Operating.Band, s.Operating.Mode)] = gain;
             }
             s.Profile.Audio.AutoTxLevel = AutoTxLevel;
+            s.Profile.Audio.StopOnHighSwr = StopOnHighSwr;
             s.Operating.WatchdogMinutes = Int(Watchdog, 1, 60, 6);
             s.Operating.RetryLimit = Int(RetryLimit, 1, 20, 4);
             s.Operating.Signoff = Signoff;
