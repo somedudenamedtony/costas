@@ -52,8 +52,14 @@ public sealed partial class UpdateBarViewModel : ObservableObject
     {
         var r = _updates.Available;
         Visible = r is not null;
-        if (r is not null) Text = $"{AppInfo.ProductName} {r.Version} is available (you have {AppInfo.Version}; {DownloadSize(r.InstallerSize)} download).";
+        if (r is not null) Text = BarText(r, AppInfo.Version, DownloadSize(r.InstallerSize));
     }
+
+    /// <summary>The bar's sentence: a release, a development build, or the way back to the latest release.</summary>
+    internal static string BarText(ReleaseInfo r, string running, string size) =>
+        r.IsDowngrade ? $"Development builds are off: go back to release {r.Version} (you have development build {running}; {size} download)."
+        : r.IsDevelopment ? $"Development build {r.Version} is available (you have {running}; {size} download)."
+        : $"{AppInfo.ProductName} {r.Version} is available (you have {running}; {size} download).";
 
     /// <summary>"2.4 MB" or "95 MB": a delta update is a few MB, a full one about a hundred.</summary>
     internal static string DownloadSize(long bytes) =>

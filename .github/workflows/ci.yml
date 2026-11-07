@@ -33,6 +33,8 @@ jobs:
           # Where Report a problem sends feedback (not secrets: both ship inside the app). A repository variable of the same name overrides each.
           FEEDBACK_URL: ${{ vars.FEEDBACK_URL || 'https://formspree.io/f/xaeepqap' }}
           FEEDBACK_EMAIL: ${{ vars.FEEDBACK_EMAIL || 'Tony@emberridgedev.com' }}
+          # A push to main makes a development build, published on the "dev" prerelease for installs that follow them.
+          COSTAS_CHANNEL: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'dev' || '' }}
         run: scripts/build-linux.sh ${{ github.run_number }}
       - uses: actions/upload-artifact@v4
         with:
@@ -92,6 +94,8 @@ jobs:
           FEEDBACK_EMAIL: ${{ vars.FEEDBACK_EMAIL || 'Tony@emberridgedev.com' }}
           # Release runs download the latest release's Velopack package so this one carries a delta from it.
           VELOPACK_PREVIOUS: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && '1' || '' }}
+          # A push to main makes a development build: marked as one, and also packed in Velopack's dev channel.
+          COSTAS_CHANNEL: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'dev' || '' }}
         run: ./scripts/build-installer.ps1 -BuildNumber ${{ github.run_number }}
         shell: pwsh
       - name: Check jt9 stays running (shared memory)
@@ -116,6 +120,58 @@ jobs:
           name: Costas-Velopack
           path: artifacts/velopack/
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: Costas-Velopack-dev
+          path: artifacts/velopack-dev/
+          if-no-files-found: error
+  dev-release:
+    # Each green push to main replaces the one development build: a GitHub prerelease tagged "dev". GitHub never makes a
+    # prerelease the latest release, so normal update checks never see it; only installs with development builds on
+    # (Settings, Developer) follow it. It holds one build at a time so it never crowds releases out of the short list of
+    # recent releases Velopack reads. Built without the Aptabase key, Sentry DSN or code signing, like any non-release run.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [linux, windows, installer]
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: dev-release
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Costas-Setup
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: Costas-linux
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: Costas-Velopack-dev
+          path: velopack
+      - name: Replace the development release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          f=$(ls Costas-Setup-*.exe)
+          v=${f#Costas-Setup-}
+          v=${v%.exe}
+          # Only replace it with a newer build: a re-run of an older push must not take development installs backwards.
+          current=$(gh release view dev --repo "$GITHUB_REPOSITORY" --json name --jq .name 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+          if [ -n "$current" ] && [ "$(printf '%s\n%s\n' "$current" "$v" | sort -V | tail -n1)" != "$v" ]; then
+            echo "The development release already has $current, newer than $v"; exit 0
+          fi
+          sha256sum "$f" | cut -d' ' -f1 > "$f.sha256"
+          linux="Costas-$v-linux-x64.tar.gz"
+          gh release delete dev --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes 2>/dev/null || true
+          # The app reads the version from this title (UpdateChecker.Parse).
+          gh release create dev "$f" "$f.sha256" "$linux" "$linux.sha256" ../velopack/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --prerelease --latest=false --title "Costas $v (development build)" \
+            --notes "Development build of main at $GITHUB_SHA, replaced by each green push to main. Not a release: for testers who turn on development builds in Settings, Developer. Turn that off to go back to the latest release."
   release:
     # Releases are cut on demand: a manual run of this workflow on main publishes its green build as a GitHub Release,
     # and the app's update check offers the newest one. Ordinary pushes and merges only build and test. The release
@@ -150,5 +206,7 @@ jobs:
           linux="Costas-$v-linux-x64.tar.gz"
           # Velopack's files (installer, this version's full package and delta, and the feed the app reads) sit beside the
           # classic installer, which builds from before Velopack still update through.
+          # Notes count from the previous release, never from the "dev" development prerelease.
+          prev=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>/dev/null || true)
           gh release create "v$v" "$f" "$f.sha256" "$linux" "$linux.sha256" ../velopack/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "Costas $v" --generate-notes
+            --title "Costas $v" --generate-notes ${prev:+--notes-start-tag "$prev"}

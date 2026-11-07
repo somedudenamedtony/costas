@@ -75,6 +75,45 @@ public class UpdateTests
         UpdateChecker.Parse(Release("v0.1.408"))!.IsVelopackSetup.Should().BeFalse();
     }
 
+    private const string DevRelease = """
+        {
+          "tag_name": "dev", "name": "Costas 0.1.310 (development build)", "draft": false, "prerelease": true,
+          "html_url": "https://github.com/somedudenamedtony/costas/releases/tag/dev",
+          "assets": [
+            { "name": "Costas-Setup-0.1.310.exe", "size": 80000000, "browser_download_url": "https://example.invalid/c.exe", "digest": "sha256:cd" },
+            { "name": "CostasApp-dev-Setup.exe", "size": 70000000, "browser_download_url": "https://example.invalid/vp.exe", "digest": "sha256:ab" }
+          ]
+        }
+        """;
+
+    [Fact]
+    public void Parse_DevelopmentRelease_ReadsVersionFromTitleAndPrefersDevSetup()
+    {
+        var r = UpdateChecker.Parse(DevRelease, development: true)!;
+        r.Version.Should().Be(new Version(0, 1, 310));
+        r.Tag.Should().Be("v0.1.310");
+        r.IsDevelopment.Should().BeTrue();
+        r.InstallerName.Should().Be(UpdateChecker.VelopackDevSetupName);
+        r.IsVelopackSetup.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Parse_DevelopmentReleaseAsRelease_Null()
+    {
+        UpdateChecker.Parse(DevRelease).Should().BeNull();
+        UpdateChecker.Parse(Release("v0.1.300"), development: true).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LatestDevelopmentAsync_AsksForDevTag()
+    {
+        var fake = new FakeGitHub(_ => Ok(DevRelease));
+        using var http = new HttpClient(fake);
+        var r = await new UpdateChecker(http, "somedudenamedtony/costas").LatestDevelopmentAsync(TestContext.Current.CancellationToken);
+        r!.Version.Should().Be(new Version(0, 1, 310));
+        fake.Requests[0].ToString().Should().Be("https://api.github.com/repos/somedudenamedtony/costas/releases/tags/dev");
+    }
+
     [Theory]
     [InlineData("0.1.0.407", true)]
     [InlineData("0.1.408", false)]

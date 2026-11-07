@@ -7,6 +7,7 @@
 // see the GNU General Public License in LICENSE for details.
 
 using Ft8Client.App.Services;
+using Ft8Client.Integrations.Updates;
 
 namespace Ft8Client.App.Tests;
 
@@ -57,4 +58,28 @@ public sealed class UpdateServiceTests
     [InlineData(99_614_720, "95 MB")]
     public void DownloadSize_Bytes_ShortMegabytes(long bytes, string text) =>
         Ft8Client.App.ViewModels.UpdateBarViewModel.DownloadSize(bytes).Should().Be(text);
+
+    private static ReleaseInfo Build(string version, bool development = false) =>
+        new(Version.Parse(version), $"v{version}", string.Empty, "CostasApp-win-Setup.exe", string.Empty, 1, "ab") { IsDevelopment = development };
+
+    [Theory]
+    [InlineData("0.1.300", "0.1.305", false, false)] // release, older than a development build, development builds on
+    [InlineData("0.1.300", "0.1.305", true, true)] // ...and turned off: go back to it
+    [InlineData("0.1.305", "0.1.305", true, false)] // the same build: nothing to go back to
+    [InlineData("0.1.310", "0.1.305", false, true)] // newer: offered as ever
+    public void ShouldOffer_Release_OlderOnlyWhenLeavingDevelopmentBuilds(string release, string running, bool leaving, bool offered) =>
+        UpdateService.ShouldOffer(Build(release), running, leaving).Should().Be(offered);
+
+    [Fact]
+    public void ShouldOffer_OlderDevelopmentBuildWhileLeaving_NotOffered() =>
+        UpdateService.ShouldOffer(Build("0.1.300", development: true), "0.1.305", leavingDevelopment: true).Should().BeFalse();
+
+    [Fact]
+    public void BarText_DowngradeAndDevelopment_SayWhatTheyAre()
+    {
+        Ft8Client.App.ViewModels.UpdateBarViewModel.BarText(Build("0.1.300") with { IsDowngrade = true }, "0.1.305", "95 MB")
+            .Should().Be("Development builds are off: go back to release 0.1.300 (you have development build 0.1.305; 95 MB download).");
+        Ft8Client.App.ViewModels.UpdateBarViewModel.BarText(Build("0.1.310", development: true), "0.1.305", "95 MB")
+            .Should().StartWith("Development build 0.1.310 is available");
+    }
 }

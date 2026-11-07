@@ -22,4 +22,14 @@ public sealed class DeveloperOptions
 
     /// <summary>While replaying, add a simulated station that answers my calls.</summary>
     public bool SimulatedPartner { get; set; }
+
+    /// <summary>
+    /// Update to development builds (each green build of main) as well as releases. Applies only while developer mode is
+    /// on; turning either off goes back to the latest release.
+    /// </summary>
+    public bool DevelopmentBuilds { get; set; }
+
+    /// <summary>Development builds are wanted: developer mode and <see cref="DevelopmentBuilds"/> are both on.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool FollowsDevelopmentBuilds => Enabled && DevelopmentBuilds;
 }

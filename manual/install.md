@@ -35,6 +35,18 @@ appears at the top of the main window:
 
 You can turn the daily check off, or check by hand, in **Settings › Updates**. **☰ › About** also has a **Check for updates** button, which checks even when the daily check is off.
 
+### Development builds
+
+Testers can follow development builds: every change to Costas that passes its automatic tests, usually several a
+week, before it goes into a release. Turn on [developer mode](settings.md#developer-mode), then tick **Settings ›
+Developer › Development builds**. Costas checks straight away and the update bar offers the newest development build;
+from then on it offers each new one. Development builds are full downloads (about 90 MB) and are tested only by CI, so
+they can break on air.
+
+To stop, untick **Development builds** (or turn developer mode off). Costas checks again and the bar offers to **go
+back to the latest release**, even though it is older than the development build you have. Your settings and log are
+kept.
+
 Upgrading keeps your log and settings.
 
 !!! note "Installed before October 2026?"

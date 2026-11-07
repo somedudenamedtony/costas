@@ -24,6 +24,11 @@ namespace Ft8Client.App.Services;
 /// A Velopack install (Windows, since the move to delta updates) downloads only what changed and lets Velopack swap the
 /// files once the app has closed. A classic Inno Setup install downloads a full installer: Velopack's, which moves it to
 /// a Velopack install, or (for releases from before the move) the classic one. Linux opens the release page instead.
+/// <para>
+/// With development builds on (Settings, Developer) the check follows the development release that CI replaces with each
+/// green build of main (Velopack's <c>dev</c> channel). Turning them off offers the latest release even though it is
+/// older than the development build that is running, so the station goes back to what everyone else runs.
+/// </para>
 /// </remarks>
 public sealed class UpdateService : IDisposable
 {
@@ -37,7 +42,10 @@ public sealed class UpdateService : IDisposable
     private readonly Timer _timer;
     private readonly SemaphoreSlim _checking = new(1, 1);
     private readonly UpdateManager? _velopack;
+    private readonly IdentifiedDownloader? _downloader;
+    private UpdateManager? _checkedWith;
     private UpdateInfo? _delta;
+    private bool _followedDevelopment;
 
     /// <summary>
     /// Creates the service. The installer writes its log to <paramref name="logFolder"/> (kept, unlike downloads).
@@ -58,7 +66,11 @@ public sealed class UpdateService : IDisposable
             {
                 var downloader = new IdentifiedDownloader(() => settings.Current.Profile.Callsign);
                 var manager = new UpdateManager(new GithubSource($"https://github.com/{UpdateChecker.DefaultRepository}", null, false, downloader));
-                if (manager.IsInstalled) _velopack = manager;
+                if (manager.IsInstalled)
+                {
+                    _velopack = manager;
+                    _downloader = downloader;
+                }
             }
             catch (InvalidOperationException)
             {
@@ -69,6 +81,47 @@ public sealed class UpdateService : IDisposable
 
     /// <summary>Installed by Velopack, so updates download only what changed.</summary>
     public bool DeltaUpdates => _velopack is not null;
+
+    /// <summary>Velopack's channel for development builds (<c>vpk pack --channel dev</c> in scripts/build-installer.ps1).</summary>
+    public const string DevelopmentChannel = "dev";
+
+    // Velopack's default channel on Windows, which releases are packed in.
+    private const string ReleaseChannel = "win";
+
+    /// <summary>
+    /// The running build is a development build: a Velopack install from the dev channel, or a build CI made from a push
+    /// to main (<c>COSTAS_CHANNEL=dev</c>, for classic and Linux installs).
+    /// </summary>
+    public bool RunningDevelopmentBuild =>
+        _velopack is not null && OperatingSystem.IsWindows()
+            ? string.Equals(VelopackChannel(), DevelopmentChannel, StringComparison.OrdinalIgnoreCase)
+            : BuiltAsDevelopment;
+
+    /// <summary>CI made this build from a push to main, as a development build.</summary>
+    public static bool BuiltAsDevelopment { get; } =
+        typeof(UpdateService).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+            .OfType<System.Reflection.AssemblyMetadataAttribute>()
+            .Any(a => a.Key == "UpdateChannel" && string.Equals(a.Value, DevelopmentChannel, StringComparison.OrdinalIgnoreCase));
+
+    private static string? VelopackChannel()
+    {
+        try
+        {
+            return global::Velopack.Locators.VelopackLocator.IsCurrentSet ? global::Velopack.Locators.VelopackLocator.Current.Channel : null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Whether to offer <paramref name="latest"/> over the running build: it is newer, or it is the latest release and the
+    /// station is leaving development builds (then any other version, older or not, is the way back).
+    /// </summary>
+    internal static bool ShouldOffer(ReleaseInfo latest, string runningVersion, bool leavingDevelopment) =>
+        UpdateChecker.IsNewer(latest, runningVersion) ||
+        (leavingDevelopment && !latest.IsDevelopment && Version.TryParse(runningVersion, out var running) && latest.Version != running);
 
     /// <summary>Raised when <see cref="Available"/> or the check status changes.</summary>
     public event Action? Changed;
@@ -99,6 +152,8 @@ public sealed class UpdateService : IDisposable
                 }
             }
         }
+        _followedDevelopment = _settings.Current.Developer.FollowsDevelopmentBuilds;
+        _settings.Changed += OnSettingsChanged;
         _timer.Change(TimeSpan.Zero, Interval);
         if (_velopack is not null)
         {
@@ -120,8 +175,13 @@ public sealed class UpdateService : IDisposable
         if (!await _checking.WaitAsync(0, ct).ConfigureAwait(false)) return Available;
         try
         {
-            var latest = _velopack is not null ? await CheckVelopackAsync(_velopack).ConfigureAwait(false) : await CheckClassicAsync(ct).ConfigureAwait(false);
-            Available = latest is not null && UpdateChecker.IsNewer(latest, AppInfo.Version) &&
+            var development = _settings.Current.Developer.FollowsDevelopmentBuilds;
+            var leaving = !development && RunningDevelopmentBuild;
+            var latest = _velopack is not null
+                ? await CheckVelopackAsync(development, leaving).ConfigureAwait(false)
+                : await CheckClassicAsync(development, ct).ConfigureAwait(false);
+            if (latest is not null && leaving && Version.TryParse(AppInfo.Version, out var running) && latest.Version < running) latest = latest with { IsDowngrade = true };
+            Available = latest is not null && ShouldOffer(latest, AppInfo.Version, leaving) &&
                         !string.Equals(latest.Tag, options.SkippedTag, StringComparison.Ordinal)
                 ? latest
                 : null;
@@ -143,22 +203,55 @@ public sealed class UpdateService : IDisposable
         return Available;
     }
 
-    private async Task<ReleaseInfo?> CheckClassicAsync(CancellationToken ct)
+    // With development builds on, the newer of the development build and the latest release (a release is cut from a
+    // build of main that is already out as a development build, so it is rarely newer, but the development release can be
+    // missing while CI replaces it).
+    private async Task<ReleaseInfo?> CheckClassicAsync(bool development, CancellationToken ct)
     {
         using var http = HttpFactory.Create(_settings.Current.Profile.Callsign, _handler);
-        return await new UpdateChecker(http, UpdateChecker.DefaultRepository, _apiBase).LatestAsync(ct).ConfigureAwait(false);
+        var checker = new UpdateChecker(http, UpdateChecker.DefaultRepository, _apiBase);
+        var release = await checker.LatestAsync(ct).ConfigureAwait(false);
+        if (!development) return release;
+        var dev = await checker.LatestDevelopmentAsync(ct).ConfigureAwait(false);
+        return dev is not null && (release is null || dev.Version >= release.Version) ? dev : release;
     }
 
-    // Velopack compares versions itself; the release is described like a classic one for the bar, Skip and the notes.
-    private async Task<ReleaseInfo?> CheckVelopackAsync(UpdateManager manager)
+    // Velopack compares versions itself; the release is described like a classic one for the bar, Skip and the notes. Each
+    // check makes its manager for the channel wanted now: development builds read the dev channel's feed, which only the
+    // development prerelease carries; releases read the default channel. Velopack offers an older build only when the
+    // station is leaving development builds.
+    private async Task<ReleaseInfo?> CheckVelopackAsync(bool development, bool leaving)
     {
+        var manager = development || leaving ? VelopackManager(development, allowDowngrade: leaving) : _velopack!;
         var info = await Velopack(() => manager.CheckForUpdatesAsync()).ConfigureAwait(false);
         _delta = info;
+        _checkedWith = manager;
         if (info is null || !Version.TryParse(info.TargetFullRelease.Version.ToString(), out var version)) return null;
         var tag = $"v{version}";
         var size = info.DeltasToTarget.Length > 0 ? info.DeltasToTarget.Sum(d => d.Size) : info.TargetFullRelease.Size;
-        return new ReleaseInfo(version, tag, $"https://github.com/{UpdateChecker.DefaultRepository}/releases/tag/{tag}",
-            info.TargetFullRelease.FileName, string.Empty, size, info.TargetFullRelease.SHA256);
+        var page = development ? UpdateChecker.DevTag : tag;
+        return new ReleaseInfo(version, tag, $"https://github.com/{UpdateChecker.DefaultRepository}/releases/tag/{page}",
+            info.TargetFullRelease.FileName, string.Empty, size, info.TargetFullRelease.SHA256) { IsDevelopment = development };
+    }
+
+    private UpdateManager VelopackManager(bool development, bool allowDowngrade) =>
+        new(new GithubSource($"https://github.com/{UpdateChecker.DefaultRepository}", null, development, _downloader),
+            new global::Velopack.UpdateOptions
+            {
+                ExplicitChannel = development ? DevelopmentChannel : ReleaseChannel,
+                AllowVersionDowngrade = allowDowngrade,
+            });
+
+    // Turning development builds on or off (or developer mode, which they need) checks straight away, so the bar offers
+    // the development build, or the way back to the latest release, without waiting for the daily check.
+    private void OnSettingsChanged(Ft8Client.Data.Settings.AppSettings s)
+    {
+        var now = s.Developer.FollowsDevelopmentBuilds;
+        if (now == _followedDevelopment) return;
+        _followedDevelopment = now;
+        Log.Information("Development builds {State}; checking for updates", now ? "on" : "off");
+        Available = null;
+        _ = CheckAsync(CancellationToken.None, manual: true);
     }
 
     // Velopack reports some failures (a feed it cannot read, a package that fails its checksum) as plain exceptions; they
@@ -185,7 +278,7 @@ public sealed class UpdateService : IDisposable
         if (_velopack is not null)
         {
             var info = _delta ?? throw new InvalidOperationException("No update is available.");
-            var manager = _velopack;
+            var manager = _checkedWith ?? _velopack;
             await Velopack(async () =>
             {
                 await manager.DownloadUpdatesAsync(info, p => progress?.Report(p / 100.0), ct).ConfigureAwait(false);
@@ -208,7 +301,7 @@ public sealed class UpdateService : IDisposable
             var target = _delta?.TargetFullRelease ?? throw new InvalidOperationException("No update has been downloaded.");
             Log.Information("Updating to {Version} with Velopack once Costas has closed", target.Version);
             // Velopack's updater waits for this process to exit (jt9 and rigctld stop with it), swaps the files and restarts.
-            _velopack.WaitExitThenApplyUpdates(target, silent: true, restart: true);
+            (_checkedWith ?? _velopack).WaitExitThenApplyUpdates(target, silent: true, restart: true);
             return;
         }
         var path = installerPath ?? throw new InvalidOperationException("No installer has been downloaded.");
@@ -316,6 +409,7 @@ public sealed class UpdateService : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        _settings.Changed -= OnSettingsChanged;
         _timer.Dispose();
         _checking.Dispose();
     }

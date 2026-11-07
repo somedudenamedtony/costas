@@ -791,6 +791,13 @@
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Development builds" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Update to each new build of main, not only releases" IsChecked="{Binding DevelopmentBuilds}" />
+                <TextBlock Classes="help" Text="{Binding DevelopmentBuildNote}" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Developer mode" />
               <CheckBox Grid.Column="1" Content="On (untick to hide this page)" IsChecked="{Binding DeveloperMode}" />
             </Grid>
