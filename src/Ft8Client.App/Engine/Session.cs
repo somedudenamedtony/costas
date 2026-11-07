@@ -480,14 +480,19 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>
     /// Applies what <see cref="KeyboardSession"/> read since its last call: text from stations it has named, and finished
     /// lines for Raw decodes. Keyboard stations are aged at the same time. <paramref name="unnamed"/> are the offsets of
-    /// signals with text but no callsign yet. Ignored unless the session is in that mode.
+    /// signals with text but no callsign yet. <paramref name="partials"/> are the lines still arriving on each channel,
+    /// and <paramref name="reading"/> the signal the operator clicked, both shown as they are read. Ignored unless the
+    /// session is in that mode.
     /// </summary>
-    public void ApplyText(Mode mode, IReadOnlyList<TextHeard> heard, IReadOnlyList<KeyboardLine> lines, DateTime utc, IReadOnlyList<int>? unnamed = null)
+    public void ApplyText(Mode mode, IReadOnlyList<TextHeard> heard, IReadOnlyList<KeyboardLine> lines, DateTime utc, IReadOnlyList<int>? unnamed = null,
+        IReadOnlyList<PartialLine>? partials = null, KeyboardReading? reading = null)
     {
         lock (_gate)
         {
             if (mode != _config.Mode) return;
             if (unnamed is not null) _unnamedSignals = unnamed;
+            _partials = partials ?? [];
+            _reading = reading;
             foreach (var h in heard) _tracker.ApplyText(h);
             _tracker.AgeText(utc);
             KeyboardActivity(utc);
@@ -1005,6 +1010,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _activity.Clear();
             _kbdActivityFrom = default;
             _unnamedSignals = [];
+            _partials = [];
+            _reading = null;
             _txMeters = null; // SWR belongs to the antenna on the old band
             _rigTuningUntil = null;
             _txMetersLive = null;
@@ -1356,6 +1363,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 BlockedMacro = BlockedMacro(),
                 Received = keyboard && _kbd.Partner is not null ? _kbd.Received : null,
                 UnnamedSignals = keyboard ? _unnamedSignals : [],
+                Reading = keyboard ? ShownReading() : null,
+                LiveLine = keyboard ? LiveLine(now) : null,
             };
             _snapshot = snap;
         }

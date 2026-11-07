@@ -187,6 +187,12 @@ public sealed record SessionSnapshot
     /// <summary>PSK and RTTY: the audio offsets of signals with text but no callsign yet, lowest first.</summary>
     public IReadOnlyList<int> UnnamedSignals { get; init; } = [];
 
+    /// <summary>PSK and RTTY: the signal the operator clicked, read out of a contact; null in a contact, a CQ or FT8.</summary>
+    public KeyboardReading? Reading { get; init; }
+
+    /// <summary>PSK and RTTY: the line still arriving from the station the conversation box shows, if any.</summary>
+    public ConversationLine? LiveLine { get; init; }
+
     /// <summary>PSK and RTTY: a note about the radio's settings for the mode (power cap, speech processor), or null.</summary>
     public string? RadioNote { get; init; }
 }
