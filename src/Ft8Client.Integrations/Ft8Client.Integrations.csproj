@@ -12,5 +12,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="MQTTnet" Version="5.2.0.1603" />
+    <PackageReference Include="Sentry" Version="6.12.1" />
   </ItemGroup>
 </Project>

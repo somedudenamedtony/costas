@@ -316,6 +316,29 @@ Privacy: nothing is sent without the operator pressing Send. The User-Agent leav
 statistics). Version and OS are ticked by default; the log tail (last 200 lines, at most 20,000 characters, secrets
 removed) is off until ticked because it can hold callsigns and frequencies.
 
+## 10c. Crash reports (Sentry)
+
+Unexpected errors go to Sentry (the `Sentry` NuGet package, `Ft8Client.Integrations.Crash.CrashReporter`). Owner
+request 2026-11-07; same rules as the usage statistics.
+
+- The DSN is baked into release builds only: CI sets `SENTRY_DSN` from the `SENTRY_DSN` repository variable for the
+  publish steps of a manual run on `main` (`AssemblyMetadata` `SentryDsn`). Not a secret: it ships inside the app and
+  only accepts reports. Other builds send nothing, nor when `CI` is `true`.
+- Same switch as the statistics (Settings, Privacy, `Usage.Enabled`), read for every report; off at start means the
+  SDK is not started and the offline cache (`<data>/crash-reports`, at most 30 envelopes) is deleted. Never in
+  simulation.
+- Captured: unhandled exceptions (AppDomain, unobserved tasks), UI-thread errors the app survives
+  (`App.WatchForUnexpectedErrors`) and the fatal catch in `Program.Main`. No breadcrumbs (they would carry log lines),
+  no tracing, no sessions, no client reports, no Serilog sink, `SendDefaultPii` off.
+- `BeforeSend` (`CrashReporter.Clean`) clears user, server name, request, device name and time zone and exception
+  `Data`, and runs `CrashScrubber` over the message, exception values, extras, tags, thread names, frame paths and
+  debug image paths: the operator's callsigns, grids, name and QTH from every profile, the OS user and machine name,
+  the user folder, and anything shaped like a callsign, grid, frequency, serial port, IP, email or URL query value.
+- Offline: an `INetworkStatusListener` on `NetworkInterface.GetIsNetworkAvailable` keeps Sentry's caching transport
+  from trying while the OS reports no network.
+- Sentry project settings (owner, in Sentry): Security & Privacy, "Prevent Storing of IP Addresses" on, and the
+  server-side data scrubbers on.
+
 ## 11. eQSL
 
 Optional uploads and incoming-card sync, configured per station profile. The account username and password

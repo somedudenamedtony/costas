@@ -197,9 +197,10 @@ See [Operating from a phone](phone.md).
 
 ![Settings: Privacy](images/settings-privacy.png)
 
-**Send anonymous usage statistics** (on). Costas sends a few anonymous counts to [Aptabase](https://aptabase.com),
-an open-source analytics service built for privacy, so its developer can see how many people use it and which features
-matter. Untick the box to stop sending them.
+**Send anonymous usage statistics and crash reports** (on). Costas sends a few anonymous counts to
+[Aptabase](https://aptabase.com), an open-source analytics service built for privacy, so its developer can see how many
+people use it and which features matter, and an anonymous report to [Sentry](https://sentry.io) when it hits an error it
+did not expect, so the bug can be found and fixed. Untick the box to stop sending both.
 
 What is sent:
 
@@ -218,6 +219,24 @@ session.
 Nothing is sent while your computer is offline. Counts wait in memory (never on disk) and go out when the network is
 back; anything still waiting when you close Costas is dropped. Statistics are never sent in simulation, and builds you
 make yourself from the source send nothing at all.
+
+### Crash reports
+
+When something goes wrong that Costas did not expect (it closes, or shows "Unexpected error" on the status line), it
+sends a crash report to Sentry. A report holds:
+
+- the kind of error and where in Costas it happened (the chain of function names in Costas's code);
+- the error's text, with callsigns, grids, frequencies, names, serial ports, network and email addresses, web
+  addresses' details and your Windows or Linux user name taken out first;
+- the Costas version, Windows or Linux and its version, and the .NET version Costas runs on.
+
+A report never holds your callsign, grid, name, frequencies, the stations you hear or work, anything from your log,
+the app's own log, your computer's name or your network address, and there is no account or tracking id.
+
+Nothing is sent while your computer is offline: a report waits in the `crash-reports` folder next to your log (at most
+30 of them) and goes out when the network is back. Unticking the box stops reports at once, and anything still waiting
+is deleted the next time Costas starts. Ticking it again starts reports the next time Costas opens. Reports are never
+sent in simulation, and builds you make yourself from the source send nothing at all.
 
 Problem reports are separate: they are only sent when you press **Send** in **☰ › Report a problem…**, and contain
 only what you see there. See [Report a problem](troubleshooting.md#report-a-problem-or-send-feedback).

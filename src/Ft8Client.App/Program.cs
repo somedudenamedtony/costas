@@ -33,6 +33,7 @@ internal static class Program
         catch (Exception ex)
         {
             Log.Fatal(ex, "Unhandled exception");
+            Ft8Client.Integrations.Crash.CrashReporter.Capture(ex);
             try
             {
                 App.Host?.Transmitter?.HaltAsync().GetAwaiter().GetResult();
@@ -46,6 +47,8 @@ internal static class Program
         }
         finally
         {
+            // Sends a crash report that is waiting (briefly, and only when online); the cache keeps it otherwise.
+            App.Host?.Crashes?.Dispose();
             Log.CloseAndFlush();
         }
     }
