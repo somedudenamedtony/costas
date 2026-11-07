@@ -24,7 +24,8 @@ namespace Ft8Client.App.Services;
 /// </summary>
 public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository queue, Func<string> profileId, Func<bool> uploadEnabled,
                                        Func<int?>? radioPowerWatts = null, Func<bool>? eqslUploadEnabled = null,
-                                       Func<string, string, string?>? parkFor = null, LogHold? hold = null) : ISessionLog
+                                       Func<string, string, string?>? parkFor = null, LogHold? hold = null,
+                                       Func<bool>? cloudlogUploadEnabled = null) : ISessionLog
 {
     /// <summary>Raised after a contact is stored, with its row.</summary>
     public event Action<QsoRecord>? Stored;
@@ -65,6 +66,7 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
         var due = hold?.Add(id) ?? DateTime.UtcNow;
         if (uploadEnabled()) queue.Enqueue(id, "qrz", due);
         if (eqslUploadEnabled?.Invoke() == true) queue.Enqueue(id, "eqsl", due);
+        if (cloudlogUploadEnabled?.Invoke() == true) queue.Enqueue(id, "cloudlog", due);
         Stored?.Invoke(q);
         return q;
     }

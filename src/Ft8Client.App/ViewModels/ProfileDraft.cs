@@ -51,6 +51,18 @@ public sealed partial class ProfileDraft : ObservableObject
     /// <summary>eQSL QTH nickname.</summary>
     public string EqslQth { get; set; } = string.Empty;
 
+    /// <summary>Wavelog/Cloudlog site address as typed.</summary>
+    public string CloudlogUrl { get; set; } = string.Empty;
+
+    /// <summary>Wavelog/Cloudlog API key as typed (credential store, per profile).</summary>
+    public string CloudlogKey { get; set; } = string.Empty;
+
+    /// <summary>Wavelog/Cloudlog station location id.</summary>
+    public string CloudlogStationId { get; set; } = string.Empty;
+
+    /// <summary>Upload each contact to Wavelog/Cloudlog when it is logged.</summary>
+    public bool CloudlogUpload { get; set; }
+
     /// <inheritdoc />
     public override string ToString() => Name;
 }

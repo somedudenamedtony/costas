@@ -184,6 +184,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Optional eQSL uploads.</summary>
     public EqslService Eqsl { get; private set; } = null!;
 
+    /// <summary>Optional Wavelog or Cloudlog uploads.</summary>
+    public CloudlogService Cloudlog { get; private set; } = null!;
+
     /// <summary>Decode journal and WAV saving (null in simulation).</summary>
     public RecordingService? Recording { get; private set; }
 
@@ -383,7 +386,7 @@ public sealed class AppHost : IAsyncDisposable
         var log = new DatabaseSessionLog(Qsos, Uploads, () => Settings.Current.Profile.Id,
             () => !Simulating && Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
             () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band),
-            LogHold);
+            LogHold, () => !Simulating && Settings.Current.Profile.Cloudlog.UploadOnComplete);
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
         TxMeters = new TxMeterMonitor(Transmitter, () => _rig)
         {
@@ -431,6 +434,8 @@ public sealed class AppHost : IAsyncDisposable
         Eqsl = new EqslService(Session, Settings, Secrets, Qsos, Uploads, EqslInbox, SyncState, Clock, uploadsAllowed: !Simulating);
         Eqsl.LogChanged += RebuildLogIndex;
         Eqsl.Start();
+        Cloudlog = new CloudlogService(Session, Settings, Secrets, Qsos, Uploads, Clock, uploadsAllowed: !Simulating);
+        Cloudlog.Start();
 
         Psk = new PskReporterService(Session, Settings, Spots, Countries, Frequencies, Clock, uploadsAllowed: !Simulating);
         Psk.Start();
@@ -1315,6 +1320,7 @@ public sealed class AppHost : IAsyncDisposable
         Qrz?.Dispose();
         Lotw?.Dispose();
         if (Eqsl is not null) await Eqsl.DisposeAsync().ConfigureAwait(false);
+        if (Cloudlog is not null) await Cloudlog.DisposeAsync().ConfigureAwait(false);
         Udp?.Dispose();
         Updates?.Dispose();
         if (Usage is not null) await Usage.DisposeAsync().ConfigureAwait(false);

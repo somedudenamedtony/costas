@@ -19,7 +19,7 @@ public static class SecretNames
 
     /// <summary>Every name the app uses for these station profiles.</summary>
     public static IEnumerable<string> All(IEnumerable<string> profileIds) =>
-        profileIds.SelectMany(id => new[] { QrzLogbookKey(id), EqslUsername(id), EqslPassword(id) }).Append(QrzUsername).Append(QrzPassword).Append(LotwPassword);
+        profileIds.SelectMany(id => new[] { QrzLogbookKey(id), EqslUsername(id), EqslPassword(id), CloudlogKey(id) }).Append(QrzUsername).Append(QrzPassword).Append(LotwPassword);
 
     /// <summary>QRZ logbook API key for a station profile (a logbook serves one callsign).</summary>
     public static string QrzLogbookKey(string profileId) => $"{Prefix}qrz-logbook-key:{profileId}";
@@ -29,6 +29,9 @@ public static class SecretNames
 
     /// <summary>eQSL password for a station profile.</summary>
     public static string EqslPassword(string profileId) => $"{Prefix}eqsl-password:{profileId}";
+
+    /// <summary>Wavelog or Cloudlog API key for a station profile.</summary>
+    public static string CloudlogKey(string profileId) => $"{Prefix}cloudlog-key:{profileId}";
 
     /// <summary>QRZ XML username.</summary>
     public const string QrzUsername = Prefix + "qrz-username";

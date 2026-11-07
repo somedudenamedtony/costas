@@ -289,3 +289,22 @@ start time, often a minute or two from yours). With several contacts in that tim
 the recent inbox list; they do not create contacts automatically. FT4 and MFSK/FT4 match as the same mode.
 
 Both automatic features are off by default. Save to apply. Simulation never contacts eQSL.
+
+## Wavelog / Cloudlog
+
+If you keep your log in your own [Wavelog](https://www.wavelog.org) or Cloudlog site, Costas can send each contact
+there as soon as it is logged. In **Settings › Wavelog / Cloudlog**:
+
+1. Enter the **Logbook address**, the address you open your logbook at (such as `https://log.example.com`). Use
+   https: the API key goes with every upload.
+2. In your logbook, make an API key with read and write access (under your account's API keys) and paste it into
+   **API key**. It stays in the system credential store, not in the settings file.
+3. Press **Test and list station locations**. Costas asks the logbook which station locations the key can use and
+   picks the one whose callsign matches this profile. Choose another from the list, or type its id, if needed. The
+   logbook only takes contacts for a location with this profile's callsign.
+4. Tick **Upload each new contact as soon as it is logged** and save.
+
+Contacts queue locally and retry when the site is down, even after restarting Costas. A contact already in that
+logbook is left alone and counts as sent. A wrong key or station id waits an hour before the next try; the
+**Wavelog/Cloudlog** indicator in the bottom bar (shown once this is set up) says what the logbook answered. Each
+station profile has its own settings. Off by default. Simulation never contacts the site.

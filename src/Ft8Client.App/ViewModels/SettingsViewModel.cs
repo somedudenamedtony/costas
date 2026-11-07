@@ -44,6 +44,8 @@ public sealed partial class SettingsViewModel : ObservableObject
                 EqslUser = host.Secrets.Get(SecretNames.EqslUsername(p.Id)) ?? string.Empty,
                 EqslPassword = host.Secrets.Get(SecretNames.EqslPassword(p.Id)) ?? string.Empty,
                 EqslSync = p.Eqsl.SyncEnabled, EqslUpload = p.Eqsl.UploadOnComplete, EqslQth = p.Eqsl.QthNickname,
+                CloudlogUrl = p.Cloudlog.Url, CloudlogStationId = p.Cloudlog.StationId, CloudlogUpload = p.Cloudlog.UploadOnComplete,
+                CloudlogKey = host.Secrets.Get(SecretNames.CloudlogKey(p.Id)) ?? string.Empty,
             });
         }
         _loadedProfile = s.Profile.Id;
@@ -275,10 +277,19 @@ public sealed partial class SettingsViewModel : ObservableObject
         _shownProfile.EqslSync = EqslSyncEnabled;
         _shownProfile.EqslUpload = EqslUploadOnComplete;
         _shownProfile.EqslQth = EqslQthNickname;
+        _shownProfile.CloudlogUrl = CloudlogUrl;
+        _shownProfile.CloudlogKey = CloudlogKey;
+        _shownProfile.CloudlogStationId = CloudlogStationId;
+        _shownProfile.CloudlogUpload = CloudlogUploadOnComplete;
     }
 
-    private void ShowEqsl(ProfileDraft d) =>
+    private void ShowEqsl(ProfileDraft d)
+    {
         (EqslUser, EqslPassword, EqslSyncEnabled, EqslUploadOnComplete, EqslQthNickname) = (d.EqslUser, d.EqslPassword, d.EqslSync, d.EqslUpload, d.EqslQth);
+        (CloudlogUrl, CloudlogKey, CloudlogStationId, CloudlogUploadOnComplete) = (d.CloudlogUrl, d.CloudlogKey, d.CloudlogStationId, d.CloudlogUpload);
+        CloudlogStations.Clear();
+        CloudlogStatus = string.Empty;
+    }
 
     /// <summary>
     /// Writes the edited profiles into settings: removed ones are dropped, new ones copied from their source, names, calls,
@@ -306,6 +317,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             p.Eqsl.SyncEnabled = d.EqslSync;
             p.Eqsl.UploadOnComplete = d.EqslUpload;
             p.Eqsl.QthNickname = d.EqslQth.Trim();
+            p.Cloudlog.Url = d.CloudlogUrl.Trim();
+            p.Cloudlog.StationId = d.CloudlogStationId.Trim();
+            p.Cloudlog.UploadOnComplete = d.CloudlogUpload;
             result.Add(p);
         }
         s.Profiles = result;
@@ -790,6 +804,52 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Most recent incoming cards, including unmatched cards.</summary>
     public ObservableCollection<string> EqslInboxCards { get; } = [];
 
+    /// <summary>Wavelog/Cloudlog site address.</summary>
+    [ObservableProperty]
+    public partial string CloudlogUrl { get; set; } = string.Empty;
+
+    /// <summary>Wavelog/Cloudlog API key.</summary>
+    [ObservableProperty]
+    public partial string CloudlogKey { get; set; } = string.Empty;
+
+    /// <summary>Wavelog/Cloudlog station location id.</summary>
+    [ObservableProperty]
+    public partial string CloudlogStationId { get; set; } = string.Empty;
+
+    /// <summary>Upload each new contact to Wavelog/Cloudlog.</summary>
+    [ObservableProperty]
+    public partial bool CloudlogUploadOnComplete { get; set; }
+
+    /// <summary>Result of the last Test.</summary>
+    [ObservableProperty]
+    public partial string CloudlogStatus { get; set; } = string.Empty;
+
+    /// <summary>Station locations found by Test, to pick from.</summary>
+    public ObservableCollection<CloudlogStationChoice> CloudlogStations { get; } = [];
+
+    /// <summary>The station location picked from <see cref="CloudlogStations"/>.</summary>
+    [ObservableProperty]
+    public partial CloudlogStationChoice? CloudlogStation { get; set; }
+
+    partial void OnCloudlogStationChanged(CloudlogStationChoice? value)
+    {
+        if (value is not null) CloudlogStationId = value.Id;
+    }
+
+    /// <summary>Checks the address and key and lists the account's station locations.</summary>
+    [RelayCommand]
+    private async Task TestCloudlog()
+    {
+        CloudlogStatus = "Asking the logbook…";
+        var (message, stations) = await _host.Cloudlog.TestAsync(CloudlogUrl, CloudlogKey, CancellationToken.None);
+        CloudlogStatus = message;
+        CloudlogStations.Clear();
+        foreach (var st in stations) CloudlogStations.Add(new CloudlogStationChoice(st.Id, st.Name, st.Callsign, st.Active));
+        CloudlogStation = CloudlogStations.FirstOrDefault(c => c.Id == CloudlogStationId.Trim())
+            ?? CloudlogStations.FirstOrDefault(c => string.Equals(c.Callsign, Callsign.Trim(), StringComparison.OrdinalIgnoreCase) && c.Active)
+            ?? CloudlogStations.FirstOrDefault(c => string.Equals(c.Callsign, Callsign.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
     private void RefreshEqslInbox()
     {
         EqslInboxCards.Clear();
@@ -1169,12 +1229,14 @@ public sealed partial class SettingsViewModel : ObservableObject
             Set(SecretNames.QrzLogbookKey(d.Id), d.LogbookKey.Trim());
             Set(SecretNames.EqslUsername(d.Id), d.EqslUser.Trim());
             Set(SecretNames.EqslPassword(d.Id), d.EqslPassword);
+            Set(SecretNames.CloudlogKey(d.Id), d.CloudlogKey.Trim());
         }
         foreach (var id in removed)
         {
             _host.Secrets.Delete(SecretNames.QrzLogbookKey(id));
             _host.Secrets.Delete(SecretNames.EqslUsername(id));
             _host.Secrets.Delete(SecretNames.EqslPassword(id));
+            _host.Secrets.Delete(SecretNames.CloudlogKey(id));
         }
         Set(SecretNames.QrzUsername, QrzUser.Trim());
         Set(SecretNames.QrzPassword, QrzPassword);

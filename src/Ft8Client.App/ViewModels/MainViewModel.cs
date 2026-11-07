@@ -470,6 +470,9 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Indicators.Add(Indicator("Audio", s, ServiceNames.Audio));
         Indicators.Add(Indicator("QRZ", s, ServiceNames.Qrz));
         Indicators.Add(Indicator("eQSL", s, ServiceNames.Eqsl));
+        // Shown only once set up: most operators have no Wavelog or Cloudlog site.
+        if (s.Services.TryGetValue(ServiceNames.Cloudlog, out var logbook) && logbook.Health != ServiceHealth.Off)
+            Indicators.Add(Indicator("Wavelog/Cloudlog", s, ServiceNames.Cloudlog));
         Indicators.Add(Indicator("PSK Reporter", s, ServiceNames.Psk));
         Indicators.Add(Indicator("RBN", s, ServiceNames.Rbn));
         Indicators.Add(Indicator("POTA", s, ServiceNames.Pota));

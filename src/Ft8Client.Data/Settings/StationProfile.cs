@@ -28,6 +28,9 @@ public sealed class StationProfile
     /// <summary>eQSL upload settings for this station.</summary>
     public EqslOptions Eqsl { get; set; } = new();
 
+    /// <summary>Wavelog or Cloudlog uploads for this station.</summary>
+    public CloudlogOptions Cloudlog { get; set; } = new();
+
     /// <summary>Radio control.</summary>
     public RigSettings Rig { get; set; } = new();
 
