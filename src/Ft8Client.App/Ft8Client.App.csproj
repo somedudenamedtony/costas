@@ -40,6 +40,10 @@
     <!-- Crash reports: CI passes the Sentry DSN (set in .github/workflows/ci.yml) to release builds. Not a secret: it ships inside the app and only accepts reports. Builds without it send nothing. -->
     <AssemblyMetadata Include="SentryDsn" Value="$(SENTRY_DSN)" />
   </ItemGroup>
+  <ItemGroup Condition="'$(COSTAS_CHANNEL)' != ''">
+    <!-- Development builds: CI sets COSTAS_CHANNEL=dev on pushes to main, so a classic or Linux install knows it runs one and can go back to the latest release. -->
+    <AssemblyMetadata Include="UpdateChannel" Value="$(COSTAS_CHANNEL)" />
+  </ItemGroup>
   <ItemGroup Condition="'$(FEEDBACK_URL)' != ''">
     <!-- Report a problem: the form relay's https address (a Formspree form), from the FEEDBACK_URL repository variable in CI. Not a secret: it only accepts form posts. -->
     <AssemblyMetadata Include="FeedbackUrl" Value="$(FEEDBACK_URL)" />

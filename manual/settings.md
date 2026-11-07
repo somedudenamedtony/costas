@@ -261,6 +261,10 @@ Hidden by default. In **☰ › About**, click the product name seven times. Set
 calls), and Station setup lists Hamlib's test radio, *Hamlib Dummy*, which never plays transmit audio. This is for
 testing Costas, not for operating.
 
+**Development builds** (off) updates Costas to each new build of the code that passes its tests, not only releases.
+Turning it off, or turning developer mode off, offers the latest release again. See
+[Install › Development builds](install.md#development-builds).
+
 ## eQSL
 
 ![Settings: eQSL](images/settings-eqsl.png)

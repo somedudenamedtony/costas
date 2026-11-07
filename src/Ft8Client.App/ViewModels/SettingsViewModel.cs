@@ -138,6 +138,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         DeveloperMode = s.Developer.Enabled;
         ReplaySamples = s.Developer.ReplaySamples;
         SimulatedPartner = s.Developer.SimulatedPartner;
+        DevelopmentBuilds = s.Developer.DevelopmentBuilds;
         SecretsNote = host.Secrets.IsPersistent
             ? "The API key and password are kept in the system credential store, not in the settings file."
             : "No system credential store is available here: the API key and password are kept only until the app closes.";
@@ -965,6 +966,15 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool SimulatedPartner { get; set; }
 
+    /// <summary>Update to development builds (each green build of main) as well as releases.</summary>
+    [ObservableProperty]
+    public partial bool DevelopmentBuilds { get; set; }
+
+    /// <summary>Says which kind of build is running, beside the development builds switch.</summary>
+    public string DevelopmentBuildNote => _host.Updates?.RunningDevelopmentBuild == true
+        ? $"This is development build {Ft8Client.Core.AppInfo.Version}. Turning this off (or developer mode) offers the latest release, even though it is older."
+        : "Development builds are untested beyond CI and can break on air. Turn this off at any time to go back to the latest release.";
+
     /// <summary>WAV choices.</summary>
     public IReadOnlyList<string> WavChoices { get; } = ["none", "decoded", "all"];
 
@@ -1139,6 +1149,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                 s.Developer.Enabled = DeveloperMode;
                 s.Developer.ReplaySamples = ReplaySamples;
                 s.Developer.SimulatedPartner = SimulatedPartner;
+                s.Developer.DevelopmentBuilds = DevelopmentBuilds;
             }
         });
         foreach (var d in Profiles)

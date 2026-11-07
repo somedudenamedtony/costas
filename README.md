@@ -199,6 +199,15 @@ say): Actions > CI > Run workflow, pick the branch, wait for the green tick, ope
 the current Costas and keeps settings and the log. A test build is numbered from the same run counter, so the next
 release from `main` is newer and the app offers it as usual, which also takes the machine back to `main`.
 
+### Development builds
+
+Each green push to `main` also replaces one GitHub prerelease tagged `dev` (title `Costas <version> (development
+build)`), with the installers, the Linux package and a Velopack package in the `dev` channel. GitHub never makes a
+prerelease the latest release, so ordinary installs never see it. An install with developer mode and **Settings ›
+Developer › Development builds** on follows it instead; turning that off makes the update check offer the latest
+release even though it is older (a Velopack channel switch with downgrade allowed). Development builds carry no
+usage-statistics key or crash-report DSN and are not code-signed, like any run that is not a release.
+
 ### The manual
 
 The user manual is in [`manual/`](manual/), built with MkDocs Material and published to GitHub Pages by

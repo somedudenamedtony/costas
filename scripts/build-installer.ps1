@@ -131,6 +131,20 @@ if ($LASTEXITCODE -ne 0) { throw 'Velopack pack failed' }
 Get-ChildItem $vp -Filter '*.nupkg' | Where-Object { $_.Name -notlike "*-$version-*" } | Remove-Item
 Get-ChildItem $vp | ForEach-Object { Write-Host "Velopack: $($_.Name) ($([math]::Round($_.Length / 1MB, 1)) MB)" }
 
+# A development build (CI on a push to main) is packed a second time in Velopack's dev channel, for installs that follow
+# development builds (Settings, Developer). Its feed (releases.dev.json) lives only on the development prerelease, so
+# release installs never see it. Full packages only: the development release holds one build at a time, so there is no
+# chain of deltas to build on.
+if ($env:COSTAS_CHANNEL -eq 'dev') {
+    $vpDev = Join-Path $art 'velopack-dev'
+    New-Item -ItemType Directory -Force -Path $vpDev | Out-Null
+    dotnet vpk pack --packId CostasApp --packVersion $version --packDir $stage --mainExe Costas.exe --packTitle Costas `
+        --packAuthors 'Costas contributors' --icon (Join-Path $root 'src/Ft8Client.App/Assets/costas.ico') `
+        --runtime win-x64 --shortcuts StartMenuRoot --noPortable --channel dev --outputDir $vpDev @vpkSign
+    if ($LASTEXITCODE -ne 0) { throw 'Velopack pack (dev channel) failed' }
+    Get-ChildItem $vpDev | ForEach-Object { Write-Host "Velopack dev: $($_.Name) ($([math]::Round($_.Length / 1MB, 1)) MB)" }
+}
+
 # A signed build must not ship an unsigned download: check both installers and the installed app's main exe.
 if ($sign) {
     $check = @(Get-ChildItem $art -Filter 'Costas-Setup-*.exe') + @(Get-ChildItem $vp -Filter '*Setup.exe') +

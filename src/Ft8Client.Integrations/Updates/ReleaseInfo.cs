@@ -19,5 +19,15 @@ namespace Ft8Client.Integrations.Updates;
 public sealed record ReleaseInfo(Version Version, string Tag, string PageUrl, string InstallerName, string InstallerUrl, long InstallerSize, string? Sha256)
 {
     /// <summary>The installer is Velopack's (a classic install moving to delta updates), not the classic Inno Setup one.</summary>
-    public bool IsVelopackSetup => string.Equals(InstallerName, UpdateChecker.VelopackSetupName, StringComparison.OrdinalIgnoreCase);
+    public bool IsVelopackSetup =>
+        string.Equals(InstallerName, UpdateChecker.VelopackSetupName, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(InstallerName, UpdateChecker.VelopackDevSetupName, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>A development build (the newest green build of main), offered only with development builds turned on.</summary>
+    public bool IsDevelopment { get; init; }
+
+    /// <summary>
+    /// Older than the running build: development builds were turned off and this is the latest release to go back to.
+    /// </summary>
+    public bool IsDowngrade { get; init; }
 }
