@@ -370,6 +370,13 @@
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="DXpeditions" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Show announced DXpeditions (NG3K)" IsChecked="{Binding DxpeditionList}" />
+                <TextBlock Classes="help" Text="Reads NG3K's list of announced DX operations twice a day. A station that is one of them shows DXpedition and the country under Why, and the Awards view lists the ones on the air now and starting soon. It never changes the order or who is called." TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Keep CQ callers listed" />
               <StackPanel Grid.Column="1">
                 <ComboBox ItemsSource="{Binding KeepCqCallersChoices}" SelectedItem="{Binding KeepCqCallers}" MinWidth="200"

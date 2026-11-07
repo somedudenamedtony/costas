@@ -201,6 +201,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>POTA spots and worked parks, for the park line under Why.</summary>
     public PotaService Pota { get; private set; } = null!;
 
+    /// <summary>NG3K's announced DXpeditions.</summary>
+    public DxpeditionService Dxpeditions { get; private set; } = null!;
+
     /// <summary>Update checks.</summary>
     public UpdateService Updates { get; private set; } = null!;
 
@@ -457,6 +460,9 @@ public sealed class AppHost : IAsyncDisposable
         Pota.SetWorked(WorkedParksFromLog());
         log.Stored += Pota.OnLogged;
         Pota.Start();
+        Dxpeditions = new DxpeditionService(() => Settings.Current.Dxpeditions.Enabled, () => Settings.Current.Profile.Callsign, Clock,
+            st => Session.SetService(ServiceNames.Dxpeditions, st), Path.Combine(Paths.Cache, "adxo.xml"));
+        Dxpeditions.Start();
 
         Updates = new UpdateService(Settings, Path.Combine(Paths.Temp, "updates"), Paths.Logs);
         Updates.Start();
@@ -505,6 +511,7 @@ public sealed class AppHost : IAsyncDisposable
             Frequencies.UsDataSegmentsOnly = Settings.Current.Operating.UsDataSegmentsOnly;
             TxLevel.Apply();
             Pota.Wake();
+            Dxpeditions.Wake();
             if (Settings.Current.Operating.CorrectClock != correctClock)
             {
                 correctClock = Settings.Current.Operating.CorrectClock;
@@ -1312,6 +1319,7 @@ public sealed class AppHost : IAsyncDisposable
         Updates?.Dispose();
         if (Usage is not null) await Usage.DisposeAsync().ConfigureAwait(false);
         Pota?.Dispose();
+        Dxpeditions?.Dispose();
         Recording?.Dispose();
         NeighbourHistory?.Flush();
         if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);

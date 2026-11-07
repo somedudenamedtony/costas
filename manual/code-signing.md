@@ -47,7 +47,7 @@ merge to `main` and start a release.
 
 Costas does not send anything about you anywhere unless a feature you set up needs it:
 
-- **Services you turn on**: QRZ, LoTW, eQSL, Club Log, PSK Reporter, the Reverse Beacon Network and POTA spots are
+- **Services you turn on**: QRZ, LoTW, eQSL, Club Log, PSK Reporter, the Reverse Beacon Network, POTA spots and NG3K's DXpedition list are
   contacted only when you set them up in Settings, and only with what that service needs (your callsign and log
   entries for the logbooks, for example).
 - **Updates**: Costas asks GitHub for the latest release when it starts and once a day. You can turn this off in

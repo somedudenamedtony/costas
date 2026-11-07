@@ -49,9 +49,11 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             QrzLookup = host.Session.LookupOf,
             MostWanted = host.MostWanted.Current,
             Parks = host.Pota.Current,
+            Dxpeditions = host.Dxpeditions.Current,
         };
         host.MostWanted.Changed += list => Dispatch(() => Operate.MostWanted = list);
         host.Pota.Changed += parks => Dispatch(() => Operate.Parks = parks);
+        host.Dxpeditions.Changed += cal => Dispatch(() => Operate.Dxpeditions = cal);
         Operate.ShowRttyReverse(host.Settings.Current.Operating.RttyReverse);
         Operate.RttyReverseChanged = on => host.Settings.Update(x => x.Operating.RttyReverse = on);
         Operate.ShowKeyboardAfc(host.Settings.Current.Operating.KeyboardAfc);
@@ -74,7 +76,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
             LotwUpload = host.Lotw.UploadNowAsync,
         };
         var heard = new HeardHistoryService(host.Paths.Journal, host.Countries, host.Clock);
-        Awards = new AwardsViewModel(() => host.Session.LogIndex, host.Countries, heard, () => host.Clock.UtcNow, a => Dispatch(a));
+        Awards = new AwardsViewModel(() => host.Session.LogIndex, host.Countries, heard, () => host.Clock.UtcNow, a => Dispatch(a))
+        {
+            HeardNow = () => (host.Session.Snapshot.Band, host.Session.Snapshot.Stations),
+        };
+        Awards.SetDxpeditions(host.Dxpeditions.Current);
+        host.Dxpeditions.Changed += cal => Dispatch(() => Awards.SetDxpeditions(cal));
         StationDetailsViewModel.HeardHistory = (call, key) =>
         {
             _ = heard.RefreshIfOlderThan(HeardHistoryService.MaxAge);

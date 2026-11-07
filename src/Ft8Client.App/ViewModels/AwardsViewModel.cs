@@ -14,6 +14,7 @@ using Ft8Client.Core.Awards;
 using Ft8Client.Core.Bands;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Logbook;
+using Ft8Client.Core.Messages;
 using Ft8Client.Core.Neighbours;
 
 namespace Ft8Client.App.ViewModels;
@@ -33,6 +34,74 @@ public sealed partial class AwardsViewModel : ObservableObject
     private readonly Func<DateTime> _now;
     private AwardSummary? _summary;
     private bool _filling;
+    private Core.Dxpeditions.DxpeditionCalendar _dxpeditions = Core.Dxpeditions.DxpeditionCalendar.Empty;
+
+    /// <summary>The stations heard now and the band, for "Heard now" on the DXpeditions list. Set by the owner.</summary>
+    public Func<(string Band, IReadOnlyList<Core.Stations.Station> Stations)>? HeardNow { get; init; }
+
+    /// <summary>DXpeditions on the air now (NG3K), the new countries first.</summary>
+    public ObservableCollection<DxpeditionRowViewModel> DxpeditionsOnAir { get; } = [];
+
+    /// <summary>DXpeditions starting in the next two weeks.</summary>
+    public ObservableCollection<DxpeditionRowViewModel> DxpeditionsSoon { get; } = [];
+
+    /// <summary>"12 on the air · list from NG3K, read 07 Nov", or why there is none.</summary>
+    [ObservableProperty]
+    public partial string DxpeditionText { get; set; } = "The DXpedition list has not been read yet.";
+
+    /// <summary>The starting-soon heading is shown.</summary>
+    [ObservableProperty]
+    public partial bool HasDxpeditionsSoon { get; set; }
+
+    /// <summary>Uses a new DXpedition list. UI thread.</summary>
+    public void SetDxpeditions(Core.Dxpeditions.DxpeditionCalendar calendar)
+    {
+        _dxpeditions = calendar;
+        FillDxpeditions();
+    }
+
+    /// <summary>Days ahead the starting-soon list looks.</summary>
+    public const int SoonDays = 14;
+
+    /// <summary>Fills the DXpeditions lists from the calendar, the log and what is heard now. UI thread.</summary>
+    public void FillDxpeditions()
+    {
+        var now = _now();
+        DxpeditionsOnAir.Clear();
+        DxpeditionsSoon.Clear();
+        if (_dxpeditions.Entries.Count == 0)
+        {
+            DxpeditionText = "No DXpedition list yet. It comes from NG3K's announced DX operations (Settings > Who to call turns it on or off).";
+            HasDxpeditionsSoon = false;
+            return;
+        }
+        var missing = _summary?.Dxcc.Missing.Select(i => i.Key).ToHashSet(StringComparer.Ordinal) ?? [];
+        var unconfirmed = _summary?.Dxcc.Unconfirmed.Select(i => i.Key).ToHashSet(StringComparer.Ordinal) ?? [];
+        var heard = HeardNow?.Invoke();
+        DxpeditionRowViewModel Row(Core.Dxpeditions.Dxpedition d)
+        {
+            var key = _countries.Lookup(d.Call)?.Entity.Key;
+            var known = key is not null && _summary is not null && !_log().IsEmpty;
+            var isNew = known && missing.Contains(key!);
+            var need = !known ? string.Empty : isNew ? "New country" : unconfirmed.Contains(key!) ? "Worked, not confirmed" : "Worked";
+            var station = heard?.Stations.Where(s => ReferenceEquals(_dxpeditions.Match(s.Call, now), d))
+                .OrderByDescending(s => s.LastHeardEndUtc).FirstOrDefault();
+            var heardText = station is null ? string.Empty
+                : $"Heard now: {station.Call} on {BandPlan.Display(heard!.Value.Band)}, {Report.Format(station.LastSnr)} dB";
+            var tip = (d.Qsl.Length > 0 ? "QSL " + d.Qsl + "\n" : string.Empty) + d.Info;
+            return new DxpeditionRowViewModel(d.Call, d.Entity, Core.Dxpeditions.DxpeditionText.Dates(d, now) + " · " + Core.Dxpeditions.DxpeditionText.When(d, now) + (d.MentionsFt8 ? " · digital" : string.Empty),
+                need, isNew, heardText, tip);
+        }
+        var onAir = _dxpeditions.OnAir(now).Select(Row)
+            .OrderByDescending(r => r.IsHeard).ThenByDescending(r => r.NewCountry).ToList();
+        foreach (var r in onAir) DxpeditionsOnAir.Add(r);
+        foreach (var d in _dxpeditions.StartingSoon(now, SoonDays)) DxpeditionsSoon.Add(Row(d));
+        HasDxpeditionsSoon = DxpeditionsSoon.Count > 0;
+        var newCount = onAir.Count(r => r.NewCountry);
+        DxpeditionText = $"{onAir.Count} on the air" + (newCount > 0 ? $", {newCount} of them new countries for you" : string.Empty)
+            + $". From NG3K's announced DX operations, read {_dxpeditions.FetchedUtc.ToString("d MMM HH:mm", CultureInfo.InvariantCulture)} UTC. "
+            + "Dates and calls are as announced; not every operation runs FT8.";
+    }
 
     /// <summary>Creates the view model.</summary>
     /// <param name="log">The current log index.</param>
@@ -127,6 +196,7 @@ public sealed partial class AwardsViewModel : ObservableObject
         _filling = false;
 
         FillNeeded();
+        FillDxpeditions();
         _ = _history.RefreshIfOlderThan(HeardHistoryService.MaxAge);
     }
 

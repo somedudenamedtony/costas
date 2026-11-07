@@ -37,4 +37,7 @@ public static class ServiceNames
 
     /// <summary>The POTA spot feed.</summary>
     public const string Pota = "pota";
+
+    /// <summary>NG3K's announced DXpeditions (ADXO) feed.</summary>
+    public const string Dxpeditions = "dxpeditions";
 }

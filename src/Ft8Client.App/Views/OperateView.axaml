@@ -398,6 +398,9 @@
                           <!-- POTA park, display only: it never changes the order. -->
                           <TextBlock Text="{Binding Park}" IsVisible="{Binding HasPark}" FontSize="12" TextTrimming="CharacterEllipsis"
                                      ToolTip.Tip="{Binding ParkTip}" Foreground="{Binding ParkKind, Converter={x:Static v:Converters.KindBrush}}" />
+                          <!-- Announced DXpedition (NG3K), display only: it never changes the order. -->
+                          <TextBlock Text="{Binding Dxpedition}" IsVisible="{Binding HasDxpedition}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                     ToolTip.Tip="{Binding DxpeditionTip}" Foreground="{Binding DxpeditionKind, Converter={x:Static v:Converters.KindBrush}}" />
                           </StackPanel>
                           <TextBlock Grid.Column="4" Text="{Binding DoingNow}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                           <TextBlock Grid.Column="5" Text="{Binding LastHeard}" Classes="secondary" VerticalAlignment="Center" />

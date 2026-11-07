@@ -92,6 +92,11 @@ line*.
     comes right after your first need (new countries by default) and ahead of everything else, and it is listed in
     **Next in line** even when you have worked that call on this band before. A station calling CQ POTA that nobody
     has spotted is not moved, since Costas cannot tell which park it is at.
+- **DXpeditions: Show announced DXpeditions (NG3K)**: on. Costas reads NG3K's list of announced DX operations
+  (ng3k.com) at most twice a day and keeps a copy, so starting Costas again does not read it again. A station that is
+  one of them shows *DXpedition* and the country under **Why** and in its details, and the
+  [Awards](awards.md#dxpeditions-on-the-air) view lists the ones on the air and starting soon. It never changes the
+  order or who is called. Off makes no requests.
 
 ## Hunt list
 

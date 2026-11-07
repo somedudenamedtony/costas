@@ -113,6 +113,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         RefreshEqslInbox();
         FeedEnabled = s.PskReporter.FeedEnabled;
         PotaSpots = s.Pota.SpotsEnabled;
+        DxpeditionList = s.Dxpeditions.Enabled;
         PreferNewParks = s.Ranking.PreferNewParks;
         CompareNeighbours = s.PskReporter.CompareNeighbours;
         BandActivity = s.PskReporter.BandActivity;
@@ -829,6 +830,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool PotaSpots { get; set; }
 
+    /// <summary>Read NG3K's announced DXpeditions.</summary>
+    [ObservableProperty]
+    public partial bool DxpeditionList { get; set; }
+
     /// <summary>Rank activators at parks not in the log higher.</summary>
     [ObservableProperty]
     public partial bool PreferNewParks { get; set; }
@@ -1131,6 +1136,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Qrz.SyncMinutes = Int(SyncMinutes, 5, 1440, 15);
             s.PskReporter.FeedEnabled = FeedEnabled;
             s.Pota.SpotsEnabled = PotaSpots;
+            s.Dxpeditions.Enabled = DxpeditionList;
             s.Ranking.PreferNewParks = PreferNewParks;
             s.PskReporter.CompareNeighbours = CompareNeighbours;
             s.PskReporter.BandActivity = BandActivity;
