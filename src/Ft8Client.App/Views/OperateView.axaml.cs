@@ -6,6 +6,7 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Data.Converters;
@@ -40,6 +41,12 @@ public partial class OperateView : UserControl
         SizeChanged += (_, e) => Relayout(e.NewSize.Width);
         LeftPane.SizeChanged += (_, _) => FitPinned();
         CallingYou.SizeChanged += (_, _) => FitPinned();
+        ContactCard.SizeChanged += (_, _) => FitPinned();
+        SummaryCard.SizeChanged += (_, e) =>
+        {
+            ReflowSummary(e.NewSize.Width);
+            FitPinned();
+        };
         CallingYou.PropertyChanged += (_, e) =>
         {
             if (e.Property == IsVisibleProperty) FitPinned();
@@ -221,12 +228,44 @@ public partial class OperateView : UserControl
         RightColumn.MaxHeight = narrow ? Math.Min(320, Math.Max(100, Bounds.Height / 3)) : double.PositiveInfinity;
     }
 
-    // The contact card stays pinned above the call list. On a short window it gives way (and scrolls on its own)
-    // so the call list always keeps enough height to show a few rows.
+    // The contact card stays pinned above the call list, which always keeps enough height to show a few rows.
+    // The idle band summary is pinned under the card only while both fit whole. Otherwise it moves to the top of
+    // the call list and scrolls with it, so it is never cut off inside a box with a scroll bar of its own.
+    // The pinned area itself only scrolls when the contact card alone is taller than the room left.
     private void FitPinned()
     {
         const double listRoom = 220;
         var calling = CallingYou.IsVisible ? CallingYou.Bounds.Height + CallingYou.Margin.Bottom : 0;
-        PinnedScroll.MaxHeight = Math.Max(120, LeftPane.Bounds.Height - calling - listRoom);
+        var room = Math.Max(120, LeftPane.Bounds.Height - calling - listRoom);
+        PinnedScroll.MaxHeight = room;
+
+        // Hidden during a contact: leave it where it is until it shows again and has a size to judge by.
+        if (!SummaryCard.IsVisible || SummaryCard.Bounds.Height <= 0) return;
+        var needed = ContactCard.Bounds.Height + PinnedStack.Spacing + SummaryCard.Bounds.Height + PinnedStack.Margin.Bottom;
+        var pinned = SummaryCard.Parent == PinnedStack;
+        if (needed <= room && !pinned)
+        {
+            ListStack.Children.Remove(SummaryCard);
+            PinnedStack.Children.Add(SummaryCard);
+        }
+        else if (needed > room && pinned)
+        {
+            PinnedStack.Children.Remove(SummaryCard);
+            ListStack.Children.Insert(0, SummaryCard);
+        }
+    }
+
+    // On a narrow card the three summary columns are too tight (continent names collide, the log column wraps
+    // word by word), so Heard from moves to a full-width row under the counts and the log.
+    private void ReflowSummary(double width)
+    {
+        var narrow = width < 1000;
+        if (narrow == (Grid.GetRow(SummaryHeardFrom) == 1)) return;
+        SummaryGrid.ColumnDefinitions = new ColumnDefinitions(narrow ? "*,*" : "*,*,*");
+        Grid.SetColumn(SummaryLog, narrow ? 1 : 2);
+        Grid.SetColumn(SummaryHeardFrom, narrow ? 0 : 1);
+        Grid.SetRow(SummaryHeardFrom, narrow ? 1 : 0);
+        Grid.SetColumnSpan(SummaryHeardFrom, narrow ? 2 : 1);
+        SummaryHeardFrom.Margin = narrow ? new Thickness(0, 14, 0, 0) : new Thickness(12, 0);
     }
 }

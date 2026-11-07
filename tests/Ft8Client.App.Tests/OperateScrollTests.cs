@@ -11,11 +11,13 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Ft8Client.App.Engine;
 using Ft8Client.App.ViewModels;
 using Ft8Client.App.Views;
 using Ft8Client.Core;
+using Ft8Client.Core.Ranking;
 
 namespace Ft8Client.App.Tests;
 
@@ -50,6 +52,49 @@ public class OperateScrollTests
                 window.UpdateLayout();
                 window.UpdateLayout();
                 list.Bounds.Height.Should().BeGreaterThanOrEqualTo(200);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task OperateView_ShortWindow_BandSummaryScrollsWithCallListInsteadOfClipping()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(OperateScrollTests).Assembly);
+        await session.Dispatch(() =>
+        {
+            var vm = new OperateViewModel(DispatchProxy.Create<IOperateCommands, NoCommands>(), () => DateTime.UtcNow);
+            vm.Apply(new SessionSnapshot { Mode = Mode.Ft8, Summary = new BandSummary { Band = "40m" } }, [], 0);
+            var window = new Window { Width = 1440, Height = 900, Content = new OperateView { DataContext = vm } };
+            window.Show();
+            try
+            {
+                Border Summary() => window.GetVisualDescendants().OfType<Border>().Single(b => AutomationProperties.GetName(b) == "Band summary");
+                ScrollViewer Scroll(string name) => window.GetVisualDescendants().OfType<ScrollViewer>().Single(s => s.Name == name);
+                void Settle()
+                {
+                    for (var i = 0; i < 3; i++)
+                    {
+                        window.UpdateLayout();
+                        Dispatcher.UIThread.RunJobs();
+                    }
+                }
+
+                Settle();
+                Summary().GetVisualAncestors().Should().Contain(Scroll("PinnedScroll"), "on a tall window the summary stays pinned under the contact card");
+
+                window.Height = 560;
+                Settle();
+                Summary().GetVisualAncestors().Should().Contain(Scroll("LeftScroll"), "on a short window it scrolls with the call list");
+                var pinned = Scroll("PinnedScroll");
+                pinned.Extent.Height.Should().BeLessThanOrEqualTo(pinned.Viewport.Height + 1, "the pinned contact card is not cut off");
+
+                window.Height = 900;
+                Settle();
+                Summary().GetVisualAncestors().Should().Contain(Scroll("PinnedScroll"), "it goes back once there is room");
             }
             finally
             {

@@ -74,7 +74,9 @@ when you open Costas, or after 2 hours with no contact.
 When you call or answer a station, this card becomes the contact panel. See [Making contacts](contacts.md).
 
 The contact card and this summary stay put at the top. Only the call list below them (Next in line, Repeats and
-Watching) scrolls, so the countdown, Call CQ and the contact's progress are always in view.
+Watching) scrolls, so the countdown, Call CQ and the contact's progress are always in view. On a short window there is
+not room for both, so the summary moves to the top of the call list and scrolls with it instead of being cut off. On a
+narrow window **Heard from** moves under the counts and your log.
 
 ## Next in line
 

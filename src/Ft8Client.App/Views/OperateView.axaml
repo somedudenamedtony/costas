@@ -47,12 +47,13 @@
       </StackPanel>
     </Border>
     <!-- Pinned: the contact card (and the band summary when idle) stays put while the call list below scrolls.
-         On a short window it scrolls on its own so the call list keeps room (see OperateView.FitPinned). -->
+         When the band summary does not fit under the card it moves to the top of the call list and scrolls with it
+         (see OperateView.FitPinned). -->
     <ScrollViewer x:Name="PinnedScroll" DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
-      <StackPanel Spacing="12" Margin="0,0,12,12">
+      <StackPanel x:Name="PinnedStack" Spacing="12" Margin="0,0,12,12">
 
         <!-- Top slot: the contact card, always shown. With no contact it is idle: no call, empty reports, the countdown and Call CQ. -->
-        <Border Classes="card" Padding="18,12">
+        <Border x:Name="ContactCard" Classes="card" Padding="18,12">
           <StackPanel DataContext="{Binding Panel}" x:DataType="vm:ContactPanelViewModel" Spacing="4">
             <DockPanel>
               <!-- On-air panel: the reports, the slot countdown and every control that acts on this contact or the next transmission, together. -->
@@ -267,9 +268,10 @@
                                IsVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Calling, Converter={x:Static ObjectConverters.IsNotNull}}" />
           </StackPanel>
         </Border>
-        <!-- Top slot: band summary (idle) -->
-        <Border Classes="card" Padding="18,14" IsVisible="{Binding !InContact}">
-          <Grid ColumnDefinitions="*,*,*" DataContext="{Binding Summary}" x:DataType="vm:SummaryViewModel">
+        <!-- Top slot: band summary (idle). Three columns; on a narrow card Heard from drops under the other two
+             (see OperateView.ReflowSummary). -->
+        <Border x:Name="SummaryCard" Classes="card" Padding="18,14" IsVisible="{Binding !InContact}" AutomationProperties.Name="Band summary">
+          <Grid x:Name="SummaryGrid" ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" DataContext="{Binding Summary}" x:DataType="vm:SummaryViewModel">
             <StackPanel Grid.Column="0" Spacing="6">
               <TextBlock Text="{Binding Title}" Classes="title" />
               <WrapPanel ItemSpacing="22" LineSpacing="6">
@@ -281,9 +283,9 @@
               <TextBlock Text="{Binding Caption}" Classes="secondary num" TextWrapping="Wrap" Margin="0,0,12,0" />
               <TextBlock Text="{Binding LogNotice}" IsVisible="{Binding HasLogNotice}" Foreground="{DynamicResource CautionBrush}" TextWrapping="Wrap" Margin="0,0,12,0" />
             </StackPanel>
-            <StackPanel Grid.Column="1" Spacing="6" Margin="12,0">
+            <StackPanel x:Name="SummaryHeardFrom" Grid.Column="1" Spacing="6" Margin="12,0">
               <TextBlock Text="Heard from" Classes="title" />
-              <ItemsControl ItemsSource="{Binding Continents}">
+              <ItemsControl ItemsSource="{Binding Continents}" MaxWidth="560" HorizontalAlignment="Left">
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:ContinentBar">
@@ -300,7 +302,7 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </StackPanel>
-            <Grid Grid.Column="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+            <Grid x:Name="SummaryLog" Grid.Column="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
               <TextBlock Grid.ColumnSpan="2" Text="{Binding LogTitle}" Classes="title" Margin="0,0,0,6" />
               <TextBlock Grid.Row="1" Text="Countries" Classes="secondary" Margin="0,2,16,2" />
               <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LogCountries}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
@@ -318,7 +320,7 @@
 
     <!-- The call list: Next in line, Repeats and Watching. Only this part scrolls. -->
     <ScrollViewer x:Name="LeftScroll" VerticalScrollBarVisibility="Auto">
-      <StackPanel Spacing="12" Margin="0,0,12,0">
+      <StackPanel x:Name="ListStack" Spacing="12" Margin="0,0,12,0">
 
         <!-- Next in line -->
         <Border Classes="card">
