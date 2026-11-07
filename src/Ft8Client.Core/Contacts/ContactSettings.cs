@@ -6,6 +6,8 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using Ft8Client.Core.Contests;
+
 namespace Ft8Client.Core.Contacts;
 
 /// <summary>Contact engine settings.</summary>
@@ -31,6 +33,12 @@ public sealed record ContactSettings
 
     /// <summary>Free text of up to 13 characters sent once after that last message; empty for none.</summary>
     public string FreeTextAfter { get; init; } = string.Empty;
+
+    /// <summary>The contest being run; <see cref="ContestId.None"/> for the standard exchange.</summary>
+    public ContestId Contest { get; init; } = ContestId.None;
+
+    /// <summary>My contest exchange as typed (Roundup state or DX, Field Day class and section). See <see cref="ContestExchange"/>.</summary>
+    public string ContestExchange { get; init; } = string.Empty;
 
     /// <summary>Log automatically when the contact completes.</summary>
     public bool AutoLog { get; init; } = true;

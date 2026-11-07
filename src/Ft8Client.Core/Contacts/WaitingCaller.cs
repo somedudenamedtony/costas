@@ -27,6 +27,7 @@ namespace Ft8Client.Core.Contacts;
 /// Answering it resumes that contact instead of starting a new one.
 /// </param>
 /// <param name="LastMessage">The last message it sent me, as decoded.</param>
+/// <param name="Exchange">In a contest, the exchange it sent me (its grid in the grid contests); otherwise null.</param>
 public sealed record WaitingCaller(string Call, string? Grid, int Snr, MessageKind Kind, int? Report, SlotParity Parity, int OffsetHz,
                                    DateTime FirstCalledUtc, DateTime LastCalledUtc, bool AnswerAfter = false, bool AfterStop = false,
-                                   string? LastMessage = null);
+                                   string? LastMessage = null, string? Exchange = null);

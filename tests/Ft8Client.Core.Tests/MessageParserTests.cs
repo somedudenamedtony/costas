@@ -47,8 +47,8 @@ public class MessageParserTests
     [InlineData("K1ABC W7LIT 73", MessageKind.Bye, "K1ABC", "W7LIT", null)]
     [InlineData("WA9XYZ/R KA1ABC/R FN42", MessageKind.GridReply, "WA9XYZ/R", "KA1ABC/R", null)]
     [InlineData("K1ABC/P W7LIT/QRP -10", MessageKind.Report, "K1ABC/P", "W7LIT/QRP", -10)]
-    [InlineData("KV4ZY NX8G 539 OH", MessageKind.Exchange, "KV4ZY", "NX8G", null)]
-    [InlineData("KC8YDS KF6CRW R 559 ID", MessageKind.Exchange, "KC8YDS", "KF6CRW", null)]
+    [InlineData("KV4ZY NX8G 539 OH", MessageKind.ContestExchange, "KV4ZY", "NX8G", null)]
+    [InlineData("KC8YDS KF6CRW R 559 ID", MessageKind.ContestExchange, "KC8YDS", "KF6CRW", null)]
     public void Parse_TwoCallMessage_ReturnsKindAndCalls(string text, MessageKind kind, string to, string from, int? report)
     {
         var m = MessageParser.Parse(text);
