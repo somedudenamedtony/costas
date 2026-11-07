@@ -90,6 +90,53 @@ public class KeyboardSessionTests : IDisposable
     }
 
     [Fact]
+    public void Snapshot_ClickedSignalMidLine_TextShownBeforeTheLineEnds()
+    {
+        _keyboard.Listen(1180);
+        Feed(Psk31(1180, "CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE"));
+
+        var snap = _session.Snapshot;
+        var reading = snap.Reading.Should().NotBeNull().And.Subject.As<KeyboardReading>();
+        reading.OffsetHz.Should().BeInRange(1177, 1183);
+        reading.Partial.Should().Contain("CQ CQ CQ DE KP4JRS");
+        snap.LiveLine!.Text.Should().Be(reading.Partial);
+        snap.RawDecodes.Should().BeEmpty("Raw decodes still shows finished lines only");
+    }
+
+    [Fact]
+    public void Snapshot_ClickedSignalLineEnded_ReadingKeepsItsLinesAndStation()
+    {
+        _keyboard.Listen(1180);
+        Feed(Psk31(1180, "CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n"));
+
+        var reading = _session.Snapshot.Reading.Should().NotBeNull().And.Subject.As<KeyboardReading>();
+        reading.Call.Should().Be("KP4JRS");
+        reading.Country.Should().Be("Puerto Rico");
+        reading.Lines.Should().Contain(l => l.Who == "KP4JRS" && l.Text.Contains("CQ CQ CQ DE KP4JRS", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Snapshot_NothingClicked_NoReading()
+    {
+        Feed(Psk31(1180, "CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE"));
+
+        _session.Snapshot.Reading.Should().BeNull();
+        _session.Snapshot.LiveLine.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetBand_AfterReading_ReadingCleared()
+    {
+        _keyboard.Listen(1180);
+        Feed(Psk31(1180, "CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE"));
+
+        _session.SetBand("20m", Mode.Rtty);
+
+        _session.Snapshot.Reading.Should().BeNull();
+        _session.Snapshot.LiveLine.Should().BeNull();
+    }
+
+    [Fact]
     public void Snapshot_ModeChanged_RawDecodesShowOnlyThatModeAndKeepTheOthers()
     {
         var t = _clock.UtcNow;

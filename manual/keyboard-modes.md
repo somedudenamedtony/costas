@@ -22,6 +22,10 @@ passband at once (up to 20).
 - **The waterfall** labels each signal with its station's call, "?" until Costas has read a call, and the station you
   are in contact with in red. Click a signal to read it, even before Costas has noticed it; it stays read while that
   station is quiet. When a reply comes back a little off that frequency, the same channel moves onto it. For RTTY, click either of its two tones or between them.
+- **Reading a signal.** When you are not in a contact, the box under the contact card (the conversation box) shows the
+  signal you last clicked, live, letter by letter as it is read, with its call, audio frequency, strength and country
+  on top. Clicking a station in Next in line reads its signal the same way. Click another signal to switch. It is how
+  you listen to a station before you call it; Raw decodes still shows every signal at once.
 - **Signals without a callsign yet** are counted in a line under Next in line, with their audio frequencies.
 - **Band activity** (right column) and the band summary count the stations read every three minutes, as there are no
   slots to count.
@@ -52,7 +56,8 @@ answer (F2) on the station's own audio frequency and moves the contact strip on,
 **Calling CQ.** Press F1 or **Call CQ**. A station that answers with your call starts the contact, and the strip runs
 CQ, their call, your exchange (F3), their exchange, then your 73 (F4), which logs it.
 
-**The conversation box** under the strip shows what each of you sent, with your own text dimmed. It keeps its size
+**The conversation box** under the strip shows what each of you sent, with your own text dimmed. Their text appears
+as it is read, on a line marked "now", rather than waiting for the line to end. It keeps its size
 and only follows new text while you are at the end, so words and keys do not move as you aim at them. If Costas read
 a name or QTH wrong, or missed it, click the word in the conversation and choose what it is: their name, QTH, report,
 grid or call. What you pick always wins over what Costas read, and the name and QTH to be logged show under the call.

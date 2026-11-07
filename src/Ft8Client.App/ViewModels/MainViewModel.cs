@@ -786,6 +786,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     }
 
     /// <inheritdoc />
+    public void KeyboardListen(int hz)
+    {
+        if (!ModeInfo.IsSlotted(_host.Session.Config.Mode)) _host.Keyboard.Listen(hz);
+    }
+
+    /// <inheritdoc />
     public void KeyboardBackspace()
     {
         Activity();

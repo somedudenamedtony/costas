@@ -508,10 +508,11 @@ public sealed partial class OperateViewModel : ObservableObject
         ListUpdated = false;
     }
 
-    /// <summary>A row was clicked: select it and show details.</summary>
+    /// <summary>A row was clicked: select it and show details. In PSK and RTTY the conversation box reads its signal.</summary>
     public void RowClicked(StationRowViewModel row)
     {
         _line.Clicked();
+        if (Keyboard.Visible) _commands.KeyboardListen(row.Source.Station.OffsetHz);
         Select(row);
     }
 
