@@ -39,4 +39,17 @@ public static class LocalNetwork
         }
         return false;
     }
+
+    /// <summary>
+    /// True for a carrier-grade NAT address (100.64/10). Tailscale gives each device one of these, so on this computer it
+    /// is the address a phone uses away from home.
+    /// </summary>
+    public static bool IsTailscale(IPAddress? address)
+    {
+        if (address is null) return false;
+        if (address.IsIPv4MappedToIPv6) address = address.MapToIPv4();
+        if (address.AddressFamily != AddressFamily.InterNetwork) return false;
+        var b = address.GetAddressBytes();
+        return b[0] == 100 && b[1] >= 64 && b[1] <= 127;
+    }
 }

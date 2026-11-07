@@ -620,6 +620,18 @@
             </Border>
 
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Away from home" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <StackPanel Spacing="4" IsVisible="{Binding AwayUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                  <TextBlock Classes="help" Text="Tailscale is on. On a phone signed in to the same Tailscale account, open" />
+                  <SelectableTextBlock Text="{Binding AwayUrl}" FontSize="16" FontWeight="SemiBold" />
+                </StackPanel>
+                <TextBlock Classes="help" IsVisible="{Binding AwayUrl, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                           Text="To operate from anywhere, install Tailscale (free, tailscale.com) on this computer and on your phone and sign both in to the same account. Its address then appears here. Do not forward the port on your router: Costas refuses addresses from the open internet." />
+                <TextBlock Classes="help" Text="Leave this computer on with sleep turned off and Costas running. Every safety rule below applies away from home too." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Port" />
               <StackPanel Grid.Column="1" Spacing="6">
                 <TextBox Text="{Binding RemotePort}" Width="80" HorizontalAlignment="Left" />

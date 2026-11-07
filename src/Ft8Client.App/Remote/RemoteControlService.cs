@@ -90,10 +90,16 @@ public sealed class RemoteControlService : IAsyncDisposable
     }
 
     /// <summary>
-    /// The addresses to open on a phone: one per local IPv4 address of this computer, the most likely first (an adapter
-    /// with a default gateway, which is the home network, before virtual adapters such as WSL or Hyper-V).
+    /// The addresses to open on a phone at home: one per local IPv4 address of this computer, the most likely first (an
+    /// adapter with a default gateway, which is the home network, before virtual adapters such as WSL or Hyper-V).
+    /// Tailscale addresses are left out; see <see cref="AwayUrls"/>.
     /// </summary>
-    public IReadOnlyList<string> Urls()
+    public IReadOnlyList<string> Urls() => Addresses(away: false);
+
+    /// <summary>The addresses to open on a phone away from home: this computer's Tailscale addresses, if it has any.</summary>
+    public IReadOnlyList<string> AwayUrls() => Addresses(away: true);
+
+    private List<string> Addresses(bool away)
     {
         var port = _settings.Current.Remote.Port;
         try
@@ -105,6 +111,7 @@ public sealed class RemoteControlService : IAsyncDisposable
                     Gateway: n.Props.GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork && !g.Address.Equals(System.Net.IPAddress.Any)),
                     Physical: n.NetworkInterfaceType is NetworkInterfaceType.Ethernet or NetworkInterfaceType.Wireless80211)))
                 .Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork && LocalNetwork.Contains(a.Address) && !System.Net.IPAddress.IsLoopback(a.Address))
+                .Where(a => LocalNetwork.IsTailscale(a.Address) == away)
                 .OrderByDescending(a => a.Gateway)
                 .ThenByDescending(a => a.Physical)
                 .Select(a => $"http://{a.Address}:{port}/")

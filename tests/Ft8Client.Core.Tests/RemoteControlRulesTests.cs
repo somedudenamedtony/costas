@@ -112,6 +112,20 @@ public class RemoteControlRulesTests
         LocalNetwork.Contains(IPAddress.Parse(address)).Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData("100.64.0.1", true)]
+    [InlineData("100.101.102.103", true)]
+    [InlineData("100.127.255.254", true)]
+    [InlineData("100.63.0.1", false)]
+    [InlineData("100.128.0.1", false)]
+    [InlineData("192.168.1.20", false)]
+    [InlineData("::ffff:100.100.1.2", true)]
+    [InlineData("fd7a:115c:a1e0::1", false)]
+    public void IsTailscale_Address_OnlyCarrierGradeNat(string address, bool expected)
+    {
+        LocalNetwork.IsTailscale(IPAddress.Parse(address)).Should().Be(expected);
+    }
+
     [Fact]
     public void Issue_PastTheCap_ForgetsTheOldestAndStaysUnderTheCredentialLimit()
     {
