@@ -879,6 +879,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool RemoteRunning { get; set; }
 
+    /// <summary>The Tailscale address to open on the phone away from home; blank when this computer has none.</summary>
+    [ObservableProperty]
+    public partial string AwayUrl { get; set; } = string.Empty;
+
     private bool _remoteLoaded;
 
     // Turning the mobile connection on or off takes effect at once, so the address appears without saving and
@@ -905,6 +909,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         var r = _host.Remote;
         RemoteRunning = r.Running;
         var urls = r.Urls();
+        AwayUrl = r.AwayUrls() is [var away, ..] ? away : string.Empty;
         PhoneUrl = urls.Count > 0 ? urls[0] : $"this computer's address, port {_host.Settings.Current.Remote.Port}";
         PhoneOtherUrls = urls.Count > 1 ? "If that does not open, try " + string.Join(" or ", urls.Skip(1)) : string.Empty;
         RemoteStatus = r.Problem is { } p ? p
