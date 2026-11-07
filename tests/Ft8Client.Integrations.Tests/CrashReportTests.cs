@@ -98,7 +98,8 @@ public class CrashReportTests
         var body = transport.Sent[0];
         body.Should().Contain("InvalidOperationException").And.Contain(nameof(Thrown));
         body.Should().NotContain("W7LIT").And.NotContain("DN40").And.NotContain("14074000");
-        body.Should().NotContain(Environment.UserName.Length >= 3 ? Environment.UserName : "\u0000");
+        // The user folder, not the bare user name: that can also be an ordinary word in a module name ("runner" on CI).
+        body.Should().NotContain(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
         body.Should().NotContain(Environment.MachineName);
         body.Should().NotContain("\"ip_address\"").And.NotContain("\"username\"").And.NotContain("\"server_name\"");
         body.Should().NotContain("\"breadcrumbs\"");
