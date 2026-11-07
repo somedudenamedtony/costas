@@ -119,7 +119,8 @@ account or tracking id. Nothing is sent while you are offline, in simulation, or
 
 When Costas hits an error it did not expect, it also sends an anonymous crash report to [Sentry](https://sentry.io):
 the kind of error, where in Costas it happened, the version and Windows or Linux, with callsigns, grids, frequencies,
-names and your user name taken out of the error text.
+names and your user name taken out of the error text, along with the warnings and errors from its own log and the same
+usage counts, scrubbed the same way.
 
 To turn both off, untick **Settings › Privacy › Send anonymous usage statistics and crash reports**. The full list is in
 [the manual](https://somedudenamedtony.github.io/costas/settings/#privacy).

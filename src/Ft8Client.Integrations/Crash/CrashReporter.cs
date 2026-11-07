@@ -13,7 +13,7 @@ using Sentry.Protocol;
 namespace Ft8Client.Integrations.Crash;
 
 /// <summary>
-/// Crash and error reports to Sentry. Follows the same rules as the usage statistics: on unless the operator turns
+/// Crash and error reports, warning and error log lines, and usage counts to Sentry. Follows the same rules as the usage statistics: on unless the operator turns
 /// them off in Settings, Privacy (read for every report, so switching off takes effect at once), never in simulation,
 /// nothing sent or tried while the computer is offline (reports wait in a small cache on disk and go out when the
 /// network is back), and nothing that identifies the operator: no callsign, grid, name, frequencies, stations, log
@@ -23,6 +23,9 @@ public sealed class CrashReporter : IDisposable
 {
     /// <summary>How many reports wait at most in the offline cache.</summary>
     public const int MaxCached = 30;
+
+    private static Func<bool> s_allowed = () => false;
+    private static Func<IEnumerable<string?>> s_privateWords = () => [];
 
     private readonly IDisposable _sdk;
 
@@ -38,15 +41,29 @@ public sealed class CrashReporter : IDisposable
     /// which can change while Costas runs).
     /// </summary>
     public static CrashReporter? Start(string? dsn, string cacheFolder, Func<bool> allowed, Func<IEnumerable<string?>> privateWords,
-        Func<bool>? online = null)
+        Func<bool>? online = null) => Start(dsn, cacheFolder, allowed, privateWords, online, adjust: null);
+
+    /// <summary>As <see cref="Start(string?, string, Func{bool}, Func{IEnumerable{string?}}, Func{bool}?)"/>; tests adjust the options (a fake transport).</summary>
+    internal static CrashReporter? Start(string? dsn, string cacheFolder, Func<bool> allowed, Func<IEnumerable<string?>> privateWords,
+        Func<bool>? online, Action<SentryOptions>? adjust)
     {
-        if (string.IsNullOrWhiteSpace(dsn) || Running) return null;
+        if (string.IsNullOrWhiteSpace(dsn)) return null;
         if (!allowed())
         {
             DeleteCache(cacheFolder);
             return null;
         }
-        var sdk = SentrySdk.Init(o => Configure(o, dsn.Trim(), cacheFolder, allowed, privateWords, online ?? NetworkInterface.GetIsNetworkAvailable));
+        if (Running) return null;
+        s_allowed = allowed;
+        s_privateWords = privateWords;
+        var sdk = SentrySdk.Init(o =>
+        {
+            Configure(o, dsn.Trim(), cacheFolder, allowed, privateWords, online ?? NetworkInterface.GetIsNetworkAvailable);
+            adjust?.Invoke(o);
+        });
+        // Logs would otherwise carry Sentry's installation id, which stays the same across runs: a tracking id. A new
+        // random id for each run of Costas keeps one run's lines together and nothing more, as the statistics do.
+        SentrySdk.ConfigureScope(scope => scope.User = new SentryUser { Id = Guid.NewGuid().ToString("N") });
         Running = true;
         return new CrashReporter(sdk);
     }
@@ -55,6 +72,34 @@ public sealed class CrashReporter : IDisposable
     public static void Capture(Exception ex)
     {
         if (Running) SentrySdk.CaptureException(ex);
+    }
+
+    /// <summary>
+    /// Counts a usage event as a Sentry metric, beside the Aptabase statistics. The caller passes only what the
+    /// statistics may carry (band, mode, feature names: never a callsign, grid, frequency or log data); string values
+    /// are scrubbed anyway. Does nothing when no reporter is running or reports are off.
+    /// </summary>
+    public static void Count(string name, IReadOnlyDictionary<string, object>? props = null)
+    {
+        if (!Running || !s_allowed()) return;
+        var scrub = Scrubber(s_privateWords());
+        var attributes = (props ?? new Dictionary<string, object>())
+            .Select(kv => new KeyValuePair<string, object>(kv.Key, kv.Value is string text ? scrub.Scrub(text) ?? string.Empty : kv.Value))
+            .ToArray();
+        SentrySdk.Metrics.EmitCounter(name, 1, attributes, null);
+    }
+
+    /// <summary>
+    /// Sends one log line (a warning or an error from the app's log) to Sentry Logs, scrubbed like a crash report: the
+    /// rendered text only, none of the log's properties. Does nothing when no reporter is running or reports are off.
+    /// </summary>
+    public static void Log(bool error, string message)
+    {
+        if (!Running || !s_allowed()) return;
+        var text = Scrubber(s_privateWords()).Scrub(message) ?? string.Empty;
+        // The text goes in as a parameter, so braces in it are never read as a template.
+        if (error) SentrySdk.Logger.LogError("{0}", text);
+        else SentrySdk.Logger.LogWarning("{0}", text);
     }
 
     /// <summary>The Sentry options Costas uses. Internal for tests.</summary>
@@ -70,7 +115,11 @@ public sealed class CrashReporter : IDisposable
         o.ServerName = string.Empty;
         o.AutoSessionTracking = false;
         o.SendClientReports = false;
+        // Logs and metrics are only what Costas hands over itself (Log and Count), never an automatic integration.
         o.EnableLogs = false;
+        o.DisableSystemDiagnosticsMetricsIntegration();
+        o.SetBeforeSendLog(log => allowed() ? log : null);
+        o.SetBeforeSendMetric(metric => allowed() ? metric : null);
         o.TracesSampleRate = 0;
         o.MaxBreadcrumbs = 0;
         o.SetBeforeBreadcrumb(_ => null);

@@ -316,12 +316,14 @@ Privacy: nothing is sent without the operator pressing Send. The User-Agent leav
 statistics). Version and OS are ticked by default; the log tail (last 200 lines, at most 20,000 characters, secrets
 removed) is off until ticked because it can hold callsigns and frequencies.
 
-## 10c. Crash reports (Sentry)
+## 10c. Crash reports, logs and metrics (Sentry)
 
-Unexpected errors go to Sentry (the `Sentry` NuGet package, `Ft8Client.Integrations.Crash.CrashReporter`). Owner
-request 2026-11-07; same rules as the usage statistics.
+Unexpected errors, warning and error log lines, and the usage events go to Sentry (the `Sentry` NuGet package, `Ft8Client.Integrations.Crash.CrashReporter`). Owner
+request 2026-11-07 (logs and metrics added the same day; Aptabase stays for now, owner may drop it if Sentry covers
+it on the free plan); same rules as the usage statistics.
 
-- The DSN is baked into release builds only: CI sets `SENTRY_DSN` from the `SENTRY_DSN` repository variable for the
+- The DSN is baked into release builds only: CI sets `SENTRY_DSN` (the `costas` project in the `ember-ridge-development` Sentry org; a `SENTRY_DSN` repository
+  variable overrides it) for the
   publish steps of a manual run on `main` (`AssemblyMetadata` `SentryDsn`). Not a secret: it ships inside the app and
   only accepts reports. Other builds send nothing, nor when `CI` is `true`.
 - Same switch as the statistics (Settings, Privacy, `Usage.Enabled`), read for every report; off at start means the
@@ -329,11 +331,17 @@ request 2026-11-07; same rules as the usage statistics.
   simulation.
 - Captured: unhandled exceptions (AppDomain, unobserved tasks), UI-thread errors the app survives
   (`App.WatchForUnexpectedErrors`) and the fatal catch in `Program.Main`. No breadcrumbs (they would carry log lines),
-  no tracing, no sessions, no client reports, no Serilog sink, `SendDefaultPii` off.
+  no tracing, no sessions, no client reports, no automatic logging or metrics integrations, `SendDefaultPii` off.
+- Logs: `SentryLogSink` (Serilog, Warning and up) hands the rendered line plus exception type and message to
+  `CrashReporter.Log`, which scrubs it and sends it as the parameter of a `{0}` template (no Serilog properties).
+- Metrics: `UsageReporter` passes every allowed event to `CrashReporter.Count` (`mirror`), a Sentry counter with the
+  same props, string values scrubbed. Sent even when the build has no Aptabase key.
+- Sentry fills logs' `user.id` with its installation id, which is the same across runs; Costas sets a random scope
+  user id at each start instead. `BeforeSendLog`/`BeforeSendMetric` drop everything while the switch is off.
 - `BeforeSend` (`CrashReporter.Clean`) clears user, server name, request, device name and time zone and exception
   `Data`, and runs `CrashScrubber` over the message, exception values, extras, tags, thread names, frame paths and
   debug image paths: the operator's callsigns, grids, name and QTH from every profile, the OS user and machine name,
-  the user folder, and anything shaped like a callsign, grid, frequency, serial port, IP, email or URL query value.
+  the user folder, and anything shaped like a callsign (with a letter in the prefix, so `20m` stays), grid, frequency, serial port, IP, email or URL query value.
 - Offline: an `INetworkStatusListener` on `NetworkInterface.GetIsNetworkAvailable` keeps Sentry's caching transport
   from trying while the OS reports no network.
 - Sentry project settings (owner, in Sentry): Security & Privacy, "Prevent Storing of IP Addresses" on, and the

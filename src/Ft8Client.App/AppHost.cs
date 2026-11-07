@@ -288,6 +288,8 @@ public sealed class AppHost : IAsyncDisposable
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
             .WriteTo.File(Path.Combine(paths.Logs, "app-.log"), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 14)
+            // Warnings and errors also go to Sentry Logs, scrubbed, once crash reports have started (same switch).
+            .WriteTo.Sink(new SentryLogSink(), Serilog.Events.LogEventLevel.Warning)
             .CreateLogger();
         if (migrated is not null) Log.Information("{Note}", migrated);
         if (migrationError is not null) Log.Warning(migrationError, "Could not bring data across from {Legacy}", AppPaths.LegacyRoot());
@@ -540,7 +542,7 @@ public sealed class AppHost : IAsyncDisposable
             _disposables.Add(http);
             client = new AptabaseClient(http, key);
         }
-        Usage = new UsageReporter(client, () => !Simulating && Settings.Current.Usage.Enabled, () => Clock.UtcNow);
+        Usage = new UsageReporter(client, () => !Simulating && Settings.Current.Usage.Enabled, () => Clock.UtcNow, mirror: CrashReporter.Count);
         Usage.Start();
         _usageDay = Clock.UtcNow.Date;
         TrackStarted();

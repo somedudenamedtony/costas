@@ -14,6 +14,8 @@ using Sentry.Protocol.Envelopes;
 
 namespace Ft8Client.Integrations.Tests;
 
+// One Sentry hub per process: these tests start and stop it, so they do not run beside each other.
+[Collection(nameof(CrashReportTests))]
 public class CrashReportTests
 {
     private const string Dsn = "https://0123456789abcdef0123456789abcdef@o1.ingest.us.sentry.io/1";
@@ -60,6 +62,7 @@ public class CrashReportTests
     [InlineData("Value cannot be null. (Parameter 'source')")]
     [InlineData("Unable to load DLL 'portaudio' or one of its dependencies.")]
     [InlineData("X509Certificate chain failed")]
+    [InlineData("Band 20m, 160m and 2m")]
     public void Scrub_OrdinaryError_IsKept(string text) => Scrubber().Scrub(text).Should().Be(text);
 
     [Fact]
@@ -128,5 +131,59 @@ public class CrashReportTests
         File.WriteAllText(Path.Combine(folder, "waiting.envelope"), "x");
         CrashReporter.Start(Dsn, folder, () => false, () => []).Should().BeNull();
         Directory.Exists(folder).Should().BeFalse();
+    }
+
+    [Fact]
+    public void LogAndCount_Running_SendScrubbedLogAndCounter()
+    {
+        var transport = new CapturingTransport();
+        var on = true;
+        using (var reporter = CrashReporter.Start(Dsn, Path.GetTempPath(), () => on, () => ["W7LIT", "DN40"], () => true, o =>
+               {
+                   o.CacheDirectoryPath = null;
+                   o.Transport = transport;
+               }))
+        {
+            reporter.Should().NotBeNull();
+            CrashReporter.Log(error: false, "Could not look up W7LIT in DN40 on 14074000 Hz {not a template}");
+            CrashReporter.Count("band_changed", new Dictionary<string, object> { ["band"] = "20m", ["mode"] = "FT8" });
+            on = false;
+            CrashReporter.Log(error: true, "should not be sent");
+            CrashReporter.Count("should_not_be_counted");
+            on = true;
+            Sentry.SentrySdk.Flush(TimeSpan.FromSeconds(5));
+        }
+
+        var all = string.Join("\n", transport.Sent);
+        all.Should().Contain("Could not look up [x] in [x] on [x] {not a template}");
+        all.Should().Contain("band_changed").And.Contain("20m");
+        all.Should().NotContain("W7LIT").And.NotContain("14074000").And.NotContain("should not be sent").And.NotContain("should_not_be_counted");
+        all.Should().NotContain(Environment.MachineName);
+        all.Should().NotContain(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        CrashReporter.Running.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Log_TwoRuns_CarryDifferentUserIds()
+    {
+        string RunOnce()
+        {
+            var transport = new CapturingTransport();
+            using (CrashReporter.Start(Dsn, Path.GetTempPath(), () => true, () => [], () => true, o =>
+                   {
+                       o.CacheDirectoryPath = null;
+                       o.Transport = transport;
+                   }))
+            {
+                CrashReporter.Log(error: false, "hello");
+                Sentry.SentrySdk.Flush(TimeSpan.FromSeconds(5));
+            }
+            var m = System.Text.RegularExpressions.Regex.Match(string.Join("\n", transport.Sent), "\"user.id\":\\{\"value\":\"([^\"]+)\"");
+            m.Success.Should().BeTrue();
+            return m.Groups[1].Value;
+        }
+
+        // Sentry's own installation id would be the same on every run, a tracking id; each run gets its own instead.
+        RunOnce().Should().NotBe(RunOnce());
     }
 }

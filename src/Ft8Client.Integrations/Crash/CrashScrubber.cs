@@ -95,8 +95,9 @@ public sealed partial class CrashScrubber
     [GeneratedRegex(@"\b\d{5,}\b")]
     private static partial Regex LongNumber();
 
-    // W7LIT, K1ABC, 9A1AA, VK2/W7LIT, W7LIT/P, EA8/G4ABC/QRP, in either case.
-    [GeneratedRegex(@"(?i)\b(?:[A-Z0-9]{1,4}/)?[A-Z0-9]{1,3}[0-9][A-Z]{1,4}(?:/[A-Z0-9]{1,4})?\b")]
+    // W7LIT, K1ABC, 9A1AA, VK2/W7LIT, W7LIT/P, EA8/G4ABC/QRP, in either case. The prefix has a letter, so bands
+    // (20m, 160m) are left alone.
+    [GeneratedRegex(@"(?i)\b(?:[A-Z0-9]{1,4}/)?(?:[A-Z][A-Z0-9]{0,2}|[0-9][A-Z][A-Z0-9]?)[0-9][A-Z]{1,4}(?:/[A-Z0-9]{1,4})?\b")]
     private static partial Regex Callsign();
 
     // DN40, DN40ab (Maidenhead, four or six characters, either case).

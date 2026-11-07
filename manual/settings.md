@@ -220,7 +220,7 @@ Nothing is sent while your computer is offline. Counts wait in memory (never on 
 back; anything still waiting when you close Costas is dropped. Statistics are never sent in simulation, and builds you
 make yourself from the source send nothing at all.
 
-### Crash reports
+### Crash reports, warnings and usage counts in Sentry
 
 When something goes wrong that Costas did not expect (it closes, or shows "Unexpected error" on the status line), it
 sends a crash report to Sentry. A report holds:
@@ -230,8 +230,13 @@ sends a crash report to Sentry. A report holds:
   addresses' details and your Windows or Linux user name taken out first;
 - the Costas version, Windows or Linux and its version, and the .NET version Costas runs on.
 
-A report never holds your callsign, grid, name, frequencies, the stations you hear or work, anything from your log,
-the app's own log, your computer's name or your network address, and there is no account or tracking id.
+Costas also sends Sentry the **warnings and errors** it writes to its own log (for example "the radio did not
+answer" or "QRZ could not be reached"), scrubbed the same way, and the **same usage counts** that go to Aptabase.
+Information lines from the log, such as decodes and logged contacts, are never sent.
+
+Nothing sent to Sentry holds your callsign, grid, name, frequencies, the stations you hear or work, anything from your
+logbook, your computer's name or your network address. There is no account and no tracking id: each run of Costas gets
+a new random id, so one run's lines can be read together and nothing more.
 
 Nothing is sent while your computer is offline: a report waits in the `crash-reports` folder next to your log (at most
 30 of them) and goes out when the network is back. Unticking the box stops reports at once, and anything still waiting
