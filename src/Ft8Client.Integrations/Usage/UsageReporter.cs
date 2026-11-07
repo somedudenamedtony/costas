@@ -32,6 +32,7 @@ public sealed class UsageReporter : IAsyncDisposable
 
     private readonly AptabaseClient? _client;
     private readonly Func<bool> _allowed;
+    private readonly Action<string, IReadOnlyDictionary<string, object>?>? _mirror;
     private readonly Func<bool> _online;
     private readonly Func<DateTime> _utcNow;
     private readonly ConcurrentQueue<UsageEvent> _queue = new();
@@ -46,10 +47,13 @@ public sealed class UsageReporter : IAsyncDisposable
     /// <summary>
     /// Creates the reporter. With no client (no app key in this build) it does nothing. <paramref name="allowed"/> is
     /// read on every event and every send: false (turned off, notice not shown yet, simulation) drops events.
-    /// <paramref name="online"/> defaults to the operating system's view of the network.
+    /// <paramref name="online"/> defaults to the operating system's view of the network. <paramref name="mirror"/>, when
+    /// given, also receives every event that is allowed (Costas counts them in Sentry too), with or without a client.
     /// </summary>
-    public UsageReporter(AptabaseClient? client, Func<bool> allowed, Func<DateTime> utcNow, Func<bool>? online = null)
+    public UsageReporter(AptabaseClient? client, Func<bool> allowed, Func<DateTime> utcNow, Func<bool>? online = null,
+        Action<string, IReadOnlyDictionary<string, object>?>? mirror = null)
     {
+        _mirror = mirror;
         _client = client;
         _allowed = allowed;
         _utcNow = utcNow;
@@ -74,7 +78,9 @@ public sealed class UsageReporter : IAsyncDisposable
     /// <summary>Records an event. Cheap and safe from any thread; does nothing when statistics are off.</summary>
     public void Track(string name, IReadOnlyDictionary<string, object>? props = null)
     {
-        if (_client is null || !_allowed()) return;
+        if (!_allowed()) return;
+        _mirror?.Invoke(name, props);
+        if (_client is null) return;
         _queue.Enqueue(new UsageEvent(name, _utcNow(), props));
         while (_queue.Count > MaxQueued) _queue.TryDequeue(out _);
     }

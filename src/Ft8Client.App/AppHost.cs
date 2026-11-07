@@ -26,6 +26,7 @@ using Ft8Client.Data.Reference;
 using Ft8Client.Data.Secrets;
 using Ft8Client.Data.Settings;
 using Ft8Client.Decoding;
+using Ft8Client.Integrations.Crash;
 using Ft8Client.Integrations.Net;
 using Ft8Client.Integrations.Time;
 using Ft8Client.Integrations.Usage;
@@ -211,6 +212,12 @@ public sealed class AppHost : IAsyncDisposable
             .OfType<System.Reflection.AssemblyMetadataAttribute>()
             .FirstOrDefault(a => a.Key == "AptabaseAppKey")?.Value is { Length: > 0 } k && AptabaseClient.HostFor(k) is not null ? k.Trim() : null;
 
+    /// <summary>Crash and error reports (Sentry), or null when this build has none or they were off at start.</summary>
+    public CrashReporter? Crashes { get; private init; }
+
+    /// <summary>The Sentry DSN this build was made with (from CI), or null: then no crash reports are sent.</summary>
+    public static string? CrashDsn { get; } = BuildValue("SentryDsn")?.Trim();
+
     /// <summary>The form relay that Report a problem posts to (from CI's <c>FEEDBACK_URL</c>), or null: then only email and Copy are offered.</summary>
     public static Uri? FeedbackEndpoint { get; } = Ft8Client.Integrations.Feedback.FeedbackClient.EndpointFrom(BuildValue("FeedbackUrl"));
 
@@ -281,11 +288,19 @@ public sealed class AppHost : IAsyncDisposable
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
             .WriteTo.File(Path.Combine(paths.Logs, "app-.log"), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 14)
+            // Warnings and errors also go to Sentry Logs, scrubbed, once crash reports have started (same switch).
+            .WriteTo.Sink(new SentryLogSink(), Serilog.Events.LogEventLevel.Warning)
             .CreateLogger();
         if (migrated is not null) Log.Information("{Note}", migrated);
         if (migrationError is not null) Log.Warning(migrationError, "Could not bring data across from {Legacy}", AppPaths.LegacyRoot());
         var store = new SettingsStore(paths.Settings);
-        var host = new AppHost(args, paths, new AppSettingsAccessor(store, store.Load()));
+        var settings = new AppSettingsAccessor(store, store.Load());
+        // Before anything else can fail, so a crash while starting is reported too. Simulation is known for sure only
+        // once the host has read its plan; until then the command line says.
+        AppHost? started = null;
+        var crashes = StartCrashReports(paths, settings, () => started?.Simulating ?? args.SimulateFolder is not null);
+        var host = new AppHost(args, paths, settings) { Crashes = crashes };
+        started = host;
         await host.InitializeAsync().ConfigureAwait(false);
         return host;
     }
@@ -497,6 +512,25 @@ public sealed class AppHost : IAsyncDisposable
         };
     }
 
+    // Crash reports follow the usage statistics switch, and are never sent from a build server or in simulation. The
+    // operator's callsigns, grids and name are read for every report, so a change in Settings is honoured at once.
+    private static CrashReporter? StartCrashReports(AppPaths paths, AppSettingsAccessor settings, Func<bool> simulating)
+    {
+        if (string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase)) return null;
+        try
+        {
+            return CrashReporter.Start(CrashDsn, Path.Combine(paths.Root, "crash-reports"),
+                () => !simulating() && settings.Current.Usage.Enabled,
+                () => settings.Current.Profiles.SelectMany(p => new[] { p.Callsign, p.Grid, p.OperatorName, p.Qth }));
+        }
+        catch (Exception ex)
+        {
+            // Crash reports are optional; a bad DSN must not stop Costas starting.
+            Log.Warning(ex, "Crash reports could not start");
+            return null;
+        }
+    }
+
     // Anonymous statistics. The User-Agent leaves the callsign out on purpose: these requests must not identify the station.
     private void StartUsage(DatabaseSessionLog log)
     {
@@ -508,7 +542,7 @@ public sealed class AppHost : IAsyncDisposable
             _disposables.Add(http);
             client = new AptabaseClient(http, key);
         }
-        Usage = new UsageReporter(client, () => !Simulating && Settings.Current.Usage.Enabled, () => Clock.UtcNow);
+        Usage = new UsageReporter(client, () => !Simulating && Settings.Current.Usage.Enabled, () => Clock.UtcNow, mirror: CrashReporter.Count);
         Usage.Start();
         _usageDay = Clock.UtcNow.Date;
         TrackStarted();
@@ -1276,6 +1310,7 @@ public sealed class AppHost : IAsyncDisposable
         foreach (var d in _disposables) d.Dispose();
         _decoder?.Dispose();
         Guard.Dispose();
+        Crashes?.Dispose();
         await Log.CloseAndFlushAsync().ConfigureAwait(false);
     }
 }

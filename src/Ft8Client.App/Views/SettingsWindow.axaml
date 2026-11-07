@@ -728,12 +728,13 @@
         <ScrollViewer>
           <StackPanel>
             <TextBlock Classes="page" Text="Privacy" />
-            <TextBlock Classes="intro" Text="Costas can send anonymous usage counts to Aptabase so its developer can see how many people use it and which features matter. Nothing is sent while your computer is offline." />
+            <TextBlock Classes="intro" Text="Costas can send anonymous usage counts to Aptabase so its developer can see how many people use it and which features matter, and anonymous crash reports to Sentry so bugs get fixed. Nothing is sent while your computer is offline." />
             <Grid Classes="field" ColumnDefinitions="210,*">
-              <TextBlock Classes="label" Text="Usage statistics" />
+              <TextBlock Classes="label" Text="Usage and crashes" />
               <StackPanel Grid.Column="1">
-                <CheckBox Content="Send anonymous usage statistics" IsChecked="{Binding UsageEnabled}" />
+                <CheckBox Content="Send anonymous usage statistics and crash reports" IsChecked="{Binding UsageEnabled}" />
                 <TextBlock Classes="help" Text="Sent: the Costas version, Windows or Linux, band and mode, the kind of radio connection and Hamlib model number, which views and features you use, and when a contact is logged. Never sent: your callsign, grid, name, frequencies, the stations you work, or anything from your log. No account or tracking id; each run of Costas is a separate anonymous session." />
+                <TextBlock Classes="help" Text="Crash reports: when Costas hits an error it did not expect, the kind of error, where in Costas it happened, the Costas version and Windows or Linux, and the warnings and errors Costas writes to its own log. The same usage counts also go to Sentry. Callsigns, grids, frequencies, names, ports, addresses and your user name are taken out of all text before it is sent; nothing from your logbook is included. Switching off stops them at once; switching back on starts them the next time Costas opens." />
                 <TextBlock Classes="help" Text="{Binding UsageBuildNote}" IsVisible="{Binding UsageBuildNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               </StackPanel>
             </Grid>

@@ -68,6 +68,7 @@ public sealed class App : Application
         Dispatcher.UIThread.UnhandledException += (_, e) =>
         {
             Log.Error(e.Exception, "Unexpected error on the UI thread");
+            Ft8Client.Integrations.Crash.CrashReporter.Capture(e.Exception);
             _ = HaltAsync(host);
             if (!policy.Survive(DateTime.UtcNow)) return;
             e.Handled = true;

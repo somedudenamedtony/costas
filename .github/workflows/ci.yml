@@ -28,6 +28,8 @@ jobs:
         env:
           # Only release builds carry the Aptabase app key (not a secret: it ships inside the app), so test and pull-request builds never send usage statistics.
           APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && 'A-US-6947074211' || '' }}
+          # Crash reports likewise: only release builds carry the Sentry DSN (not a secret: it ships inside the app and only accepts reports). A repository variable SENTRY_DSN overrides it.
+          SENTRY_DSN: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (vars.SENTRY_DSN || 'https://b40c0b27e955f12511f0cdc8fc1bd45f@o4511527585054720.ingest.us.sentry.io/4512391935229952') || '' }}
           # Where Report a problem sends feedback (not secrets: both ship inside the app). A repository variable of the same name overrides each.
           FEEDBACK_URL: ${{ vars.FEEDBACK_URL || 'https://formspree.io/f/xaeepqap' }}
           FEEDBACK_EMAIL: ${{ vars.FEEDBACK_EMAIL || 'Tony@emberridgedev.com' }}
@@ -83,6 +85,8 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ env.COSTAS_SIGN == '1' && secrets.AZURE_CLIENT_SECRET || '' }}
           # Only release builds carry the Aptabase app key (not a secret: it ships inside the app), so test and pull-request builds never send usage statistics.
           APTABASE_APP_KEY: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && 'A-US-6947074211' || '' }}
+          # Crash reports likewise: only release builds carry the Sentry DSN (not a secret: it ships inside the app and only accepts reports). A repository variable SENTRY_DSN overrides it.
+          SENTRY_DSN: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (vars.SENTRY_DSN || 'https://b40c0b27e955f12511f0cdc8fc1bd45f@o4511527585054720.ingest.us.sentry.io/4512391935229952') || '' }}
           # Where Report a problem sends feedback (not secrets: both ship inside the app). A repository variable of the same name overrides each.
           FEEDBACK_URL: ${{ vars.FEEDBACK_URL || 'https://formspree.io/f/xaeepqap' }}
           FEEDBACK_EMAIL: ${{ vars.FEEDBACK_EMAIL || 'Tony@emberridgedev.com' }}

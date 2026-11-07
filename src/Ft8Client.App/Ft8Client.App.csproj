@@ -36,6 +36,10 @@
     <!-- Anonymous usage statistics: CI passes the Aptabase app key (set in .github/workflows/ci.yml) to release builds. Builds without it send nothing. -->
     <AssemblyMetadata Include="AptabaseAppKey" Value="$(APTABASE_APP_KEY)" />
   </ItemGroup>
+  <ItemGroup Condition="'$(SENTRY_DSN)' != ''">
+    <!-- Crash reports: CI passes the Sentry DSN (set in .github/workflows/ci.yml) to release builds. Not a secret: it ships inside the app and only accepts reports. Builds without it send nothing. -->
+    <AssemblyMetadata Include="SentryDsn" Value="$(SENTRY_DSN)" />
+  </ItemGroup>
   <ItemGroup Condition="'$(FEEDBACK_URL)' != ''">
     <!-- Report a problem: the form relay's https address (a Formspree form), from the FEEDBACK_URL repository variable in CI. Not a secret: it only accepts form posts. -->
     <AssemblyMetadata Include="FeedbackUrl" Value="$(FEEDBACK_URL)" />

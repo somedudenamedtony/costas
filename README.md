@@ -117,7 +117,12 @@ connection and Hamlib model number, which optional features are on, and which vi
 sends your callsign, grid, name, frequencies, the stations you hear or work, or anything from your log, and there is no
 account or tracking id. Nothing is sent while you are offline, in simulation, or from a build you make yourself.
 
-To turn it off, untick **Settings › Privacy › Send anonymous usage statistics**. The full list is in
+When Costas hits an error it did not expect, it also sends an anonymous crash report to [Sentry](https://sentry.io):
+the kind of error, where in Costas it happened, the version and Windows or Linux, with callsigns, grids, frequencies,
+names and your user name taken out of the error text, along with the warnings and errors from its own log and the same
+usage counts, scrubbed the same way.
+
+To turn both off, untick **Settings › Privacy › Send anonymous usage statistics and crash reports**. The full list is in
 [the manual](https://somedudenamedtony.github.io/costas/settings/#privacy).
 
 ## Status

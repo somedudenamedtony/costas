@@ -36,12 +36,24 @@ public class UsageTests
         public bool Online { get; set; } = true;
         public DateTime Now { get; set; } = new(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc);
         public UsageReporter Reporter { get; }
+        public List<string> Mirrored { get; } = [];
 
         public Rig(bool withClient = true)
         {
             var client = withClient ? new AptabaseClient(new HttpClient(Server), Key) : null;
-            Reporter = new UsageReporter(client, () => Allowed, () => Now, () => Online);
+            Reporter = new UsageReporter(client, () => Allowed, () => Now, () => Online, (name, _) => Mirrored.Add(name));
         }
+    }
+
+    [Fact]
+    public void Track_Allowed_AlsoGoesToTheMirrorWithOrWithoutAClient()
+    {
+        var rig = new Rig(withClient: false);
+        rig.Reporter.Track("view_opened", "view", "Log");
+        rig.Allowed = false;
+        rig.Reporter.Track("band_changed");
+        rig.Mirrored.Should().Equal("view_opened");
+        rig.Reporter.Queued.Should().Be(0);
     }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
