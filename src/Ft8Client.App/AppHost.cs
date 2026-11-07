@@ -1140,6 +1140,7 @@ public sealed class AppHost : IAsyncDisposable
                 if (Volatile.Read(ref _retunesRunning) > 0 || Volatile.Read(ref _retunesDone) != retunes) continue;
                 if (BandPlan.BandChange(Session.Config.Band, st.FrequencyHz) is { } band) await FollowRadioBandAsync(band, st.FrequencyHz).ConfigureAwait(false);
                 else if (st.FrequencyHz != Session.Snapshot.DialHz) Session.SetDial(st.FrequencyHz);
+                Session.SetPassband(st.PassbandHz);
                 // Recovery after a fault, only for a radio that opened properly: a placeholder for a missing or
                 // failed radio answers polls too, and must not turn the indicator green (that would allow transmit).
                 if (_rigOpenStatus is { } ok && Session.Snapshot.Services[ServiceNames.Radio].Health != ServiceHealth.Ok)

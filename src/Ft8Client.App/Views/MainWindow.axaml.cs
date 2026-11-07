@@ -117,6 +117,8 @@ public partial class MainWindow : Window
             var tags = slotted ? [] : Tags(snapshot);
             ReceiveWaterfall.SetTags(tags);
             _waterfallWindow?.View.SetTags(tags);
+            ReceiveWaterfall.SetPassband(snapshot.PassbandHz);
+            _waterfallWindow?.View.SetPassband(snapshot.PassbandHz);
         };
         _timer.Start();
         if (!vm.Host.Settings.Current.SetupComplete) Dispatcher.UIThread.Post(() => OpenDialog("setup"));
