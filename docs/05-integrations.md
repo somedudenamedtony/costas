@@ -258,6 +258,15 @@ None of this runs in simulation. With LoTW unreachable the status says so and no
 - Ranking (owner decision 2026-10-20, D16): with Settings › Who to call › "Rank stations at a park I have not worked higher" on (default), a spotted activator whose park is not in the log ranks right after the first tier and ahead of the rest, and stays in Next in line even when its call is worked on this band. A `CQ POTA` with no spot is not moved. The park never changes the need tier itself.
 - Logged contacts with a matched park get ADIF `SIG=POTA`, `SIG_INFO=<reference>`, kept in the record's raw ADIF (no `qso` column) and copied by `AdifMapper.ToAdif` into QRZ uploads, exports and the UDP logged-ADIF message. Worked parks come from `SIG`/`SIG_INFO` and from ADIF 3.1.4 `POTA_REF` (comma list, `@location` suffix stripped).
 
+## 7d. Announced DXpeditions (NG3K ADXO)
+
+`GET https://www.ng3k.com/adxo.xml` (read 2026-11-07, no account or key) is an RSS 2.0 feed of NG3K's Announced DX Operations, about 65 items. Each `<item>` has a `<title>` like `Solomon Is: Oct 3-Nov 20, 2026 -- H44MS -- QSL via: LoTW` and a `<description>` whose lines are dates, entity, call, QSL and source, each ending ` --`, then a last line of notes (`By DL2GAC; 80-10m; mainly FT8, some SSB; ...`). Dates come as `Oct 3-Nov 20, 2026`, `Nov 3-16, 2026` or `Dec 12, 2026-Jan 2, 2027`. The listed call is sometimes only a prefix (`3B9`, `8P`); the notes then say what is signed (`as 3B9/M0CFW`, `using 3B9KW`). The feed carries Bill Feidt's copyright: Costas shows the listing with NG3K named as the source and does not republish it.
+
+- Optional, on by default (Settings › Who to call › DXpeditions); sends nothing about the operator except the usual User-Agent. Owner request 2026-11-07 (from the Aurora comparison).
+- Read at most every 12 hours; the last copy is kept in `cache/adxo.xml` and reused after a restart while it is younger than that. On failure the wait starts at 10 minutes and doubles up to 2 hours; an older copy stays in use (status Degraded). Status is the `dxpeditions` service: Ok, Degraded, Down or Off.
+- Matching (`DxpeditionCalendar.Match`): on a listed day (the last day counts whole, UTC), a heard call matches when it is the listed call, a portable call with the listed call on either side of the slash, or a call the notes give after "as" or "using". A listed prefix alone never matches a plain call.
+- Display only: *DXpedition · <entity>* under Why on station rows and in station details, and a list on the Awards view (on the air now, heard now first, then new countries; starting in the next 14 days). It never changes the ranking or who is called.
+
 ## 8. Country file
 
 `cty.dat` from https://www.country-files.com/ . Ship a copy in the app; "Update country file" in Settings downloads the current one (**VERIFY** the stable download URL), validates that it parses and has more than 300 entities, then swaps it in.
@@ -369,3 +378,14 @@ are kept in the secret store; QTH nickname and enable switches are non-secret pr
 ADIF upload acknowledgment/duplicate wording, QTH nickname form parameter, and inbox download-link format.
 The implementation tests use synthetic replies. This workspace had no .NET SDK and an unreachable network
 proxy, so neither a build nor live eQSL verification was possible in this session.
+
+## 12. Wavelog and Cloudlog
+
+Optional uploads to the operator's own Wavelog or Cloudlog site (owner request 2026-11-07, from the Aurora comparison), configured per station profile. The API key is in the secret store (`cloudlog-key:<profile>`); the address, station location id and switch are profile settings. Read from both projects' `application/controllers/Api.php` on 2026-11-07 (Wavelog is a Cloudlog fork with the same API).
+
+- `POST {site}/index.php/api/qso`, JSON `{"key", "station_profile_id", "type": "adif", "string": "<one ADIF record>"}`. Answers: 201 `{"status": "created", ...}`; 400 `{"status": "abort", "messages": [...]}` when the import reported an error (Wavelog's duplicate check returns "... Duplicate for <call>", which Costas counts as already sent); 401 `{"status": "failed", "reason": "missing or wrong api key"}` or "station id does not belong to the API key owner." or "station callsign does not match station callsign in station profile."; 403 for a read-only key; Wavelog may answer 429 when rate limited.
+- `GET {site}/index.php/api/station_info/{key}` lists the key owner's station locations (`station_id`, `station_profile_name`, `station_callsign`, `station_active`). Settings uses it for Test; it never sends a contact.
+- The site address the operator types is reduced to its base (`/index.php` and a pasted `/api/qso` are removed; https is assumed without a scheme).
+- Queue target `cloudlog`, at most one request a second, network failures retry with the usual back-off, 401/403/404 wait an hour. The key and request bodies are never logged; the status line strips the key from any reason quoted. No per-contact delivery column: the queue is the record.
+- **VERIFY** against a live Wavelog and Cloudlog install: the duplicate wording on Cloudlog, and that `index.php/api/...` works on sites with URL rewriting.
+

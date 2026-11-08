@@ -29,6 +29,7 @@ How contacts are run once you start one. Nothing is sent unless you click Call o
 | --- | --- | --- |
 | **Audio level on 20m (dB)** | -6 | Level of the transmit audio sent to the radio on the current band, -40 to 0. Each band remembers its own level |
 | **Adjust automatically from the radio's ALC** | on | After each transmission Costas reads the radio's ALC and nudges the level so ALC barely moves: up 0.5 dB when ALC did not move, down when it moved too much. Only the next transmission changes. It never goes more than 6 dB above, or 20 dB below, a level you type here. Turn it off to keep the level fixed. Needs a radio that reports ALC over CAT, such as the FT-710 or IC-7300 |
+| **Stop transmitting when the SWR stays at 3.0 or above** | on | While Costas sends, it reads the radio's SWR meter twice a second. Two readings in a row at 3.0 or more stop the transmission (as Halt Tx does) and the bottom bar says why. Tune is never stopped, so the radio's tuner can work. Needs a radio that reports SWR over CAT |
 | **CQ** modifier | empty | Empty for a plain `CQ W7LIT DN40`, or `DX`, `POTA`, `NA`, a number and so on: `CQ DX W7LIT DN40`. The dropdown beside **Call CQ** on the Operate screen changes it too |
 | **Answering a CQ › Send my grid** | on | Your first message is `THEIRCALL W7LIT DN40`. Off: just `THEIRCALL W7LIT` |
 | **Sign-off on my CQ** | RR73 | When you called CQ: **RR73** ends the contact in one message; **RRR** waits for the other station's 73 |
@@ -91,6 +92,11 @@ line*.
     comes right after your first need (new countries by default) and ahead of everything else, and it is listed in
     **Next in line** even when you have worked that call on this band before. A station calling CQ POTA that nobody
     has spotted is not moved, since Costas cannot tell which park it is at.
+- **DXpeditions: Show announced DXpeditions (NG3K)**: on. Costas reads NG3K's list of announced DX operations
+  (ng3k.com) at most twice a day and keeps a copy, so starting Costas again does not read it again. A station that is
+  one of them shows *DXpedition* and the country under **Why** and in its details, and the
+  [Awards](awards.md#dxpeditions-on-the-air) view lists the ones on the air and starting soon. It never changes the
+  order or who is called. Off makes no requests.
 
 ## Hunt list
 
@@ -283,3 +289,22 @@ start time, often a minute or two from yours). With several contacts in that tim
 the recent inbox list; they do not create contacts automatically. FT4 and MFSK/FT4 match as the same mode.
 
 Both automatic features are off by default. Save to apply. Simulation never contacts eQSL.
+
+## Wavelog / Cloudlog
+
+If you keep your log in your own [Wavelog](https://www.wavelog.org) or Cloudlog site, Costas can send each contact
+there as soon as it is logged. In **Settings › Wavelog / Cloudlog**:
+
+1. Enter the **Logbook address**, the address you open your logbook at (such as `https://log.example.com`). Use
+   https: the API key goes with every upload.
+2. In your logbook, make an API key with read and write access (under your account's API keys) and paste it into
+   **API key**. It stays in the system credential store, not in the settings file.
+3. Press **Test and list station locations**. Costas asks the logbook which station locations the key can use and
+   picks the one whose callsign matches this profile. Choose another from the list, or type its id, if needed. The
+   logbook only takes contacts for a location with this profile's callsign.
+4. Tick **Upload each new contact as soon as it is logged** and save.
+
+Contacts queue locally and retry when the site is down, even after restarting Costas. A contact already in that
+logbook is left alone and counts as sent. A wrong key or station id waits an hour before the next try; the
+**Wavelog/Cloudlog** indicator in the bottom bar (shown once this is set up) says what the logbook answered. Each
+station profile has its own settings. Off by default. Simulation never contacts the site.

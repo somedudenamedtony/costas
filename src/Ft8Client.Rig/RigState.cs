@@ -13,4 +13,13 @@ namespace Ft8Client.Rig;
 /// <param name="Mode">Mode as Hamlib names it (USB, PKTUSB).</param>
 /// <param name="Ptt">PTT asserted.</param>
 /// <param name="Split">Split on.</param>
-public sealed record RigState(long FrequencyHz, string Mode, bool Ptt, bool Split);
+/// <param name="PassbandHz">
+/// Receive filter width in hertz as the radio reports it with the mode; null when it reports none (0 or missing).
+/// </param>
+public sealed record RigState(long FrequencyHz, string Mode, bool Ptt, bool Split, int? PassbandHz = null)
+{
+    /// <summary>A Hamlib passband reply as a width, or null when it is missing, zero or not a number.</summary>
+    public static int? ParsePassband(string? value) =>
+        int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var hz) && hz is > 0 and <= 20_000
+            ? hz : null;
+}

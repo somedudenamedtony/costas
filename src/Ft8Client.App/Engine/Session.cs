@@ -73,6 +73,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     private readonly ReceptionHistory _receptionHistory = new();
     private EntityMatch? _myEntity;
     private long _dialHz;
+    private int? _passbandHz;
     private int _txOffset = 1500;
     private DateTime? _rigTuningUntil;
     private bool _txOffsetClear = true;
@@ -1026,6 +1027,17 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
+    /// <summary>Records the receive filter width the radio reported with its mode, for the waterfall.</summary>
+    public void SetPassband(int? hz)
+    {
+        lock (_gate)
+        {
+            if (_passbandHz == hz) return;
+            _passbandHz = hz;
+        }
+        Publish();
+    }
+
     /// <summary>Records the dial frequency read from the radio.</summary>
     public void SetDial(long hz)
     {
@@ -1318,6 +1330,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 Band = _config.Band,
                 Mode = _config.Mode,
                 DialHz = _dialHz,
+                PassbandHz = _passbandHz,
                 Rank = rank,
                 Stations = stations,
                 Summary = summary,

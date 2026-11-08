@@ -44,6 +44,8 @@ public sealed partial class SettingsViewModel : ObservableObject
                 EqslUser = host.Secrets.Get(SecretNames.EqslUsername(p.Id)) ?? string.Empty,
                 EqslPassword = host.Secrets.Get(SecretNames.EqslPassword(p.Id)) ?? string.Empty,
                 EqslSync = p.Eqsl.SyncEnabled, EqslUpload = p.Eqsl.UploadOnComplete, EqslQth = p.Eqsl.QthNickname,
+                CloudlogUrl = p.Cloudlog.Url, CloudlogStationId = p.Cloudlog.StationId, CloudlogUpload = p.Cloudlog.UploadOnComplete,
+                CloudlogKey = host.Secrets.Get(SecretNames.CloudlogKey(p.Id)) ?? string.Empty,
             });
         }
         _loadedProfile = s.Profile.Id;
@@ -54,6 +56,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         TxGain = _loadedTxGain = TxLevelController.LevelFor(s.Profile.Audio, s.Operating.Band, s.Operating.Mode).ToString("0.0", CultureInfo.InvariantCulture);
         TxGainLabel = $"Audio level on {s.Operating.Band} (dB)";
         AutoTxLevel = s.Profile.Audio.AutoTxLevel;
+        StopOnHighSwr = s.Profile.Audio.StopOnHighSwr;
         Watchdog = s.Operating.WatchdogMinutes.ToString(CultureInfo.InvariantCulture);
         RetryLimit = s.Operating.RetryLimit.ToString(CultureInfo.InvariantCulture);
         Signoff = s.Operating.Signoff;
@@ -63,6 +66,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         FreeTextAfter = s.Operating.FreeTextAfter;
         AutoLog = s.Operating.AutoLog;
         ChimeOnCaller = s.Operating.ChimeOnCaller;
+        AnswerAllInTurn = s.Operating.AnswerAllInTurn;
         var rtty = SettingsMapper.Rtty(s);
         RttySpeed = rtty.Baud.ToString("0.##", CultureInfo.InvariantCulture);
         RttyShift = rtty.ShiftHz.ToString(CultureInfo.InvariantCulture);
@@ -112,6 +116,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         RefreshEqslInbox();
         FeedEnabled = s.PskReporter.FeedEnabled;
         PotaSpots = s.Pota.SpotsEnabled;
+        DxpeditionList = s.Dxpeditions.Enabled;
         PreferNewParks = s.Ranking.PreferNewParks;
         CompareNeighbours = s.PskReporter.CompareNeighbours;
         BandActivity = s.PskReporter.BandActivity;
@@ -273,10 +278,19 @@ public sealed partial class SettingsViewModel : ObservableObject
         _shownProfile.EqslSync = EqslSyncEnabled;
         _shownProfile.EqslUpload = EqslUploadOnComplete;
         _shownProfile.EqslQth = EqslQthNickname;
+        _shownProfile.CloudlogUrl = CloudlogUrl;
+        _shownProfile.CloudlogKey = CloudlogKey;
+        _shownProfile.CloudlogStationId = CloudlogStationId;
+        _shownProfile.CloudlogUpload = CloudlogUploadOnComplete;
     }
 
-    private void ShowEqsl(ProfileDraft d) =>
+    private void ShowEqsl(ProfileDraft d)
+    {
         (EqslUser, EqslPassword, EqslSyncEnabled, EqslUploadOnComplete, EqslQthNickname) = (d.EqslUser, d.EqslPassword, d.EqslSync, d.EqslUpload, d.EqslQth);
+        (CloudlogUrl, CloudlogKey, CloudlogStationId, CloudlogUploadOnComplete) = (d.CloudlogUrl, d.CloudlogKey, d.CloudlogStationId, d.CloudlogUpload);
+        CloudlogStations.Clear();
+        CloudlogStatus = string.Empty;
+    }
 
     /// <summary>
     /// Writes the edited profiles into settings: removed ones are dropped, new ones copied from their source, names, calls,
@@ -304,6 +318,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             p.Eqsl.SyncEnabled = d.EqslSync;
             p.Eqsl.UploadOnComplete = d.EqslUpload;
             p.Eqsl.QthNickname = d.EqslQth.Trim();
+            p.Cloudlog.Url = d.CloudlogUrl.Trim();
+            p.Cloudlog.StationId = d.CloudlogStationId.Trim();
+            p.Cloudlog.UploadOnComplete = d.CloudlogUpload;
             result.Add(p);
         }
         s.Profiles = result;
@@ -334,6 +351,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Adjust the transmit level from the radio's ALC.</summary>
     [ObservableProperty]
     public partial bool AutoTxLevel { get; set; }
+
+    /// <summary>Stop a transmission when the SWR stays at 3.0 or above.</summary>
+    [ObservableProperty]
+    public partial bool StopOnHighSwr { get; set; }
 
     /// <summary>Watchdog minutes.</summary>
     [ObservableProperty]
@@ -420,6 +441,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Chime when a new station calls me.</summary>
     [ObservableProperty]
     public partial bool ChimeOnCaller { get; set; }
+
+    /// <summary>Answer everyone waiting for me, one after another, after each logged contact.</summary>
+    [ObservableProperty]
+    public partial bool AnswerAllInTurn { get; set; }
 
     /// <summary>RTTY speeds offered, in baud.</summary>
     public IReadOnlyList<string> RttySpeeds { get; } = [.. RttyFormat.Speeds.Select(b => b.ToString("0.##", CultureInfo.InvariantCulture))];
@@ -784,6 +809,52 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Most recent incoming cards, including unmatched cards.</summary>
     public ObservableCollection<string> EqslInboxCards { get; } = [];
 
+    /// <summary>Wavelog/Cloudlog site address.</summary>
+    [ObservableProperty]
+    public partial string CloudlogUrl { get; set; } = string.Empty;
+
+    /// <summary>Wavelog/Cloudlog API key.</summary>
+    [ObservableProperty]
+    public partial string CloudlogKey { get; set; } = string.Empty;
+
+    /// <summary>Wavelog/Cloudlog station location id.</summary>
+    [ObservableProperty]
+    public partial string CloudlogStationId { get; set; } = string.Empty;
+
+    /// <summary>Upload each new contact to Wavelog/Cloudlog.</summary>
+    [ObservableProperty]
+    public partial bool CloudlogUploadOnComplete { get; set; }
+
+    /// <summary>Result of the last Test.</summary>
+    [ObservableProperty]
+    public partial string CloudlogStatus { get; set; } = string.Empty;
+
+    /// <summary>Station locations found by Test, to pick from.</summary>
+    public ObservableCollection<CloudlogStationChoice> CloudlogStations { get; } = [];
+
+    /// <summary>The station location picked from <see cref="CloudlogStations"/>.</summary>
+    [ObservableProperty]
+    public partial CloudlogStationChoice? CloudlogStation { get; set; }
+
+    partial void OnCloudlogStationChanged(CloudlogStationChoice? value)
+    {
+        if (value is not null) CloudlogStationId = value.Id;
+    }
+
+    /// <summary>Checks the address and key and lists the account's station locations.</summary>
+    [RelayCommand]
+    private async Task TestCloudlog()
+    {
+        CloudlogStatus = "Asking the logbook…";
+        var (message, stations) = await _host.Cloudlog.TestAsync(CloudlogUrl, CloudlogKey, CancellationToken.None);
+        CloudlogStatus = message;
+        CloudlogStations.Clear();
+        foreach (var st in stations) CloudlogStations.Add(new CloudlogStationChoice(st.Id, st.Name, st.Callsign, st.Active));
+        CloudlogStation = CloudlogStations.FirstOrDefault(c => c.Id == CloudlogStationId.Trim())
+            ?? CloudlogStations.FirstOrDefault(c => string.Equals(c.Callsign, Callsign.Trim(), StringComparison.OrdinalIgnoreCase) && c.Active)
+            ?? CloudlogStations.FirstOrDefault(c => string.Equals(c.Callsign, Callsign.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
     private void RefreshEqslInbox()
     {
         EqslInboxCards.Clear();
@@ -823,6 +894,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Read the POTA spot feed to show parks under Why.</summary>
     [ObservableProperty]
     public partial bool PotaSpots { get; set; }
+
+    /// <summary>Read NG3K's announced DXpeditions.</summary>
+    [ObservableProperty]
+    public partial bool DxpeditionList { get; set; }
 
     /// <summary>Rank activators at parks not in the log higher.</summary>
     [ObservableProperty]
@@ -1095,6 +1170,7 @@ public sealed partial class SettingsViewModel : ObservableObject
                 s.Profile.Audio.TxGainByBand[TxLevelController.LevelKey(s.Operating.Band, s.Operating.Mode)] = gain;
             }
             s.Profile.Audio.AutoTxLevel = AutoTxLevel;
+            s.Profile.Audio.StopOnHighSwr = StopOnHighSwr;
             s.Operating.WatchdogMinutes = Int(Watchdog, 1, 60, 6);
             s.Operating.RetryLimit = Int(RetryLimit, 1, 20, 4);
             s.Operating.Signoff = Signoff;
@@ -1104,6 +1180,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Operating.FreeTextAfter = FreeText();
             s.Operating.AutoLog = AutoLog;
             s.Operating.ChimeOnCaller = ChimeOnCaller;
+            s.Operating.AnswerAllInTurn = AnswerAllInTurn;
             s.Operating.RttyBaud = Dbl(RttySpeed, 45, 75, RttyFormat.Standard.Baud);
             s.Operating.RttyShiftHz = Int(RttyShift, 170, 850, RttyFormat.Standard.ShiftHz);
             s.Operating.RttyReverse = RttyReverse;
@@ -1125,6 +1202,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             s.Qrz.SyncMinutes = Int(SyncMinutes, 5, 1440, 15);
             s.PskReporter.FeedEnabled = FeedEnabled;
             s.Pota.SpotsEnabled = PotaSpots;
+            s.Dxpeditions.Enabled = DxpeditionList;
             s.Ranking.PreferNewParks = PreferNewParks;
             s.PskReporter.CompareNeighbours = CompareNeighbours;
             s.PskReporter.BandActivity = BandActivity;
@@ -1157,12 +1235,14 @@ public sealed partial class SettingsViewModel : ObservableObject
             Set(SecretNames.QrzLogbookKey(d.Id), d.LogbookKey.Trim());
             Set(SecretNames.EqslUsername(d.Id), d.EqslUser.Trim());
             Set(SecretNames.EqslPassword(d.Id), d.EqslPassword);
+            Set(SecretNames.CloudlogKey(d.Id), d.CloudlogKey.Trim());
         }
         foreach (var id in removed)
         {
             _host.Secrets.Delete(SecretNames.QrzLogbookKey(id));
             _host.Secrets.Delete(SecretNames.EqslUsername(id));
             _host.Secrets.Delete(SecretNames.EqslPassword(id));
+            _host.Secrets.Delete(SecretNames.CloudlogKey(id));
         }
         Set(SecretNames.QrzUsername, QrzUser.Trim());
         Set(SecretNames.QrzPassword, QrzPassword);

@@ -740,9 +740,14 @@ public sealed class ContactEngine
             StopReason = "Stopped by watchdog";
         }
         if (!resume) return;
-        var next = _waiting.FirstOrDefault(w => w.AnswerAfter);
+        var next = _waiting.FirstOrDefault(w => w.AnswerAfter) ?? (outcome == ContactOutcome.Logged ? NextInTurn() : null);
         if (next is not null) Begin(next, nowUtc);
     }
+
+    // Answer all in turn: the caller that has waited longest and sent something a contact can start from.
+    private WaitingCaller? NextInTurn() => !_settings.AnswerAllInTurn ? null
+        : _waiting.Where(w => !w.AfterStop && w.Kind is MessageKind.GridReply or MessageKind.Report)
+                  .OrderBy(w => w.FirstCalledUtc).FirstOrDefault();
 
     private void DoLog(Contact c, DateTime nowUtc)
     {

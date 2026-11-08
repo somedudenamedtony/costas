@@ -371,6 +371,52 @@ public class ContactEngineTests
     }
 
     [Fact]
+    public void AnswerAllInTurn_ContactLogged_AnswersLongestWaitingCallerThenTheNext()
+    {
+        var s = new Sim(new ContactSettings { AnswerAllInTurn = true });
+        s.E.CallCq(SlotParity.Even, Sim.T0);
+        s.Step();
+        s.Step("W7LIT K1ABC FN42", "W7LIT VE7HLB CN89");
+        s.Step();
+        s.Step("W7LIT K1ABC R-08", "W7LIT N0XYZ EN34");
+        s.Step().Should().Be("K1ABC W7LIT RR73");
+        s.Step();
+        s.Step().Should().Be("VE7HLB W7LIT -12", "VE7HLB has waited longest");
+        s.Step("W7LIT VE7HLB R-10");
+        s.Step().Should().Be("VE7HLB W7LIT RR73");
+        s.Step();
+        s.Step().Should().Be("N0XYZ W7LIT -12");
+        s.Logs.Select(l => l.Call).Should().Equal("K1ABC", "VE7HLB");
+    }
+
+    [Fact]
+    public void AnswerAllInTurn_CallerMarkedAnswerNext_GoesFirst()
+    {
+        var s = new Sim(new ContactSettings { AnswerAllInTurn = true });
+        s.E.CallCq(SlotParity.Even, Sim.T0);
+        s.Step();
+        s.Step("W7LIT K1ABC FN42", "W7LIT VE7HLB CN89", "W7LIT N0XYZ EN34");
+        s.E.AnswerAfterThisContact("N0XYZ", s.Now);
+        s.Step();
+        s.Step("W7LIT K1ABC R-08");
+        s.Step().Should().Be("K1ABC W7LIT RR73");
+        s.Step();
+        s.Step().Should().Be("N0XYZ W7LIT -12");
+    }
+
+    [Fact]
+    public void AnswerAllInTurn_ContactNotLogged_DoesNotAnswerNextCaller()
+    {
+        var s = new Sim(new ContactSettings { AnswerAllInTurn = true, RetryLimit = 1 });
+        s.E.CallCq(SlotParity.Even, Sim.T0);
+        s.Step();
+        s.Step("W7LIT K1ABC FN42", "W7LIT VE7HLB CN89");
+        s.Steps(6);
+        s.E.DxCall.Should().NotBe("VE7HLB", "only a logged contact moves on to the next caller by itself");
+        s.Logs.Should().BeEmpty();
+    }
+
+    [Fact]
     public void Waiting_AtMostFiveOldestFirst()
     {
         var s = new Sim();

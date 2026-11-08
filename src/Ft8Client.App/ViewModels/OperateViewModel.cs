@@ -344,6 +344,9 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>POTA spots and worked parks for the park line under Why (display only); empty until loaded or when off.</summary>
     public Core.Pota.PotaParks Parks { get; set; } = Core.Pota.PotaParks.Empty;
 
+    /// <summary>Announced DXpeditions (NG3K), for the line under Why. Display only.</summary>
+    public Core.Dxpeditions.DxpeditionCalendar Dxpeditions { get; set; } = Core.Dxpeditions.DxpeditionCalendar.Empty;
+
     /// <summary>ARRL's list of LoTW users; <see cref="LotwUsers.None"/> until loaded.</summary>
     public LotwUsers Lotw { get; set; } = LotwUsers.None;
 
@@ -529,7 +532,8 @@ public sealed partial class OperateViewModel : ObservableObject
         _commands.Lookup(row.Call);
         Details = _snap is null
             ? StationDetailsViewModel.From(row.Call, row.Source.Station, QrzLookup?.Invoke(row.Call), Log?.Invoke(), Units, _now(),
-                mostWantedRank: MostWanted.RankOf(row.Source.Station.EntityKey), lotwUpload: Lotw.LastUpload(row.Call), park: ParkOf(row.Source.Station))
+                mostWantedRank: MostWanted.RankOf(row.Source.Station.EntityKey), lotwUpload: Lotw.LastUpload(row.Call), park: ParkOf(row.Source.Station),
+                dxpedition: DxpeditionOf(row.Call))
             : DetailsFor(row.Call, _snap, _now(), row.Source.Station);
     }
 
@@ -538,7 +542,7 @@ public sealed partial class OperateViewModel : ObservableObject
         var station = s.Stations.FirstOrDefault(x => Callsign.EqualsCall(x.Call, call)) ?? fallback;
         return StationDetailsViewModel.From(call, station, QrzLookup?.Invoke(call), Log?.Invoke(), Units, now, QrzName?.Invoke(call),
             s.Pileups.GetValueOrDefault(Callsign.Normalize(call)), s.TxOffsetHz, s.Mode,
-            MostWanted.RankOf(station?.EntityKey), Lotw.LastUpload(call), station is null ? null : ParkOf(station));
+            MostWanted.RankOf(station?.EntityKey), Lotw.LastUpload(call), station is null ? null : ParkOf(station), DxpeditionOf(call));
     }
 
     /// <summary>Adds the station's call to the Hunt list.</summary>
@@ -557,6 +561,9 @@ public sealed partial class OperateViewModel : ObservableObject
 
     // The park a station is activating, from a POTA spot on this band or its CQ POTA. Display only.
     private Core.Pota.ParkInfo? ParkOf(Station s) => _snap is null ? null : Parks.Match(s.Call, _snap.Band, s.CqModifier);
+
+    // The announced DXpedition a station is (NG3K). Display only.
+    private Core.Dxpeditions.Dxpedition? DxpeditionOf(string call) => Dxpeditions.Match(call, _now());
 
     /// <summary>Opens the station's QRZ page.</summary>
     [RelayCommand]
@@ -669,7 +676,7 @@ public sealed partial class OperateViewModel : ObservableObject
         var i = 1;
         foreach (var r in list.Take(MaxLine))
             Line.Add(new StationRowViewModel(r, i++, Units, now, log?.LastContactWith(r.Station.Call), log?.ContactsWith(r.Station.Call).Count ?? 0,
-                MostWanted.RankOf(r.Station.EntityKey), WhyTip(r, log), ParkOf(r.Station)));
+                MostWanted.RankOf(r.Station.EntityKey), WhyTip(r, log), ParkOf(r.Station), DxpeditionOf(r.Station.Call)));
         MoreText = list.Count > MaxLine ? $"and {list.Count - MaxLine} more" : string.Empty;
         LineEmpty = Line.Count == 0;
         // Only a row the operator picked stays selected; nothing is selected for them, so the highlight never

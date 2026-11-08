@@ -37,6 +37,9 @@ public sealed record SessionSnapshot
     /// <summary>Dial frequency.</summary>
     public long DialHz { get; init; }
 
+    /// <summary>The radio's receive filter width in hertz, from CAT; null when the radio does not report it.</summary>
+    public int? PassbandHz { get; init; }
+
     /// <summary>The ranked stations.</summary>
     public RankResult Rank { get; init; } = RankResult.Empty;
 

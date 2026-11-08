@@ -16,6 +16,7 @@
     <TextBlock Text="{Binding Zones}" Classes="secondary" IsVisible="{Binding HasZones}" />
     <TextBlock Text="{Binding Rarity}" Classes="secondary" IsVisible="{Binding HasRarity}" TextWrapping="Wrap" />
     <TextBlock Text="{Binding Park}" Classes="secondary" IsVisible="{Binding HasPark}" TextWrapping="Wrap" />
+    <TextBlock Text="{Binding Dxpedition}" Classes="secondary" IsVisible="{Binding HasDxpedition}" TextWrapping="Wrap" />
     <TextBlock Text="{Binding Heard}" Classes="secondary" IsVisible="{Binding HasHeard}" TextWrapping="Wrap" ToolTip.Tip="From your decode journal" />
     <TextBlock Text="{Binding LookupNote}" Classes="secondary" FontSize="12" TextWrapping="Wrap" IsVisible="{Binding HasLookupNote}" />
     <WrapPanel ItemSpacing="12">

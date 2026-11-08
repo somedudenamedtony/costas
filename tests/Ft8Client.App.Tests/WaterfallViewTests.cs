@@ -31,4 +31,15 @@ public class WaterfallViewTests
     {
         WaterfallView.VisibleRows(4000).Should().Be(WaterfallView.MaxRows);
     }
+
+    [Theory]
+    [InlineData(2400, 2400)]
+    [InlineData(3000, null)]
+    [InlineData(3600, null)]
+    [InlineData(0, null)]
+    [InlineData(null, null)]
+    public void FilterEdge_WidthNarrowerThanTheWaterfall_IsDrawn(int? passband, int? edge)
+    {
+        WaterfallView.FilterEdge(passband).Should().Be(edge);
+    }
 }

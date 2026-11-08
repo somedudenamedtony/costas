@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Ft8Client.App.ViewModels"
+             xmlns:v="using:Ft8Client.App.Views"
              x:Class="Ft8Client.App.Views.AwardsView"
              x:DataType="vm:AwardsViewModel">
   <!-- Award progress on the left; the countries still needed, with when you hear them, on the right. -->
@@ -44,6 +45,46 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+
+        <!-- Announced DXpeditions (NG3K), display only: they never change who is called. -->
+        <Border Classes="card" Padding="14,10">
+          <StackPanel Spacing="6">
+            <TextBlock Text="DXpeditions on the air" Classes="title" />
+            <TextBlock Text="{Binding DxpeditionText}" Classes="secondary" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding DxpeditionsOnAir}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DxpeditionRowViewModel">
+                  <Grid ColumnDefinitions="96,*,Auto" Margin="0,3" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                    <TextBlock Text="{Binding Call}" FontWeight="SemiBold" VerticalAlignment="Top" TextTrimming="CharacterEllipsis" />
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Text="{Binding Entity}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding When}" Classes="secondary" FontSize="12" />
+                      <TextBlock Text="{Binding Heard}" IsVisible="{Binding IsHeard}" Foreground="{Binding HeardKind, Converter={x:Static v:Converters.KindBrush}}" FontSize="12" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{Binding Need}" FontSize="12" VerticalAlignment="Top" Margin="8,0,0,0"
+                               Foreground="{Binding NeedKind, Converter={x:Static v:Converters.KindBrush}}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Starting in the next two weeks" Classes="title" FontSize="13" Margin="0,6,0,0" IsVisible="{Binding HasDxpeditionsSoon}" />
+            <ItemsControl ItemsSource="{Binding DxpeditionsSoon}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DxpeditionRowViewModel">
+                  <Grid ColumnDefinitions="96,*,Auto" Margin="0,3" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                    <TextBlock Text="{Binding Call}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Text="{Binding Entity}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding When}" Classes="secondary" FontSize="12" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{Binding Need}" FontSize="12" Margin="8,0,0,0"
+                               Foreground="{Binding NeedKind, Converter={x:Static v:Converters.KindBrush}}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
 
         <Border Classes="card" Padding="14,10">
           <StackPanel Spacing="6">

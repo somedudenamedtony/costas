@@ -43,6 +43,7 @@ public static class SettingsMapper
                 AnswerSignoff = s.Operating.AnswerSignoff == "RR73" ? "RR73" : "73",
                 FreeTextAfter = s.Operating.FreeTextAfter,
                 AutoLog = s.Operating.AutoLog,
+                AnswerAllInTurn = s.Operating.AnswerAllInTurn,
             },
             CqParity = s.Operating.CqParity == "odd" ? SlotParity.Odd : SlotParity.Even,
             FixedTxOffsetHz = fixedOffset,

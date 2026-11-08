@@ -255,6 +255,18 @@ remembers the strip's height, and whether the waterfall was popped out and where
 
 ![The waterfall in its own window](images/waterfall-window.png)
 
+## Other views on a second monitor
+
+**Raw decodes**, **Reach**, **Log** and **Awards** can each have their own window too, so you can keep the map or
+your log on a second monitor while you operate. Pick the view's tab, then click **Pop out** next to the tabs. The
+view moves to a new window that you can size and place anywhere; its tab in the main window then says where it went.
+Click that tab again to bring the window to the front, and click **Pop in** (in either window) or close the window to
+put the view back.
+
+A popped-out view keeps updating as you operate: the Reach map follows new reports, and Log and Awards refresh when
+a contact is logged. ++esc++ in any of these windows halts transmit as it does in the main window. Costas remembers
+which views were out and where, and opens them there again next time. Operate always stays in the main window.
+
 ## Mini mode
 
 Want to browse, log or check email while you keep an eye on the band? Choose **Mini mode** from the **☰** menu, or press ++ctrl+m++. Costas shrinks to a small strip that stays on top of your other windows.

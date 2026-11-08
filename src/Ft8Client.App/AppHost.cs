@@ -17,6 +17,7 @@ using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Services;
 using Ft8Client.Core.Time;
+using Ft8Client.Core.Transmit;
 using Ft8Client.Data;
 using Ft8Client.Data.Adif;
 using Ft8Client.Data.Database;
@@ -183,6 +184,9 @@ public sealed class AppHost : IAsyncDisposable
     /// <summary>Optional eQSL uploads.</summary>
     public EqslService Eqsl { get; private set; } = null!;
 
+    /// <summary>Optional Wavelog or Cloudlog uploads.</summary>
+    public CloudlogService Cloudlog { get; private set; } = null!;
+
     /// <summary>Decode journal and WAV saving (null in simulation).</summary>
     public RecordingService? Recording { get; private set; }
 
@@ -199,6 +203,9 @@ public sealed class AppHost : IAsyncDisposable
     public NeighbourHistoryService NeighbourHistory { get; private set; } = null!;
     /// <summary>POTA spots and worked parks, for the park line under Why.</summary>
     public PotaService Pota { get; private set; } = null!;
+
+    /// <summary>NG3K's announced DXpeditions.</summary>
+    public DxpeditionService Dxpeditions { get; private set; } = null!;
 
     /// <summary>Update checks.</summary>
     public UpdateService Updates { get; private set; } = null!;
@@ -379,9 +386,17 @@ public sealed class AppHost : IAsyncDisposable
         var log = new DatabaseSessionLog(Qsos, Uploads, () => Settings.Current.Profile.Id,
             () => !Simulating && Settings.Current.Qrz.LogbookEnabled && Settings.Current.Qrz.UploadOnComplete,
             () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band),
-            LogHold);
+            LogHold, () => !Simulating && Settings.Current.Profile.Cloudlog.UploadOnComplete);
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
-        TxMeters = new TxMeterMonitor(Transmitter, () => _rig);
+        TxMeters = new TxMeterMonitor(Transmitter, () => _rig)
+        {
+            SwrStopAt = () => Settings.Current.Profile.Audio.StopOnHighSwr ? SwrGuard.DefaultLimit : null,
+        };
+        TxMeters.SwrTripped += swr =>
+        {
+            Log.Warning("Transmit stopped: SWR {Swr:0.0} held at or above {Limit}", swr, SwrGuard.DefaultLimit);
+            _ = Session.HaltAsync(SwrGuard.StopText(swr));
+        };
         TxMeters.Measured += r => Session.SetTxMeters(TxLevel.OnMeasured(r));
         TxMeters.Read += Session.SetTxMetersLive;
         if (partner is not null) Session.Transmitting += partner.OnTransmitted;
@@ -419,6 +434,8 @@ public sealed class AppHost : IAsyncDisposable
         Eqsl = new EqslService(Session, Settings, Secrets, Qsos, Uploads, EqslInbox, SyncState, Clock, uploadsAllowed: !Simulating);
         Eqsl.LogChanged += RebuildLogIndex;
         Eqsl.Start();
+        Cloudlog = new CloudlogService(Session, Settings, Secrets, Qsos, Uploads, Clock, uploadsAllowed: !Simulating);
+        Cloudlog.Start();
 
         Psk = new PskReporterService(Session, Settings, Spots, Countries, Frequencies, Clock, uploadsAllowed: !Simulating);
         Psk.Start();
@@ -448,6 +465,9 @@ public sealed class AppHost : IAsyncDisposable
         Pota.SetWorked(WorkedParksFromLog());
         log.Stored += Pota.OnLogged;
         Pota.Start();
+        Dxpeditions = new DxpeditionService(() => Settings.Current.Dxpeditions.Enabled, () => Settings.Current.Profile.Callsign, Clock,
+            st => Session.SetService(ServiceNames.Dxpeditions, st), Path.Combine(Paths.Cache, "adxo.xml"));
+        Dxpeditions.Start();
 
         Updates = new UpdateService(Settings, Path.Combine(Paths.Temp, "updates"), Paths.Logs);
         Updates.Start();
@@ -496,6 +516,7 @@ public sealed class AppHost : IAsyncDisposable
             Frequencies.UsDataSegmentsOnly = Settings.Current.Operating.UsDataSegmentsOnly;
             TxLevel.Apply();
             Pota.Wake();
+            Dxpeditions.Wake();
             if (Settings.Current.Operating.CorrectClock != correctClock)
             {
                 correctClock = Settings.Current.Operating.CorrectClock;
@@ -1131,6 +1152,7 @@ public sealed class AppHost : IAsyncDisposable
                 if (Volatile.Read(ref _retunesRunning) > 0 || Volatile.Read(ref _retunesDone) != retunes) continue;
                 if (BandPlan.BandChange(Session.Config.Band, st.FrequencyHz) is { } band) await FollowRadioBandAsync(band, st.FrequencyHz).ConfigureAwait(false);
                 else if (st.FrequencyHz != Session.Snapshot.DialHz) Session.SetDial(st.FrequencyHz);
+                Session.SetPassband(st.PassbandHz);
                 // Recovery after a fault, only for a radio that opened properly: a placeholder for a missing or
                 // failed radio answers polls too, and must not turn the indicator green (that would allow transmit).
                 if (_rigOpenStatus is { } ok && Session.Snapshot.Services[ServiceNames.Radio].Health != ServiceHealth.Ok)
@@ -1298,10 +1320,12 @@ public sealed class AppHost : IAsyncDisposable
         Qrz?.Dispose();
         Lotw?.Dispose();
         if (Eqsl is not null) await Eqsl.DisposeAsync().ConfigureAwait(false);
+        if (Cloudlog is not null) await Cloudlog.DisposeAsync().ConfigureAwait(false);
         Udp?.Dispose();
         Updates?.Dispose();
         if (Usage is not null) await Usage.DisposeAsync().ConfigureAwait(false);
         Pota?.Dispose();
+        Dxpeditions?.Dispose();
         Recording?.Dispose();
         NeighbourHistory?.Flush();
         if (Psk is not null) await Psk.DisposeAsync().ConfigureAwait(false);

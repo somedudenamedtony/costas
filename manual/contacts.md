@@ -106,6 +106,12 @@ Each caller shows callsign, where, need tag and *Called you at 20:07:15 · +25*.
 The same station also appears in Next in line with *Calling you* under Doing now and an **Answer** button, which does
 the same thing.
 
+**Answer all in turn**: tick **Settings › Transmitting › Calling you › Answer all in turn** and, after each logged
+contact, Costas answers the caller that has waited longest without a click, then the next, until nobody is left
+waiting. A caller you marked **Answer after this contact** still goes first. It only moves on after a contact is
+logged: if a station stops answering, Costas goes back to what it was doing and leaves the rest for you. Halt Tx stops
+it, and so does the Tx watchdog when you have not touched Costas for its set time. It is off by default.
+
 **Chime**: **Settings › Transmitting › Calling you › Chime when a new station calls me** plays a short sound when a new
 caller appears. It is off by default. It plays on the computer's default speakers, and stays silent if the default
 device is the radio's audio device, so it can never go out over the air.
