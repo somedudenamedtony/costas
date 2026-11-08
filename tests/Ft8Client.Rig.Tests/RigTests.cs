@@ -25,6 +25,17 @@ public class RigTests
         RigctldReply.Parse(["get_split_vfo:", "Split: 0", "TX VFO: VFOA", "RPRT 0"])["TX VFO"].Should().Be("VFOA");
     }
 
+    [Theory]
+    [InlineData("2400", 2400)]
+    [InlineData("0", null)]
+    [InlineData("-1", null)]
+    [InlineData("wide", null)]
+    [InlineData(null, null)]
+    public void ParsePassband_HamlibReply_WidthOrNull(string? value, int? hz)
+    {
+        RigState.ParsePassband(value).Should().Be(hz);
+    }
+
     [Fact]
     public async Task SendAsync_CallerCancelsMidReply_NextCommandGetsItsOwnReply()
     {
@@ -449,7 +460,7 @@ public class RigTests
         await rig.SetModeAsync(RigMode.PktUsb, ct);
         await rig.SetPttAsync(true, ct);
         var s = await rig.GetStateAsync(ct);
-        s.Should().Be(new RigState(14_074_000, "PKTUSB", true, false));
+        s.Should().Be(new RigState(14_074_000, "PKTUSB", true, false, s.PassbandHz));
         (await rig.ReadPttAsync(ct)).Should().BeTrue();
         await rig.SetPttAsync(false, ct);
         (await rig.GetStateAsync(ct)).Ptt.Should().BeFalse();

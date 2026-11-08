@@ -13,6 +13,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Ft8Client.App.Engine;
 using Ft8Client.Core;
+using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Keyboard;
 
 namespace Ft8Client.App.ViewModels;
@@ -39,12 +40,47 @@ public sealed partial class KeyboardPanelViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsRtty { get; set; }
 
-    /// <summary>The overs exchanged with the station in contact.</summary>
+    /// <summary>The overs exchanged with the station in contact, or out of a contact the clicked signal's recent lines.</summary>
     public ObservableCollection<ConversationRowViewModel> Conversation { get; } = [];
 
     /// <summary>True when there is something in the conversation box.</summary>
     [ObservableProperty]
     public partial bool HasConversation { get; set; }
+
+    /// <summary>The box's heading: "Reading W1AW" for a clicked signal, "Conversation with W1AW" in a contact.</summary>
+    [ObservableProperty]
+    public partial string BoxTitle { get; set; } = string.Empty;
+
+    /// <summary>Beside the heading: the signal's offset, strength and country.</summary>
+    [ObservableProperty]
+    public partial string BoxDetail { get; set; } = string.Empty;
+
+    /// <summary>At the right of the heading: a hint while reading a clicked signal.</summary>
+    [ObservableProperty]
+    public partial string BoxHint { get; set; } = string.Empty;
+
+    /// <summary>True when the box has a heading.</summary>
+    [ObservableProperty]
+    public partial bool HasBoxTitle { get; set; }
+
+    /// <summary>
+    /// True while the box shows a contact's conversation, whose words can be clicked into the contact; false while it
+    /// reads a clicked signal.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool WordsClickable { get; set; } = true;
+
+    /// <summary>The line still arriving, shown character by character under the finished lines.</summary>
+    [ObservableProperty]
+    public partial string LiveText { get; set; } = string.Empty;
+
+    /// <summary>Who the arriving line is from.</summary>
+    [ObservableProperty]
+    public partial string LiveWho { get; set; } = string.Empty;
+
+    /// <summary>True while a line is arriving.</summary>
+    [ObservableProperty]
+    public partial bool HasLive { get; set; }
 
     /// <summary>The text typed while receiving, waiting for Enter.</summary>
     [ObservableProperty]
@@ -141,22 +177,57 @@ public sealed partial class KeyboardPanelViewModel : ObservableObject
         HasKeyNote = KeyNote.Length > 0;
     }
 
+    // The heading over the box: the clicked signal with where it is, or the station in contact.
+    private void ApplyHeading(SessionSnapshot s)
+    {
+        if (s.Reading is { } r)
+        {
+            BoxTitle = r.Call is null ? "Reading a signal" : $"Reading {r.Call}";
+            var parts = new List<string> { $"{r.OffsetHz.ToString("N0", CultureInfo.InvariantCulture)} Hz", Db(r.Snr) };
+            if (r.Country is { Length: > 0 } c) parts.Add(c);
+            BoxDetail = string.Join(" · ", parts);
+            BoxHint = "Click another signal to switch";
+        }
+        else if (s.Contact is { DxCall.Length: > 0 } c)
+        {
+            BoxTitle = $"Conversation with {c.DxCall}";
+            BoxDetail = c.Outcome == ContactOutcome.InProgress
+                ? $"{s.TxOffsetHz.ToString("N0", CultureInfo.InvariantCulture)} Hz"
+                : string.Empty;
+            BoxHint = string.Empty;
+        }
+        else
+        {
+            BoxTitle = BoxDetail = BoxHint = string.Empty;
+        }
+        HasBoxTitle = BoxTitle.Length > 0;
+    }
+
+    private static string Db(int snr) => snr.ToString("+00;-00;00", CultureInfo.InvariantCulture) + " dB";
+
     /// <summary>Applies a snapshot. UI thread.</summary>
     public void Apply(SessionSnapshot s)
     {
         Visible = !ModeInfo.IsSlotted(s.Mode);
         IsRtty = s.Mode == Mode.Rtty;
         if (!Visible) return;
-        if (!ReferenceEquals(_shown, s.Conversation) && !_shown.SequenceEqual(s.Conversation))
+        // Out of a contact, the box reads the signal last clicked; in one, it holds the conversation.
+        var lines = s.Reading?.Lines ?? s.Conversation;
+        if (!ReferenceEquals(_shown, lines) && !_shown.SequenceEqual(lines))
         {
             // New overs are added at the end; the rows already shown stay, so a word being aimed at does not move.
-            var keep = s.Conversation.Count >= _shown.Count && Conversation.Count == _shown.Count && s.Conversation.Take(_shown.Count).SequenceEqual(_shown);
+            var keep = lines.Count >= _shown.Count && Conversation.Count == _shown.Count && lines.Take(_shown.Count).SequenceEqual(_shown);
             if (!keep) Conversation.Clear();
-            foreach (var l in s.Conversation.Skip(keep ? _shown.Count : 0))
+            foreach (var l in lines.Skip(keep ? _shown.Count : 0))
                 Conversation.Add(new ConversationRowViewModel(l.Utc.ToString("HH:mm:ss", CultureInfo.InvariantCulture), l.Who, l.Text, l.Mine));
         }
-        _shown = s.Conversation;
-        HasConversation = Conversation.Count > 0;
+        _shown = lines;
+        WordsClickable = s.Reading is null;
+        ApplyHeading(s);
+        LiveWho = s.LiveLine?.Who ?? string.Empty;
+        LiveText = s.LiveLine?.Text ?? string.Empty;
+        HasLive = LiveText.Length > 0;
+        HasConversation = Conversation.Count > 0 || HasLive;
         OnAir = s.KeyboardTx.Active;
         SentPart = s.KeyboardTx.Sent;
         WaitingPart = s.KeyboardTx.Waiting;

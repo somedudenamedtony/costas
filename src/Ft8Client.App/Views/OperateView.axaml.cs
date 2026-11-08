@@ -65,6 +65,12 @@ public partial class OperateView : UserControl
             vm.Keyboard.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(KeyboardPanelViewModel.BlockedMacro)) ShowBlocked(vm.Keyboard.BlockedMacro);
+                // The arriving line grows character by character: keep it in view the same way.
+                if (e.PropertyName == nameof(KeyboardPanelViewModel.LiveText))
+                {
+                    var s = ConversationScroll;
+                    if (s.Offset.Y >= s.Extent.Height - s.Viewport.Height - 24) Dispatcher.UIThread.Post(() => s.ScrollToEnd());
+                }
             };
         };
     }

@@ -113,6 +113,38 @@ public class KeyboardContactSessionTests : IDisposable
         _tx.Transmitting.Should().BeFalse();
     }
 
+    // Their signal without the pause that ends a line: what has been read is still arriving.
+    private void HearPart(string text)
+    {
+        var random = new Random(1);
+        var audio = new PskModulator(Mode.Psk31, ModeInfo.DecoderSampleRate, PartnerHz, 0.3).Modulate(text)
+            .Select(s => s + (float)((random.NextDouble() - 0.5) * 0.02)).ToArray();
+        for (var i = 0; i < audio.Length; i += 1200)
+        {
+            _keyboard.Input.Write(audio.AsSpan(i, Math.Min(1200, audio.Length - i)));
+            _clock.Advance(TimeSpan.FromMilliseconds(100));
+            _keyboard.Drain();
+        }
+    }
+
+    [Fact]
+    public void Snapshot_PartnerMidLine_TheirTextShownAsItArrives()
+    {
+        Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n");
+        _keyboard.Listen(PartnerHz);
+        _session.CallStation(Partner).Should().BeTrue();
+        SendOver();
+
+        HearPart("W7LIT DE KP4JRS GE OM UR 579 579 NAME JOSE JOSE QTH SAN");
+
+        var snap = _session.Snapshot;
+        snap.Reading.Should().BeNull("in a contact the box holds the conversation, not the clicked signal");
+        var live = snap.LiveLine.Should().NotBeNull().And.Subject.As<ConversationLine>();
+        live.Who.Should().Be(Partner);
+        live.Text.Should().Contain("W7LIT DE KP4JRS GE OM UR 579");
+        snap.Conversation.Should().NotContain(l => l.Text.Contains("UR 579", StringComparison.Ordinal), "the line has not ended yet");
+    }
+
     private string Sent => string.Concat(_session.Snapshot.Conversation.Where(l => l.Mine).Select(l => l.Text + "|"));
 
     [Fact]

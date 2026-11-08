@@ -35,4 +35,9 @@ public sealed class AudioSettings
 
     /// <summary>Adjust the transmit level after each transmission from the radio's ALC meter.</summary>
     public bool AutoTxLevel { get; set; } = true;
+
+    /// <summary>
+    /// Stop a transmission when the radio's SWR stays at 3.0 or above (owner request 2026-11-07). Never applies to Tune.
+    /// </summary>
+    public bool StopOnHighSwr { get; set; } = true;
 }

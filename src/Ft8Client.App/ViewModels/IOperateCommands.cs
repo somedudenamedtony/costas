@@ -97,6 +97,11 @@ public interface IOperateCommands
     /// <summary>PSK and RTTY: a key typed while an over is on the air. False when it cannot be sent.</summary>
     bool KeyboardType(char c) => false;
 
+    /// <summary>PSK and RTTY: read the signal at an audio offset in the conversation box, as a waterfall click does.</summary>
+    void KeyboardListen(int hz)
+    {
+    }
+
     /// <summary>PSK and RTTY: Backspace while an over is on the air.</summary>
     void KeyboardBackspace()
     {

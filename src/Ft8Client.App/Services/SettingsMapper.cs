@@ -49,6 +49,7 @@ public static class SettingsMapper
                 AutoLog = s.Operating.AutoLog,
                 Contest = ContestOf(s.Operating.Contest),
                 ContestExchange = s.Operating.ContestExchanges.GetValueOrDefault(s.Operating.Contest) ?? string.Empty,
+                AnswerAllInTurn = s.Operating.AnswerAllInTurn,
             },
             ContestSinceUtc = s.Operating.ContestSinceUtc ?? DateTime.MinValue,
             CqParity = s.Operating.CqParity == "odd" ? SlotParity.Odd : SlotParity.Even,

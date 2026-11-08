@@ -31,9 +31,12 @@ public sealed partial class StationRowViewModel : ObservableObject
     /// <param name="mostWantedRank">The station's entity on Club Log's most-wanted list, if known; shown for new countries.</param>
     /// <param name="whyTip">Tooltip for Why: for a new band, the bands the country is already in the log on.</param>
     /// <param name="park">The park the station is activating (POTA), shown under Why; display only.</param>
+    /// <param name="dxpedition">The announced DXpedition the station is (NG3K), shown under Why; display only.</param>
     public StationRowViewModel(RankedStation r, int rank, DistanceUnit units, DateTime nowUtc, LogContact? last = null, int contacts = 0,
-                               int? mostWantedRank = null, string whyTip = "", ParkInfo? park = null)
+                               int? mostWantedRank = null, string whyTip = "", ParkInfo? park = null, Core.Dxpeditions.Dxpedition? dxpedition = null)
     {
+        Dxpedition = Core.Dxpeditions.DxpeditionText.Why(dxpedition);
+        DxpeditionTip = Core.Dxpeditions.DxpeditionText.Details(dxpedition, nowUtc);
         Park = PotaText.Why(park);
         ParkTip = PotaText.Tip(park);
         ParkKind = park is { NewPark: true } ? TextKind.Accent : TextKind.Secondary;
@@ -123,6 +126,18 @@ public sealed partial class StationRowViewModel : ObservableObject
 
     /// <summary>Need tag colour.</summary>
     public TextKind WhyKind { get; }
+
+    /// <summary>The DXpedition line under Why: "DXpedition · Solomon Is", or blank.</summary>
+    public string Dxpedition { get; }
+
+    /// <summary>Tooltip for <see cref="Dxpedition"/>: call, dates, QSL route and notes.</summary>
+    public string DxpeditionTip { get; }
+
+    /// <summary>The DXpedition line is shown.</summary>
+    public bool HasDxpedition => Dxpedition.Length > 0;
+
+    /// <summary>DXpedition line colour.</summary>
+    public TextKind DxpeditionKind => TextKind.Accent;
 
     /// <summary>The park line under Why: "New park US-1234", "Park US-1234", "POTA", or blank.</summary>
     public string Park { get; }

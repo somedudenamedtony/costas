@@ -27,6 +27,9 @@ public sealed class KeyboardSession : IDisposable
     private static readonly TimeSpan LinePause = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan AgeEvery = TimeSpan.FromSeconds(1);
 
+    // Finished lines kept per channel, so a click on a signal shows what it sent just before.
+    private const int HistoryLines = 30;
+
     // A channel with no callsign counts as a signal while it has had text this recently (a station keeps its channel 60 s).
     private static readonly TimeSpan UnnamedFor = TimeSpan.FromSeconds(60);
 
@@ -145,6 +148,9 @@ public sealed class KeyboardSession : IDisposable
         var lines = new List<KeyboardLine>();
         Mode mode;
         IReadOnlyList<int> unnamed;
+        List<PartialLine> partials;
+        KeyboardReading? reading;
+        var arrived = false;
         lock (_gate)
         {
             mode = _mode;
@@ -154,7 +160,7 @@ public sealed class KeyboardSession : IDisposable
             while ((n = Input.Read(_buffer)) > 0)
             {
                 if (_bank is null || transmitting) continue;
-                Read(_bank, _buffer.AsSpan(0, n), heard, lines);
+                arrived |= Read(_bank, _buffer.AsSpan(0, n), heard, lines);
             }
             if (_bank is null) return;
             var now = _clock.UtcNow;
@@ -163,8 +169,12 @@ public sealed class KeyboardSession : IDisposable
                 if (c.Line.Length > 0 && now - c.LastUtc > LinePause) Flush(id, now, lines);
                 if (!_bank.Channels.Any(x => x.Id == id) && c.Line.Length == 0) _channels.Remove(id);
             }
-            if (heard.Count == 0 && lines.Count == 0 && now - _agedUtc < AgeEvery) return;
+            // Characters go on screen as they are read, not only when a line ends.
+            if (heard.Count == 0 && lines.Count == 0 && !arrived && now - _agedUtc < AgeEvery) return;
             _agedUtc = now;
+            partials = [.. _channels.Where(kv => kv.Value.Line.Length > 0)
+                .Select(kv => new PartialLine(Offset(kv.Key, kv.Value), kv.Value.Channel.Call, kv.Value.Line.ToString().TrimStart()))];
+            reading = ClickedSignal();
             // Signals with text but no callsign yet: shown under Next in line and tagged "?" on the waterfall.
             unnamed = [.. _channels.Where(kv => kv.Value.Channel.Call is null && now - kv.Value.LastUtc <= UnnamedFor)
                 .Select(kv => _bank.Channels.FirstOrDefault(x => x.Id == kv.Key))
@@ -172,18 +182,36 @@ public sealed class KeyboardSession : IDisposable
                 .Select(c => (int)Math.Round(c.Receiver.FrequencyHz))
                 .Order()];
         }
-        _session.ApplyText(mode, heard, lines, _clock.UtcNow, unnamed);
+        _session.ApplyText(mode, heard, lines, _clock.UtcNow, unnamed, partials, reading);
     }
 
-    private void Read(ChannelBank bank, ReadOnlySpan<float> samples, List<TextHeard> heard, List<KeyboardLine> lines)
+    // Under _gate. The channel's frequency now, else where its text was last read.
+    private int Offset(int id, Reading c) =>
+        _bank?.Channels.FirstOrDefault(x => x.Id == id) is { } ch ? (int)Math.Round(ch.Receiver.FrequencyHz) : c.OffsetHz;
+
+    // Under _gate. The clicked channel: its station, frequency, recent lines and the line arriving.
+    private KeyboardReading? ClickedSignal()
+    {
+        if (_listening is not { } id || _bank?.Channels.FirstOrDefault(x => x.Id == id) is not { } ch) return null;
+        _channels.TryGetValue(id, out var c);
+        var snr = _bank.SnrDb(ch) ?? NoSnr;
+        return new KeyboardReading(c?.Channel.Call, (int)Math.Round(ch.Receiver.FrequencyHz), snr,
+            c is null ? [] : [.. c.History], c?.Line.ToString().TrimStart() ?? string.Empty);
+    }
+
+    // True when any characters were read.
+    private bool Read(ChannelBank bank, ReadOnlySpan<float> samples, List<TextHeard> heard, List<KeyboardLine> lines)
     {
         var now = _clock.UtcNow;
+        var arrived = false;
         foreach (var t in bank.Process(samples))
         {
             if (!_channels.TryGetValue(t.Channel, out var c)) _channels[t.Channel] = c = new Reading();
             var channel = bank.Channels.FirstOrDefault(x => x.Id == t.Channel);
             var snr = channel is null ? null : bank.SnrDb(channel);
             var offset = (int)Math.Round(t.FrequencyHz);
+            c.OffsetHz = offset;
+            arrived |= t.Text.Length > 0;
             var h = c.Channel.Add(t.Text, now, offset, snr ?? NoSnr);
             if (h is not null)
             {
@@ -203,6 +231,7 @@ public sealed class KeyboardSession : IDisposable
             }
             if (h is { OverEnded: true }) Flush(t.Channel, now, lines, offset, snr);
         }
+        return arrived;
     }
 
     private void Flush(int id, DateTime now, List<KeyboardLine> lines, int? offset = null, int? snr = null)
@@ -215,15 +244,20 @@ public sealed class KeyboardSession : IDisposable
         var hz = offset ?? (channel is null ? 0 : (int)Math.Round(channel.Receiver.FrequencyHz));
         var db = snr ?? (channel is null ? null : _bank!.SnrDb(channel)) ?? NoSnr;
         lines.Add(new KeyboardLine(now, hz, db, text, c.Channel.Call, c.To));
+        c.History.Add(new ConversationLine(now, c.Channel.Call ?? "?", text, Mine: false));
+        if (c.History.Count > HistoryLines) c.History.RemoveAt(0);
     }
 
-    // What one channel has read: its station, the line being built for Raw decodes, and when it last had text.
+    // What one channel has read: its station, the line being built for Raw decodes, when it last had text, where, and
+    // its recent finished lines.
     private sealed class Reading
     {
         public TextChannel Channel { get; } = new();
         public StringBuilder Line { get; } = new();
         public string? To { get; set; }
         public DateTime LastUtc { get; set; }
+        public int OffsetHz { get; set; }
+        public List<ConversationLine> History { get; } = [];
     }
 
     /// <inheritdoc />

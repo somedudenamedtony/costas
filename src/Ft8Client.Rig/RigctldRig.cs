@@ -154,7 +154,7 @@ public sealed class RigctldRig : IRig
         var m = await Run(c => c.SendAsync("m", ct), ct).ConfigureAwait(false);
         var t = await Run(c => c.SendAsync("t", ct), ct).ConfigureAwait(false);
         var s = await Run(c => c.SendAsync("s", ct), ct).ConfigureAwait(false);
-        return new RigState(f, m["Mode"] ?? "?", t["PTT"] == "1", s["Split"] == "1");
+        return new RigState(f, m["Mode"] ?? "?", t["PTT"] == "1", s["Split"] == "1", RigState.ParsePassband(m["Passband"]));
     }
 
     /// <inheritdoc />

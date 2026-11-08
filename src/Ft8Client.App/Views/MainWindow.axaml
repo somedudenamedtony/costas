@@ -123,6 +123,9 @@
             </Border>
           </StackPanel>
         </Button>
+        <Button Content="Pop out" Padding="8,3" Margin="2,0,0,0" VerticalAlignment="Center" Command="{Binding PopOutCommand}" IsVisible="{Binding CanPopOut}"
+                ToolTip.Tip="{Binding CurrentTabName, StringFormat='Open {0} in its own window, for example on a second monitor'}"
+                AutomationProperties.Name="Pop this view out into its own window" />
         <TextBlock Text="{Binding ClockText}" FontSize="16" FontWeight="SemiBold" Classes="num" Margin="12,0,4,0" VerticalAlignment="Center"
                    Foreground="{Binding ClockKind, Converter={x:Static v:Converters.KindBrush}}" ToolTip.Tip="{Binding ClockTip}"
                    AutomationProperties.Name="UTC clock" />
@@ -238,12 +241,21 @@
     </StackPanel>
 
     <Panel Grid.Row="4">
-      <v:OperateView x:Name="OperatePage" DataContext="{Binding Operate}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}" />
-      <v:RawDecodesView DataContext="{Binding Raw}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}" />
-      <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
-      <v:LogView DataContext="{Binding LogView}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}" />
-      <v:AwardsView DataContext="{Binding Awards}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}" />
-      <v:ContestView DataContext="{Binding Contest}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=5}" />
+      <Panel IsVisible="{Binding !CurrentTabOut}">
+        <v:OperateView x:Name="OperatePage" DataContext="{Binding Operate}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=0}" />
+        <v:RawDecodesView DataContext="{Binding Raw}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=1}" />
+        <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
+        <v:LogView DataContext="{Binding LogView}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}" />
+        <v:AwardsView DataContext="{Binding Awards}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}" />
+        <v:ContestView DataContext="{Binding Contest}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=5}" />
+      </Panel>
+      <!-- The selected view is in its own window: say where it went and offer to bring it back. -->
+      <StackPanel IsVisible="{Binding CurrentTabOut}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+        <TextBlock HorizontalAlignment="Center" FontSize="16" Text="{Binding CurrentTabName, StringFormat='{}{0} is open in its own window.'}" />
+        <TextBlock HorizontalAlignment="Center" Classes="secondary" Text="Click its tab again to bring that window to the front." />
+        <Button HorizontalAlignment="Center" Content="Pop in" Command="{Binding PopInCommand}"
+                ToolTip.Tip="Close the separate window and show this view here again" />
+      </StackPanel>
       <!-- "Logged" notice: over the right-hand column, clear of the contact card and Next in line. -->
       <v:LoggedNoticeView DataContext="{Binding Logged}" Margin="0,0,16,12" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
     </Panel>

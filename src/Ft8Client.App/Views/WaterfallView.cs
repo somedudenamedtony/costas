@@ -42,6 +42,8 @@ public sealed class WaterfallView : Control
     private static readonly IBrush Background = new SolidColorBrush(Color.Parse("#07121E"));
     private static readonly IPen SlotPen = new Pen(new SolidColorBrush(Color.FromArgb(56, 200, 215, 230)), 1);
     private static readonly IPen MarkerPen = new Pen(Brushes.OrangeRed, 1.5);
+    private static readonly IBrush FilteredOut = new SolidColorBrush(Color.FromArgb(150, 7, 18, 30));
+    private static readonly IPen FilterEdgePen = new Pen(new SolidColorBrush(Color.FromArgb(200, 230, 200, 120)), 1, DashStyle.Dash);
 
     // Newest row first in display order; stored as a ring of BGRA pixels.
     private int[] _pixels = [];
@@ -54,6 +56,21 @@ public sealed class WaterfallView : Control
     private bool _dirty;
     private int _offset = 1500;
     private IReadOnlyList<(int Hz, string Label, bool InContact)> _tags = [];
+    private int? _passband;
+
+    /// <summary>
+    /// The radio's receive filter width in hertz (Aurora comparison, owner request 2026-11-07). Audio above it is dimmed
+    /// with a dashed edge, since the radio filters it out; null, or a width of 3000 Hz or more, draws nothing.
+    /// </summary>
+    public void SetPassband(int? hz)
+    {
+        if (hz == _passband) return;
+        _passband = hz;
+        InvalidateVisual();
+    }
+
+    /// <summary>The filter edge to draw in hertz, or null when the filter is wider than the waterfall.</summary>
+    public static int? FilterEdge(int? passbandHz) => passbandHz is > 0 and < 3000 ? passbandHz : null;
 
     /// <summary>
     /// Callsign tags drawn above the signals they belong to (keyboard modes, docs/09-keyboard-modes.md section 10): "?"
@@ -175,6 +192,16 @@ public sealed class WaterfallView : Control
             if (ty == ScaleHeight + 2) lastRight = tx + text.Width;
             context.FillRectangle(inContact ? ContactTag : TagBackground, new Rect(tx - 2, ty - 1, text.Width + 4, text.Height + 2));
             context.DrawText(text, new Point(tx, ty));
+        }
+        if (FilterEdge(_passband) is { } edgeHz)
+        {
+            var edge = edgeHz / 3000.0 * width;
+            context.FillRectangle(FilteredOut, new Rect(edge, ScaleHeight, Math.Max(0, width - edge), plotHeight));
+            context.DrawLine(FilterEdgePen, new Point(edge, ScaleHeight), new Point(edge, height));
+            var label = new FormattedText($"Filter {edgeHz.ToString(CultureInfo.InvariantCulture)} Hz", CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, new Typeface("Inter"), 10, Brushes.LightGray);
+            var lx = edge + 4 + label.Width < width ? edge + 4 : Math.Max(2, edge - label.Width - 4);
+            context.DrawText(label, new Point(lx, height - label.Height - 2));
         }
         var marker = _offset / 3000.0 * width;
         context.DrawLine(MarkerPen, new Point(marker, ScaleHeight), new Point(marker, height));

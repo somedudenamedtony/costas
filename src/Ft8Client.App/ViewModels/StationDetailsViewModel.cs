@@ -79,8 +79,14 @@ public sealed class StationDetailsViewModel
     /// <summary>The park line is shown.</summary>
     public bool HasPark => Park.Length > 0;
 
+    /// <summary>"DXpedition H44MS · Solomon Is · Oct 3 – Nov 20 · QSL LoTW" and its notes (NG3K), blank when not one.</summary>
+    public string Dxpedition { get; private init; } = string.Empty;
+
+    /// <summary>The DXpedition line is shown.</summary>
+    public bool HasDxpedition => Dxpedition.Length > 0;
+
     /// <summary>The confirmation and awards group has at least one known fact.</summary>
-    public bool HasConfirmationDetails => HasQsl || HasRarity || HasPark;
+    public bool HasConfirmationDetails => HasQsl || HasRarity || HasPark || HasDxpedition;
 
     /// <summary>
     /// When the operator hears this station's country, from the decode journal: "Mongolia: heard 6 times, always on 20 m
@@ -157,7 +163,8 @@ public sealed class StationDetailsViewModel
     /// <summary>Builds the details from whatever is known: the heard station, a QRZ lookup, or both.</summary>
     public static StationDetailsViewModel From(string call, Station? s, CallsignCacheEntry? q, LogIndex? log, DistanceUnit units, DateTime nowUtc,
                                                string? name = null, Pileup? pileup = null, int txOffsetHz = 0, Mode mode = Mode.Ft8, int? mostWantedRank = null,
-                                               DateTime? lotwUpload = null, Core.Pota.ParkInfo? park = null)
+                                               DateTime? lotwUpload = null, Core.Pota.ParkInfo? park = null,
+                                               Core.Dxpeditions.Dxpedition? dxpedition = null)
     {
         var entity = s?.Entity?.Entity;
         var offset = q is null ? null : StationClock.Offset(q.GmtOffset, q.ObservesDst, s?.EntityKey, s?.Continent, nowUtc);
@@ -177,6 +184,7 @@ public sealed class StationDetailsViewModel
             Heard = HeardHistory?.Invoke(call, s?.EntityKey) ?? string.Empty,
             Rarity = mostWantedRank is { } mw ? Core.Geo.Rarity.Describe(mw) : string.Empty,
             Park = Core.Pota.PotaText.Details(park),
+            Dxpedition = Core.Dxpeditions.DxpeditionText.Details(dxpedition, nowUtc),
             Zones = Join(" · ", q?.CqZone is { } cq ? $"CQ {cq}" : null, q?.ItuZone is { } itu ? $"ITU {itu}" : null),
             LookupNote = q is null && name is null ? "No QRZ details yet. They appear here when QRZ lookups are set up." : string.Empty,
             QrzUrl = "https://www.qrz.com/db/" + Uri.EscapeDataString(call),

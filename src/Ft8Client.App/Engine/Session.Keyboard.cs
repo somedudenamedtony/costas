@@ -40,6 +40,8 @@ public sealed partial class Session
     private Mode _kbdContactMode;
     private DateTime _kbdActivityFrom;
     private IReadOnlyList<int> _unnamedSignals = [];
+    private IReadOnlyList<PartialLine> _partials = [];
+    private KeyboardReading? _reading;
 
     /// <summary>The keyboard transmitter, so tests can render its audio on a manual clock.</summary>
     internal KeyboardTransmitter Keys => _keys;
@@ -369,6 +371,27 @@ public sealed partial class Session
         if (_kbd.View() is not { } v) return null;
         if (v.Outcome == ContactOutcome.InProgress) _kbdContactMode = _config.Mode;
         return v with { Mode = _kbdContactMode };
+    }
+
+    // Under _gate. The clicked signal, shown in the conversation box while no contact is under way and no CQ is out.
+    private KeyboardReading? ShownReading()
+    {
+        if (_reading is not { } r || _kbd.InContact || _kbd.CallingCq) return null;
+        return r with { Country = r.Call is null ? null : _countries.Lookup(r.Call)?.Entity.Name };
+    }
+
+    // Under _gate. The line arriving from whoever the conversation box shows: the partner in a contact, else the clicked
+    // signal. The partner's channel is the one named for them, else an unnamed one on their offset.
+    private ConversationLine? LiveLine(DateTime now)
+    {
+        if (_kbd.InContact && _kbd.Partner is { } partner)
+        {
+            var half = Math.Max(ModeInfo.OccupiedBandwidthHz(_config.Mode) / 2, 1);
+            var p = _partials.FirstOrDefault(x => x.Call is { } c && Callsign.EqualsCall(c, partner))
+                ?? _partials.FirstOrDefault(x => x.Call is null && Math.Abs(x.OffsetHz - _kbd.PartnerOffsetHz) <= half);
+            return p is { Text.Length: > 0 } ? new ConversationLine(now, partner, p.Text, Mine: false) : null;
+        }
+        return ShownReading() is { Partial.Length: > 0 } r ? new ConversationLine(now, r.Call ?? "?", r.Partial, Mine: false) : null;
     }
 
     private void AddConversation(string who, string text, bool mine)

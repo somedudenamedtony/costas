@@ -1,0 +1,17 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Ft8Client.App.Views.PanelWindow"
+        Icon="/Assets/costas.ico"
+        Title="Costas" Width="1000" Height="700" MinWidth="480" MinHeight="320" ShowInTaskbar="False">
+  <!-- A view popped out of the main window, for a second monitor. Closing it, or Pop in, puts it back on its tab. -->
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Padding="12,6" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+      <DockPanel>
+        <Button x:Name="PopInButton" DockPanel.Dock="Right" Content="Pop in" Padding="10,3"
+                ToolTip.Tip="Put this view back in the main window" AutomationProperties.Name="Pop this view back in" />
+        <TextBlock x:Name="Heading" FontWeight="SemiBold" VerticalAlignment="Center" />
+      </DockPanel>
+    </Border>
+    <ContentControl x:Name="Body" />
+  </DockPanel>
+</Window>

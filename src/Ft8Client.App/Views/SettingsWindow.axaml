@@ -106,6 +106,13 @@
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="High SWR" />
+              <StackPanel Grid.Column="1">
+                <CheckBox IsChecked="{Binding StopOnHighSwr}" Content="Stop transmitting when the SWR stays at 3.0 or above" />
+                <TextBlock Classes="help" Text="Costas reads the radio's SWR meter twice a second while it sends. Two readings in a row at 3.0 or above stop the transmission and say so in the bottom bar. Tune is never stopped, so the radio's tuner can do its work. Needs a radio that reports SWR over CAT." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="CQ" />
               <StackPanel Grid.Column="1">
                 <TextBox Text="{Binding CqModifier}" Width="90" MaxLength="4" Watermark="modifier" HorizontalAlignment="Left" />
@@ -211,6 +218,8 @@
               <StackPanel Grid.Column="1" Spacing="4">
                 <CheckBox Content="Chime when a new station calls me" IsChecked="{Binding ChimeOnCaller}" />
                 <TextBlock Classes="help" Text="Plays on the computer's default speakers, never on the radio's audio device. If the default device is the radio's, the chime stays silent." />
+                <CheckBox Content="Answer all in turn" IsChecked="{Binding AnswerAllInTurn}" Margin="0,6,0,0" />
+                <TextBlock Classes="help" Text="After each logged contact, Costas answers the station that has waited longest in Waiting for you, without a click. Stations you marked Answer next still go first. Halt Tx stops it, and the Tx watchdog stops it if you don't touch Costas." />
               </StackPanel>
             </Grid>
           </StackPanel>
@@ -360,6 +369,13 @@
                 <CheckBox Content="Show which park a station is activating (POTA spots)" IsChecked="{Binding PotaSpots}" />
                 <CheckBox Content="Rank stations at a park I have not worked higher" IsChecked="{Binding PreferNewParks}" IsEnabled="{Binding PotaSpots}" Margin="24,0,0,0" />
                 <TextBlock Classes="help" Text="Reads the public spot list at pota.app every two minutes and shows New park or Park with the reference under Why. A station at a new park comes right after your first need (new countries by default), even if you have worked its call on this band before. A park you work is written to the log." TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="DXpeditions" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Show announced DXpeditions (NG3K)" IsChecked="{Binding DxpeditionList}" />
+                <TextBlock Classes="help" Text="Reads NG3K's list of announced DX operations twice a day. A station that is one of them shows DXpedition and the country under Why, and the Awards view lists the ones on the air now and starting soon. It never changes the order or who is called." TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
@@ -831,6 +847,41 @@
             <TextBlock Classes="help" Text="Save to apply automatic sync and uploads. Incoming cards confirm matching contacts in your local log. Unmatched cards stay in your inbox below. Simulation never contacts eQSL." />
             <TextBlock Text="Recent inbox cards (up to 100)" FontWeight="SemiBold" Margin="0,12,0,4" />
             <ItemsControl ItemsSource="{Binding EqslInboxCards}" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Wavelog / Cloudlog">
+        <ScrollViewer>
+          <StackPanel>
+            <TextBlock Classes="page" Text="Wavelog / Cloudlog" />
+            <TextBlock Classes="intro" Text="Send newly logged contacts to your own Wavelog or Cloudlog logbook. Uploads are optional, run in the background and retry when the site is unavailable. These settings belong to the current station profile." />
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Logbook address" />
+              <StackPanel Grid.Column="1">
+                <TextBox Text="{Binding CloudlogUrl}" Width="360" HorizontalAlignment="Left" PlaceholderText="https://log.example.com" />
+                <TextBlock Classes="help" Text="The address you open your logbook at. Use https: the API key travels with every upload." />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="API key" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <TextBox Text="{Binding CloudlogKey}" Width="360" HorizontalAlignment="Left" PasswordChar="•" PlaceholderText="API key with read and write" />
+                <TextBlock Classes="help" Text="Make one in your logbook under your account's API keys, with read and write access." />
+                <TextBlock Classes="help" Text="{Binding SecretsNote}" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Station location" />
+              <StackPanel Grid.Column="1" Spacing="6">
+                <Button Content="Test and list station locations" Command="{Binding TestCloudlogCommand}" HorizontalAlignment="Left" />
+                <TextBlock Classes="help" Text="{Binding CloudlogStatus}" />
+                <ComboBox ItemsSource="{Binding CloudlogStations}" SelectedItem="{Binding CloudlogStation}" MinWidth="360" PlaceholderText="Pick after Test" />
+                <TextBox Text="{Binding CloudlogStationId}" Width="90" HorizontalAlignment="Left" PlaceholderText="Id" />
+                <TextBlock Classes="help" Text="The logbook only takes contacts for a location whose callsign matches this profile's callsign." />
+              </StackPanel>
+            </Grid>
+            <CheckBox Content="Upload each new contact as soon as it is logged" IsChecked="{Binding CloudlogUploadOnComplete}" />
+            <TextBlock Classes="help" Text="Save to apply. A contact already in that logbook is left as it is. Simulation never contacts the site." />
           </StackPanel>
         </ScrollViewer>
       </TabItem>

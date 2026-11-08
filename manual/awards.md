@@ -35,6 +35,16 @@ Under the cards, a table gives worked and confirmed countries on each band you h
 15 and 10 m, the five bands of **5-band DXCC**. The line above the table says how many of those five bands have 100
 countries confirmed.
 
+## DXpeditions on the air
+
+Under the award cards, **DXpeditions on the air** lists the DX operations announced on NG3K's list whose dates
+include today, with how many days are left. The ones you are decoding right now come first (*Heard now: H44MS on
+20 m, -12 dB*), then the countries you have not worked yet, marked **New country**. *digital* means the announcement mentions FT8, FT4 or digital modes. Hover a row for the QSL route
+and the announcement's notes (operators, bands and modes: not every operation runs FT8). **Starting in the next two
+weeks** lists what is coming. On the Operate screen, a station that is one of these shows *DXpedition* and its
+country under **Why**. The calls come from the announcement: the listed call, a portable call with it (3B9/M0CFW),
+or a call the notes say the team signs. Turn the list off in **Settings › Who to call**.
+
 ## Countries still needed
 
 The right side lists every country you have not worked yet. Choose a band to see the countries you still need on that

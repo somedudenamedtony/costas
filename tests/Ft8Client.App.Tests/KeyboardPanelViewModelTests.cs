@@ -218,4 +218,36 @@ public class KeyboardPanelViewModelTests
         panel.Conversation.Should().HaveCount(2);
         panel.Conversation[0].Should().BeSameAs(row);
     }
+
+    [Fact]
+    public void Apply_ReadingClickedSignal_ShowsItsLinesAndArrivingText()
+    {
+        var (panel, _) = Build();
+        var t = new DateTime(2026, 11, 7, 18, 0, 0, DateTimeKind.Utc);
+        panel.Apply(new SessionSnapshot
+        {
+            Mode = Mode.Psk31,
+            Reading = new KeyboardReading("EA8DBW", 1247, -6, [new ConversationLine(t, "EA8DBW", "QRZ? DE EA8DBW", false)], "CQ CQ DE EA8")
+                { Country = "Canary Islands" },
+            LiveLine = new ConversationLine(t, "EA8DBW", "CQ CQ DE EA8", false),
+        });
+
+        panel.BoxTitle.Should().Be("Reading EA8DBW");
+        panel.BoxDetail.Should().Be("1,247 Hz · -06 dB · Canary Islands");
+        panel.Conversation.Select(r => r.Who).Should().Equal("EA8DBW");
+        panel.WordsClickable.Should().BeFalse("words of a signal not in contact are not taken into a contact");
+        panel.HasLive.Should().BeTrue();
+        panel.LiveText.Should().Be("CQ CQ DE EA8");
+    }
+
+    [Fact]
+    public void Apply_NothingToShow_PlaceholderAndNoHeading()
+    {
+        var (panel, _) = Build();
+
+        panel.HasConversation.Should().BeFalse();
+        panel.HasBoxTitle.Should().BeFalse();
+        panel.HasLive.Should().BeFalse();
+        panel.WordsClickable.Should().BeTrue();
+    }
 }

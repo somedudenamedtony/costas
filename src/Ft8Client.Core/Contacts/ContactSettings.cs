@@ -42,4 +42,10 @@ public sealed record ContactSettings
 
     /// <summary>Log automatically when the contact completes.</summary>
     public bool AutoLog { get; init; } = true;
+
+    /// <summary>
+    /// After a contact is logged, answer the station that has waited longest in Waiting for you, without a click.
+    /// Off by default: it changes who gets called. The Tx watchdog still stops a run of answers with no operator input.
+    /// </summary>
+    public bool AnswerAllInTurn { get; init; }
 }

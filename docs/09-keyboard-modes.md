@@ -220,6 +220,14 @@ There is a watchdog for the keyboard modes:
 
 **Raw decodes tab.** In keyboard modes it shows every channel's text, one rolling line per channel, with the offset.
 
+As built (live receive text, 2026-11-07, owner request): out of a contact or CQ, the conversation box reads the signal
+last clicked (on the waterfall, or a row in Next in line): a heading "Reading <call>" with offset, dB and country, the
+channel's last 30 finished lines, and the line still arriving on a "now" row with a cursor. Its words are not
+clickable (nothing to capture into). In a contact the box keeps the conversation, and the partner's arriving line
+(their named channel, else an unnamed one within half a signal width of their offset) shows the same way. Characters
+reach the screen on the reader's next pass (about 100 ms) instead of when the line ends; Raw decodes and contact
+parsing still use finished lines.
+
 **Waterfall.** The same control. Each channel has a callsign tag above it ("?" until a callsign is found). The channel in contact is tagged in red. A click starts reading that signal and makes it the CQ offset.
 
 **Right column.**

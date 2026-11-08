@@ -9,7 +9,9 @@
 using Ft8Client.App.Engine;
 using Ft8Client.App.ViewModels;
 using Ft8Client.Audio.Backends;
+using Ft8Client.Audio.Timing;
 using Ft8Client.Core;
+using Ft8Client.Core.Contacts;
 using Ft8Client.Core.Time;
 using Ft8Client.Core.Transmit;
 using Ft8Client.Data.Reference;
@@ -28,7 +30,9 @@ public class TxMeterMonitorTests
         public readonly List<TxMeterResult> Measured = [];
         public readonly List<TxMeterReading> Live = [];
 
-        public Station(TxMeterReading meters)
+        public readonly List<double> Tripped = [];
+
+        public Station(TxMeterReading meters, double? swrStopAt = null)
         {
             Radio = new SimulatedRig(Clock) { TxMeters = meters };
             Tx = new Transmitter(Radio, new NullAudioOutput { Now = () => Clock.UtcNow }, Clock, ReferenceData.LoadFrequencies());
@@ -38,7 +42,9 @@ public class TxMeterMonitorTests
                 Settle = TimeSpan.FromMilliseconds(20),
                 Interval = TimeSpan.FromMilliseconds(20),
                 StopBeforeEnd = TimeSpan.FromMilliseconds(100),
+                SwrStopAt = () => swrStopAt,
             };
+            Monitor.SwrTripped += w => { lock (Tripped) Tripped.Add(w); };
             Monitor.Measured += Measured.Add;
             Monitor.Read += r => { lock (Live) Live.Add(r); };
         }
@@ -148,5 +154,65 @@ public class TxMeterMonitorTests
         await s.Tone();
         await s.Monitor.Idle;
         s.Monitor.PowerWatts.Should().BeNull("a transmission whose power could not be read falls back to Settings");
+    }
+
+    [Fact]
+    public async Task Transmission_SwrHeldHigh_TripsOnce()
+    {
+        var s = new Station(new TxMeterReading(0.1, 3.4, 40), SwrGuard.DefaultLimit);
+        var slot = new DateTime(2026, 1, 4, 2, 54, 15, DateTimeKind.Utc);
+        var slots = new SlotClock(s.Clock, Mode.Ft8);
+        slots.Event += s.Tx.OnSlotEvent;
+        s.Tx.Prepare(new TxPlan(slot, "CQ W7LIT DN40", null, null), Mode.Ft8, 1500,
+            new TxGuardInput("20m", 14_074_000, 0.0, 2.0, null, true), out var why).Should().NotBeNull();
+        why.Should().BeNull();
+        var started = false;
+        s.Tx.Started += (_, _) => started = true;
+        while (!started)
+        {
+            s.Clock.Advance(TimeSpan.FromMilliseconds(5));
+            slots.Poll();
+            s.Tx.Poll();
+        }
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline)
+        {
+            lock (s.Tripped) if (s.Tripped.Count > 0) break;
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+        }
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+        await s.Tx.HaltAsync();
+        lock (s.Tripped) s.Tripped.Should().Equal(3.4);
+    }
+
+    [Fact]
+    public async Task Transmission_StopTurnedOff_NeverTrips()
+    {
+        var s = new Station(new TxMeterReading(0.1, 3.4, 40));
+        var slots = new SlotClock(s.Clock, Mode.Ft8);
+        slots.Event += s.Tx.OnSlotEvent;
+        s.Tx.Prepare(new TxPlan(new DateTime(2026, 1, 4, 2, 54, 15, DateTimeKind.Utc), "CQ W7LIT DN40", null, null), Mode.Ft8, 1500,
+            new TxGuardInput("20m", 14_074_000, 0.0, 2.0, null, true), out _);
+        var started = false;
+        s.Tx.Started += (_, _) => started = true;
+        while (!started)
+        {
+            s.Clock.Advance(TimeSpan.FromMilliseconds(5));
+            slots.Poll();
+            s.Tx.Poll();
+        }
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+        await s.Tx.HaltAsync();
+        lock (s.Tripped) s.Tripped.Should().BeEmpty();
+        lock (s.Live) s.Live.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task Tone_HighSwr_NeverTripsSoTheTunerCanWork()
+    {
+        var s = new Station(new TxMeterReading(0.1, 5.0), SwrGuard.DefaultLimit);
+        await s.Tone();
+        await s.Monitor.Idle;
+        lock (s.Tripped) s.Tripped.Should().BeEmpty();
     }
 }
