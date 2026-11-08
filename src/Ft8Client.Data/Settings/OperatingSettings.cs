@@ -35,6 +35,21 @@ public sealed class OperatingSettings
     /// <summary>Send my grid when I answer a CQ.</summary>
     public bool GridInReply { get; set; } = true;
 
+    /// <summary>The contest being run (a <c>ContestId</c> name such as <c>RttyRoundup</c>); empty for ordinary operating.</summary>
+    public string Contest { get; set; } = string.Empty;
+
+    /// <summary>My exchange for each contest (by <c>ContestId</c> name), as typed: <c>UT</c>, <c>DX</c>, <c>1D UT</c>.</summary>
+    public Dictionary<string, string> ContestExchanges { get; set; } = [];
+
+    /// <summary>
+    /// When the contest log in use started: its contacts are the ones made in that contest since then. Picking a
+    /// contest again within four days carries on the same log.
+    /// </summary>
+    public DateTime? ContestSinceUtc { get; set; }
+
+    /// <summary>The contest <see cref="ContestSinceUtc"/> belongs to.</summary>
+    public string ContestSinceFor { get; set; } = string.Empty;
+
     /// <summary>Last message when I answered a CQ: <c>73</c> or <c>RR73</c>.</summary>
     public string AnswerSignoff { get; set; } = "73";
 

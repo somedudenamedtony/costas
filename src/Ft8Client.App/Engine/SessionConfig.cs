@@ -36,6 +36,9 @@ public sealed record SessionConfig
     /// <summary>Contact settings.</summary>
     public ContactSettings Contact { get; init; } = new();
 
+    /// <summary>When the contest log in use started (see <see cref="ContactSettings.Contest"/>).</summary>
+    public DateTime ContestSinceUtc { get; init; }
+
     /// <summary>Parity for CQ.</summary>
     public SlotParity CqParity { get; init; } = SlotParity.Even;
 

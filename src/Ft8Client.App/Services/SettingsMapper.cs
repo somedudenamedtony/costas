@@ -21,6 +21,10 @@ namespace Ft8Client.App.Services;
 /// <summary>Turns stored settings into the session's configuration.</summary>
 public static class SettingsMapper
 {
+    /// <summary>The contest named in settings, or <see cref="Core.Contests.ContestId.None"/>.</summary>
+    public static Core.Contests.ContestId ContestOf(string? name) =>
+        Enum.TryParse<Core.Contests.ContestId>(name, out var id) && Enum.IsDefined(id) ? id : Core.Contests.ContestId.None;
+
     /// <summary>The session configuration for the active profile.</summary>
     public static SessionConfig ToConfig(AppSettings s)
     {
@@ -43,7 +47,10 @@ public static class SettingsMapper
                 AnswerSignoff = s.Operating.AnswerSignoff == "RR73" ? "RR73" : "73",
                 FreeTextAfter = s.Operating.FreeTextAfter,
                 AutoLog = s.Operating.AutoLog,
+                Contest = ContestOf(s.Operating.Contest),
+                ContestExchange = s.Operating.ContestExchanges.GetValueOrDefault(s.Operating.Contest) ?? string.Empty,
             },
+            ContestSinceUtc = s.Operating.ContestSinceUtc ?? DateTime.MinValue,
             CqParity = s.Operating.CqParity == "odd" ? SlotParity.Odd : SlotParity.Even,
             FixedTxOffsetHz = fixedOffset,
             ClockBlockSeconds = s.Operating.ClockBlockSeconds,

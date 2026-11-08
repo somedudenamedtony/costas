@@ -111,6 +111,7 @@ public static class AdifMapper
         if (PotaAdif.Raw(q.RawAdif) is { } raw)
         {
             foreach (var f in PotaAdif.Fields) r[f] = raw[f];
+            foreach (var f in ContestAdif.Fields) r[f] = raw[f];
         }
         if (q.LotwUploadState == UploadState.Uploaded) r["lotw_qsl_sent"] = "Y";
         if (q.LotwConfirmed) r["lotw_qsl_rcvd"] = "Y";
