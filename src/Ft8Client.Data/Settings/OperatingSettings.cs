@@ -47,6 +47,9 @@ public sealed class OperatingSettings
     /// <summary>Play a short chime on the computer's speakers when a new station calls me. Off by default.</summary>
     public bool ChimeOnCaller { get; set; }
 
+    /// <summary>After each logged contact, answer the station that has waited longest to call me. Off by default.</summary>
+    public bool AnswerAllInTurn { get; set; }
+
     /// <summary><c>auto</c>, or a fixed offset in hertz.</summary>
     public string TxOffset { get; set; } = "auto";
 

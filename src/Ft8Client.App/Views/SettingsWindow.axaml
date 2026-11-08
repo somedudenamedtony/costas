@@ -218,6 +218,8 @@
               <StackPanel Grid.Column="1" Spacing="4">
                 <CheckBox Content="Chime when a new station calls me" IsChecked="{Binding ChimeOnCaller}" />
                 <TextBlock Classes="help" Text="Plays on the computer's default speakers, never on the radio's audio device. If the default device is the radio's, the chime stays silent." />
+                <CheckBox Content="Answer all in turn" IsChecked="{Binding AnswerAllInTurn}" Margin="0,6,0,0" />
+                <TextBlock Classes="help" Text="After each logged contact, Costas answers the station that has waited longest in Waiting for you, without a click. Stations you marked Answer next still go first. Halt Tx stops it, and the Tx watchdog stops it if you don't touch Costas." />
               </StackPanel>
             </Grid>
           </StackPanel>
