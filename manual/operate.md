@@ -174,8 +174,8 @@ A DXpedition running Fox/Hound is never here: it is always working someone, so i
 *DXpedition (Fox/Hound), working Hounds*. See [Working a DXpedition](contacts.md#working-a-dxpedition-foxhound).
 
 A station calling CQ in a contest (`CQ RU`, `CQ FD`, `CQ WW`, `CQ TEST` and the like) is listed here as *Contest
-(CQ RU), needs an exchange*. It expects a contest exchange, and Costas only sends the standard one, so it is not
-offered as a station to call.
+(CQ RU): pick it beside Call CQ to work it*. It expects a contest exchange, so it can only be called once you
+[pick that contest](contests.md). While the contest is picked, its stations move into Next in line.
 
 When everyone in Watching is only a new call or a new grid, the list folds to one line, such as *12 needed stations
 busy: 11 new calls, 1 new grid*. **Show all** opens it and **Fold** closes it again; Costas remembers your choice until
