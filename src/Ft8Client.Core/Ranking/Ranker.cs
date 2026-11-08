@@ -32,16 +32,20 @@ public static class Ranker
             var hears = input.HearsMe?.For(s, input.NowUtc) ?? HearsYou.Unavailable;
             var chance = HearsMe.ChanceOf(hears, s.LastSnr);
             var reason = NotCallableReason(s, input);
+            var dupe = input.Contest?.IsDupe(s.Call) == true;
+            var mult = input.Contest is { } ct && !dupe ? ct.NewMult(s) : null;
             var ranked = new RankedStation(s, need, hears, chance, reason is null, reason)
             {
                 UsesLotw = input.Lotw?.IsUser(s.Call, input.NowUtc) == true,
                 NewPark = settings.PreferNewParks && input.Parks?.Match(s.Call, input.Band, s.CqModifier) is { NewPark: true },
+                ContestDupe = dupe,
+                ContestTag = dupe ? "Dupe" : mult is null ? null : $"New mult · {mult}",
             };
 
             if (s.State == StationState.CallingMe && s.HeardInLastOwnSlot) callingMe.Add(ranked);
 
-            // A new park is a new contact for a park hunter even with the call worked before on this band.
-            if (need.Tag == NeedTag.Worked && !ranked.NewPark)
+            // In a contest only a dupe is already worked: a station worked before the contest counts again.
+            if (input.Contest is not null ? dupe : need.Tag == NeedTag.Worked && !ranked.NewPark)
             {
                 worked.Add(ranked);
                 continue;
@@ -112,7 +116,9 @@ public static class Ranker
 
     private static WatchReason? CqReason(Station s, RankInput input)
     {
-        // Owner decision 2026-10-12: a contest CQ wants an exchange Costas cannot send, so it is not callable.
+        // Owner decision 2026-10-12: a contest CQ wants an exchange the standard contact cannot send, so it is not callable,
+        // unless that contest is the one being run (owner decision 2026-11-07).
+        if (input.Contest is { } c && c.Info.Matches(s.CqModifier)) return null;
         if (CqModifierRule.IsContest(s.CqModifier)) return new WatchReason(WatchReasonKind.Contest, Modifier: s.CqModifier);
         return CqModifierRule.Allows(s.CqModifier, input.MyEntity, s.EntityKey, input.Countries)
             ? null
@@ -122,6 +128,8 @@ public static class Ranker
     private static int CompareLine(RankedStation a, RankedStation b, RankingSettings settings)
     {
         var c = LineBucket(a).CompareTo(LineBucket(b));
+        if (c != 0) return c;
+        c = (b.ContestTag is not null).CompareTo(a.ContestTag is not null); // in a contest, a new multiplier first
         if (c != 0) return c;
         c = a.Need.Tier.CompareTo(b.Need.Tier);
         if (c != 0) return c;
