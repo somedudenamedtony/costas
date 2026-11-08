@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private Audio.Timing.CapturePump? _waterfallPump;
     private long _waterfallSlot = -1;
     private WaterfallWindow? _waterfallWindow;
+    private readonly Dictionary<int, PanelWindow> _panels = [];
     private const double CompactWaterfall = 52;
 
     /// <summary>Creates the window.</summary>
@@ -82,6 +83,16 @@ public partial class MainWindow : Window
         OperatePage.LoadColumns(w.ColumnWidths);
         OperatePage.ColumnsSaved += (name, widths) => vm.Host.Settings.Update(s => s.Window.ColumnWidths[name] = [.. widths]);
         if (w.WaterfallOut) Dispatcher.UIThread.Post(PopOutWaterfall);
+        vm.PanelOutChanged += (tab, isOut) =>
+        {
+            if (isOut) OpenPanel(vm, tab);
+            else if (_panels.TryGetValue(tab, out var pw)) pw.Close();
+        };
+        for (var tab = 1; tab < MainViewModel.PanelNames.Length; tab++)
+        {
+            var t = tab;
+            if (w.Panels.TryGetValue(MainViewModel.PanelNames[t], out var p) && p.Out) Dispatcher.UIThread.Post(() => vm.SetOut(t, true));
+        }
         vm.Host.Session.Changed += s => Dispatcher.UIThread.Post(() => vm.Apply(s));
         vm.Apply(vm.Host.Session.Snapshot);
         vm.OpenDialog += OpenDialog;
@@ -146,6 +157,11 @@ public partial class MainWindow : Window
             {
                 SaveWaterfallWindow(vm, ww, stillOut: true);
                 ww.Close();
+            }
+            foreach (var pw in _panels.Values.ToList())
+            {
+                SavePanelWindow(vm, pw, stillOut: true);
+                pw.Close();
             }
             var size = ClientSize;
             vm.Host.Settings.Update(s =>
@@ -238,6 +254,66 @@ public partial class MainWindow : Window
         if (show) SetWaterfallHeight(WaterfallHeight, save: false);
     }
 
+    // A view popped out of its tab: a new view on the same view model, in a window remembered by the view's name.
+    private void OpenPanel(MainViewModel vm, int tab)
+    {
+        // Picking the tab of a view that is already out brings its window to the front.
+        if (_panels.TryGetValue(tab, out var open))
+        {
+            open.Activate();
+            return;
+        }
+        Control? view = tab switch
+        {
+            1 => new RawDecodesView { DataContext = vm.Raw },
+            2 => new ReachView { DataContext = vm.Reach },
+            3 => new LogView { DataContext = vm.LogView },
+            4 => new AwardsView { DataContext = vm.Awards },
+            _ => null,
+        };
+        if (view is null) return;
+        var name = MainViewModel.PanelNames[tab];
+        var placed = vm.Host.Settings.Current.Window.Panels.TryGetValue(name, out var p) ? p : new Ft8Client.Data.Settings.PanelWindowOptions();
+        var window = new PanelWindow
+        {
+            DataContext = vm,
+            Escape = vm.Escape,
+            Width = Math.Max(480, placed.Width),
+            Height = Math.Max(320, placed.Height),
+        };
+        window.Fill(tab, name, view);
+        if (placed is { X: { } x, Y: { } y } && OnSomeScreen(new PixelPoint(x, y))) window.Position = new PixelPoint(x, y);
+        else window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        window.Closing += (_, _) =>
+        {
+            if (!_closing) SavePanelWindow(vm, window, stillOut: false);
+        };
+        window.Closed += (_, _) =>
+        {
+            _panels.Remove(tab);
+            if (!_closing) vm.SetOut(tab, false);
+        };
+        _panels[tab] = window;
+        window.Show(this);
+        SavePanelWindow(vm, window, stillOut: true);
+    }
+
+    private static void SavePanelWindow(MainViewModel vm, PanelWindow window, bool stillOut) =>
+        vm.Host.Settings.Update(s =>
+        {
+            var name = MainViewModel.PanelNames[window.Tab];
+            if (!s.Window.Panels.TryGetValue(name, out var p)) s.Window.Panels[name] = p = new Ft8Client.Data.Settings.PanelWindowOptions();
+            p.Out = stillOut;
+            // Before the window has been laid out its position is 0,0; keep what was remembered instead.
+            if (window.IsVisible)
+            {
+                p.X = window.Position.X;
+                p.Y = window.Position.Y;
+                p.Width = window.Width;
+                p.Height = window.Height;
+            }
+        });
+
     private static void SaveWaterfallWindow(MainViewModel vm, WaterfallWindow window, bool stillOut) =>
         vm.Host.Settings.Update(s =>
         {
@@ -302,10 +378,12 @@ public partial class MainWindow : Window
             if (_closing) return;
             Show();
             _waterfallWindow?.Show(this);
+            foreach (var pw in _panels.Values) pw.Show(this);
             Activate();
         };
         _mini.Show();
         _waterfallWindow?.Hide();
+        foreach (var pw in _panels.Values) pw.Hide();
         Hide();
     }
 

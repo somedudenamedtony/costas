@@ -228,7 +228,53 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>Selected view: 0 Operate, 1 Raw decodes, 2 Reach, 3 Log, 4 Awards.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentTabOut), nameof(CanPopOut), nameof(CurrentTabName))]
     public partial int Tab { get; set; }
+
+    // Views popped out into their own windows, by tab number. Operate (0) never pops out: it is the main window's job.
+    private readonly HashSet<int> _out = [];
+
+    /// <summary>Raised with a tab number when its view goes out to its own window (true) or comes back (false).</summary>
+    public event Action<int, bool>? PanelOutChanged;
+
+    /// <summary>The tab names used for popped-out views, by tab number.</summary>
+    public static readonly string[] PanelNames = ["Operate", "Raw decodes", "Reach", "Log", "Awards"];
+
+    /// <summary>True for a view that can be popped out into its own window: every view except Operate.</summary>
+    public static bool CanPop(int tab) => tab > 0 && tab < PanelNames.Length;
+
+    /// <summary>True when the given view is in its own window.</summary>
+    public bool IsOut(int tab) => _out.Contains(tab);
+
+    /// <summary>True when the selected tab's view is in its own window, so the main window shows a placeholder.</summary>
+    public bool CurrentTabOut => IsOut(Tab);
+
+    /// <summary>True when the selected view can be popped out now.</summary>
+    public bool CanPopOut => CanPop(Tab) && !CurrentTabOut;
+
+    /// <summary>The selected view's name, for the placeholder and the pop-out button.</summary>
+    public string CurrentTabName => Tab >= 0 && Tab < PanelNames.Length ? PanelNames[Tab] : string.Empty;
+
+    /// <summary>Opens the selected view in its own window.</summary>
+    [RelayCommand]
+    public void PopOut() => SetOut(Tab, true);
+
+    /// <summary>Puts the selected view back in the main window.</summary>
+    [RelayCommand]
+    public void PopIn() => SetOut(Tab, false);
+
+    /// <summary>Records that a view went out to its own window or came back, and refreshes it if it is now on screen.</summary>
+    public void SetOut(int tab, bool isOut)
+    {
+        if (!CanPop(tab) || (isOut ? !_out.Add(tab) : !_out.Remove(tab))) return;
+        OnPropertyChanged(nameof(CurrentTabOut));
+        OnPropertyChanged(nameof(CanPopOut));
+        if (isOut) RefreshView(tab);
+        PanelOutChanged?.Invoke(tab, isOut);
+    }
+
+    /// <summary>True when a view is on screen: its tab is selected or it has its own window.</summary>
+    public bool Showing(int tab) => Tab == tab || IsOut(tab);
 
     /// <summary>
     /// The bottom bar shows Call CQ and the slot countdown only on views other than Operate, whose contact card has its own.
@@ -439,6 +485,13 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         Raw.Units = Operate.Units;
         Raw.Apply(s.RawDecodes, s.Rank, s.Contact?.DxCall, keyboard: !ModeInfo.IsSlotted(s.Mode));
         Logged.Apply(s.LastLogged);
+        if (!ReferenceEquals(s.LastLogged, _lastLogged))
+        {
+            // A popped-out Log or Awards window stays current as contacts are logged.
+            _lastLogged = s.LastLogged;
+            if (s.LastLogged is not null && IsOut(3)) LogView.Refresh();
+            if (s.LastLogged is not null && IsOut(4)) Awards.Refresh();
+        }
         Frequency = FormatFrequency(s.DialHz);
         FollowBand(s.Band);
         Transmitting = s.Transmitting;
@@ -480,7 +533,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         ClockKind = offset is { } o && Math.Abs(o) > _host.Settings.Current.Operating.ClockBlockSeconds ? TextKind.Critical
             : offset is { } o2 && Math.Abs(o2) > ClockEstimate.WarnSeconds ? TextKind.Caution : TextKind.Normal;
         ClockTip = ClockTipText(offset, _host.CorrectedClock.Correction);
-        if (Tab == 2) Reach.Refresh();
+        if (Showing(2)) Reach.Refresh();
         Mini.Refresh(SelectedBand, SelectedMode);
     }
 
@@ -573,14 +626,21 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         BarShowsCqAndSlot = ShowCqAndSlotInBar(value);
         if (value >= 0 && value < TabNames.Length) _host.Usage.Track("view_opened", "view", TabNames[value]);
-        if (value == 2)
+        RefreshView(value);
+    }
+
+    private LoggedContact? _lastLogged;
+
+    private void RefreshView(int tab)
+    {
+        if (tab == 2)
         {
             Reach.Band = _host.Session.Config.Band;
             Reach.Mode = ModeInfo.Name(_host.Session.Config.Mode);
             Reach.Refresh();
         }
-        if (value == 3) LogView.Refresh();
-        if (value == 4) Awards.Refresh();
+        if (tab == 3) LogView.Refresh();
+        if (tab == 4) Awards.Refresh();
     }
 
     // ------------------------------------------------------------ commands
@@ -664,10 +724,10 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public void Lookup(string call) => _host.Qrz.RequestLookup(call, urgent: true);
 
     /// <inheritdoc />
-    public void OpenReach() => Tab = 2;
+    public void OpenReach() => SelectTab(2);
 
     /// <inheritdoc />
-    public void OpenLog() => Tab = 3;
+    public void OpenLog() => SelectTab(3);
 
     /// <inheritdoc />
     public void OpenRankingSettings() => OpenDialog?.Invoke("ranking");
@@ -932,7 +992,14 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>Switches view.</summary>
     [RelayCommand]
-    private void ShowTab(string index) => Tab = int.Parse(index, CultureInfo.InvariantCulture);
+    private void ShowTab(string index) => SelectTab(int.Parse(index, CultureInfo.InvariantCulture));
+
+    /// <summary>Selects a tab; for a view in its own window that also brings the window to the front.</summary>
+    public void SelectTab(int tab)
+    {
+        Tab = tab;
+        if (IsOut(tab)) PanelOutChanged?.Invoke(tab, true);
+    }
 
     /// <summary>
     /// Esc: once both reports are exchanged, the first press stops transmitting but keeps the contact (the DX's RR73 is
