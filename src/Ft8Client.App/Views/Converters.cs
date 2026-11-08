@@ -29,6 +29,18 @@ public static class Converters
         _ => "TextPrimaryBrush",
     }));
 
+    /// <summary>Contest multiplier chip border: green when worked, the plain divider otherwise.</summary>
+    public static readonly IValueConverter WorkedBorder = new FuncValueConverter<bool, IBrush?>(w => Brush(w ? "SuccessBrush" : "CardBorderBrush"));
+
+    /// <summary>Contest multiplier chip text: green when worked, secondary otherwise.</summary>
+    public static readonly IValueConverter WorkedText = new FuncValueConverter<bool, IBrush?>(w => Brush(w ? "SuccessBrush" : "TextSecondaryBrush"));
+
+    /// <summary>Contest tags: secondary for a dupe, green for a new mult or a call that is not a dupe.</summary>
+    public static readonly IValueConverter DupeBrush = new FuncValueConverter<bool, IBrush?>(d => Brush(d ? "CautionBrush" : "SuccessBrush"));
+
+    /// <summary>Dupes in the contest log are faded.</summary>
+    public static readonly IValueConverter DupeOpacity = new FuncValueConverter<bool, double>(d => d ? 0.55 : 1.0);
+
     // A brush, or a colour string such as "#FFD27A" given as a binding source in XAML.
     private static IBrush? ToBrush(object? v) => v switch
     {

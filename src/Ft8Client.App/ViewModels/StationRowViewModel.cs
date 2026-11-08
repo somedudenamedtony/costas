@@ -48,9 +48,11 @@ public sealed partial class StationRowViewModel : ObservableObject
         Rank = rank;
         Call = r.Station.Call;
         Where = StationText.Where(r.Station, units);
-        Why = StationText.Why(r.Need.Tag, r.Station.Grid);
-        WhyTip = string.IsNullOrEmpty(whyTip) ? null : whyTip;
-        WhyKind = KindOf(r.Need.Tag);
+        // In a contest the Why column says what the contact is worth to the score: a new multiplier, or a dupe.
+        Why = r.ContestTag ?? StationText.Why(r.Need.Tag, r.Station.Grid);
+        WhyTip = r.ContestDupe ? "Already worked in this contest on this band: it would not score again"
+            : string.IsNullOrEmpty(whyTip) ? null : whyTip;
+        WhyKind = r.ContestDupe ? TextKind.Secondary : r.ContestTag is not null ? TextKind.Success : KindOf(r.Need.Tag);
         DoingNow = StationText.DoingNow(r.Station);
         HearsYou = StationText.Hears(r.Hears);
         Db = Report.Format(r.Station.LastSnr);

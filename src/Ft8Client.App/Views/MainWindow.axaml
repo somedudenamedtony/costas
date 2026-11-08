@@ -113,6 +113,16 @@
                 Content="Log" Command="{Binding ShowTabCommand}" CommandParameter="3" ToolTip.Tip="Your contacts: search, edit, import and export (Ctrl+4)" />
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}"
                 Content="Awards" Command="{Binding ShowTabCommand}" CommandParameter="4" ToolTip.Tip="DXCC, WAS, WAZ and VUCC progress, and when you hear the countries you still need (Ctrl+5)" />
+        <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=5}"
+                Command="{Binding ShowTabCommand}" CommandParameter="5" IsVisible="{Binding Contest.Visible}"
+                ToolTip.Tip="Score, rate, multipliers and the contest log, with a dupe check and Cabrillo export (Ctrl+6)">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Contest" />
+            <Border Background="{DynamicResource CautionBrush}" CornerRadius="3" Padding="4,0" VerticalAlignment="Center">
+              <TextBlock Text="{Binding Contest.Badge}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource CardBackgroundBrush}" />
+            </Border>
+          </StackPanel>
+        </Button>
         <TextBlock Text="{Binding ClockText}" FontSize="16" FontWeight="SemiBold" Classes="num" Margin="12,0,4,0" VerticalAlignment="Center"
                    Foreground="{Binding ClockKind, Converter={x:Static v:Converters.KindBrush}}" ToolTip.Tip="{Binding ClockTip}"
                    AutomationProperties.Name="UTC clock" />
@@ -233,6 +243,7 @@
       <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
       <v:LogView DataContext="{Binding LogView}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}" />
       <v:AwardsView DataContext="{Binding Awards}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}" />
+      <v:ContestView DataContext="{Binding Contest}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=5}" />
       <!-- "Logged" notice: over the right-hand column, clear of the contact card and Next in line. -->
       <v:LoggedNoticeView DataContext="{Binding Logged}" Margin="0,0,16,12" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
     </Panel>
