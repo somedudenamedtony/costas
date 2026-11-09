@@ -31,8 +31,8 @@ The page can sit on your home screen with the Costas icon, like an app.
 If the station computer's address changes (for example, your router hands it a new one), add the page again from the
 new address.
 
-If you use Tailscale, add the Tailscale address instead: that one icon then works at home and away (see
-[One icon for home and away](#one-icon-for-home-and-away)).
+If you use Tailscale, one icon can work at home and away: see
+[One icon for home and away](#one-icon-for-home-and-away).
 
 ## Operating away from home
 
@@ -52,15 +52,24 @@ Nothing is opened on your router, and only devices signed in to your Tailscale a
 
 ### One icon for home and away
 
-A home-screen icon always opens the one address it was added from. The home address (such as
-`http://192.168.1.20:8073/`) only works on your Wi-Fi, but the Tailscale address works everywhere, at home included,
-as long as Tailscale is connected on the phone. So add the **Tailscale** address to your home screen and use that one
-icon all the time. If you added the home address earlier, remove that icon.
+A home-screen icon always opens the one address it was added from. Normally the home address (such as
+`http://192.168.1.20:8073/`) only works on your Wi-Fi and the Tailscale address only works while Tailscale is on. One
+setting in Tailscale makes the home address work away from home as well, so the icon you already added at home works
+everywhere, and at home it works with Tailscale off:
 
-At home Tailscale finds the station computer on your own Wi-Fi and usually connects to it directly, so nothing goes out over
-the internet and the page is as quick as before. If the icon does not open at home, Tailscale has probably
-disconnected on the phone: open the Tailscale app and turn it on (on iPhone, **VPN On Demand** keeps it on). The home
-address still works in the browser as a fallback.
+1. Give the station computer a fixed address on your router (often called a **DHCP reservation**), so the home address
+   does not change.
+2. Open **Settings › Mobile connection** in Costas. Under **Away from home** it shows a command such as
+   `tailscale set --advertise-routes=192.168.1.20/32`. Open a Command Prompt on the station computer and run it.
+3. Sign in to the [Tailscale admin console](https://login.tailscale.com/admin/machines), open the station computer,
+   choose **Edit route settings** and turn on the route.
+
+Away from home, with Tailscale on in the phone, the home address now reaches the station computer through Tailscale.
+At home it goes straight over your Wi-Fi whether Tailscale is on or off. The route covers only the station computer,
+not the rest of your home network.
+
+If you skip this, add the **Tailscale** address to your home screen instead: it works at home too, as long as
+Tailscale is on in the phone.
 
 The phone page and all its safety rules work exactly as they do at home: transmit stops 15 seconds after the phone
 loses touch, and the watchdog is at most 3 minutes. You do not hear the radio's audio, which FT8 and FT4 do not need.
