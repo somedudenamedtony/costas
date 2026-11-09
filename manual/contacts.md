@@ -102,6 +102,10 @@ Each caller shows callsign, where, need tag and *Called you at 20:07:15 · +25*.
 - While you are in a contact the button reads **Answer after this contact**. Click it and Costas answers that
   station as soon as the current contact ends (the button then reads *Will answer after this contact*).
 - When you are not in a contact it reads **Answer** and answers in your next slot.
+- To leave a caller unanswered, click the **✕** beside its button. Costas sends nothing; the station just leaves the
+  bar, and **Answer all in turn** skips it. It stays off while it keeps calling you. If it goes quiet for 2 minutes
+  and then calls you again, it comes back. Calling it yourself, or it answering your CQ, works it as usual. A late
+  RR73 from a contact you stopped is still logged.
 
 The same station also appears in Next in line with *Calling you* under Doing now and an **Answer** button, which does
 the same thing.

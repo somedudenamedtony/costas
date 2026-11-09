@@ -38,6 +38,8 @@ internal sealed class FakeRemoteTarget : IRemoteTarget
 
     public void AnswerAfterThisContact(string call) => Calls.Add("answerAfter " + call);
 
+    public void DismissCaller(string call) => Calls.Add("dismiss " + call);
+
     public void ToggleCq() => Calls.Add("cq");
 
     public void Resend() => Calls.Add("resend");

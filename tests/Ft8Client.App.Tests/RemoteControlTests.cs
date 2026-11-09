@@ -37,6 +37,14 @@ public class RemoteControlTests
     }
 
     [Fact]
+    public async Task HandleAsync_Dismiss_TakesCallerOffWithoutAnswering()
+    {
+        await Make().HandleAsync("phone", new RemoteCommand("dismiss", "ve7xyz"));
+
+        _target.Calls.Should().Equal("dismiss VE7XYZ");
+    }
+
+    [Fact]
     public async Task HandleAsync_Ping_DoesNotTakeControlOrCountAsInput()
     {
         var rc = Make();

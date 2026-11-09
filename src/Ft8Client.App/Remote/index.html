@@ -144,7 +144,9 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 .callers.on{border-color:var(--amb);background:var(--warn-bg)}.callers.on .k{color:var(--warn-tx)}
 .callers .cl{display:flex;align-items:center;gap:8px;padding:5px 0}.callers .cl + .cl{border-top:1px solid var(--warn-line)}
 .callers .left{flex:1;min-width:0;cursor:pointer}.callers .s{overflow:hidden;text-overflow:ellipsis}
-.callers:not(.span2) .cl{flex-direction:column;align-items:stretch}.callers:not(.span2) .cl button{width:100%;padding:8px}
+.callers .acts{display:flex;gap:6px;align-items:center}.callers .acts > button.next{flex:1}
+.callers:not(.span2) .cl{flex-direction:column;align-items:stretch}.callers:not(.span2) .cl button.next{width:100%;padding:8px}
+button.x{flex:none;min-width:36px;padding:6px 8px;background:transparent;border:1px solid var(--line);color:var(--mut)}
 .spark{display:flex;align-items:flex-end;gap:2px;height:30px;margin:4px 0}.spark i{flex:1;background:var(--accent);border-radius:2px;opacity:.85}
 .nums{display:flex;justify-content:space-between;gap:4px;margin-top:4px}.nums div{text-align:center}.nums div:first-child{text-align:left}
 .nums b{display:block;font-size:21px}.nums span{font-size:10.5px;color:var(--mut)}.nums .need b{color:var(--grn)}
@@ -283,6 +285,14 @@ function button(text, cls, onClick, disabled) {
   const b = el("button", cls, text);
   b.onclick = onClick;
   b.disabled = !!disabled;
+  return b;
+}
+
+// Takes a caller off Calling you without answering it; nothing is sent.
+function dismissButton(call) {
+  const b = button("✕", "x", () => cmd("dismiss", { call }));
+  b.title = "Don't answer " + call;
+  b.setAttribute("aria-label", "Dismiss " + call);
   return b;
 }
 
@@ -547,7 +557,7 @@ function renderCallers(s) {
     if (w.need) c.append(el("span", "tag", w.need));
     left.append(c, el("div", "s", [w.place, w.line].filter(Boolean).join(" · ")));
     if (w.note) left.append(el("div", "s", w.note));
-    it.append(left, button(w.button, "", () => cmd(w.command, { call: w.call }), w.queued));
+    it.append(left, button(w.button, "", () => cmd(w.command, { call: w.call }), w.queued), dismissButton(w.call));
     box.append(it);
   });
 }
@@ -900,7 +910,9 @@ function dashCallers(s) {
     if (w.need) c.append(el("span", "tag", w.need));
     left.append(c, el("div", "s", [w.place, w.line].filter(Boolean).join(" · ")));
     if (w.note) left.append(el("div", "s", w.note));
-    it.append(left, button(w.button, "next", () => cmd(w.command, { call: w.call }), w.queued));
+    const acts = el("div", "acts");
+    acts.append(button(w.button, "next", () => cmd(w.command, { call: w.call }), w.queued), dismissButton(w.call));
+    it.append(left, acts);
     box.append(it);
   });
 }

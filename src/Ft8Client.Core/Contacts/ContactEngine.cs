@@ -35,7 +35,14 @@ public sealed class ContactEngine
     /// <summary>Slots a Hound keeps sending its R-report without the Fox's RR73 (WSJT-X's timeout of 11 slots).</summary>
     public const int HoundReportSlots = 11;
 
+    /// <summary>
+    /// How long a dismissed caller stays hidden after its last call. Each call it keeps sending restarts this, so a station
+    /// that keeps calling stays dismissed; one that goes quiet for this long and calls again is shown again.
+    /// </summary>
+    public static readonly TimeSpan DismissQuiet = TimeSpan.FromMinutes(2);
+
     private readonly List<WaitingCaller> _waiting = [];
+    private readonly Dictionary<string, DateTime> _dismissed = new(StringComparer.Ordinal);
     private ContactSettings _settings;
     private string _myCall;
     private string _myGrid;
@@ -152,6 +159,7 @@ public sealed class ContactEngine
         _c = new Contact(flow, call, Grid.Grid4(grid), SlotMath.Opposite(dxParity), Report.Clamp(snr), dxOffsetHz);
         _c.Steps.AddRange(StepsFor(_c));
         RemoveWaiting(call);
+        _dismissed.Remove(call);
         if (_stopped is { } s && Callsign.EqualsCall(s.Contact.DxCall, call)) ForgetStopped();
         if (busyWith is not null && !fox)
         {
@@ -205,6 +213,20 @@ public sealed class ContactEngine
         OperatorActivity(nowUtc);
         var i = _waiting.FindIndex(x => Callsign.EqualsCall(x.Call, call));
         if (i >= 0) _waiting[i] = _waiting[i] with { AnswerAfter = true };
+    }
+
+    /// <summary>
+    /// Takes a caller off Waiting for you without answering it. Nothing is sent. It stays off while it keeps calling and
+    /// comes back only when it calls again after <see cref="DismissQuiet"/> without calling. Calling or answering it
+    /// yourself ends the dismissal.
+    /// </summary>
+    public void DismissCaller(string call, DateTime nowUtc)
+    {
+        OperatorActivity(nowUtc);
+        var w = _waiting.FirstOrDefault(x => Callsign.EqualsCall(x.Call, call));
+        if (w is null) return;
+        _waiting.Remove(w);
+        _dismissed[Callsign.Normalize(w.Call)] = w.LastCalledUtc;
     }
 
     /// <summary>Sends the current step again in my next slot (or the final 73 again).</summary>
@@ -327,7 +349,9 @@ public sealed class ContactEngine
             var first = toMe.FirstOrDefault(x => x.M.Kind is MessageKind.GridReply or MessageKind.Report);
             if (first.M is not null)
             {
-                // Past the cap too: a caller to my CQ is answered even when the waiting list is full.
+                // Past the cap too: a caller to my CQ is answered even when the waiting list is full, and even if it was
+                // dismissed earlier: calling CQ invites anyone.
+                _dismissed.Remove(Callsign.Normalize(first.M.SenderCall!));
                 AddWaiting(first.H, first.M, parity, slotStartUtc, ignoreCap: true);
                 var w = _waiting.First(x => Callsign.EqualsCall(x.Call, first.M.SenderCall));
                 StartFromCaller(w);
@@ -338,6 +362,14 @@ public sealed class ContactEngine
         foreach (var (h, m) in toMe)
         {
             if (_c is not null && Callsign.EqualsCall(m.SenderCall, _c.DxCall)) continue;
+            if (StillDismissed(m.SenderCall!, slotStartUtc))
+            {
+                // A late sign-off of a stopped contact is still logged; it just does not come back to Calling you.
+                if (_stopped is { } d && Callsign.EqualsCall(m.SenderCall, d.Contact.DxCall)
+                    && d.ListenForSignoff && _settings.AutoLog && CompletesHeld(d.Contact, m))
+                    LogSetAside(d.Contact, m, slotStartUtc, nowUtc);
+                continue;
+            }
             if (_lastLogged is { } l && Callsign.EqualsCall(m.SenderCall, l.DxCall) && nowUtc - l.LoggedUtc < LateWindow) continue;
             if (_stopped is { } s && Callsign.EqualsCall(m.SenderCall, s.Contact.DxCall))
             {
@@ -799,6 +831,20 @@ public sealed class ContactEngine
     }
 
     private void RemoveWaiting(string call) => _waiting.RemoveAll(x => Callsign.EqualsCall(x.Call, call));
+
+    // True while a dismissed station keeps calling within DismissQuiet of its last call; each call restarts the wait.
+    private bool StillDismissed(string call, DateTime slotUtc)
+    {
+        var key = Callsign.Normalize(call);
+        if (!_dismissed.TryGetValue(key, out var last)) return false;
+        if (slotUtc - last > DismissQuiet)
+        {
+            _dismissed.Remove(key);
+            return false;
+        }
+        _dismissed[key] = slotUtc;
+        return true;
+    }
 
     private string CqMessage() => OutgoingMessages.Cq(_myCall, _myGrid, _settings);
 

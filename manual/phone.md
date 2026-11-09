@@ -66,7 +66,9 @@ The phone's **Operate** tab is a set of tiles built for a small screen rather th
   waiting for), the reports, a five-part progress bar labelled CQ, Grid, Report, R-rpt and RR73, the seconds left in
   the slot, and **Resend**, **Log now** and **Abandon**. The tile turns red while you transmit. Tap an underlined step to
   send it next. With no contact it shows **Call CQ** or **Stop CQ**.
-- **Calling you**: who is answering you, with **Answer** or **Answer next**. It turns amber when someone is calling.
+- **Calling you**: who is answering you, with **Answer** or **Answer next**, and **✕** to leave a caller unanswered
+  (as on the desk: nothing is sent, and it comes back only if it calls again after 2 minutes quiet). It turns amber
+  when someone is calling.
 - **Hearing you**: how many stations heard you in the last 15 minutes, a small chart of the last hour, and the farthest.
   Tap it for the Signal tab.
 - **Band now**: stations heard, countries, calling CQ, you need, and contacts logged this session. Tap it for the Stations tab.

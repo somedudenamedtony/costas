@@ -31,7 +31,7 @@
           <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="24" LineSpacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:WaitingRowViewModel">
-              <Grid ColumnDefinitions="Auto,Auto" MaxWidth="460">
+              <Grid ColumnDefinitions="Auto,Auto,Auto" MaxWidth="490">
                 <StackPanel Spacing="1" Margin="0,0,12,0">
                   <TextBlock><Run Text="{Binding Call}" FontWeight="SemiBold" /><Run Text="  " /><Run Text="{Binding Where}" /><Run Text=" " /><Run Text="{Binding Need}" /></TextBlock>
                   <TextBlock Text="{Binding Note}" IsVisible="{Binding AfterStop}" Foreground="{DynamicResource CautionBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
@@ -40,6 +40,11 @@
                 <Button Grid.Column="1" Content="{Binding ButtonText}" VerticalAlignment="Center" IsEnabled="{Binding !Queued}"
                         Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).AnswerRowCommand}" CommandParameter="{Binding}"
                         AutomationProperties.Name="{Binding Call, StringFormat='Answer {0}'}" />
+                <!-- Dismiss: takes the caller off without answering; nothing is sent. It comes back only if it calls again after going quiet. -->
+                <Button Grid.Column="2" Content="✕" Classes="link" Padding="6,0" Margin="6,0,0,0" VerticalAlignment="Center"
+                        Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).DismissRowCommand}" CommandParameter="{Binding}"
+                        AutomationProperties.Name="{Binding Call, StringFormat='Dismiss {0}'}"
+                        ToolTip.Tip="Don't answer. Takes this station off Calling you without sending anything. It comes back if it calls you again after 2 minutes without calling." />
               </Grid>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

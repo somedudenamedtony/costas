@@ -10,7 +10,7 @@ namespace Ft8Client.App.Remote;
 
 /// <summary>A message from the remote page.</summary>
 /// <param name="Type">
-/// "ping", "call", "answer", "answerAfter", "cq", "resend", "logNow", "jump", "abandon", "halt", "band", "offset",
+/// "ping", "call", "answer", "answerAfter", "dismiss" (take a caller off Calling you), "cq", "resend", "logNow", "jump", "abandon", "halt", "band", "offset",
 /// "offsetAuto", "macro" (PSK and RTTY), "power", or "show" (open a station's details; blank call closes them).
 /// </param>
 /// <param name="Call">The station, for call, answer and show.</param>
