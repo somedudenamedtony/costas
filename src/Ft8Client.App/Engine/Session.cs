@@ -452,6 +452,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _pileups.ApplySlot(slot, heard);
             FeedEngine(slot, mode, heard, now);
             CallWhenFreeNow(now);
+            AutoCallNow(now);
 
             _slotCounts.Add((slot, result.Decodes.Count));
             _slotCounts.RemoveAll(x => now - x.Slot > TimeSpan.FromHours(1));
@@ -603,6 +604,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             lock (_gate)
             {
                 _fault = refusal;
+                StopAutoCall(null); // the refusal says why; nothing more is called on its own
                 _engine.Abandon(_clock.UtcNow);
             }
             Publish();
@@ -646,6 +648,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             _fault = message;
+            StopAutoCall(null);
             _engine.Abandon(_clock.UtcNow);
         }
         Publish();
@@ -799,6 +802,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             if (_engine.CallingCq) _engine.StopCq(_clock.UtcNow);
             else
             {
+                StopAutoCall(null); // calling CQ and calling down the list do not mix
                 _engine.CallCq(_config.CqParity, _clock.UtcNow);
                 if (_engine.View is null) _finishedShownAt = null;
             }
@@ -858,6 +862,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _engine.Abandon(_clock.UtcNow);
             _kbd.Abandon();
             _blockedMacro = null;
+            StopAutoCall(null);
         }
         _keys.Clear();
         await _tx.HaltAsync().ConfigureAwait(false);
@@ -874,6 +879,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             _engine.Hold(_clock.UtcNow);
+            StopAutoCall(null); // the first Esc stops the run too; the held contact can still log
             _rigTuningUntil = null;
         }
         await _tx.HaltAsync().ConfigureAwait(false);
@@ -888,6 +894,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _engine.Halt(_clock.UtcNow);
             _kbd.StopCq();
             _callWhenFree.Clear(); // Halt Tx means nothing new starts on its own
+            StopAutoCall(null);
             _rigTuningUntil = null;
             if (reason is not null) _fault = reason;
         }
@@ -988,6 +995,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             _dialHz = dialHz ?? _frequencies.Find(band, mode)?.DialHz ?? _dialHz;
             _tracker = new StationTracker(_config.MyCall, _config.MyGrid, _countries, mode);
             _callWhenFree.Clear();
+            StopAutoCall(null);
             _pileups = new PileupTracker(mode);
             foreach (var (call, e) in _lookups) _tracker.SetLookup(call, e.Grid, e.State, e.City);
             _engine.Abandon(_clock.UtcNow);
@@ -1363,6 +1371,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 ReceiveLevelWarning = _receiveLevelWarning,
                 Waiting = _engine.Waiting.ToList(),
                 CallWhenFree = _callWhenFree.ToList(),
+                AutoCall = _autoCall,
                 TxMeters = _txMeters,
                 TxMetersLive = _txMetersLive,
                 Activity = _activity.ToList(),

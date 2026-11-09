@@ -72,6 +72,16 @@ public sealed class ContactPanelViewModel
         Received = NotYet,
     };
 
+    /// <summary>The idle card while Auto-call waits for a station it can call.</summary>
+    public static ContactPanelViewModel IdleAutoCall { get; } = new()
+    {
+        Caption = "Auto-call on",
+        Call = "—",
+        Subline = "Calls the next station in Next in line as soon as one can be called.",
+        Sent = NotYet,
+        Received = NotYet,
+    };
+
     /// <summary>The idle card while calling CQ with no contact yet.</summary>
     public static ContactPanelViewModel IdleCallingCq { get; } = new()
     {

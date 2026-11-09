@@ -151,6 +151,9 @@ public sealed record SessionSnapshot
     /// <summary>Watching stations marked "call when free", oldest first.</summary>
     public IReadOnlyList<string> CallWhenFree { get; init; } = [];
 
+    /// <summary>True while Auto-call is calling down Next in line.</summary>
+    public bool AutoCall { get; init; }
+
     /// <summary>Per-slot activity on this band over the last hour, oldest first.</summary>
     public IReadOnlyList<SlotActivity> Activity { get; init; } = [];
 

@@ -168,6 +168,16 @@
       <Setter Property="Background" Value="{DynamicResource CriticalBrush}" />
       <Setter Property="Foreground" Value="White" />
     </Style>
+    <!-- Auto-call while it is calling down the list: filled like a selected tab. -->
+    <Style Selector="Button.autocall.on /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.autocall.on:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Opacity" Value="0.9" />
+    </Style>
     <Style Selector="Button.tab">
       <Setter Property="MinHeight" Value="32" />
       <Setter Property="CornerRadius" Value="4" />

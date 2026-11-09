@@ -180,7 +180,12 @@ public sealed partial class OperateViewModel : ObservableObject
     public bool InContact => Contact is not null;
 
     /// <summary>What the contact card at the top shows: the contact, or the idle card when there is none.</summary>
-    public ContactPanelViewModel Panel => Contact ?? (_snap?.CallingCq == true ? ContactPanelViewModel.IdleCallingCq : ContactPanelViewModel.Idle);
+    public ContactPanelViewModel Panel => Contact ?? (_snap switch
+    {
+        { CallingCq: true } => ContactPanelViewModel.IdleCallingCq,
+        { AutoCall: true } => ContactPanelViewModel.IdleAutoCall,
+        _ => ContactPanelViewModel.Idle,
+    });
 
     /// <summary>Selected line row.</summary>
     [ObservableProperty]
@@ -284,6 +289,14 @@ public sealed partial class OperateViewModel : ObservableObject
     public partial string CqText { get; set; } = "Call CQ";
 
 
+    /// <summary>True while Auto-call is calling down Next in line.</summary>
+    [ObservableProperty]
+    public partial bool AutoCallOn { get; set; }
+
+    /// <summary>"Auto-call" or "Stop auto-call", for the contact card.</summary>
+    [ObservableProperty]
+    public partial string AutoCallText { get; set; } = "Auto-call";
+
     /// <summary>The CQ modifiers in the picker beside Call CQ.</summary>
     public ObservableCollection<CqModifierChoice> CqModifiers { get; } = new(CqModifierChoice.Common.Select(m => new CqModifierChoice(m)));
 
@@ -368,6 +381,8 @@ public sealed partial class OperateViewModel : ObservableObject
         _inContact = s.Contact is { Outcome: ContactOutcome.InProgress } c ? c.DxCall : null;
         var now = _now();
         CqText = s.CallingCq ? "Stop CQ" : "Call CQ";
+        AutoCallOn = s.AutoCall;
+        AutoCallText = s.AutoCall ? "Stop auto-call" : "Auto-call";
         Transmitting = s.Transmitting;
         Keyboard.Apply(s);
         ReportUnit = ModeInfo.IsSlotted(s.Mode) ? "dB" : string.Empty;
@@ -635,6 +650,10 @@ public sealed partial class OperateViewModel : ObservableObject
     /// <summary>Call CQ, or stop.</summary>
     [RelayCommand]
     private void ToggleCq() => _commands.ToggleCq();
+
+    /// <summary>Auto-call on or off.</summary>
+    [RelayCommand]
+    private void ToggleAutoCall() => _commands.SetAutoCall(!AutoCallOn);
 
     /// <summary>Abandon.</summary>
     [RelayCommand]

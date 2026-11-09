@@ -662,6 +662,15 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     }
 
     /// <inheritdoc />
+    public void SetAutoCall(bool on)
+    {
+        Activity();
+        _escArmed = false;
+        if (on) _host.Usage.Track("auto_call_started", "mode", SelectedMode);
+        _host.Session.SetAutoCall(on);
+    }
+
+    /// <inheritdoc />
     public void Answer(string call)
     {
         Activity();
