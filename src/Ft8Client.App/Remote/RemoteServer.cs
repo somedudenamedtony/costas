@@ -226,6 +226,8 @@ public sealed class RemoteServer : IAsyncDisposable
         finally
         {
             _clients.TryRemove(id, out _);
+            // A phone that reconnected keeps its new connection's Radio tab.
+            if (!_clients.Values.Any(c => c.DeviceId == deviceId)) _control.Closed(deviceId);
         }
     }
 

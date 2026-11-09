@@ -83,7 +83,7 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 .tunebtn{background:none;padding:0;font-weight:600;text-align:left}
 .tunebtn::after{content:" ▾";font-size:14px;color:var(--mut)}
 .tabs{display:flex;gap:4px;padding:8px 14px 0;overflow-x:auto;scrollbar-width:none}
-.tabs button{flex:1 0 auto;padding:7px 10px;font-size:13px;background:var(--card);border:1px solid var(--line)}
+.tabs button{flex:1 1 auto;min-width:0;padding:7px 5px;font-size:13px;background:var(--card);border:1px solid var(--line)}
 .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .mini{font-size:12px;color:var(--mut)}
 .it .left{min-width:0;flex:1;cursor:pointer}
@@ -158,6 +158,21 @@ button.sort{background:none;padding:0;font-size:11px;font-weight:700;letter-spac
 .logrow{display:flex;justify-content:space-between;align-items:center;gap:10px}.logrow b{color:var(--tx);font-size:15px;letter-spacing:0}
 .logrow .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 body.dashon #slot,body.dashon #onair{display:none!important}
+/* The Radio tab: power, Tune, meters and the radio's own settings, as tiles. */
+[data-pane=radio]{order:7}
+.rad .ctl{padding:8px 0;border-top:1px solid var(--line)}.rad .ctl:first-of-type{border-top:0}
+.rad .ctl .th{margin:0 0 6px}.rad .ctl .v{font-weight:700;font-variant-numeric:tabular-nums}
+.rad .seg{display:flex;gap:4px}.rad .seg button{flex:1;padding:9px 4px;font-size:14px}
+.rad .lvl{display:flex;gap:8px;align-items:center}.rad .lvl input{flex:1;min-width:0;accent-color:var(--accent)}
+.rad .lvl button{flex:none;width:48px;padding:8px 0}
+.rad .pw{display:flex;align-items:baseline;gap:8px}.rad .pw .sub{margin:0}
+.rad .tunebig{width:100%;padding:16px;font-size:19px;margin-top:6px;background:var(--accent);color:#fff}
+.rad .tunebig.red{background:var(--red)}
+.mtr{display:grid;grid-template-columns:38px 1fr 54px;gap:8px;align-items:center;font-size:13px;padding:4px 0}
+.mtr .bar2{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.mtr .bar2 i{display:block;height:100%;background:var(--grn)}
+.mtr .bar2 i.caution{background:var(--amb)}.mtr .bar2 i.critical{background:var(--red)}
+.mtr b{text-align:right;font-variant-numeric:tabular-nums}.mtr b.caution{color:var(--warn-tx)}.mtr b.critical{color:var(--red)}
+.mtr span{color:var(--mut);font-weight:700;font-size:11px;letter-spacing:.6px}
 #dashLeft{text-transform:none;font-variant-numeric:tabular-nums}
 .top .row > span:first-child{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #control{white-space:nowrap}
@@ -216,13 +231,13 @@ body.dashon #slot,body.dashon #onair{display:none!important}
 
 <section id="opView" class="hidden">
   <div class="top">
-    <div class="row"><button id="freq" class="freq tunebtn" title="Band, mode, Tx offset and radio power">—</button><span class="pill"><span id="linkDot" class="dot"></span><span id="link">Connecting…</span><span id="radioDot" class="dot" style="margin-left:6px"></span>Radio</span></div>
+    <div class="row"><button id="freq" class="freq tunebtn" title="Band, mode and Tx offset">—</button><span class="pill"><span id="linkDot" class="dot"></span><span id="link">Connecting…</span><span id="radioDot" class="dot" style="margin-left:6px"></span>Radio</span></div>
     <div class="row" style="margin-top:3px"><span><span id="station"></span><span id="health"></span></span><span id="control"></span></div>
     <div id="slot" class="slot"><span id="slotLabel">Receiving</span><div class="track"><div id="slotFill" class="fill"></div></div><span id="slotLeft"></span></div>
   </div>
   <div id="onair" class="onair hidden"></div>
   <nav id="tabs" class="tabs">
-    <button data-tab="operate">Operate</button><button data-tab="stations" data-phone>Stations</button><button data-tab="decodes">Decodes</button><button data-tab="signal" data-phone>Signal</button><button data-tab="log" data-phone>Log</button>
+    <button data-tab="operate">Operate</button><button data-tab="stations" data-phone>Stations</button><button data-tab="decodes">Decodes</button><button data-tab="signal" data-phone>Signal</button><button data-tab="log" data-phone>Log</button><button data-tab="radio">Radio</button>
   </nav>
   <main>
     <div id="fault" class="banner hidden"></div>
@@ -254,6 +269,7 @@ body.dashon #slot,body.dashon #onair{display:none!important}
     <div data-pane="heard"><div id="summary" class="card"></div></div>
     <div data-pane="signal"><div id="signal" class="card list"></div></div>
     <div data-pane="log"><div id="tonight" class="card list"></div></div>
+    <div data-pane="radio"><div id="radio" class="dash rad"></div></div>
     </div></div>
   </main>
   <div id="detailsShade" class="shade hidden"><div id="details" class="sheet"></div></div>
@@ -329,6 +345,7 @@ function connect() {
   sock.onopen = () => {
     sock.send(JSON.stringify({ type: "hello", token }));
     if (viewing) sock.send(JSON.stringify({ type: "show", call: viewing }));
+    radioSent = null; radioView(true);
   };
   sock.onmessage = ev => {
     lastMsg = Date.now();
@@ -422,6 +439,7 @@ function render() {
   renderTonight(s);
   renderDetails(s);
   renderTune(s);
+  renderRadio(s);
   renderLogged(s);
   if (!wide) renderDash(s);
 
@@ -772,9 +790,9 @@ function changeBand(band, mode) {
 
 function renderTune(s) {
   $("tuneShade").classList.toggle("hidden", !tuning);
-  if (!tuning || !changed("tune", { b: s.bands, band: s.band, mode: s.mode, can: s.canChangeBand, o: s.offset, a: s.offsetAuto, p: s.power })) return;
+  if (!tuning || !changed("tune", { b: s.bands, band: s.band, mode: s.mode, can: s.canChangeBand, o: s.offset, a: s.offsetAuto })) return;
   const box = $("tune"); box.replaceChildren();
-  const top = el("div", "row"); top.append(el("b", null, s.power ? "Band, offset and power" : "Band and offset"), button("Close", "", () => { tuning = false; render(); }));
+  const top = el("div", "row"); top.append(el("b", null, "Band and offset"), button("Close", "", () => { tuning = false; render(); }));
   box.append(top);
   if (!s.canChangeBand) box.append(el("div", "s", "Wait until this transmission ends to change band."));
   const seg = el("div", "seg");
@@ -794,25 +812,114 @@ function renderTune(s) {
   }));
   box.append(row, button("Automatic (picks a clear spot)", s.offsetAuto ? "on" : "", () => cmd("offsetAuto")),
     el("div", "s", "Or type a fixed offset from 200 to 2900 Hz and press Use."));
-  if (s.power) renderPower(box, s.power);
+  if (s.power) box.append(el("div", "s", "Radio power is on the Radio tab."));
 }
 
+// ---- The Radio tab: power, Tune, meters and the radio's own settings. Only Tune transmits. ----
+
 // The radio's power setting, shown when the radio reports it. Changes only the setting, between transmissions; the
-// station refuses anything outside the radio's range.
-function renderPower(box, p) {
-  box.append(el("div", "lbl", "Radio power · " + p.watts + " W"));
-  if (!p.canChange) box.append(el("div", "s", "Wait until this transmission ends to change power."));
-  const row = el("div", "offset");
+// station refuses anything outside the radio's range. Going up to three quarters of the radio's most or more asks first.
+function powerTile(p) {
+  const t = el("div", "t span2");
+  t.append(tileHead("Power"));
+  const big = el("div", "pw"); big.append(el("span", "big", p.watts + " W"), el("span", "sub", "of " + p.maxWatts + " W"));
+  t.append(big);
+  if (!p.canChange) t.append(el("div", "sub", "Wait until this transmission ends to change power."));
+  const row = el("div", "offset"); row.style.marginTop = "8px";
   const input = el("input"); input.type = "number"; input.inputMode = "numeric"; input.min = 1; input.max = p.maxWatts; input.step = 1;
   input.value = p.watts; input.setAttribute("aria-label", "Radio power in watts");
   const set = w => {
     if (Number.isNaN(w) || w < 1 || w > p.maxWatts) { note("Type a power from 1 to " + p.maxWatts + " W first."); return; }
+    if (w > p.watts && w >= p.maxWatts * 0.75 && !confirm("Set the radio to " + w + " W?")) return;
     cmd("power", { watts: w });
   };
   row.append(button("−5", "", () => set(Math.max(1, p.watts - 5)), !p.canChange), input,
     button("+5", "", () => set(Math.min(p.maxWatts, p.watts + 5)), !p.canChange),
     button("Use", "", () => set(parseInt(input.value, 10)), !p.canChange));
-  box.append(row, el("div", "s", "Up to " + p.maxWatts + " W. This changes the radio's power setting only; it does not transmit."));
+  t.append(row, el("div", "sub", "Changes the radio's power setting only; it does not transmit."));
+  return t;
+}
+
+function tuneTile(r, wideTile) {
+  const t = el("div", "t" + (wideTile ? " span2" : ""));
+  t.append(tileHead("Tune"));
+  t.append(button(r.tuneText, "tunebig" + (r.tuning ? " red" : ""), () => cmd("tune"), !r.canTune));
+  t.append(el("div", "sub", r.tuning ? "Tuning. Tap to stop."
+    : r.canTune ? "Starts the radio's tuner, or a steady tone for up to 10 s." : "Tune waits until CQ or the contact ends."));
+  return t;
+}
+
+// One setting: a row of choices (Off/On for switches), or a level with a slider and −10/+10.
+function controlRow(c, can) {
+  const row = el("div", "ctl");
+  const h = el("div", "th"); h.append(el("span", "k", c.label), el("span", "v", c.shown));
+  row.append(h);
+  const send = v => cmd("radio", { control: c.key, value: v });
+  if (c.kind === "level") {
+    const lvl = el("div", "lvl");
+    const range = el("input"); range.type = "range"; range.min = 0; range.max = 100; range.step = 1; range.value = c.value;
+    range.setAttribute("aria-label", c.label); range.disabled = !can;
+    range.oninput = () => { h.lastChild.textContent = range.value + "%"; };
+    range.onchange = () => send(parseInt(range.value, 10));
+    lvl.append(button("−10", "", () => send(Math.max(0, c.value - 10)), !can), range, button("+10", "", () => send(Math.min(100, c.value + 10)), !can));
+    row.append(lvl);
+  } else {
+    const seg = el("div", "seg");
+    c.options.forEach(o => seg.append(button(o.label, o.value === c.value ? "on" : "", () => { if (o.value !== c.value) send(o.value); }, !can)));
+    row.append(seg);
+  }
+  if (c.hint) { const s = el("div", "sub", c.hint); s.style.marginTop = "4px"; row.append(s); }
+  return row;
+}
+
+function meterRow(name, value, fill, kind) {
+  const r = el("div", "mtr");
+  const bar = el("div", "bar2"); const i = el("i", kind || null); i.style.width = (100 * Math.max(0, Math.min(1, fill))).toFixed(0) + "%"; bar.append(i);
+  r.append(el("span", null, name), bar, el("b", kind || null, value));
+  return r;
+}
+
+function metersTile(m) {
+  const t = el("div", "t span2" + (m && m.live ? " live" : ""));
+  t.append(tileHead(m ? (m.live ? "Meters · live" : "Meters · last transmission") : "Meters"));
+  if (!m) { t.append(el("div", "sub", "Power, ALC and SWR show here while you transmit.")); return t; }
+  if (m.watts) t.append(meterRow("PO", m.watts, m.wattsBar));
+  if (m.alc) t.append(meterRow("ALC", m.alc, m.alcBar, m.alcHigh ? "caution" : ""));
+  if (m.swr) t.append(meterRow("SWR", m.swr, m.swrBar, m.swrLevel));
+  if (!m.live && m.tip) t.append(el("div", "sub", m.tip));
+  return t;
+}
+
+function renderRadio(s) {
+  const r = s.radioTab; if (!r) return;
+  if (!changed("radio", { r, p: s.power, ok: s.radioOk })) return;
+  const box = $("radio"); box.replaceChildren();
+  const ctl = r.controls || [];
+  const tuner = ctl.find(c => c.key === "tuner");
+  if (s.power) box.append(powerTile(s.power));
+  box.append(tuneTile(r, !tuner));
+  if (tuner) {
+    const t = el("div", "t"); t.append(tileHead("Antenna tuner"), el("div", "big2", tuner.shown));
+    const seg = el("div", "seg"); seg.style.marginTop = "8px";
+    tuner.options.forEach(o => seg.append(button(o.label, o.value === tuner.value ? "on" : "", () => { if (o.value !== tuner.value) cmd("radio", { control: "tuner", value: o.value }); }, !r.canChange)));
+    t.append(seg, el("div", "sub", "In line or bypassed. Does not transmit."));
+    box.append(t);
+  }
+  box.append(metersTile(r.meters));
+  const groups = [["receive", "Receive"], ["noise", "Noise"]];
+  groups.forEach(([g, name]) => {
+    const list = ctl.filter(c => c.group === g && c.key !== "tuner");
+    if (!list.length) return;
+    const t = el("div", "t span2"); t.append(tileHead(name));
+    if (!r.canChange) t.append(el("div", "sub", "Wait until this transmission ends to change the radio's settings."));
+    list.forEach(c => t.append(controlRow(c, r.canChange)));
+    box.append(t);
+  });
+  if (!ctl.length) {
+    const t = el("div", "t span2"); t.append(tileHead("Radio settings"));
+    t.append(el("div", "sub", !s.radioOk ? "The radio is not connected." : "Reading the radio's settings… A radio without CAT control (audio only) has none to show."));
+    box.append(t);
+  }
 }
 
 // ---- The phone's Operate screen: tiles that show the whole station at a glance. ----
@@ -1051,8 +1158,8 @@ const TAB = "costas-remote-tab";
 let tab = "operate";
 try { tab = localStorage.getItem(TAB) || "operate"; } catch { }
 // Which parts each tab shows. A tablet shows the whole Operate view at once, like the desk, so it has two tabs.
-const PHONE_TABS = { operate: ["dash"], stations: ["heard", "stations"], decodes: ["decodes"], signal: ["signal"], log: ["log"] };
-const TABLET_TABS = { operate: ["operate", "heard", "stations", "signal", "log"], decodes: ["decodes"] };
+const PHONE_TABS = { operate: ["dash"], stations: ["heard", "stations"], decodes: ["decodes"], signal: ["signal"], log: ["log"], radio: ["radio"] };
+const TABLET_TABS = { operate: ["operate", "heard", "stations", "signal", "log"], decodes: ["decodes"], radio: ["radio"] };
 const wideQuery = matchMedia("(min-width: 760px)");
 let wide = wideQuery.matches;
 function showTab(t) {
@@ -1064,6 +1171,14 @@ function showTab(t) {
   document.querySelectorAll("[data-pane]").forEach(p => p.classList.toggle("hidden", !tabs[t].includes(p.dataset.pane)));
   // The phone's Operate screen carries the slot and what is on the air in its contact tile.
   document.body.classList.toggle("dashon", tabs[t].includes("dash"));
+  radioView();
+}
+// The station reads the radio's settings only while a phone has the Radio tab open.
+let radioSent = null;
+function radioView(force) {
+  const on = tab === "radio";
+  if (!force && on === radioSent) return;
+  if (ws && ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ type: "radioView", on })); radioSent = on; }
 }
 document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
 showTab(tab);

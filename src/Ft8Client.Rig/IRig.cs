@@ -89,6 +89,20 @@ public interface IRig : IAsyncDisposable
     /// </summary>
     Task<bool?> ReadSpeechProcessorAsync(CancellationToken ct);
 
+    /// <summary>
+    /// Reads the receive and tuner settings the radio's driver can both read and set (gains, preamp, attenuator, AGC,
+    /// noise blanker, noise reduction, tuner in line), in the order of <see cref="RigControl"/>. Empty when the radio
+    /// reports none. Never raises <see cref="Faulted"/> and never throws <see cref="RigException"/>.
+    /// </summary>
+    Task<IReadOnlyList<RigControlValue>> ReadControlsAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Changes one of the settings <see cref="ReadControlsAsync"/> reports. Only the setting changes: this never keys
+    /// the radio and never starts a tune. True when the radio took it. Never raises <see cref="Faulted"/> and never
+    /// throws <see cref="RigException"/>.
+    /// </summary>
+    Task<bool> SetControlAsync(RigControl control, int value, CancellationToken ct);
+
     /// <summary>Turns split on or off with a transmit frequency.</summary>
     Task SetSplitAsync(bool on, long txHz, CancellationToken ct);
 

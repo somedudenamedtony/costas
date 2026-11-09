@@ -874,14 +874,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>How long a Tune tone lasts unless stopped sooner (the Tune watchdog).</summary>
     public const double TuneSeconds = 10;
 
-    // A Tune tone on the air, or the radio's own tuner started by Tune and not yet past the Tune limit.
-    private bool Tuning(SessionSnapshot s) => s.TransmittingMessage == Session.TuneMessage || s.RigTuningUntilUtc > _host.Clock.UtcNow;
+    private bool Tuning(SessionSnapshot s) => TuneState.Tuning(s, _host.Clock.UtcNow);
 
     private void UpdateTune(SessionSnapshot s)
     {
-        var tuning = Tuning(s);
-        TuneText = tuning ? "Stop tune" : "Tune";
-        CanTune = tuning || (!s.Transmitting && !s.CallingCq && s.Contact is not { Outcome: ContactOutcome.InProgress });
+        TuneText = Tuning(s) ? "Stop tune" : "Tune";
+        CanTune = TuneState.CanTune(s, _host.Clock.UtcNow);
     }
 
     /// <summary>

@@ -69,6 +69,12 @@ public sealed class VoxRig(long frequencyHz) : IRig
     public Task<bool?> ReadSpeechProcessorAsync(CancellationToken ct) => Task.FromResult<bool?>(null);
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<RigControlValue>> ReadControlsAsync(CancellationToken ct) => Task.FromResult<IReadOnlyList<RigControlValue>>([]);
+
+    /// <inheritdoc />
+    public Task<bool> SetControlAsync(RigControl control, int value, CancellationToken ct) => Task.FromResult(false);
+
+    /// <inheritdoc />
     public Task SetSplitAsync(bool on, long txHz, CancellationToken ct) => Task.CompletedTask;
 
     /// <inheritdoc />

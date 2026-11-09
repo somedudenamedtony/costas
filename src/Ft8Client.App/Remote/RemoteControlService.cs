@@ -45,10 +45,12 @@ public sealed class RemoteControlService : IAsyncDisposable
     /// <param name="tuning">Band and Tx offset changes.</param>
     /// <param name="context">The log, QRZ, country file and bands the phone's state is built from.</param>
     /// <param name="power">The radio's power setting, which the phone shows and can change.</param>
+    /// <param name="controls">The radio's receive and tuner settings, which the phone's Radio tab shows and can change.</param>
     public RemoteControlService(Session session, AppSettingsAccessor settings, ISecretStore secrets, IClock clock, IRemoteTuning? tuning = null,
-                                Func<RemoteContext>? context = null, RadioPowerService? power = null)
+                                Func<RemoteContext>? context = null, RadioPowerService? power = null, RadioControlsService? controls = null)
     {
         if (power is not null) power.Changed += () => _dirty = true;
+        if (controls is not null) controls.Changed += () => _dirty = true;
         _session = session;
         _settings = settings;
         _clock = clock;
@@ -57,7 +59,7 @@ public sealed class RemoteControlService : IAsyncDisposable
         {
             if (t.Length == 0) secrets.Delete(SecretNames.RemoteDevices);
             else secrets.Set(SecretNames.RemoteDevices, t);
-        }, tuning: tuning, power: power);
+        }, tuning: tuning, power: power, controls: controls);
         Control.Changed += () =>
         {
             _dirty = true;
@@ -164,8 +166,12 @@ public sealed class RemoteControlService : IAsyncDisposable
         Changed?.Invoke();
     }
 
-    private RemoteState StateFor(string deviceId) =>
-        RemoteStateBuilder.Build(_session.Snapshot, _clock.UtcNow, _context(), Control.ControlFor(deviceId), Control.ViewingFor(deviceId)) with { Power = Control.PowerFor() };
+    private RemoteState StateFor(string deviceId)
+    {
+        var s = _session.Snapshot;
+        return RemoteStateBuilder.Build(s, _clock.UtcNow, _context(), Control.ControlFor(deviceId), Control.ViewingFor(deviceId))
+            with { Power = Control.PowerFor(), RadioTab = Control.RadioFor(s) };
+    }
 
     private async Task LoopAsync()
     {
