@@ -31,6 +31,9 @@ The page can sit on your home screen with the Costas icon, like an app.
 If the station computer's address changes (for example, your router hands it a new one), add the page again from the
 new address.
 
+If you use Tailscale, add the Tailscale address instead: that one icon then works at home and away (see
+[One icon for home and away](#one-icon-for-home-and-away)).
+
 ## Operating away from home
 
 The same page works from anywhere (on mobile data, at work, on holiday) through
@@ -42,11 +45,22 @@ Nothing is opened on your router, and only devices signed in to your Tailscale a
 2. On the phone, install the **Tailscale** app (App Store or Google Play) and sign in with the same account. On iPhone,
    allow it to add a VPN configuration. Turning on **VPN On Demand** in the app keeps it connected.
 3. Open **Settings › Mobile connection** on the station computer. Under **Away from home** it shows the Tailscale
-   address to open, for example `http://100.101.102.103:8073/`. Add that address to your home screen as well; it
-   works at home too while Tailscale is connected.
+   address to open, for example `http://100.101.102.103:8073/`.
 4. Before you leave, check that the station computer will not sleep (Windows **Settings › System › Power** › **Sleep:
    Never**), that Costas is running and that the mobile connection is on. If Windows restarts for an update, Costas
    has to be started again before the page comes back.
+
+### One icon for home and away
+
+A home-screen icon always opens the one address it was added from. The home address (such as
+`http://192.168.1.20:8073/`) only works on your Wi-Fi, but the Tailscale address works everywhere, at home included,
+as long as Tailscale is connected on the phone. So add the **Tailscale** address to your home screen and use that one
+icon all the time. If you added the home address earlier, remove that icon.
+
+At home Tailscale finds the station computer on your own Wi-Fi and usually connects to it directly, so nothing goes out over
+the internet and the page is as quick as before. If the icon does not open at home, Tailscale has probably
+disconnected on the phone: open the Tailscale app and turn it on (on iPhone, **VPN On Demand** keeps it on). The home
+address still works in the browser as a fallback.
 
 The phone page and all its safety rules work exactly as they do at home: transmit stops 15 seconds after the phone
 loses touch, and the watchdog is at most 3 minutes. You do not hear the radio's audio, which FT8 and FT4 do not need.

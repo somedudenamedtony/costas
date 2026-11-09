@@ -641,6 +641,7 @@
                 <StackPanel Spacing="4" IsVisible="{Binding AwayUrl, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                   <TextBlock Classes="help" Text="Tailscale is on. On a phone signed in to the same Tailscale account, open" />
                   <SelectableTextBlock Text="{Binding AwayUrl}" FontSize="16" FontWeight="SemiBold" />
+                  <TextBlock Classes="help" Text="This address works at home too while Tailscale is on in the phone, and at home it goes straight over your Wi-Fi. Add this one to your home screen and one icon works everywhere." />
                 </StackPanel>
                 <TextBlock Classes="help" IsVisible="{Binding AwayUrl, Converter={x:Static StringConverters.IsNullOrEmpty}}"
                            Text="To operate from anywhere, install Tailscale (free, tailscale.com) on this computer and on your phone and sign both in to the same account. Its address then appears here. Do not forward the port on your router: Costas refuses addresses from the open internet." />
