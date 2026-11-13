@@ -40,7 +40,7 @@ Callsign validity: 3 to 11 characters, letters, digits and `/`, at least one dig
 
 ## 3. Station tracker
 
-One `Station` per callsign per band and mode. Updated after each decoded slot.
+One `Station` per callsign per band and mode. Updated after each decoded slot. With an early decode pass (FT8 with `jt9` kept running), the stations it heard are added or updated as soon as it finishes, about 13 s into the slot, so they are listed about 2 s sooner (owner request 2026-11-13); misses and removals wait for the full decode, and a station heard in both keeps one reading for the slot in `SnrHistory`.
 
 | Field | Meaning |
 | --- | --- |

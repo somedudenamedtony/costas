@@ -43,7 +43,11 @@ public sealed partial class OperateViewModel : ObservableObject
     private static readonly TimeSpan KeyboardRankEvery = TimeSpan.FromSeconds(3);
     private DateTime _lastKeyboardRank;
     private readonly LineStabilizer<IReadOnlyList<RankedStation>> _repeats;
-    private DateTime? _lastRankedSlot;
+    private (DateTime? Slot, bool Early)? _lastRanked;
+
+    // What the snapshot's station list reflects: a slot's early pass, until that slot's full decode has been applied.
+    private static (DateTime? Slot, bool Early) RankedKey(SessionSnapshot s) =>
+        s.EarlyDecodedSlot is { } early && (s.LastDecodedSlot is not { } full || early > full) ? (early, true) : (s.LastDecodedSlot, false);
     private (string Band, Ft8Client.Core.Mode Mode) _lastRankedBand;
     private SessionSnapshot? _snap;
     private string? _inContact;
@@ -392,20 +396,30 @@ public sealed partial class OperateViewModel : ObservableObject
         ReportUnit = ModeInfo.IsSlotted(s.Mode) ? "dB" : string.Empty;
         UpdateSlot(now);
 
-        // Re-rank only when a new slot has been decoded, or the band or mode changed (the old band's stations, with
-        // Call buttons that no longer work, stayed until the next decode). A keyboard mode has no slots, so it re-ranks
-        // every few seconds.
+        // Re-rank only when a slot's early pass or full decode has arrived, or the band or mode changed (the old band's
+        // stations, with Call buttons that no longer work, stayed until the next decode). A keyboard mode has no slots,
+        // so it re-ranks every few seconds. The full decode after the early pass of the same slot does not reorder the
+        // list: rows shown keep their order and new ones go in at their rank (owner request 2026-11-13).
         var bandMode = (s.Band, s.Mode);
         var keyboardDue = !ModeInfo.IsSlotted(s.Mode) && now - _lastKeyboardRank >= KeyboardRankEvery;
-        if (_lastRankedSlot != s.LastDecodedSlot || _line.Applied is null || _lastRankedBand != bandMode || keyboardDue)
+        var listKey = RankedKey(s);
+        if (_lastRanked != listKey || _line.Applied is null || _lastRankedBand != bandMode || keyboardDue)
         {
-            _lastRankedSlot = s.LastDecodedSlot;
+            var secondUpdate = _lastRankedBand == bandMode && _lastRanked is { Early: true } before && !listKey.Early && before.Slot == listKey.Slot;
+            _lastRanked = listKey;
             _lastKeyboardRank = now;
             _lastRankedBand = bandMode;
-            _line.Offer(s.Rank.Line);
             var log = Log?.Invoke();
             var mode = ModeInfo.Name(s.Mode);
-            _repeats.Offer(RepeatOrder(s.Rank.Worked, r => log?.CallConfirmed(r.Station.Call, s.Band, mode) ?? false));
+            var line = s.Rank.Line;
+            var repeats = RepeatOrder(s.Rank.Worked, r => log?.CallConfirmed(r.Station.Call, s.Band, mode) ?? false);
+            if (secondUpdate)
+            {
+                line = LineMerge.KeepOrder(_line.Pending ?? _line.Applied ?? [], line);
+                repeats = LineMerge.KeepOrder(_repeats.Pending ?? _repeats.Applied ?? [], repeats);
+            }
+            _line.Offer(line);
+            _repeats.Offer(repeats);
         }
         ListUpdated = _line.HasPending;
         MarkInContact();
