@@ -22,8 +22,8 @@ public interface IRemoteTarget
     /// <summary>Operator input, for the Tx watchdog.</summary>
     void Activity();
 
-    /// <summary>Calls a station; false when it is not in the station list.</summary>
-    bool CallStation(string call);
+    /// <summary>Calls a station, ending a contact with another station first; false when it is not in the station list.</summary>
+    Task<bool> CallStationAsync(string call);
 
     /// <summary>Answers a waiting caller now.</summary>
     void AnswerCaller(string call);

@@ -14,6 +14,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Ft8Client.App.ViewModels;
 using Ft8Client.Core.Keyboard;
 
@@ -34,9 +35,14 @@ public partial class OperateView : UserControl
         LineList.AddHandler(PointerPressedEvent, OnRowPressed, RoutingStrategies.Tunnel);
         RepeatList.PointerEntered += (_, _) => Vm?.PointerEnteredRepeats();
         RepeatList.PointerExited += (_, _) => Vm?.PointerExitedRepeats();
-        LineList.DoubleTapped += (_, _) =>
+        // A double-click on the Call button is two clicks of the button, not a double-click on the row.
+        LineList.DoubleTapped += (_, e) =>
         {
-            if (Vm?.Selected is { } row) Vm.CallSelected();
+            if (!OnButton(e) && Vm?.Selected is { } row) Vm.DoubleClickedRow(row);
+        };
+        RepeatList.DoubleTapped += (_, e) =>
+        {
+            if (!OnButton(e) && (e.Source as Control)?.DataContext is RepeatRowViewModel row) Vm?.DoubleClickedRepeat(row);
         };
         SizeChanged += (_, e) => Relayout(e.NewSize.Width);
         LeftPane.SizeChanged += (_, _) => FitPinned();
@@ -218,6 +224,8 @@ public partial class OperateView : UserControl
     {
         if (_columns.TryGetValue(name, out var layout)) ColumnsSaved?.Invoke(name, layout.ToSaved());
     }
+
+    private static bool OnButton(RoutedEventArgs e) => (e.Source as Visual)?.FindAncestorOfType<Button>(includeSelf: true) is not null;
 
     private void OnRowPressed(object? sender, PointerPressedEventArgs e)
     {

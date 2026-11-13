@@ -77,6 +77,12 @@ public sealed class OperatingSettings
     /// </summary>
     public int CommandStartLimitMs { get; set; } = 3000;
 
+    /// <summary>
+    /// In FT8 and FT4, double-clicking another station in Next in line or Repeats during a contact abandons the contact
+    /// and calls that station (owner request 2026-11-13). Off by default: during a contact a double-click does nothing.
+    /// </summary>
+    public bool DoubleClickSwitches { get; set; }
+
     /// <summary>PTT lead before audio, in ms.</summary>
     public int PttLeadMs { get; set; } = 200;
 
