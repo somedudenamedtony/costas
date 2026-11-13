@@ -21,6 +21,9 @@ namespace Ft8Client.App.Services;
 /// <summary>Turns stored settings into the session's configuration.</summary>
 public static class SettingsMapper
 {
+    /// <summary>The most the click start limit may be set to, in ms: later than this too little of the message is left.</summary>
+    public const int MaxCommandStartLimitMs = 5000;
+
     /// <summary>The session configuration for the active profile.</summary>
     public static SessionConfig ToConfig(AppSettings s)
     {
@@ -49,6 +52,7 @@ public static class SettingsMapper
             FixedTxOffsetHz = fixedOffset,
             ClockBlockSeconds = s.Operating.ClockBlockSeconds,
             LateStartLimit = TimeSpan.FromMilliseconds(s.Operating.LateStartLimitMs),
+            CommandStartLimit = TimeSpan.FromMilliseconds(Math.Clamp(s.Operating.CommandStartLimitMs, 0, MaxCommandStartLimitMs)),
             PttLead = TimeSpan.FromMilliseconds(s.Operating.PttLeadMs),
             PowerWatts = s.Profile.PowerWatts,
             MyName = s.Profile.OperatorName.Trim(),

@@ -43,13 +43,14 @@ public class LateDecodeTests
         public readonly NullAudioOutput Output;
         public readonly List<(string Message, DateTime StartedUtc)> Sent = [];
 
-        public Rig()
+        public Rig(TimeSpan? commandStartLimit = null)
         {
             Radio = new SimulatedRig(Clock);
             Output = new NullAudioOutput { Now = () => Clock.UtcNow };
             var freqs = ReferenceData.LoadFrequencies();
             Tx = new Transmitter(Radio, Output, Clock, freqs);
             var config = new SessionConfig { MyCall = "W7LIT", MyGrid = "DN40", FixedTxOffsetHz = 1080 };
+            if (commandStartLimit is { } limit) config = config with { CommandStartLimit = limit };
             Session = new Session(config, Decoder, new SilentSource(), Tx, Clock, ReferenceData.LoadCountries(), freqs);
             Session.Transmitting += (tx, at) => Sent.Add((tx.Plan.Message, at));
             Slots = new SlotClock(Clock, Mode.Ft8);
@@ -293,6 +294,39 @@ public class LateDecodeTests
         await r.RunUntilAsync(MySecondSlot.AddSeconds(1));
 
         r.Radio.PttLog.Should().NotContain(p => p.TimeUtc < MySecondSlot, "nothing is keyed in the slot that is too far along");
+        var (message, started) = r.Sent.Should().ContainSingle().Subject;
+        message.Should().Be("N8WCR W7LIT DN40");
+        started.Should().BeCloseTo(MySecondSlot.AddSeconds(0.5), TimeSpan.FromMilliseconds(2));
+    }
+
+    [Fact]
+    public async Task Call_ClickStartLimitRaised_ClickedAt4sStartsNowLeavingOutThePartAlreadyPast()
+    {
+        var r = new Rig(TimeSpan.FromSeconds(4.5));
+        r.Decoder.Script(CqSlot, TimeSpan.FromSeconds(3.4), "CQ N8WCR EN81");
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(4));
+
+        r.Session.CallStation("N8WCR").Should().BeTrue();
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(15));
+
+        var (message, started) = r.Sent.Should().ContainSingle().Subject;
+        message.Should().Be("N8WCR W7LIT DN40");
+        started.Should().BeCloseTo(MyFirstSlot.AddSeconds(4.2), TimeSpan.FromMilliseconds(2));
+        var played = r.Output.Played.Single().Samples.Length / (double)r.Output.SampleRate;
+        played.Should().BeApproximately(12.64 - 3.7, 0.002);
+    }
+
+    [Fact]
+    public async Task Call_ClickStartLimitLowered_ClickedAt2_8sGoesOutInMyNextSlot()
+    {
+        var r = new Rig(TimeSpan.FromSeconds(2));
+        r.Decoder.Script(CqSlot, TimeSpan.FromSeconds(3.4), "CQ N8WCR EN81");
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(2.8));
+
+        r.Session.CallStation("N8WCR").Should().BeTrue();
+        await r.RunUntilAsync(MySecondSlot.AddSeconds(1));
+
+        r.Radio.PttLog.Should().NotContain(p => p.TimeUtc < MySecondSlot, "the click was past the operator's limit");
         var (message, started) = r.Sent.Should().ContainSingle().Subject;
         message.Should().Be("N8WCR W7LIT DN40");
         started.Should().BeCloseTo(MySecondSlot.AddSeconds(0.5), TimeSpan.FromMilliseconds(2));

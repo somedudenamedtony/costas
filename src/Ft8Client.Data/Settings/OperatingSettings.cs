@@ -56,6 +56,12 @@ public sealed class OperatingSettings
     /// <summary>Latest a transmission may start after the slot boundary, in ms.</summary>
     public int LateStartLimitMs { get; set; } = 1000;
 
+    /// <summary>
+    /// Latest a transmission the operator has just asked for (calling a station, CQ) may start after the slot's Tx start,
+    /// in ms, leaving out the part already past. 0 to 5000; past it the message waits for the next slot.
+    /// </summary>
+    public int CommandStartLimitMs { get; set; } = 3000;
+
     /// <summary>PTT lead before audio, in ms.</summary>
     public int PttLeadMs { get; set; } = 200;
 
