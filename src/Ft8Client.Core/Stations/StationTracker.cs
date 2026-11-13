@@ -89,21 +89,7 @@ public sealed class StationTracker
     public void ApplySlot(DateTime slotStartUtc, IEnumerable<HeardMessage> heard)
     {
         var parity = SlotMath.Parity(slotStartUtc, _mode);
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var slot = heard as IReadOnlyCollection<HeardMessage> ?? heard.ToList();
-        var foxes = FoxSigns.Senders(slot);
-
-        foreach (var h in slot)
-        {
-            if (h.Decode.LowConfidence) continue;
-            foreach (var m in h.Message.Expand())
-            {
-                var sender = m.SenderCall;
-                if (sender is null || !Callsign.IsValid(sender) || Callsign.EqualsCall(sender, _myCall)) continue;
-                var first = seen.Add(sender);
-                Apply(sender, m, h.Decode.Snr, h.Decode.OffsetHz, slotStartUtc, parity, first, foxes.Contains(sender));
-            }
-        }
+        var seen = ApplyHeard(slotStartUtc, heard);
 
         foreach (var call in _stations.Keys.ToList())
         {
@@ -129,6 +115,36 @@ public sealed class StationTracker
                 _lastCqSlot.Remove(call);
             }
         }
+    }
+
+    /// <summary>
+    /// Applies the decodes of a slot's early pass, before the slot has ended (docs/04-domain-logic.md section 3), so
+    /// the stations heard can be listed about 2 s sooner. Only the stations heard are added or updated: nobody gets a
+    /// miss and nobody is removed, since the slot is not over. <see cref="ApplySlot"/> with the full decode follows and
+    /// does that; a station heard in both keeps one reading for the slot in its history.
+    /// </summary>
+    public void ApplyEarly(DateTime slotStartUtc, IEnumerable<HeardMessage> heard) => ApplyHeard(slotStartUtc, heard);
+
+    // Adds or updates every station heard in the slot; returns their calls.
+    private HashSet<string> ApplyHeard(DateTime slotStartUtc, IEnumerable<HeardMessage> heard)
+    {
+        var parity = SlotMath.Parity(slotStartUtc, _mode);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var slot = heard as IReadOnlyCollection<HeardMessage> ?? heard.ToList();
+        var foxes = FoxSigns.Senders(slot);
+
+        foreach (var h in slot)
+        {
+            if (h.Decode.LowConfidence) continue;
+            foreach (var m in h.Message.Expand())
+            {
+                var sender = m.SenderCall;
+                if (sender is null || !Callsign.IsValid(sender) || Callsign.EqualsCall(sender, _myCall)) continue;
+                seen.Add(sender);
+                Apply(sender, m, h.Decode.Snr, h.Decode.OffsetHz, slotStartUtc, parity, foxes.Contains(sender));
+            }
+        }
+        return seen;
     }
 
     /// <summary>A keyboard-mode station is callable this long after its last CQ over (docs/09-keyboard-modes.md section 6).</summary>
@@ -201,15 +217,16 @@ public sealed class StationTracker
         }
     }
 
-    private void Apply(string call, ParsedMessage m, int snr, int offset, DateTime slot, SlotParity parity, bool firstInSlot, bool fox)
+    private void Apply(string call, ParsedMessage m, int snr, int offset, DateTime slot, SlotParity parity, bool fox)
     {
         var existing = _stations.GetValueOrDefault(call);
         var s = existing ?? new Station { Call = call, FirstHeardUtc = slot, Entity = _countries?.Lookup(call) };
         if (_lookups.TryGetValue(call, out var lk)) s = s with { Region = lk.Region ?? s.Region, City = lk.City ?? s.City };
 
+        // Already heard in this slot (a second message, or the early pass before the full decode): one reading per slot.
         var history = s.SnrHistory;
         var bestSnr = snr;
-        if (!firstInSlot && s.LastHeardUtc == slot)
+        if (s.LastHeardUtc == slot)
         {
             bestSnr = Math.Max(s.LastSnr, snr);
             history = history.Count > 0 ? [.. history.Take(history.Count - 1), bestSnr] : [bestSnr];

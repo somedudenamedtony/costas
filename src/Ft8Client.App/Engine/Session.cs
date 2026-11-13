@@ -78,6 +78,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     private DateTime? _rigTuningUntil;
     private bool _txOffsetClear = true;
     private DateTime? _lastDecodedSlot;
+    private DateTime? _earlyDecodedSlot;
     private TimeSpan _lastDecodeTime;
     private double? _medianDt;
     private double? _sntpOffset;
@@ -242,8 +243,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
 
     /// <summary>
     /// The early pass, as WSJT-X runs it: with a decoder that keeps jt9 running, the first 11.8 s of an FT8 slot are
-    /// decoded while the slot is still running. Its decodes go to the contact engine and the raw decodes at once; the
-    /// station list and the slot's counts wait for the full decode, which lists every decode of the slot.
+    /// decoded while the slot is still running. Its decodes go to the contact engine, the raw decodes and the station
+    /// list at once; missed slots and the slot's counts wait for the full decode, which lists every decode of the slot.
     /// </summary>
     private void OnEarlyDecode(SlotEvent e)
     {
@@ -292,6 +293,13 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             var heard = result.Decodes.Select(HeardMessage.From).ToList();
             AddRaw(audio.SlotStartUtc, heard);
             FeedEngine(audio.SlotStartUtc, audio.Mode, heard, _clock.UtcNow);
+            // The stations heard go into Next in line now, about 2 s before the full decode lands (owner request
+            // 2026-11-13). Display only: the engine has them already. Skipped if the full decode got there first.
+            if (_lastDecodedSlot is not { } done || done < audio.SlotStartUtc)
+            {
+                _tracker.ApplyEarly(audio.SlotStartUtc, heard);
+                _earlyDecodedSlot = audio.SlotStartUtc;
+            }
         }
         Publish();
     }
@@ -1376,6 +1384,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 Summary = summary,
                 RawDecodes = _raw.Where(r => r.Mode == _config.Mode).ToList(),
                 LastDecodedSlot = _lastDecodedSlot,
+                EarlyDecodedSlot = _earlyDecodedSlot,
                 LastDecodeTime = _lastDecodeTime,
                 MedianDt = _medianDt,
                 LogIsEmpty = _logIndex.IsEmpty,

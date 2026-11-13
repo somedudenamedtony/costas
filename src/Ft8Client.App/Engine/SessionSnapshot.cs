@@ -55,6 +55,12 @@ public sealed record SessionSnapshot
     /// <summary>Slot start of the latest decoded slot.</summary>
     public DateTime? LastDecodedSlot { get; init; }
 
+    /// <summary>
+    /// Slot start of the latest slot whose early pass is in the station list. Later than <see cref="LastDecodedSlot"/>
+    /// while that slot's full decode is still running.
+    /// </summary>
+    public DateTime? EarlyDecodedSlot { get; init; }
+
     /// <summary>Decoder time of the latest slot.</summary>
     public TimeSpan LastDecodeTime { get; init; }
 
