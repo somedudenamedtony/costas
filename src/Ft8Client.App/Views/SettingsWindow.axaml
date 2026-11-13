@@ -196,6 +196,13 @@
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Double-click" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Double-click a station during a contact to abandon it and call the new one" IsChecked="{Binding DoubleClickSwitches}" />
+                <TextBlock Classes="help" Text="FT8 and FT4, in Next in line and Repeats. The contact ends at once, as with Abandon (one already logged stays in the log), and the new station is called in this slot if there is still time, otherwise in your next slot. Off: during a contact a double-click does nothing; use Abandon first. Enter never switches." TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Where to transmit" />
               <StackPanel Grid.Column="1">
                 <CheckBox Content="US data segments only" IsChecked="{Binding UsDataSegmentsOnly}" />

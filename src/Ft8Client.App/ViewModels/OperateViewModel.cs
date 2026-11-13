@@ -588,6 +588,37 @@ public sealed partial class OperateViewModel : ObservableObject
         Select(Line[Math.Clamp(i, 0, Line.Count - 1)]);
     }
 
+    /// <summary>
+    /// Double-clicking another station during a contact abandons the contact and calls it (FT8 and FT4; the operator's
+    /// <c>Operating.DoubleClickSwitches</c>, off by default).
+    /// </summary>
+    public bool DoubleClickSwitches { get; set; }
+
+    /// <summary>A row in Next in line was double-clicked.</summary>
+    public void DoubleClickedRow(StationRowViewModel row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        _line.Clicked();
+        CallOnDoubleClick(row.Call);
+    }
+
+    /// <summary>A row in Repeats was double-clicked.</summary>
+    public void DoubleClickedRepeat(RepeatRowViewModel row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        _repeats.Clicked();
+        CallOnDoubleClick(row.Call);
+    }
+
+    // Outside a contact a double-click calls the station. During one it does nothing, unless the operator turned on
+    // DoubleClickSwitches: then, in FT8 and FT4, another station is called and the contact is abandoned on the way
+    // (the session does that). The station already in contact is left alone.
+    private void CallOnDoubleClick(string call)
+    {
+        if (Contact is { Active: true } c && (!DoubleClickSwitches || Keyboard.Visible || Callsign.EqualsCall(c.Call, call))) return;
+        _commands.Call(call);
+    }
+
     /// <summary>Calls the selected row (Enter). In a contact, nothing.</summary>
     public void CallSelected()
     {

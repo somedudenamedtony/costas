@@ -28,10 +28,10 @@ internal sealed class FakeRemoteTarget : IRemoteTarget
 
     public void Activity() => ActivityCount++;
 
-    public bool CallStation(string call)
+    public Task<bool> CallStationAsync(string call)
     {
         Calls.Add("call " + call);
-        return call != "NOBODY";
+        return Task.FromResult(call != "NOBODY");
     }
 
     public void AnswerCaller(string call) => Calls.Add("answer " + call);

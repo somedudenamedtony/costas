@@ -475,6 +475,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var tonight = TonightRows(s);
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
         Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current);
+        Operate.DoubleClickSwitches = _host.Settings.Current.Operating.DoubleClickSwitches;
         Operate.ShowCqModifier(_host.Settings.Current.Operating.CqModifier);
         Operate.Apply(s, tonight.Rows, tonight.Total);
         Reach.ApplyNeighbours(s.Neighbours, s.Band, _host.Settings.Current.PskReporter is { FeedEnabled: true, CompareNeighbours: true });
@@ -650,7 +651,13 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     {
         Activity();
         _host.Usage.Track("station_called", "mode", SelectedMode);
-        if (!_host.Session.CallStation(call)) StatusText = $"{call} is not in the station list.";
+        _ = CallAsync(call);
+    }
+
+    // Back on the UI thread after the session has ended any contact with another station and called this one.
+    private async Task CallAsync(string call)
+    {
+        if (!await _host.Session.CallStationAsync(call)) StatusText = $"{call} is not in the station list.";
     }
 
     /// <inheritdoc />
