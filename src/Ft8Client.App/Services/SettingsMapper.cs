@@ -21,6 +21,9 @@ namespace Ft8Client.App.Services;
 /// <summary>Turns stored settings into the session's configuration.</summary>
 public static class SettingsMapper
 {
+    /// <summary>The most the click start limit may be set to, in ms: later than this too little of the message is left.</summary>
+    public const int MaxCommandStartLimitMs = 5000;
+
     /// <summary>The contest named in settings, or <see cref="Core.Contests.ContestId.None"/>.</summary>
     public static Core.Contests.ContestId ContestOf(string? name) =>
         Enum.TryParse<Core.Contests.ContestId>(name, out var id) && Enum.IsDefined(id) ? id : Core.Contests.ContestId.None;
@@ -56,6 +59,7 @@ public static class SettingsMapper
             FixedTxOffsetHz = fixedOffset,
             ClockBlockSeconds = s.Operating.ClockBlockSeconds,
             LateStartLimit = TimeSpan.FromMilliseconds(s.Operating.LateStartLimitMs),
+            CommandStartLimit = TimeSpan.FromMilliseconds(Math.Clamp(s.Operating.CommandStartLimitMs, 0, MaxCommandStartLimitMs)),
             PttLead = TimeSpan.FromMilliseconds(s.Operating.PttLeadMs),
             PowerWatts = s.Profile.PowerWatts,
             MyName = s.Profile.OperatorName.Trim(),

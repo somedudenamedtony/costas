@@ -54,7 +54,8 @@ public sealed record SessionConfig
     /// <summary>
     /// Latest start after the slot's Tx start for a transmission the operator has just asked for (calling a station or
     /// CQ). Past the late-start limit the part of the message already past is left out; up to 3 s missing still decodes
-    /// at full sensitivity down to about -18 dB (measured with ft8sim and jt9).
+    /// at full sensitivity down to about -18 dB (measured with ft8sim and jt9). Set by the operator
+    /// (<c>Operating.CommandStartLimitMs</c>, 0 to 5 s, default 3 s).
     /// </summary>
     public TimeSpan CommandStartLimit { get; init; } = TimeSpan.FromSeconds(3);
 
