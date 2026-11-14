@@ -380,6 +380,7 @@ public sealed class AppHost : IAsyncDisposable
                     Log.Warning("No audio on Linux: {Why}", why);
                 }
             }
+            RebindAudioDevices();
             OpenAudio(recorder);
         }
 
@@ -971,6 +972,8 @@ public sealed class AppHost : IAsyncDisposable
                 {
                     if (AudioBackend is not NullAudioBackend)
                     {
+                        // The saved device came back under a new id (another USB port, a driver reinstall): switch to it.
+                        if (RebindAudioDevices()) await ReopenDevicesCoreAsync().ConfigureAwait(false);
                         RecoverInput();
                         RecoverOutput();
                     }
@@ -991,6 +994,27 @@ public sealed class AppHost : IAsyncDisposable
                 Log.Debug(ex, "Device recovery pass failed");
             }
         }
+    }
+
+    // Finds the saved input and output in the device lists by id, or by name when Windows gave the device a new id, and
+    // saves the new id. Also records the name of a device saved before names were kept. True when an id changed.
+    private bool RebindAudioDevices()
+    {
+        if (AudioBackend is NullAudioBackend) return false;
+        var a = Settings.Current.Profile.Audio;
+        if (a.InputId is null && a.OutputId is null) return false;
+        var input = a.InputId is null ? null : AudioDeviceMatch.Find(AudioBackend.ListInputs(), a.InputId, a.InputName);
+        var output = a.OutputId is null ? null : AudioDeviceMatch.Find(AudioBackend.ListOutputs(), a.OutputId, a.OutputName);
+        var changed = (input is not null && input.Id != a.InputId) || (output is not null && output.Id != a.OutputId);
+        var named = (input is not null && input.Name != a.InputName) || (output is not null && output.Name != a.OutputName);
+        if (!changed && !named) return false;
+        if (changed) Log.Information("Audio device found under a new id: input {Input}, output {Output}", input?.Name, output?.Name);
+        Settings.Update(s =>
+        {
+            if (input is not null) (s.Profile.Audio.InputId, s.Profile.Audio.InputName) = (input.Id, input.Name);
+            if (output is not null) (s.Profile.Audio.OutputId, s.Profile.Audio.OutputName) = (output.Id, output.Name);
+        });
+        return changed;
     }
 
     private void RecoverInput()
