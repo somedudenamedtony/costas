@@ -118,7 +118,7 @@ public class TxMeterMonitorTests
         TxMeterText.Strip(TxMeterReading.None, TxMeterResult.None, null).Should().BeNull();
         // ALC outside 0 to 1 is not an ALC reading (an SWR value read out of step); SWR below 1 means no forward power.
         var m = TxMeterText.Strip(new TxMeterReading(1.7, 0, 5), null, null)!;
-        (m.Alc, m.Swr, m.Watts).Should().Be(((string?)null, (string?)null, "5 W"));
+        (m.Alc, m.Swr, m.Watts).Should().Be(((string?)null, (string?)null, "≤5 W"));
     }
 
     [Fact]
@@ -215,4 +215,12 @@ public class TxMeterMonitorTests
         await s.Monitor.Idle;
         lock (s.Tripped) s.Tripped.Should().BeEmpty();
     }
+
+    [Theory]
+    [InlineData(5.0, "≤5 W")]
+    [InlineData(0.0, "≤5 W")]
+    [InlineData(5.4, "5 W")]
+    [InlineData(24.4, "24 W")]
+    public void WattsText_AtHamlibFloor_ShowsAtMostFive(double watts, string expected) =>
+        TxMeterText.WattsText(watts).Should().Be(expected);
 }

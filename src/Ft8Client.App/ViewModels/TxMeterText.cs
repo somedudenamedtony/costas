@@ -55,7 +55,7 @@ public static class TxMeterText
             isLive,
             isLive ? "TX" : "Last TX",
             tip,
-            watts is { } w ? Math.Round(w).ToString("0", CultureInfo.InvariantCulture) + " W" : null,
+            watts is { } w ? WattsText(w) : null,
             watts is { } w2 ? Math.Clamp(w2 / full, 0, 1) : 0,
             alc is null ? null : alcHigh ? "High" : "OK",
             alc ?? 0,
@@ -64,6 +64,17 @@ public static class TxMeterText
             swr is { } s ? Math.Clamp((s - 1) / (TxMeterCheck.SwrCritical - 1), 0, 1) : 0,
             swrKind);
     }
+
+    /// <summary>
+    /// Power as shown. At or below <see cref="LowestReliableWatts"/> it reads "≤5 W": Hamlib's FT-710 table starts at
+    /// 5 W, so a radio putting out nothing (no audio reaching it) reads exactly 5 W.
+    /// </summary>
+    public static string WattsText(double watts) => watts <= LowestReliableWatts
+        ? "≤5 W"
+        : Math.Round(watts).ToString("0", CultureInfo.InvariantCulture) + " W";
+
+    /// <summary>The lowest power some radios' meters can tell apart from none (Hamlib's FT-710 table starts here).</summary>
+    public const double LowestReliableWatts = 5;
 
     private static string Percent(double fraction) => Math.Round(fraction * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
 }
