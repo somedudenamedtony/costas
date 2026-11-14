@@ -265,8 +265,8 @@ From top to bottom:
 
 ![Transmit offset flyout](images/tx-offset.png)
 
-The strip along the bottom is a waterfall of the passband with a line at your transmit offset: click it to move your
-offset there. **Auto-select** goes back to Automatic, which picks a clear spot in the passband for you each time.
+The strip along the bottom is a waterfall of the passband with a red line at your transmit offset: click anywhere
+between 200 and 2900 Hz to move your offset there. **Auto-select** goes back to Automatic, which picks a clear spot in the passband for you each time.
 
 ### A bigger waterfall
 
