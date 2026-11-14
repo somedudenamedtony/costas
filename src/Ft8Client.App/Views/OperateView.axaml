@@ -261,20 +261,29 @@
                             <ItemsControl.ItemTemplate>
                               <DataTemplate x:DataType="x:String">
                                 <Button Classes="word" Focusable="False"
-                                        IsHitTestVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.WordsClickable}" Padding="0,0,5,0" MinHeight="0" Background="Transparent" BorderThickness="0"
-                                        ToolTip.Tip="Use this word in the contact">
+                                        Padding="0,0,5,0" MinHeight="0" Background="Transparent" BorderThickness="0"
+                                        ToolTip.Tip="Use this word in the contact, or answer this station">
                                   <TextBlock Text="{Binding}" Classes="message" FontSize="13" />
                                   <Button.Flyout>
                                     <MenuFlyout>
+                                      <!-- Reading a signal (no contact yet): a callsign word answers that station with F2. -->
+                                      <MenuItem Header="Answer this station (F2)" CommandParameter="{Binding}"
+                                                IsVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.WordsAnswer}"
+                                                Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.AnswerWordCommand}" />
                                       <MenuItem Header="Use as their name" CommandParameter="{Binding}"
+                                                IsVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.WordsClickable}"
                                                 Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.CaptureNameCommand}" />
                                       <MenuItem Header="Use as their QTH" CommandParameter="{Binding}"
+                                                IsVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.WordsClickable}"
                                                 Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.CaptureQthCommand}" />
                                       <MenuItem Header="Use as the report received" CommandParameter="{Binding}"
+                                                IsVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.WordsClickable}"
                                                 Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.CaptureRstCommand}" />
                                       <MenuItem Header="Use as their grid" CommandParameter="{Binding}"
+                                                IsVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.WordsClickable}"
                                                 Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.CaptureGridCommand}" />
                                       <MenuItem Header="Use as their call" CommandParameter="{Binding}"
+                                                IsVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.WordsClickable}"
                                                 Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Keyboard.CaptureCallCommand}" />
                                     </MenuFlyout>
                                   </Button.Flyout>
@@ -331,6 +340,9 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </DockPanel>
+              <!-- Why the last send was refused or transmit stopped, here where the operator is looking. -->
+              <TextBlock Text="{Binding SendNote}" IsVisible="{Binding HasSendNote}" Foreground="{DynamicResource CriticalBrush}" FontWeight="SemiBold"
+                         TextWrapping="Wrap" AutomationProperties.Name="Not sent" AutomationProperties.LiveSetting="Assertive" />
               <TextBlock Text="{Binding Hints}" Classes="secondary" FontSize="12" TextWrapping="Wrap" />
               <TextBlock Text="{Binding RadioNote}" Foreground="{DynamicResource CautionBrush}" TextWrapping="Wrap"
                          IsVisible="{Binding RadioNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />

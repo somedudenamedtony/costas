@@ -43,8 +43,11 @@ Nothing is ever sent without a key press or a click from you.
 
 ![Answering a PSK31 CQ](images/psk-sending.png)
 
-**Answering a CQ.** Pick the station in **Next in line** and click **Call** (or double-click it). Costas sends your
-answer (F2) on the station's own audio frequency and moves the contact strip on, just as for FT8:
+**Answering a CQ.** Pick the station in **Next in line** and click **Call** (or double-click it). Or, while you are
+reading a signal in the conversation box ("Reading NI6IW" over it), press **F2** to answer the station named there, or
+click any callsign in its text and choose **Answer this station (F2)**. Costas sends your answer (F2) on the station's
+own audio frequency and moves the contact strip on, just as for FT8. With no station picked, F2 is refused and the
+reason shows in red under the macro keys.
 
 1. Their CQ
 2. Your answer (F2)

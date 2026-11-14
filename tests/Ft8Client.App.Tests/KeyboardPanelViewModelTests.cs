@@ -27,6 +27,8 @@ public class KeyboardPanelViewModelTests
 
         public bool TypeAccepts { get; set; } = true;
 
+        public List<string> Calls { get; } = [];
+
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
         {
             switch (targetMethod?.Name)
@@ -34,6 +36,9 @@ public class KeyboardPanelViewModelTests
                 case nameof(IOperateCommands.KeyboardEnter):
                     Enters.Add(((string)args![0]!, (bool)args[1]!));
                     return EnterResult;
+                case nameof(IOperateCommands.Call):
+                    Calls.Add((string)args![0]!);
+                    return null;
                 case nameof(IOperateCommands.KeyboardType):
                     if (!TypeAccepts) return false;
                     Typed.Add((char)args![0]!);
@@ -249,5 +254,73 @@ public class KeyboardPanelViewModelTests
         panel.HasBoxTitle.Should().BeFalse();
         panel.HasLive.Should().BeFalse();
         panel.WordsClickable.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Apply_ReadingStationWithCall_SaysF2AnswersItAndWordsOfferAnswer()
+    {
+        var (panel, _) = Build(rtty: true);
+        var t = new DateTime(2026, 11, 14, 20, 55, 0, DateTimeKind.Utc);
+
+        panel.Apply(new SessionSnapshot
+        {
+            Mode = Mode.Rtty,
+            Macros = Macro.Defaults,
+            NextMacro = Macro.CqKey,
+            Reading = new KeyboardReading("NI6IW", 1487, -20, [new ConversationLine(t, "NI6IW", "CQ CQ CQ NI6IW NI6IW", false)], string.Empty),
+        });
+
+        panel.WordsAnswer.Should().BeTrue();
+        panel.Hints.Should().StartWith("F2 answers NI6IW");
+        panel.Hints.Should().Contain("Click a call to answer it");
+    }
+
+    [Fact]
+    public void Apply_InContact_WordsCaptureNotAnswer()
+    {
+        var (panel, _) = Build();
+
+        panel.Apply(new SessionSnapshot { Mode = Mode.Psk31, Macros = Macro.Defaults });
+
+        panel.WordsAnswer.Should().BeFalse();
+        panel.WordsClickable.Should().BeTrue();
+        panel.Hints.Should().NotContain("answers");
+    }
+
+    [Fact]
+    public void Apply_Refused_ReasonShownInPanel()
+    {
+        var (panel, _) = Build(rtty: true);
+
+        panel.Apply(new SessionSnapshot { Mode = Mode.Rtty, Fault = "Transmit stopped: SWR 4.4. Check the antenna and tuner before sending again." });
+
+        panel.HasSendNote.Should().BeTrue();
+        panel.SendNote.Should().StartWith("Transmit stopped: SWR 4.4");
+
+        panel.Apply(new SessionSnapshot { Mode = Mode.Rtty });
+
+        panel.HasSendNote.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("NI6IW", "NI6IW")]
+    [InlineData("ni6iw,", "NI6IW")]
+    public void AnswerWordCommand_Callsign_CallsThatStation(string word, string expected)
+    {
+        var (panel, commands) = Build(rtty: true);
+
+        panel.AnswerWordCommand.Execute(word);
+
+        commands.Calls.Should().Equal(expected);
+    }
+
+    [Fact]
+    public void AnswerWordCommand_NotACallsign_NothingCalled()
+    {
+        var (panel, commands) = Build(rtty: true);
+
+        panel.AnswerWordCommand.Execute("MUSEUM");
+
+        commands.Calls.Should().BeEmpty();
     }
 }
