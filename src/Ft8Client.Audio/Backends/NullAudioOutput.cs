@@ -17,6 +17,9 @@ public sealed class NullAudioOutput(int sampleRate = 48_000) : IAudioOutput
     public int SampleRate { get; } = sampleRate;
 
     /// <inheritdoc />
+    /// <summary>Set by tests to stand for a muted or zero-volume device; see <see cref="IAudioOutput.Silenced"/>.</summary>
+    public string? Silenced { get; set; }
+
     public bool IsPlaying { get; private set; }
 
     /// <summary>Every buffer played, with when it started (wall clock).</summary>

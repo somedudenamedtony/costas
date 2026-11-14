@@ -65,7 +65,10 @@ Use [Station setup › Transmit test](setup.md#4-transmit-test) into a dummy loa
   serial line, choose **RTS** or **DTR**. With **VOX**, VOX must be on in the radio.
 - **TX light on, no power out**: the audio is not reaching the radio. Check **Output (audio to the radio)** is the
   radio's USB audio device. Set the radio's data mode input to USB (on an IC-7300: *DATA MOD* = *USB*) and use USB-D
-  mode.
+  mode. On an FT-710: *DATA MOD SOURCE* = *REAR*, *REAR SELECT* = *USB*, and DATA-U mode. If the output device is muted
+  or at zero volume in Windows, Costas refuses to transmit and says so; unmute it and set its volume to 100.
+- **Meters read "≤5 W"**: some radios (the FT-710 among them) cannot report less than 5 W, so "≤5 W" while the radio's
+  own PO meter reads 0 means no power is going out. Check the audio as above.
 - **"The radio cannot report whether it transmitted"**: some radios do not report PTT state over CAT. Watch the TX
   light instead.
 
