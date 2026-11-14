@@ -95,6 +95,9 @@ public sealed record RemoteState
     /// <summary>The radio's power setting, or null when the phone may not change it or the radio does not report it.</summary>
     public RemotePower? Power { get; init; }
 
+    /// <summary>The Radio tab: Tune, meters and the radio's settings.</summary>
+    public RemoteRadio? RadioTab { get; init; }
+
     /// <summary>"SWR 3.4 · ALC 70%" after a transmission outside limits, else blank.</summary>
     public string Meter { get; init; } = string.Empty;
 

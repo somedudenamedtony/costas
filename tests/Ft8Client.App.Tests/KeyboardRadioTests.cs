@@ -200,6 +200,8 @@ public class KeyboardRadioTests
         public Task<bool?> ReadSpeechProcessorAsync(CancellationToken ct) => inner.ReadSpeechProcessorAsync(ct);
         public Task<RigPower?> ReadPowerAsync(CancellationToken ct) => inner.ReadPowerAsync(ct);
         public Task<RigPower?> SetPowerWattsAsync(int watts, CancellationToken ct) => inner.SetPowerWattsAsync(watts, ct);
+        public Task<IReadOnlyList<RigControlValue>> ReadControlsAsync(CancellationToken ct) => inner.ReadControlsAsync(ct);
+        public Task<bool> SetControlAsync(RigControl control, int value, CancellationToken ct) => inner.SetControlAsync(control, value, ct);
         public Task SetSplitAsync(bool on, long txHz, CancellationToken ct) => inner.SetSplitAsync(on, txHz, ct);
         public ValueTask DisposeAsync() => inner.DisposeAsync();
     }

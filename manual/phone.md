@@ -56,9 +56,9 @@ has no password, so anyone who found it could transmit.
 
 ## What the phone can do
 
-The top of the page shows the band and frequency (tap it to change band, offset or power), the link to the station and
+The top of the page shows the band and frequency (tap it to change band or offset), the link to the station and
 the radio, the clock and the decoder, and who is in control. Below it, five tabs cover what the desk's Operate view
-shows. **HALT TX** is always at the bottom of the screen.
+shows, and a sixth, **Radio**, holds the radio's own controls. **HALT TX** is always at the bottom of the screen.
 
 The phone's **Operate** tab is a set of tiles built for a small screen rather than a copy of the desk:
 
@@ -120,25 +120,42 @@ offset box on the desk: band changes wait until the current transmission ends, c
 (the phone asks first), and a fixed offset must be between 200 and 2900 Hz. Changes are saved, so the desk shows
 them too.
 
-![Band, offset and power on the phone](images/phone-band.png){ width="320" }
+![Band and offset on the phone](images/phone-band.png){ width="320" }
 
-### Radio power
+### Radio tab
 
-The same sheet shows the radio's power setting under **Radio power**, the same as the power in the desk's bottom bar.
-Type a power and press **Use**, or step it with **−5** and **+5**. Anything from 1 W up to the radio's maximum is
-accepted; anything outside that is refused, not rounded. If the radio has its own minimum (5 W on the FT-710), it
-keeps that and the phone says what it set.
+The **Radio** tab (on phones and tablets) gathers the controls you would reach for on the radio's front panel:
 
-- It only changes the power setting. It never keys the radio, and it is not allowed while a transmission is on the
-  air (as with band changes).
-- It needs a radio connected by CAT that reports its power. With an audio-only (VOX) radio the section does not show.
-- On the FT-710 it needs Hamlib 4.6 or newer, which the Windows installer includes. Older Hamlib releases (such as
-  the one many Linux distributions package) scale the FT-710's power wrongly, so Costas leaves power control off
-  there rather than send the wrong power.
+![The Radio tab](images/phone-radio.png){ width="320" }
 
+- **Power**: the radio's power setting, the same as the power in the desk's bottom bar. Type a power and press
+  **Use**, or step it with **−5** and **+5**. Anything from 1 W up to the radio's maximum is accepted; anything
+  outside that is refused, not rounded. Going up to three quarters of the maximum or more asks first. If the radio
+  has its own minimum (5 W on the FT-710), it keeps that and the phone says what it set.
+- **Tune**: the same as Tune on the desk. It starts the radio's own antenna tuner, or sends a steady tone for up to
+  10 seconds when the radio has none, under all the usual transmit checks (band edges, clock, radio errors). Tap
+  **Stop tune** to end it sooner. It waits while you are calling CQ or in a contact. This is the only control on the
+  tab that transmits.
+- **Antenna tuner**: puts the radio's tuner in line or bypasses it. Switching it does not start a tune.
+- **Meters**: power out, ALC and SWR, live while you transmit and held from the last transmission afterwards, with
+  the same warnings as the desk.
+- **Receive**: AF gain (speaker volume), RF gain, preamp, attenuator and AGC.
+- **Noise**: noise blanker and noise reduction. DSP noise reduction can hide weak FT8 signals, so leave it off unless
+  the band is noisy.
+
+Only what your radio reports over CAT is shown: Costas asks Hamlib which settings the radio can read and change, and
+leaves the rest out. With an audio-only (VOX) radio only Tune and the meters show. Settings are read from the radio
+every few seconds while a phone has the tab open, and not at all otherwise.
+
+- Changing a setting never keys the radio, and nothing changes while a transmission is on the air.
+- Power control on the FT-710 needs Hamlib 4.6 or newer, which the Windows installer includes. Older Hamlib releases
+  (such as the one many Linux distributions package) scale the FT-710's power wrongly, so Costas leaves power control
+  off there rather than send the wrong power. The same old releases cannot set the FT-710's RF gain.
+- Turning the radio itself on or off is not offered: once it is off, there is no dependable way to turn it back on
+  from the phone.
 
 Settings, editing the log and the waterfall stay on the desk. Opening a station's details or switching tabs does not
-take control; calling, answering, band, offset and power changes do.
+take control; calling, answering, Tune, and band, offset, power and radio setting changes do. Opening the Radio tab does not.
 
 ## Who is in control
 

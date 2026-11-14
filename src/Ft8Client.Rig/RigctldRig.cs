@@ -412,6 +412,81 @@ public sealed class RigctldRig : IRig
         }
     }
 
+    private RigCapabilities? _caps;
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RigControlValue>> ReadControlsAsync(CancellationToken ct)
+    {
+        // The meter connection, as the power reads: a PTT command must never wait behind these.
+        var m = _meters;
+        if (m is null || !ProcessRunning) return [];
+        try
+        {
+            var caps = _caps ??= await ReadCapabilitiesAsync(m, ct).ConfigureAwait(false);
+            if (caps is null) return [];
+            var list = new List<RigControlValue>();
+            foreach (var c in Enum.GetValues<RigControl>())
+            {
+                if (!caps.Supports(c)) continue;
+                var name = RigCapabilities.HamlibName(c);
+                int? value;
+                if (RigCapabilities.IsFunction(c))
+                {
+                    value = await m.GetFuncAsync(name, ct).ConfigureAwait(false) is { } on ? (on ? 1 : 0) : null;
+                }
+                else
+                {
+                    var v = await m.GetLevelAsync(name, ct).ConfigureAwait(false);
+                    value = v is null ? null : c is RigControl.AfGain or RigControl.RfGain
+                        ? (int)Math.Round(Math.Clamp(v.Value, 0, 1) * 100)
+                        : (int)Math.Round(v.Value);
+                }
+                if (value is { } x) list.Add(new RigControlValue(c, x, caps.Options(c)));
+            }
+            return list;
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return [];
+        }
+    }
+
+    // \dump_caps lists what the driver reads and sets; it is read once, as it depends only on the radio model.
+    private static async Task<RigCapabilities?> ReadCapabilitiesAsync(RigctldClient m, CancellationToken ct)
+    {
+        var r = await m.SendAsync("\\dump_caps", ct).ConfigureAwait(false);
+        return r.Ok ? RigCapabilities.Parse(k => r[k]) : null;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> SetControlAsync(RigControl control, int value, CancellationToken ct)
+    {
+        var m = _meters;
+        if (m is null || !ProcessRunning || _caps is not { } caps || !caps.Supports(control)) return false;
+        var options = caps.Options(control);
+        var ok = control switch
+        {
+            RigControl.AfGain or RigControl.RfGain => value is >= 0 and <= 100,
+            RigControl.Preamp or RigControl.Attenuator or RigControl.Agc => options.Contains(value),
+            _ => value is 0 or 1,
+        };
+        if (!ok) return false;
+        var name = RigCapabilities.HamlibName(control);
+        var command = RigCapabilities.IsFunction(control)
+            ? $"U {name} {value}"
+            : control is RigControl.AfGain or RigControl.RfGain
+                ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"L {name} {value / 100.0:0.###}")
+                : string.Create(System.Globalization.CultureInfo.InvariantCulture, $"L {name} {value}");
+        try
+        {
+            return (await m.SendAsync(command, ct).ConfigureAwait(false)).Ok;
+        }
+        catch (Exception ex) when (ex is RigException or ObjectDisposedException)
+        {
+            return false;
+        }
+    }
+
     /// <inheritdoc />
     public async Task SetSplitAsync(bool on, long txHz, CancellationToken ct)
     {

@@ -30,7 +30,9 @@ public sealed class RemoteControl
     private readonly Action<string> _saveTokens;
     private readonly IRemoteTuning? _tuning;
     private readonly RadioPowerService? _power;
+    private readonly RadioControlsService? _controls;
     private readonly ConcurrentDictionary<string, string> _viewing = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, bool> _radioViewers = new(StringComparer.Ordinal);
     private readonly object _gate = new();
 
     /// <summary>Lowest Tx offset the phone can set, as on the desk.</summary>
@@ -46,12 +48,14 @@ public sealed class RemoteControl
     /// <param name="saveTokens">Saves the paired phones (to the OS credential store).</param>
     /// <param name="tuning">Band and Tx offset changes; without it the phone cannot change them.</param>
     /// <param name="power">The radio's power setting; without it the phone cannot change it.</param>
+    /// <param name="controls">The radio's receive and tuner settings; without them the Radio tab shows only Tune and meters.</param>
     public RemoteControl(IRemoteTarget target, IClock clock, DeviceTokens tokens, Action<string> saveTokens,
-                         IRemoteTuning? tuning = null, RadioPowerService? power = null)
+                         IRemoteTuning? tuning = null, RadioPowerService? power = null, RadioControlsService? controls = null)
     {
         _target = target;
         _tuning = tuning;
         _power = power;
+        _controls = controls;
         _clock = clock;
         Tokens = tokens;
         _saveTokens = saveTokens;
@@ -134,6 +138,14 @@ public sealed class RemoteControl
             else _viewing[deviceId] = shown;
             return null;
         }
+        if (cmd.Type == "radioView")
+        {
+            // Looking at the Radio tab changes nothing either; it only asks the station to read the radio's settings.
+            if (cmd.On == true) _radioViewers[deviceId] = true;
+            else _radioViewers.TryRemove(deviceId, out _);
+            if (cmd.On == true && _controls is not null) _ = _controls.RefreshAsync();
+            return null;
+        }
         var call = cmd.Call?.Trim().ToUpperInvariant() ?? string.Empty;
         // A message the station cannot act on changes nothing: it must not take control or reset the Tx watchdog.
         if (!Understood(cmd, call)) return "The station did not understand that.";
@@ -193,6 +205,19 @@ public sealed class RemoteControl
             case "power" when cmd.Watts is { } watts:
                 // Only the setting changes, never PTT; refused while transmitting, like a band change.
                 return _power is null ? "The station cannot change that from the phone." : await _power.SetAsync(watts).ConfigureAwait(false);
+            case "tune":
+                // The desk's Tune button: a deliberate tap starts the radio's tuner (or a tone with the Tune limit),
+                // under every transmit guard; a second tap stops it.
+                if (TuneState.Tuning(_target.Snapshot, now))
+                {
+                    await _target.HaltAsync(null).ConfigureAwait(false);
+                    return null;
+                }
+                return await _target.TuneAsync(ViewModels.MainViewModel.TuneSeconds).ConfigureAwait(false);
+            case "radio" when cmd.Value is { } value:
+                // Only the setting changes, never PTT; refused while transmitting.
+                if (_controls is null || RemoteRadioBuilder.Parse(cmd.Control) is not { } control) return "The station cannot change that from the phone.";
+                return await _controls.SetAsync(control, value).ConfigureAwait(false);
             default:
                 return "The station did not understand that.";
         }
@@ -205,6 +230,8 @@ public sealed class RemoteControl
         "jump" => cmd.Step is not null,
         "offset" => cmd.Hz is not null,
         "power" => cmd.Watts is not null,
+        "tune" => true,
+        "radio" => cmd.Value is not null && cmd.Control is { Length: > 0 },
         "macro" => cmd.Key is not null,
         _ => false,
     };
@@ -232,6 +259,19 @@ public sealed class RemoteControl
         await _tuning.SetBandAsync(band, mode).ConfigureAwait(false);
         return null;
     }
+
+    /// <summary>True while a phone has its Radio tab open, so the radio's settings are worth reading.</summary>
+    public bool RadioWanted => !_radioViewers.IsEmpty;
+
+    /// <summary>A phone's connection closed: it is no longer looking at anything.</summary>
+    public void Closed(string deviceId)
+    {
+        _radioViewers.TryRemove(deviceId, out _);
+    }
+
+    /// <summary>The Radio tab: Tune, the meters and the radio's settings.</summary>
+    public RemoteRadio RadioFor(SessionSnapshot s) =>
+        RemoteRadioBuilder.Build(s, _clock.UtcNow, _controls?.Controls ?? [], _controls?.CanChange ?? !s.Transmitting, _power?.Power?.MaxWatts);
 
     /// <summary>The radio's power as the phone shows it, or null when the radio does not report it.</summary>
     public RemotePower? PowerFor() => _power?.Power is { } p ? new RemotePower(p.Watts, p.MaxWatts, _power.CanChange) : null;

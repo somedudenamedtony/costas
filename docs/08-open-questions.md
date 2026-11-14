@@ -134,6 +134,18 @@ Hamlib's own scaling plus the read-back. With Hamlib 4.6.5 built from source, th
 power2mW of 1.0 gives 100000 mW, and `L RFPOWER 0.25` sends `PC025;`, so the FT-710 is right there. Not yet tried on the
 real FT-710.
 
+Radio settings from the phone (2026-11-09, Hamlib 4.6.5 source `rigs/yaesu/ft710.c`, `ft710.h`, `newcat.c`, and
+Ubuntu's 4.5.5 `rigctld -m 1049` against the FT-710 CAT emulator): the FT-710 backend reads and sets AF (`AG0`, 0 to 255
+as 0 to 1), RF (`RG0`), PREAMP (`PA0`, 0 = IPO, 10 dB = AMP 1, 20 dB = AMP 2), ATT (`RA0`, 6/12/18 dB), AGC (`GT0`; set
+OFF/FAST/MEDIUM/SLOW/AUTO, and reads `GT04` to `GT06`, auto-fast/mid/slow, all as AUTO) and the functions NB (`NB0`),
+NR (`NR0`) and TUNER (`AC001` in line, `AC000` bypassed; reading `AC` looks at the third digit, so it reads 0 while
+`AC003` tunes). `\dump_caps` lists them under "Get level", "Set level", "Get functions" and "Set functions", with the
+steps on the "Preamp", "Attenuator" and "AGC levels" lines; Costas only offers a setting the driver both reads and
+sets. Seen against the emulator with 4.5.5: `L PREAMP 20` sends `PA02;`, `L ATT 12` `RA02;`, `L AGC 3` `GT03;`,
+`U NB 1` `NB01;`, `U TUNER 1` `AC001;`, `L AF 0.3` `AG0077;`. 4.5.5 sends `L RF` for the FT-710 without its
+terminator (`RG` then nothing, `RPRT -5`); 4.6.5 sends `RG0nnn;`. Hamlib also has `set_powerstat` for the FT-710
+(`PS0`/`PS1`), not used: turning the radio on over CAT is not dependable once it is off. Not yet tried on the real radio.
+
 Other notes from M2:
 
 - 60 m transmit limits in `frequencies.json` use the ITU WRC-15 range 5351.5 to 5366.5 kHz. Checked 2026-10-31: the FCC opened 5351.5-5366.5 kHz to US General class and up on 13 February 2026 (ARRL news, FCC 25-60), at most 9.15 W ERP and 2.8 kHz; the channels at 5332, 5348, 5373 and 5405 kHz stay (100 W ERP) and the 5358.5 kHz channel is gone. Settings › Transmitting › "US data segments only" (on by default) also keeps transmissions inside the 97.305(c) data segments read from eCFR the same day (`UsDataSegments`). Power is not limited by Costas.
