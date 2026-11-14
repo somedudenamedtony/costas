@@ -32,7 +32,7 @@ public sealed record ContactView(string DxCall, string? DxGrid, ContactFlow Flow
         ContactOutcome.Watchdog => "Stopped by watchdog",
         ContactOutcome.Abandoned => "Abandoned",
         ContactOutcome.AnsweredOther => "In another contact",
-        _ => Logged ? "Logged" : ReportReceived is null && Steps.Count(s => !s.Mine && s.State == StepState.Done) == 0 ? "Calling" : "Contact in progress",
+        _ => Logged ? "Logged" : ReportReceived is null && ExchangeReceived is null && Steps.Count(s => !s.Mine && s.State == StepState.Done) == 0 ? "Calling" : "Contact in progress",
     };
 
     /// <summary>The slot parity I transmit in during this contact.</summary>
@@ -43,6 +43,12 @@ public sealed record ContactView(string DxCall, string? DxGrid, ContactFlow Flow
     /// after a mode change); null for the current mode.
     /// </summary>
     public Mode? Mode { get; init; }
+
+    /// <summary>In a contest, my exchange once sent (such as <c>579 UT</c>); otherwise null.</summary>
+    public string? ExchangeSent { get; init; }
+
+    /// <summary>In a contest, their exchange once received; otherwise null.</summary>
+    public string? ExchangeReceived { get; init; }
 
     /// <summary>True while the operator has stopped transmitting but kept the contact (first Esc).</summary>
     public bool Held { get; init; }

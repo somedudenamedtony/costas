@@ -82,6 +82,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         };
         Awards.SetDxpeditions(host.Dxpeditions.Current);
         host.Dxpeditions.Changed += cal => Dispatch(() => Awards.SetDxpeditions(cal));
+        Contest = new ContestViewModel(this, () => host.Clock.UtcNow);
         StationDetailsViewModel.HeardHistory = (call, key) =>
         {
             _ = heard.RefreshIfOlderThan(HeardHistoryService.MaxAge);
@@ -182,6 +183,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>Awards view.</summary>
     public AwardsViewModel Awards { get; }
+
+    /// <summary>Contest view (its tab shows only while a contest is picked).</summary>
+    public ContestViewModel Contest { get; }
+
+    /// <summary>The number of views the tab keys step through: the Contest view is the sixth while a contest is picked.</summary>
+    public int TabCount => Contest.Visible ? 6 : 5;
 
     /// <summary>The host (for dialogs).</summary>
     public AppHost Host => _host;
@@ -475,8 +482,11 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         var tonight = TonightRows(s);
         Operate.Units = SettingsMapper.Units(_host.Settings.Current);
         Operate.Ranking = SettingsMapper.ToRanking(_host.Settings.Current);
-        Operate.ShowCqModifier(_host.Settings.Current.Operating.CqModifier);
+        Operate.ShowCqModifier(_host.Settings.Current.Operating.CqModifier, SettingsMapper.ContestOf(_host.Settings.Current.Operating.Contest));
         Operate.Apply(s, tonight.Rows, tonight.Total);
+        Contest.Apply(s.Contest, s.Band);
+        // Ending the contest hides its tab: go back to Operate rather than show an empty view.
+        if (!Contest.Visible && Tab == 5) Tab = 0;
         Reach.ApplyNeighbours(s.Neighbours, s.Band, _host.Settings.Current.PskReporter is { FeedEnabled: true, CompareNeighbours: true });
         BarShowsCqAndSlot = ShowCqAndSlotInBar(Tab);
         FillLookups(s);
@@ -620,7 +630,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>False on the Operate view, whose contact card always has Call CQ and the countdown.</summary>
     public static bool ShowCqAndSlotInBar(int tab) => tab != 0;
 
-    private static readonly string[] TabNames = ["operate", "raw_decodes", "reach", "log", "awards"];
+    private static readonly string[] TabNames = ["operate", "raw_decodes", "reach", "log", "awards", "contest"];
 
     partial void OnTabChanged(int value)
     {
@@ -882,14 +892,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     /// <summary>How long a Tune tone lasts unless stopped sooner (the Tune watchdog).</summary>
     public const double TuneSeconds = 10;
 
-    // A Tune tone on the air, or the radio's own tuner started by Tune and not yet past the Tune limit.
-    private bool Tuning(SessionSnapshot s) => s.TransmittingMessage == Session.TuneMessage || s.RigTuningUntilUtc > _host.Clock.UtcNow;
+    private bool Tuning(SessionSnapshot s) => TuneState.Tuning(s, _host.Clock.UtcNow);
 
     private void UpdateTune(SessionSnapshot s)
     {
-        var tuning = Tuning(s);
-        TuneText = tuning ? "Stop tune" : "Tune";
-        CanTune = tuning || (!s.Transmitting && !s.CallingCq && s.Contact is not { Outcome: ContactOutcome.InProgress });
+        TuneText = Tuning(s) ? "Stop tune" : "Tune";
+        CanTune = TuneState.CanTune(s, _host.Clock.UtcNow);
     }
 
     /// <summary>
@@ -912,8 +920,75 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     public void SetCqModifier(string modifier)
     {
         Activity();
-        if (_host.Settings.Current.Operating.CqModifier == modifier) return;
-        _host.Settings.Update(s => s.Operating.CqModifier = modifier);
+        var o = _host.Settings.Current.Operating;
+        if (o.CqModifier == modifier && o.Contest.Length == 0) return;
+        // Picking a plain modifier ends a contest: everything goes back to the standard exchange.
+        _host.Settings.Update(s =>
+        {
+            s.Operating.CqModifier = modifier;
+            s.Operating.Contest = string.Empty;
+        });
+    }
+
+    /// <summary>Raised to ask for my exchange before a contest starts (the contest to start).</summary>
+    public event Action<Core.Contests.ContestId>? ContestExchangeNeeded;
+
+    /// <inheritdoc />
+    public void SetContest(Core.Contests.ContestId contest)
+    {
+        Activity();
+        if (Core.Contests.ContestInfo.Of(contest) is not { } info)
+        {
+            _host.Settings.Update(s => s.Operating.Contest = string.Empty);
+            return;
+        }
+        var o = _host.Settings.Current;
+        var saved = o.Operating.ContestExchanges.GetValueOrDefault(contest.ToString());
+        // Asked once: a saved exchange that can still be sent starts the contest at once.
+        if (info.Exchange != Core.Contests.ContestExchangeKind.Grid && (saved is null || Core.Contests.ContestExchange.Problem(info, saved, o.Profile.Grid) is not null))
+        {
+            ContestExchangeNeeded?.Invoke(contest);
+            return;
+        }
+        StartContest(contest, saved ?? string.Empty);
+    }
+
+    /// <summary>Starts (or carries on) a contest with my exchange. Picking it again within four days carries on the same log.</summary>
+    public void StartContest(Core.Contests.ContestId contest, string exchange)
+    {
+        var name = contest.ToString();
+        var now = DateTime.UtcNow;
+        _host.Usage.Track("contest_start", "contest", name);
+        _host.Settings.Update(s =>
+        {
+            s.Operating.Contest = name;
+            s.Operating.ContestExchanges[name] = Core.Contests.ContestExchange.Tidy(exchange);
+            if (s.Operating.ContestSinceFor != name || s.Operating.ContestSinceUtc is not { } since || now - since > TimeSpan.FromDays(4))
+            {
+                s.Operating.ContestSinceUtc = now;
+                s.Operating.ContestSinceFor = name;
+            }
+        });
+    }
+
+    /// <inheritdoc />
+    public void ChangeContestExchange()
+    {
+        if (SettingsMapper.ContestOf(_host.Settings.Current.Operating.Contest) is var id && id != Core.Contests.ContestId.None)
+            ContestExchangeNeeded?.Invoke(id);
+    }
+
+    /// <summary>Raised to save the Cabrillo text: suggested file name and the text.</summary>
+    public event Action<string, string>? CabrilloReady;
+
+    /// <inheritdoc />
+    public void ExportCabrillo()
+    {
+        if (_host.Session.Snapshot.Contest is not { } c) return;
+        var s = _host.Settings.Current;
+        var text = Core.Contests.CabrilloLog.Write(c.Info, s.Profile.Callsign.Trim().ToUpperInvariant(), c.MyExchange, s.Profile.PowerWatts, c.Score,
+            $"Costas {Core.AppInfo.Version}");
+        CabrilloReady?.Invoke($"{s.Profile.Callsign.Trim().ToUpperInvariant().Replace('/', '-')}-{c.Info.CabrilloName}.log", text);
     }
 
     /// <summary>Halt Tx: always enabled.</summary>

@@ -52,6 +52,12 @@ public interface IRemoteTarget
     /// <summary>Abandons the contact.</summary>
     Task AbandonAsync();
 
+    /// <summary>
+    /// Tune: starts the radio's own tuner, or a steady tone for up to <paramref name="seconds"/> when it has none, under
+    /// the same guards as any transmission. Returns why it was refused, or null.
+    /// </summary>
+    Task<string?> TuneAsync(double seconds);
+
     /// <summary>Halts transmit, with a reason for the bottom bar when the operator did not ask for it.</summary>
     Task HaltAsync(string? reason);
 

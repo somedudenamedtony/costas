@@ -959,6 +959,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial string AwayUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The Tailscale command that lets the home address work away from home too (a subnet route to this computer
+    /// alone), so one home-screen icon works everywhere; blank unless this computer has a home and a Tailscale address.
+    /// </summary>
+    [ObservableProperty]
+    public partial string OneIconCommand { get; set; } = string.Empty;
+
     private bool _remoteLoaded;
 
     // Turning the mobile connection on or off takes effect at once, so the address appears without saving and
@@ -986,6 +993,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         RemoteRunning = r.Running;
         var urls = r.Urls();
         AwayUrl = r.AwayUrls() is [var away, ..] ? away : string.Empty;
+        OneIconCommand = AwayUrl.Length > 0 && urls.Count > 0 && Uri.TryCreate(urls[0], UriKind.Absolute, out var home)
+            ? $"tailscale set --advertise-routes={home.Host}/32"
+            : string.Empty;
         PhoneUrl = urls.Count > 0 ? urls[0] : $"this computer's address, port {_host.Settings.Current.Remote.Port}";
         PhoneOtherUrls = urls.Count > 1 ? "If that does not open, try " + string.Join(" or ", urls.Skip(1)) : string.Empty;
         RemoteStatus = r.Problem is { } p ? p

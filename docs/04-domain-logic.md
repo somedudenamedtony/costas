@@ -118,7 +118,7 @@ If PSK Reporter is unavailable, chance is computed from S's SNR alone: Good at -
 
 ## 6. Ranking
 
-A station is **callable** when all hold: state is `CallingCq` (or, with "Only stations calling CQ" off, also `Finishing`); it was decoded in its most recent own-parity slot, or (owner request 2026-10-11) its latest message was a CQ and it was decoded within the operator's "Keep CQ callers listed" time (Ranking setting, default 2 minutes; 0 keeps the old rule); its call is resolved; its CQ modifier does not exclude me. A continent or country modifier that is not mine excludes me. I may answer `CQ DX` only if the caller is in a different entity from mine. Activity modifiers such as `POTA` and `SOTA` do not exclude. Contest modifiers (`TEST`, `CONT`, `RU`, `FD`, `WFD`, `ARRL`, `WW`, `WPX`, `VHF`) make the station not callable (owner decision 2026-10-12): it expects a contest exchange the standard contact cannot send, so it waits in Watching as "Contest (CQ RU), needs an exchange".
+A station is **callable** when all hold: state is `CallingCq` (or, with "Only stations calling CQ" off, also `Finishing`); it was decoded in its most recent own-parity slot, or (owner request 2026-10-11) its latest message was a CQ and it was decoded within the operator's "Keep CQ callers listed" time (Ranking setting, default 2 minutes; 0 keeps the old rule); its call is resolved; its CQ modifier does not exclude me. A continent or country modifier that is not mine excludes me. I may answer `CQ DX` only if the caller is in a different entity from mine. Activity modifiers such as `POTA` and `SOTA` do not exclude. Contest modifiers (`TEST`, `CONT`, `RU`, `FD`, `WFD`, `ARRL`, `WW`, `WPX`, `VHF`) make the station not callable (owner decision 2026-10-12): it expects a contest exchange the standard contact cannot send, so it waits in Watching as "Contest (CQ RU): pick it beside Call CQ to work it". While a contest is picked (section 7, Flow C) its own modifier, and `TEST` or `CONT`, are callable; the others still wait.
 
 A **Fox** (a station heard sending a multi-answer message `CALL1 RR73; CALL2 <FOX> ±NN`, or two different messages in one slot at least 50 Hz apart, its streams; see `FoxSigns`) is callable whenever it was decoded in its latest own slot, whatever it is doing, and Doing now reads "DXpedition (Fox/Hound), working Hounds". Calling it starts a Hound contact (flow H).
 
@@ -183,6 +183,44 @@ A Fox/Hound DXpedition is worked as a Hound with no mode to switch (owner decisi
 - A Fox's report that arrives after calling stopped goes to "Waiting for you"; answering it sends the R-report on the Fox's frequency.
 - The quick decode in a Hound contact covers 100 Hz up to 1000 Hz (or the Fox's offset plus 100 Hz if higher), since the Fox answers on any of its streams. The full decode still covers the whole band, so the rest of the screen stays live.
 - SuperHound (SuperFox) is not supported yet: the SuperFox signal needs WSJT-X's SuperFox decoder, which `jt9` runs only when started through shared memory (`08-open-questions.md`, V19).
+
+### Flow C: contests (owner decision 2026-11-07)
+
+The operator picks one of four contests from the CQ modifier menu beside Call CQ: ARRL RTTY Roundup (`CQ RU`), ARRL Field Day (`CQ FD`), WW Digi (`CQ WW`) and ARRL Digi (`CQ TEST`, as WSJT-X sends for ARRL Digi). Picking a plain modifier, or End contest, goes back to flows A and B. My exchange is asked once per contest and saved; the contest log runs from when the contest was first picked and carries on if it is picked again within 4 days. Message formats and the sequence follow WSJT-X (`lib/77bit/packjt77.f90` for the type 0.3/0.4 Field Day and type 3 Roundup messages; `widgets/mainwindow.cpp` for the contest sequence), read on 2026-11-07 and checked against `ft8code` (vectors in `tests/Ft8Client.Core.Tests/Vectors`).
+
+| Contest | My exchange | Example |
+| --- | --- | --- |
+| RTTY Roundup | Report and state/province, or a serial number outside the US and Canada | `K1ABC W7LIT 559 UT`, `K1ABC DL1ABC R 559 0012` |
+| Field Day | Class and ARRL/RAC section | `K1ABC W7LIT 1D UT` |
+| WW Digi, ARRL Digi | 4-character grid | `K1ABC W7LIT DN40` |
+
+The Roundup report is made from the SNR as WSJT-X makes it: `5`, then `(SNR + 36) / 6` held to 2..9, then `9`.
+
+Answering a contest CQ:
+
+| Step | Who | Message | Advance when |
+| --- | --- | --- | --- |
+| 1 | Me | `DX ME EXCH` | Their `R EXCH` to me |
+| 2 | DX | `ME DX R EXCH` | — |
+| 3 | Me | `DX ME RR73`, then the contact is logged | — |
+| 4 | DX | `ME DX 73` (optional) | — |
+
+Calling a contest CQ:
+
+| Step | Who | Message | Advance when |
+| --- | --- | --- | --- |
+| 1 | Me | `CQ RU ME GRID` | A caller's exchange to me |
+| 2 | DX | `ME DX EXCH` | — |
+| 3 | Me | `DX ME R EXCH` | `RR73` to me |
+| 4 | DX | `ME DX RR73`, then the contact is logged | — |
+| 5 | Me | `DX ME 73`, once | — |
+
+- A repeated exchange gets my matching reply again; a repeated `R EXCH` after my `RR73` gets one more `RR73`, with no second log entry.
+- A Fox is still worked as flow H, even during a contest.
+- If my exchange cannot be sent exactly (empty, not a state, not a Field Day class and section, no grid), Call CQ, Call and Answer are refused with the reason, as rule 4 asks.
+- A DX Roundup entry sends a serial number that starts at 1 and goes up by one for each contact logged in the contest.
+- Ranking during a contest: a station not yet worked in this contest on this band stays in line even if worked before, a new multiplier goes to the top of its bucket with a "New mult" tag, and a station already worked in the contest on the band moves to Worked as a dupe.
+- Every contest contact goes into the normal log too, with `CONTEST_ID`, `STX_STRING`, `SRX_STRING` and, where they apply, `STX`/`SRX`, `CLASS` and `ARRL_SECT`. The Contest view exports the contest log as Cabrillo 3.0 (dupes included, as the sponsors ask). Scoring rules are in `08-open-questions.md`.
 
 ### Rules
 

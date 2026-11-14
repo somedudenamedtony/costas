@@ -118,6 +118,7 @@ public sealed class Transmitter
         ArgumentNullException.ThrowIfNull(guard);
         if (DisabledReason is not null) return DisabledReason;
         if (!guard.AudioReady || _output is null) return "No audio output device is open; transmitting is disabled.";
+        if (SilencedText() is { } silent) return silent;
         if (guard.RigFault is not null) return $"Radio fault: {guard.RigFault}";
         if (!_frequencies.TransmitAllowed(guard.Band, mode, guard.DialHz, offsetHz, widthHz, out var bandWhy)) return bandWhy;
         lock (_gate)
@@ -240,6 +241,11 @@ public sealed class Transmitter
         if (_outputFault is { } dead)
         {
             refusal = OutputDeadText(dead);
+            return null;
+        }
+        if (SilencedText() is { } silent)
+        {
+            refusal = silent;
             return null;
         }
         if (guard.RigFault is not null)
@@ -500,6 +506,7 @@ public sealed class Transmitter
         if (DisabledReason is not null) return DisabledReason;
         if (!guard.AudioReady || _output is null) return "No audio output device is open.";
         if (_outputFault is { } dead) return OutputDeadText(dead);
+        if (SilencedText() is { } silent) return silent;
         if (guard.RigFault is not null) return $"Radio fault: {guard.RigFault}";
         if (!_frequencies.TransmitAllowed(guard.Band, Mode.Ft8, guard.DialHz, offsetHz, out var why)) return why;
         var n = (int)(seconds * _output.SampleRate);
@@ -558,6 +565,12 @@ public sealed class Transmitter
         if (Transmitting) _ = AbortAsync($"Audio output fault during transmission: {why}");
         else Fault?.Invoke(OutputDeadText(why));
     }
+
+    // Keying the radio with the output muted puts nothing on the air and looks like a broken radio: refuse and say why.
+    private string? SilencedText() => _output?.Silenced is { } why
+        ? $"Not sent: the audio output device in Settings > Audio is silenced ({why}), so the radio would get no audio. "
+          + "Unmute it and set its volume to 100 in Windows sound settings."
+        : null;
 
     private static string OutputDeadText(string why) =>
         $"The audio output stopped ({why}). Costas opens it again when the device is back, for a radio's USB audio when the radio is on.";

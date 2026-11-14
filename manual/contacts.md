@@ -85,7 +85,8 @@ first.
 
 To call a part of the world, pick it in the dropdown beside **Call CQ**: **CQ** for everyone, **CQ DX** for stations
 outside your country, **CQ NA**, **CQ EU** and the other continents, or **CQ POTA**. It applies from your next CQ,
-and is the same setting as **Settings › Transmitting › CQ**.
+and is the same setting as **Settings › Transmitting › CQ**. The bottom of the same dropdown starts a
+[contest](contests.md), which changes the exchange as well as the CQ.
 
 When someone answers, Costas starts the contact with the first caller. Anyone else who calls you meanwhile waits in
 the **Calling you** bar.

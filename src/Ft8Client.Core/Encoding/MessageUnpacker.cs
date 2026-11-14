@@ -28,7 +28,9 @@ public static class MessageUnpacker
         return i3 switch
         {
             0 when n3 == 0 => UnpackFree(payload),
+            0 when n3 is 3 or 4 => ContestPacker.UnpackFieldDay(payload, n3),
             1 or 2 => UnpackStandard(payload, i3, known),
+            3 => ContestPacker.UnpackRoundup(payload),
             4 => UnpackNonstandard(payload, known),
             _ => null,
         };
@@ -48,7 +50,7 @@ public static class MessageUnpacker
         return extra.Length == 0 ? $"{a} {b}" : $"{a} {b} {extra}";
     }
 
-    private static string? Unpack28(uint n28, int ip, int i3, List<string> known)
+    internal static string? Unpack28(uint n28, int ip, int i3, List<string> known)
     {
         if (n28 < MessagePacker.NTokens)
         {

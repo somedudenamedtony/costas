@@ -11,7 +11,8 @@ namespace Ft8Client.App.Remote;
 /// <summary>A message from the remote page.</summary>
 /// <param name="Type">
 /// "ping", "call", "answer", "answerAfter", "dismiss" (take a caller off Calling you), "cq", "resend", "logNow", "jump", "abandon", "halt", "band", "offset",
-/// "offsetAuto", "macro" (PSK and RTTY), "power", or "show" (open a station's details; blank call closes them).
+/// "offsetAuto", "macro" (PSK and RTTY), "power", "tune" (start or stop Tune), "radio" (change a radio setting),
+/// "radioView" (the phone opened or closed its Radio tab) or "show" (open a station's details; blank call closes them).
 /// </param>
 /// <param name="Call">The station, for call, answer and show.</param>
 /// <param name="Step">The step index, for jump.</param>
@@ -20,5 +21,8 @@ namespace Ft8Client.App.Remote;
 /// <param name="Hz">The Tx offset in hertz, for offset.</param>
 /// <param name="Key">The function key, 1 for F1, for macro.</param>
 /// <param name="Watts">The radio's power setting in watts, for power.</param>
+/// <param name="Control">The setting, "preamp", for radio.</param>
+/// <param name="Value">Its new value, for radio.</param>
+/// <param name="On">True when the Radio tab opened, for radioView.</param>
 public sealed record RemoteCommand(string Type, string? Call = null, int? Step = null, string? Band = null, string? Mode = null, int? Hz = null,
-                                   int? Key = null, int? Watts = null);
+                                   int? Key = null, int? Watts = null, string? Control = null, int? Value = null, bool? On = null);

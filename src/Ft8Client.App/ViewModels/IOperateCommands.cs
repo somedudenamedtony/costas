@@ -53,6 +53,18 @@ public interface IOperateCommands
     /// <summary>Sets the CQ modifier for my CQs (empty for a plain CQ) and saves it as the setting.</summary>
     void SetCqModifier(string modifier);
 
+    /// <summary>
+    /// Runs a contest (its CQ and exchange), asking for my exchange first when none is saved for it;
+    /// <see cref="Core.Contests.ContestId.None"/> ends the contest.
+    /// </summary>
+    void SetContest(Core.Contests.ContestId contest);
+
+    /// <summary>Opens the exchange dialog for the contest being run.</summary>
+    void ChangeContestExchange();
+
+    /// <summary>Saves the contest log as a Cabrillo file.</summary>
+    void ExportCabrillo();
+
     /// <summary>Abandon the contact.</summary>
     void Abandon();
 

@@ -68,4 +68,12 @@ internal sealed class FakeRemoteTarget : IRemoteTarget
     }
 
     public void SetWatchdogCap(int? minutes) => WatchdogCap = minutes;
+
+    public string? TuneRefusal { get; set; }
+
+    public Task<string?> TuneAsync(double seconds)
+    {
+        Calls.Add("tune " + seconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return Task.FromResult(TuneRefusal);
+    }
 }

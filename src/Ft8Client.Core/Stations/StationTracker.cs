@@ -284,7 +284,7 @@ public sealed class StationTracker
     private static PartnerStage StageOf(MessageKind k) => k switch
     {
         MessageKind.GridReply or MessageKind.Bare => PartnerStage.Grid,
-        MessageKind.Report or MessageKind.RogerReport => PartnerStage.Reports,
+        MessageKind.Report or MessageKind.RogerReport or MessageKind.ContestExchange => PartnerStage.Reports,
         MessageKind.Roger or MessageKind.RogerBye or MessageKind.Bye => PartnerStage.SignOff,
         _ => PartnerStage.Other,
     };

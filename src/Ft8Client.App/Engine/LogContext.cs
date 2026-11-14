@@ -25,5 +25,7 @@ namespace Ft8Client.App.Engine;
 /// <param name="State">DX state from QRZ, if looked up.</param>
 /// <param name="Continent">DX continent.</param>
 /// <param name="Qth">DX city from QRZ, if looked up.</param>
+/// <param name="Contest">The contest the contact was made in, or null.</param>
 public sealed record LogContext(string Band, Mode Mode, long FrequencyHz, string MyCall, string MyGrid, int PowerWatts, NeedResult Need,
-                                string? EntityKey, string? Country, string? Name, string? State, string? Continent, string? Qth = null);
+                                string? EntityKey, string? Country, string? Name, string? State, string? Continent, string? Qth = null,
+                                Core.Contests.ContestInfo? Contest = null);

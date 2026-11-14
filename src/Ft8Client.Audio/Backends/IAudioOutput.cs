@@ -31,4 +31,10 @@ public interface IAudioOutput : IDisposable
 
     /// <summary>Stops playback immediately.</summary>
     void Stop();
+
+    /// <summary>
+    /// Why the operating system would play nothing on this device (muted, or its volume at zero), or null when it plays
+    /// or the backend cannot tell. Samples sent to a silenced device reach the radio as silence: keyed, but no power.
+    /// </summary>
+    string? Silenced => null;
 }

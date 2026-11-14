@@ -108,8 +108,12 @@ blue under the pointer. *Doing now* takes whatever room is left. Next in line an
 resizing one resizes the other and they stay lined up. Watching has its own headings and widths. Double-click an edge
 to put that column back to its usual width. Costas remembers your widths the next time it starts.
 
-A column can't grow past the point where *Doing now* would disappear. If the **Call** buttons are cut off on a small
-window, narrow a wide column such as **Chance** or **Where** to bring them back.
+A column can't grow past the point where *Doing now* would disappear.
+
+On a small window, such as a 13-inch laptop, the **Call** buttons always stay on screen. To make room, the table first
+narrows **Chance** and **Where** (long text ends in "…"; hover for the full reason), then hides *Doing now*,
+**Last worked**, **Signal** and the **#** rank, in that order. **Last heard** is the last to go. Widen the window and
+they come back at the widths you set.
 
 How the order works: stations are grouped by need (new country first), then by chance, then by how well they hear
 you, then by their signal. The **ⓘ** beside the title shows the current rules in one sentence; click it to change
@@ -174,8 +178,8 @@ A DXpedition running Fox/Hound is never here: it is always working someone, so i
 *DXpedition (Fox/Hound), working Hounds*. See [Working a DXpedition](contacts.md#working-a-dxpedition-foxhound).
 
 A station calling CQ in a contest (`CQ RU`, `CQ FD`, `CQ WW`, `CQ TEST` and the like) is listed here as *Contest
-(CQ RU), needs an exchange*. It expects a contest exchange, and Costas only sends the standard one, so it is not
-offered as a station to call.
+(CQ RU): pick it beside Call CQ to work it*. It expects a contest exchange, so it can only be called once you
+[pick that contest](contests.md). While the contest is picked, its stations move into Next in line.
 
 When everyone in Watching is only a new call or a new grid, the list folds to one line, such as *12 needed stations
 busy: 11 new calls, 1 new grid*. **Show all** opens it and **Fold** closes it again; Costas remembers your choice until

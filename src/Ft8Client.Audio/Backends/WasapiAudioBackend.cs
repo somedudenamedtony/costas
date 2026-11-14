@@ -195,6 +195,25 @@ public sealed class WasapiAudioBackend : IAudioBackend
             Volatile.Write(ref _stream, null);
         }
 
+        // Shared mode goes through the Windows mixer, so the device's mute and volume apply to everything played.
+        public string? Silenced
+        {
+            get
+            {
+                try
+                {
+                    var v = _device.AudioEndpointVolume;
+                    if (v.Mute) return "it is muted in Windows";
+                    if (v.MasterVolumeLevelScalar < 0.01f) return "its volume is at 0 in Windows";
+                    return null;
+                }
+                catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException)
+                {
+                    return null;
+                }
+            }
+        }
+
         // Audio thread: plays the current buffer or stream, silence otherwise. Keeps the device open for low start latency.
         public int Read(Span<float> buffer)
         {

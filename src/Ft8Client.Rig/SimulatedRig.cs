@@ -163,6 +163,50 @@ public sealed class SimulatedRig(IClock clock, long frequencyHz = 14_074_000) : 
         }
     }
 
+    /// <summary>
+    /// The receive and tuner settings the simulated radio has, by setting, with the values each accepts (empty for gains
+    /// and switches). An FT-710's by default; clear it for a radio that reports none.
+    /// </summary>
+    public Dictionary<RigControl, (int Value, IReadOnlyList<int> Options)> Controls { get; } = new()
+    {
+        [RigControl.AfGain] = (50, []),
+        [RigControl.RfGain] = (100, []),
+        [RigControl.Preamp] = (0, [0, 10, 20]),
+        [RigControl.Attenuator] = (0, [0, 6, 12, 18]),
+        [RigControl.Agc] = (6, [0, 2, 5, 3, 6]),
+        [RigControl.NoiseBlanker] = (0, []),
+        [RigControl.NoiseReduction] = (0, []),
+        [RigControl.Tuner] = (1, []),
+    };
+
+    /// <summary>Changes made through <see cref="SetControlAsync"/>, in order.</summary>
+    public List<(RigControl Control, int Value)> ControlLog { get; } = [];
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<RigControlValue>> ReadControlsAsync(CancellationToken ct)
+    {
+        lock (_gate)
+        {
+            return Task.FromResult<IReadOnlyList<RigControlValue>>(
+                [.. Controls.OrderBy(c => c.Key).Select(c => new RigControlValue(c.Key, c.Value.Value, c.Value.Options))]);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<bool> SetControlAsync(RigControl control, int value, CancellationToken ct)
+    {
+        lock (_gate)
+        {
+            if (!Controls.TryGetValue(control, out var now)) return Task.FromResult(false);
+            var ok = now.Options.Count > 0 ? now.Options.Contains(value)
+                : control is RigControl.AfGain or RigControl.RfGain ? value is >= 0 and <= 100 : value is 0 or 1;
+            if (!ok) return Task.FromResult(false);
+            Controls[control] = (value, now.Options);
+            ControlLog.Add((control, value));
+            return Task.FromResult(true);
+        }
+    }
+
     /// <inheritdoc />
     public Task SetSplitAsync(bool on, long txHz, CancellationToken ct)
     {

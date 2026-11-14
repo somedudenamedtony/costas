@@ -32,6 +32,12 @@ public sealed record ParsedMessage
     /// <summary>The CQ modifier (<c>DX</c>, <c>NA</c>, <c>POTA</c>, <c>145</c>), if any.</summary>
     public string? CqModifier { get; init; }
 
+    /// <summary>For <see cref="MessageKind.ContestExchange"/>: the exchange after the calls and the R, such as <c>579 MA</c>.</summary>
+    public string? Exchange { get; init; }
+
+    /// <summary>For <see cref="MessageKind.ContestExchange"/>: true when the exchange is preceded by R (theirs, after mine).</summary>
+    public bool Roger { get; init; }
+
     /// <summary>For <see cref="MessageKind.DxpeditionMulti"/>: the second station, which receives the report.</summary>
     public CallToken? To2 { get; init; }
 

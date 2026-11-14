@@ -41,6 +41,13 @@ public enum MessageKind
     /// <summary>Two calls followed by a contest or other exchange the app does not interpret.</summary>
     Exchange,
 
+    /// <summary>
+    /// <c>[TU;] TO FROM [R] EXCH</c>: a contest exchange that FT8 carries: an RTTY Roundup report and state, province or
+    /// serial (<c>579 MA</c>, <c>559 0013</c>), a Field Day class and section (<c>2A EMA</c>), or <c>R GRID4</c>. A plain
+    /// <c>TO FROM GRID4</c> stays <see cref="GridReply"/>. See <see cref="ParsedMessage.Exchange"/>.
+    /// </summary>
+    ContestExchange,
+
     /// <summary>Anything else, up to 13 characters.</summary>
     FreeText,
 }

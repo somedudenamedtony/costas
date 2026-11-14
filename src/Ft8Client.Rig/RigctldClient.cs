@@ -108,6 +108,19 @@ public sealed class RigctldClient : IAsyncDisposable
         return double.TryParse(r.BareValues[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
     }
 
+    /// <summary>Reads an on/off function such as NB (<c>u NAME</c>). Returns null when it is not supported.</summary>
+    public async Task<bool?> GetFuncAsync(string name, CancellationToken ct)
+    {
+        var r = await SendAsync("u " + name, ct).ConfigureAwait(false);
+        if (!r.Ok || r.BareValues.Count == 0) return null;
+        return r.BareValues[0] switch
+        {
+            "1" => true,
+            "0" => false,
+            _ => null,
+        };
+    }
+
     /// <summary>
     /// Converts a power level (0 to 1, as <c>l RFPOWER</c> reads it) to milliwatts for a frequency and mode
     /// (<c>\power2mW</c>; the reply is the echo, <c>Power mW: n</c>, then RPRT). Returns null when the radio's driver
