@@ -70,8 +70,11 @@ public sealed partial class Session
     }
 
     /// <summary>
-    /// Sends typed text: starts an over that stays on the air for more typing (Enter on an empty line or 20 s of
-    /// nothing returns to receive), or adds to the over on the air.
+    /// Sends a typed line (Enter): starts an over, or adds to the over on the air, and returns to receive once the line
+    /// has gone, as a macro does (owner decision 2026-11-14: a typed line held the radio keyed
+    /// on idle for up to 20 s). Keys
+    /// typed while the line is going out keep the over open for more (<see cref="KeyboardTransmitter.Type"/>); then
+    /// Enter on an empty line, Esc or 20 s of nothing returns to receive.
     /// </summary>
     public string? SendText(string text)
     {
@@ -80,7 +83,7 @@ public sealed partial class Session
         lock (_gate)
         {
             if (!KeyboardMode || text.Length == 0) return null;
-            why = QueueAt(text, null, returnToReceive: false, cq: false);
+            why = QueueAt(text, null, returnToReceive: true, cq: false);
             _fault = why;
         }
         Publish();

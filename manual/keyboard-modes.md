@@ -77,9 +77,10 @@ A contact you abandon stays on the card, marked Abandoned, but stops collecting 
 | Esc | Abandons the contact | Stops sending at once; press again to abandon the contact |
 
 These keys work wherever you last clicked on the Operate screen: typing, Space, Backspace and Enter always go to the
-typing line, never to a button. A macro goes back to receive when it has gone out, unless you keep typing. Typed text
-keeps the transmitter on, sending idle between words, until you press Enter on an empty line. Keys typed while an over
-is closing wait in the typing line for your next Enter.
+typing line, never to a button. A macro, or a line you typed and sent with Enter, goes back to receive when it has gone
+out. If you keep typing while it is going out, those keys join the over and the transmitter stays on, sending idle
+between words, until you press Enter on an empty line (or 20 seconds pass with nothing to send). Keys typed while an
+over is closing wait in the typing line for your next Enter.
 
 **Characters.** RTTY sends capitals only, so the typing line shows capitals in RTTY. A character the mode cannot send
 (in RTTY `@ % & * # _ < > [ ] { }` and accented letters; in PSK anything outside plain ASCII) is named in red under
