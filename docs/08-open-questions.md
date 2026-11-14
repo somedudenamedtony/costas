@@ -192,6 +192,18 @@ model 2, FLRig 4, TRXManager 5, ACLog 8, SDR# 9. Each takes its server as `host:
 defaults to `127.0.0.1:4532`, `127.0.0.1:12345`, `127.0.0.1:1003`, `127.0.0.1:1100` and `127.0.0.1:4532`. Setup shows
 the host:port box for these and prefills the default. Not yet tried against a running flrig.
 
+FlexRadio in Hamlib (issue #138, read 2026-11-14 from Hamlib 4.6.5 `rigs/kenwood/flex6xxx.c`, `rigs/kenwood/flex.c`,
+`rigs/flexradio/smartsdr*.c`, `src/rig.c`, and run against Ubuntu's 4.5.5): **FlexRadio 6xxx** (model 2036,
+`RIG_MODEL_F6K`) has `port_type = RIG_PORT_NETWORK` in both releases (`rigctl -m 2036 --dump-caps` says "Port type:
+Network link"). `rig_open` only switches a serial model to network when the path parses as host:port; it never switches
+a network model to serial, so `-r COM5` is opened as a TCP host and no byte reaches the port (checked with a pty
+emulator: the port saw nothing, while TS-2000 on the same pty answered). Hamlib has no default address worth showing for
+it (the generic `127.0.0.1:4532`). **SmartSDR Slice A..H** are models 23005..23012, network only, default
+`127.0.0.1:4992`, and Hamlib refuses `127.0.0.1` for them: the radio's own IP is needed. SmartSDR CAT COM ports answer as
+a Kenwood TS-2000 (model 2014); that is what Setup now points COM port users to. **VERIFY** on a real Flex: TS-2000
+through SmartSDR CAT (PKTUSB may be refused, then Costas falls back to USB), and the TCP port number SmartSDR CAT uses
+for its network ports.
+
 ### Contest rules and formats (read 2026-11-07)
 
 Message formats: WSJT-X `lib/77bit/packjt77.f90` (2.7.0) for ARRL Field Day (i3=0, n3=3 and 4: `n28 n28 R intx nclass isec`, 86 sections) and ARRL RTTY Roundup (i3=3: `tu n28 n28 R rst nexch`, 171 state/province/DX entries or a serial 1..7999), checked by packing with Costas and comparing bit-for-bit against `ft8code` and `ft4code` 2.7.0-rc3 (22 messages added to the vectors). Sequence: WSJT-X `widgets/mainwindow.cpp` (contest Tx messages and auto-sequence), and the Roundup report rule `(SNR+36)/6` from the same file.
