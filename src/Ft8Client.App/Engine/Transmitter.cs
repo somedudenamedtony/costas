@@ -22,12 +22,20 @@ namespace Ft8Client.App.Engine;
 /// Keys the radio and plays pre-rendered audio on the slot clock: PTT at the PttOn mark (Tx start minus the lead),
 /// audio at the TxStart mark, PTT off a 100 ms tail after the audio ends. Any rig or audio fault during a
 /// transmission stops the audio and releases PTT first, then reports. Guards (encoding, band edge, clock, devices)
-/// refuse a transmission before it starts. Slot-thread entry points never wait on I/O.
+/// refuse a transmission before it starts. Audio waits for the radio's answer to the PTT command, so a slow answer
+/// starts the message a little late instead of clipping its start. Slot-thread entry points never wait on I/O.
 /// </summary>
 public sealed class Transmitter
 {
     /// <summary>PTT tail after the audio ends.</summary>
     public static readonly TimeSpan Tail = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>
+    /// How long the radio is given to answer the PTT command before the transmission is given up. Audio never starts
+    /// before the answer: a command that queued behind a radio poll would otherwise put the first symbols into a radio
+    /// that has not keyed yet.
+    /// </summary>
+    public static readonly TimeSpan PttConfirmLimit = TimeSpan.FromSeconds(2);
 
     private readonly object _gate = new();
     private readonly IClock _clock;
@@ -41,9 +49,12 @@ public sealed class Transmitter
     private DateTime? _pttOffDueUtc;
     private DateTime? _lateAudioDueUtc;
     private DateTime? _lateAlignUtc;
+    private DateTime? _answerWaitMarkUtc; // the Tx start mark of a message waiting for the radio's PTT answer
     private TxHold? _hold;
     private DateTime? _lastStartedSlot;
     private bool _ptt;
+    private Task<string?>? _pttOn; // the latest PTT-on command; audio waits for its answer
+    private DateTime _pttOnAtUtc;
     private AudioStream? _stream;
     private DateTime? _streamAudioDueUtc;
     private bool _streamPlaying;
@@ -132,7 +143,7 @@ public sealed class Transmitter
             _ptt = true;
             _streamAudioDueUtc = _clock.UtcNow + pttLead;
         }
-        var ptt = SetPttSafe(true);
+        var ptt = KeyOn();
         // A radio that refuses PTT at once has already halted the over: say why instead of reporting it started.
         if (ptt.IsCompletedSuccessfully && ptt.Result is { } failed) return failed;
         lock (_gate)
@@ -302,6 +313,7 @@ public sealed class Transmitter
             _hold = null;
             _lateAudioDueUtc = null;
             _lateAlignUtc = null;
+            _answerWaitMarkUtc = null;
             if (_current is null && _ptt) _pttOffDueUtc = _clock.UtcNow;
         }
     }
@@ -322,12 +334,20 @@ public sealed class Transmitter
         {
             case SlotMark.PttOn when e.LateBy <= LateStartLimit:
                 lock (_gate) _ptt = true;
-                _ = SetPttSafe(true);
+                KeyOn();
                 break;
             case SlotMark.TxStart when e.LateBy <= LateStartLimit:
                 lock (_gate)
                 {
                     if (!_ptt) return; // PTT was not asserted (fault or too late): do not play
+                    if (!PttAnswered)
+                    {
+                        // The radio has not answered the PTT command yet: Poll starts the audio the moment it does.
+                        _lateAudioDueUtc = _clock.UtcNow;
+                        _lateAlignUtc = null;
+                        _answerWaitMarkUtc = _clock.UtcNow - e.LateBy;
+                        return;
+                    }
                     _next = null;
                     _current = tx;
                     _lastStartedSlot = tx.Plan.SlotStartUtc;
@@ -364,8 +384,9 @@ public sealed class Transmitter
             _ptt = true;
             _lateAudioDueUtc = _clock.UtcNow + pttLead;
             _lateAlignUtc = alignToUtc;
+            _answerWaitMarkUtc = null;
         }
-        _ = SetPttSafe(true);
+        KeyOn();
     }
     /// <summary>Releases PTT when the audio and its tail have finished. Called on the slot thread every millisecond.</summary>
     public void Poll()
@@ -383,15 +404,30 @@ public sealed class Transmitter
                 keyHeld = true;
             }
         }
-        if (keyHeld) _ = SetPttSafe(true);
+        if (keyHeld) KeyOn();
+
+        var unanswered = false;
+        lock (_gate)
+        {
+            unanswered = _ptt && !PttAnswered && _current is null && !_streamPlaying && _clock.UtcNow - _pttOnAtUtc >= PttConfirmLimit;
+        }
+        if (unanswered)
+        {
+            _ = AbortAsync($"Not sent: the radio did not answer the transmit command within {PttConfirmLimit.TotalSeconds:0} s.");
+            return;
+        }
 
         PreparedTx? late = null;
         lock (_gate)
         {
-            if (_lateAudioDueUtc is { } la && _clock.UtcNow >= la && _next is { } n && _ptt)
+            if (_lateAudioDueUtc is { } la && _clock.UtcNow >= la && _next is { } n && _ptt && PttAnswered)
             {
                 _lateAudioDueUtc = null;
                 _next = null;
+                // An answer that took longer than the late-start limit: the message keeps its place in the slot and
+                // the part already past is left out, so it still ends before the next slot begins.
+                if (_lateAlignUtc is null && _answerWaitMarkUtc is { } mark && _clock.UtcNow - mark > LateStartLimit) _lateAlignUtc = mark;
+                _answerWaitMarkUtc = null;
                 if (_lateAlignUtc is { } align)
                 {
                     // Leave out what would already have been sent; nothing left means nothing to send.
@@ -443,7 +479,7 @@ public sealed class Transmitter
             var now = _clock.UtcNow;
             if (_streamAudioDueUtc is { } due)
             {
-                if (now < due || !_ptt) return;
+                if (now < due || !_ptt || !PttAnswered) return;
                 _streamAudioDueUtc = null;
                 _streamPlaying = true;
                 start = _stream;
@@ -476,7 +512,9 @@ public sealed class Transmitter
             _pttOffDueUtc = null;
             _lateAudioDueUtc = null;
             _lateAlignUtc = null;
+            _answerWaitMarkUtc = null;
             _ptt = false;
+            _pttOn = null;
         }
         _output?.Stop();
         await SetPttSafe(false).ConfigureAwait(false);
@@ -529,6 +567,18 @@ public sealed class Transmitter
         _output.Play(tone);
         ToneStarted?.Invoke(tx);
         return null;
+    }
+
+    // Under _gate. True once the radio has answered the latest PTT-on command (or none is outstanding).
+    private bool PttAnswered => _pttOn is null || _pttOn.IsCompleted;
+
+    // Keys the radio and remembers the command, so audio can wait for the radio's answer.
+    private Task<string?> KeyOn()
+    {
+        lock (_gate) _pttOnAtUtc = _clock.UtcNow;
+        var command = SetPttSafe(true);
+        lock (_gate) _pttOn = command;
+        return command;
     }
 
     /// <summary>Sets PTT. When asserting fails, halts and returns why (also raised as <see cref="Fault"/>).</summary>

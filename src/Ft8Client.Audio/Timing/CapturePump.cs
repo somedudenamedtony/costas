@@ -66,6 +66,12 @@ public sealed class CapturePump : IDisposable
     /// <summary>Dropout events (ring buffer overruns) since start.</summary>
     public int Dropouts { get; private set; }
 
+    /// <summary>Times the pump thread caught an error and carried on.</summary>
+    public int Faults { get; private set; }
+
+    /// <summary>The latest error the pump thread caught, or null.</summary>
+    public string? LastFault { get; private set; }
+
     /// <summary>Starts the pump thread.</summary>
     public void Start()
     {
@@ -113,7 +119,18 @@ public sealed class CapturePump : IDisposable
     {
         while (_run)
         {
-            PumpOnce();
+            try
+            {
+                PumpOnce();
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                // A device that vanished mid-read must not end the process (and with it PTT control): the device
+                // recovery loop reopens the input, and the fault is kept for Diagnostics.
+                LastFault = ex.Message;
+                Faults++;
+                Thread.Sleep(200);
+            }
             Thread.Sleep(10);
         }
     }

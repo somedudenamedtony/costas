@@ -78,7 +78,8 @@
         <h2>PSK31, PSK63 and RTTY on the same screen</h2>
         <p>Pick a keyboard mode from the same menu as FT8. Click a trace on the waterfall to read it, type in the
           line at the bottom, and send your name, QTH and 73 from F-key macros. Callsigns in the text land in the
-          station list just like FT8 decodes. Nothing goes out until you press a key.</p>
+          station list just like FT8 decodes. Nothing goes out until you press a key. These modes are a preview: newer
+          and less tried on the air than FT8 and FT4.</p>
         <a class="more" href="{{ 'keyboard-modes/' | url }}">PSK31, PSK63 and RTTY</a>
       </div>
       <figure class="row__shot">
@@ -122,7 +123,8 @@
       <div><dt>Other programs</dt><dd>Speaks the WSJT-X UDP protocol, so GridTracker, JTAlert and your logger keep
         working.</dd></div>
     </dl>
-    <p class="also__promise">Costas never transmits on its own, never changes a message without telling you, and never
+    <p class="also__promise">Costas never starts transmitting without you: every contact, CQ and Auto-call run begins with
+      your click, and a watchdog stops it if you walk away. It never changes a message without telling you, and never
       shows made-up data. With no radio set up, it receives nothing and says so.</p>
   </div>
 </section>
@@ -144,9 +146,12 @@
       </a>
       <a class="dl dl--plain" data-linux href="{{ releases }}">
         <span class="dl__os">Linux preview</span>
-        <span class="dl__detail">x64 · receive only for now</span>
+        <span class="dl__detail">x64 · receive and transmit · not yet tried on a real radio</span>
         <span class="dl__go">Download .tar.gz</span>
       </a>
+      <p class="download__after">Costas is young. FT8 and FT4 are in daily use at the author's station on one radio
+        (a Yaesu FT-710); other radios, PSK, RTTY and the Linux build have had far less time on the air, so watch
+        your first contacts.</p>
       <p class="download__after">Then follow the <a href="{{ 'setup/' | url }}">six-step setup</a>: station, radio,
         audio, a transmit test, clock and QRZ. Use low power or a dummy load for your first transmissions.</p>
     </div>

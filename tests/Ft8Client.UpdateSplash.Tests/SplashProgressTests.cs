@@ -43,20 +43,37 @@ public sealed class SplashProgressTests
     }
 
     [Fact]
-    public void Update_NothingRestartsAfterInstalling_GivesUpAfterTheLimit()
+    public void Update_NothingRestartsAfterInstalling_SaysItFailedThenCloses()
     {
         var p = new SplashProgress();
         p.Update(S(3), oldExited: true, started: false, ready: false);
 
         p.Update(S(3) + SplashProgress.InstallingLimit - S(1), true, false, false).Should().Be(SplashPhase.Installing);
-        p.Update(S(3) + SplashProgress.InstallingLimit, true, false, false).Should().Be(SplashPhase.Done);
+        var failedAt = S(3) + SplashProgress.InstallingLimit;
+        p.Update(failedAt, true, false, false).Should().Be(SplashPhase.Failed);
+        p.Title.Should().Be("Costas did not open");
+        p.Status("0.1.312").Should().Contain("blocked");
+        p.Update(failedAt + SplashProgress.FailedShown - S(1), true, false, false).Should().Be(SplashPhase.Failed);
+        p.Update(failedAt + SplashProgress.FailedShown, true, false, false).Should().Be(SplashPhase.Done);
+    }
+
+    [Fact]
+    public void Update_CostasShowsItsWindowAfterTheSplashGaveUp_ClosesAtOnce()
+    {
+        var p = new SplashProgress();
+        p.Update(S(3), true, false, false);
+        p.Update(S(3) + SplashProgress.InstallingLimit, true, false, false).Should().Be(SplashPhase.Failed);
+
+        p.Update(S(4) + SplashProgress.InstallingLimit, true, true, true).Should().Be(SplashPhase.Done);
     }
 
     [Fact]
     public void Update_OldCostasNeverExits_GivesUpAfterTheLimit()
     {
         var p = new SplashProgress();
+        // Nothing was installed, so this is not a failed update: the splash just goes away.
         p.Update(SplashProgress.ClosingLimit, false, false, false).Should().Be(SplashPhase.Done);
+        p.Title.Should().Be("Updating Costas");
     }
 
     [Fact]
@@ -64,7 +81,7 @@ public sealed class SplashProgressTests
     {
         var p = new SplashProgress();
         p.Update(S(5), true, true, false);
-        p.Update(S(5) + SplashProgress.OpeningLimit, true, true, false).Should().Be(SplashPhase.Done);
+        p.Update(S(5) + SplashProgress.OpeningLimit, true, true, false).Should().Be(SplashPhase.Failed);
     }
 
     [Fact]

@@ -235,4 +235,28 @@ public class StationTrackerTests
         s.State.Should().Be(StationState.InContact);
         s.Partner.Should().Be("W9XYZ");
     }
+
+    [Fact]
+    public void ApplySuperFox_Messages_SenderMarkedSuperFoxAndVerifyLineIgnored()
+    {
+        var t = NewTracker();
+        t.ApplySuperFox(S(0), [H(S(0), "W0AAA KH1X RR73", -5, 750), H(S(0), "W5FFF KH1X -18", -5, 750), H(S(0), "$VERIFY$ KH1X 123456", -5, 750)]);
+
+        var fox = t.Find("KH1X")!;
+        fox.RunsFox.Should().BeTrue();
+        fox.RunsSuperFox.Should().BeTrue();
+        fox.OffsetHz.Should().Be(750);
+        t.Stations.Should().ContainSingle("only the Fox sent anything");
+    }
+
+    [Fact]
+    public void ApplySlot_AfterSuperFoxPassOfSameSlot_FoxNotCountedAsMissed()
+    {
+        var t = NewTracker();
+        t.ApplySuperFox(S(0), [H(S(0), "CQ KH1X", -5, 750)]);
+        t.ApplySlot(S(0), [H(S(0), "CQ ZL2RPA RF70")]);
+
+        t.Find("KH1X")!.MissedSlots.Should().Be(0, "the ordinary decode cannot read a SuperFox signal");
+        t.Find("ZL2RPA")!.RunsSuperFox.Should().BeFalse();
+    }
 }

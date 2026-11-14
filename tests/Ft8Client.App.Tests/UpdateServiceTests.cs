@@ -82,4 +82,19 @@ public sealed class UpdateServiceTests
         Ft8Client.App.ViewModels.UpdateBarViewModel.BarText(Build("0.1.310", development: true), "0.1.305", "95 MB")
             .Should().StartWith("Development build 0.1.310 is available");
     }
+
+    [Theory]
+    [InlineData(null, "0.1.608", false)]
+    [InlineData("", "0.1.608", false)]
+    [InlineData("v0.1.612", "0.1.612", false)]
+    [InlineData("v0.1.612", "0.1.612.0", false)]
+    [InlineData("v0.1.612", "0.1.608", true)]
+    [InlineData("0.1.612", "0.1.612", false)]
+    [InlineData("0.1.612", "0.1.608", true)]
+    public void FailedUpdateText_PendingVersionAgainstRunningVersion_OnlyWhenTheUpdateDidNotTake(string? pending, string running, bool failed)
+    {
+        var text = UpdateService.FailedUpdateText(pending, running);
+        (text is not null).Should().Be(failed);
+        if (failed) text.Should().Contain(running).And.Contain("did not install");
+    }
 }

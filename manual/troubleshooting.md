@@ -76,6 +76,11 @@ Use [Station setup › Transmit test](setup.md#4-transmit-test) into a dummy loa
   port, usually because the radio's USB connection dropped. Costas restarts rigctld to reconnect. If it happens while
   transmitting, RF is probably getting into the USB cable: test at low power, add clip-on ferrites at both ends of the
   USB cable, check the antenna's choke or ground, and turn off Windows' USB selective suspend.
+  If you had already exchanged reports, Costas keeps the contact: the other station's `RR73` still logs it, and
+  ++ctrl+r++ sends your last message again once the radio is back.
+- **"The radio did not answer the transmit command within 2 s"**: Costas waits for the radio to confirm it has keyed
+  before any audio goes out, so a slow answer starts the message a little late instead of cutting off its start. No
+  answer at all means the radio link is stuck: check the USB cable and the radio indicator, then try again.
 - **Audio lists blank in Station setup**: the saved device is not plugged in right now (the radio is off, or its USB
   dropped). Costas keeps your choice and finds the device again, by name if Windows gives it a new id.
 - **"The radio cannot report whether it transmitted"**: some radios do not report PTT state over CAT. Watch the TX
@@ -183,6 +188,31 @@ running. Carry on, and if it happens again, save a diagnostics bundle (**☰ ›
 
 SmartScreen shows this for programs it does not know, and Costas is not code-signed yet (*Unknown publisher*).
 Click **More info**, then **Run anyway**. See [Install](install.md#download).
+
+## Windows says the app was blocked, with no "Run anyway" {#smart-app-control}
+
+Windows 11's **Smart App Control** (Windows Security › App & browser control) blocks programs that are not
+code-signed, and unlike SmartScreen it offers no way past. Costas is not signed yet, so on a PC with Smart App Control
+on, the installer, Costas itself or an update can be blocked: you see *"Smart App Control blocked an app that may be
+unsafe"*, or Costas simply does not open.
+
+- Until signed releases are out, Costas runs on such a PC only with Smart App Control switched **off** in Windows
+  Security. Windows does not let you switch it back on without resetting the PC, so decide with that in mind.
+- Development builds (**Settings › Developer**) are signed only when a release is; on a PC with Smart App Control
+  stay on releases.
+
+## Costas does not open after an update {#costas-does-not-open-after-an-update}
+
+The *Updating Costas* window changes to **Costas did not open** and brings you here when the new version has not
+appeared within a few minutes.
+
+1. Start Costas from the Start menu. If it opens, the update was only slow; nothing more is needed. If it opens as
+   the **old** version, the update bar says the update did not install; try it once more.
+2. If Windows blocks it, see [Smart App Control](#smart-app-control) above. An antivirus program can do the same:
+   look in its quarantine for `Costas.dll` or `Costas.exe`.
+3. Otherwise download the installer from the [latest release](https://github.com/somedudenamedtony/costas/releases/latest)
+   and run it over the top. Your log and settings are kept; they live in a different folder from the program.
+4. Still stuck: the update log is in `%LocalAppData%\Costas\logs`. Send it with a note through GitHub Issues.
 
 ## Report a problem or send feedback
 

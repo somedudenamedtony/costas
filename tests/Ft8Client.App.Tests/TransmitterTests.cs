@@ -78,6 +78,62 @@ public class TransmitterTests
     }
 
     [Fact]
+    public void Transmit_RadioAnswersPttLate_AudioWaitsForTheAnswerAndTheWholeMessageGoesOut()
+    {
+        var r = new Rig();
+        var answer = new TaskCompletionSource();
+        r.Radio.PttOnGate = answer.Task;
+        var tx = r.Tx.Prepare(new TxPlan(Slot, "CQ W7LIT DN40", null, null), Mode.Ft8, 1500, Guard(), out _);
+
+        // 300 ms past the Tx start mark and the radio has still not keyed: nothing may be playing into it.
+        r.Run(TimeSpan.FromSeconds(1.8));
+        r.Out.Played.Should().BeEmpty();
+        r.Radio.Ptt.Should().BeFalse();
+
+        answer.SetResult();
+        r.Run(TimeSpan.FromMilliseconds(5));
+        r.Radio.Ptt.Should().BeTrue();
+        var played = r.Out.Played.Single();
+        played.StartedUtc.Should().BeCloseTo(Slot.AddSeconds(0.8), TimeSpan.FromMilliseconds(10));
+        played.Samples.Length.Should().Be(tx!.Samples.Length);
+        r.Faults.Should().BeEmpty();
+
+        r.Run(TimeSpan.FromSeconds(14));
+        r.Radio.Ptt.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Transmit_RadioAnswersPttPastTheLateStartLimit_StartLeftOutSoTheMessageEndsInItsSlot()
+    {
+        var r = new Rig();
+        var answer = new TaskCompletionSource();
+        r.Radio.PttOnGate = answer.Task;
+        var tx = r.Tx.Prepare(new TxPlan(Slot, "CQ W7LIT DN40", null, null), Mode.Ft8, 1500, Guard(), out _);
+        r.Run(TimeSpan.FromSeconds(2.8)); // 1.3 s past the Tx start mark
+
+        answer.SetResult();
+        r.Run(TimeSpan.FromMilliseconds(5));
+
+        var played = r.Out.Played.Single();
+        var left = (tx!.Samples.Length - played.Samples.Length) / (double)tx.SampleRate;
+        left.Should().BeApproximately(1.3, 0.02);
+    }
+
+    [Fact]
+    public void Transmit_RadioNeverAnswersPtt_GivenUpWithNoAudio()
+    {
+        var r = new Rig();
+        r.Radio.PttOnGate = new TaskCompletionSource().Task;
+        r.Tx.Prepare(new TxPlan(Slot, "CQ W7LIT DN40", null, null), Mode.Ft8, 1500, Guard(), out _);
+
+        r.Run(TimeSpan.FromSeconds(1.3) + Transmitter.PttConfirmLimit + TimeSpan.FromMilliseconds(50));
+
+        r.Out.Played.Should().BeEmpty();
+        r.Tx.Transmitting.Should().BeFalse();
+        r.Faults.Should().ContainSingle().Which.Should().Contain("did not answer");
+    }
+
+    [Fact]
     public void Transmit_RigFaultMidTransmission_ReleasesPttAndStopsAudio()
     {
         var r = new Rig();

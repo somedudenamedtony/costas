@@ -182,7 +182,10 @@ A Fox/Hound DXpedition is worked as a Hound with no mode to switch (owner decisi
 - In a Hound contact, a multi-answer message addressed to me whose Fox hash did not resolve (`<...>`) counts as from the Fox. `jt9` resolves the hash when the Fox is the DX call (`-x`), which it is during the contact.
 - A Fox's report that arrives after calling stopped goes to "Waiting for you"; answering it sends the R-report on the Fox's frequency.
 - The quick decode in a Hound contact covers 100 Hz up to 1000 Hz (or the Fox's offset plus 100 Hz if higher), since the Fox answers on any of its streams. The full decode still covers the whole band, so the rest of the screen stays live.
-- SuperHound (SuperFox) is not supported yet: the SuperFox signal needs WSJT-X's SuperFox decoder, which `jt9` runs only when started through shared memory (`08-open-questions.md`, V19).
+- SuperHound (SuperFox), owner go-ahead 2026-11-14 (D22): the SuperFox signal needs WSJT-X's SuperFox decoder, which `jt9` runs only through shared memory with `b_superfox` set, and then decodes nothing else in that slot. So the full decode stays ordinary and a second request does the SuperFox work on the quick `jt9` process:
+  - **Watch.** On FT8, with a `jt9` that keeps running, every Fox (even) slot in which the quick process has nothing else to do (no contact, not calling CQ) is also decoded with `Hound` and `SuperFox` set (`Session.SuperFoxWatchContext`). Every sender in that pass is marked `RunsFox` and `RunsSuperFox` (`StationTracker.ApplySuperFox`); its messages go to Raw decodes and the engine like any others.
+  - **Contact.** Calling a `RunsSuperFox` station starts the Hound flow above unchanged. While it runs, the quick decode of each Fox slot asks for SuperFox. The one difference from a Fox: the R-report stays on my calling offset (`ContactEngine.IsSuperFox`; WSJT-X's `hound_reply` does not move a Hound in SuperFox mode), and `ContactView.SuperFox` says so in the banner.
+  - **Signature.** `jt9` prints `$VERIFY$ <fox> <code>`; WSJT-X checks the code with an online service (`Network/FoxVerifier`). Costas does not, shows the line in Raw decodes only, and says in the tag's tooltip and the manual that it cannot tell a pirate from the real DXpedition.
 
 ### Flow C: contests (owner decision 2026-11-07)
 

@@ -28,7 +28,8 @@ whether it can hear you.
 
 ## What it never does
 
-- It never transmits on its own. Every transmission starts with something you clicked or pressed.
+- It never starts transmitting without you. Every contact, CQ and Auto-call run starts with something you clicked or
+  pressed, and the watchdog stops it if you stop tending it.
 - It never changes a message silently. If a message cannot be sent exactly as shown, it refuses and tells you why.
 - It never shows made-up data. With no radio set up it receives nothing and says so.
 

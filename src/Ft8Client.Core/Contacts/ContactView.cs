@@ -62,6 +62,9 @@ public sealed record ContactView(string DxCall, string? DxGrid, ContactFlow Flow
     /// </summary>
     public int? HoundReplyOffsetHz { get; init; }
 
+    /// <summary>True when the Fox runs SuperFox: my R-report goes out where I have been calling, not on the Fox's frequency.</summary>
+    public bool SuperFox { get; init; }
+
     /// <summary>
     /// In a <see cref="ContactFlow.Hound"/> contact still calling the Fox, when the calling limit
     /// (<see cref="ContactEngine.HoundCallLimit"/>) runs out; null before the first call goes out and once the Fox answers.

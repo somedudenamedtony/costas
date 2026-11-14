@@ -70,17 +70,23 @@ public sealed class SimulatedRig(IClock clock, long frequencyHz = 14_074_000) : 
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Stands for a PTT command that waits its turn behind other commands to the radio: while set, a PTT-on keys the
+    /// radio, and is answered, only once this task completes. Null (the default) keys at once.
+    /// </summary>
+    public Task? PttOnGate { get; set; }
+
     /// <inheritdoc />
-    public Task SetPttAsync(bool on, CancellationToken ct)
+    public async Task SetPttAsync(bool on, CancellationToken ct)
     {
         // Releasing PTT always succeeds, even while faulted.
         if (on) Check();
+        if (on && PttOnGate is { } gate) await gate.ConfigureAwait(false);
         lock (_gate)
         {
             if (_ptt != on) PttLog.Add((clock.UtcNow, on));
             _ptt = on;
         }
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc />

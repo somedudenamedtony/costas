@@ -62,11 +62,11 @@ Reference user: W7LIT, grid DN40, an Icom IC-7300 over USB, Windows 11, a QRZ su
 
 ### v1.x
 
-Hound contacts (built 2026-10-12; automatic for a recognised Fox since 2026-10-13) and SuperHound mode (needs SuperFox decoding, see `08-open-questions.md` V19). Alerts for wanted calls or countries (done: the Hunt list). LoTW upload through TQSL and LoTW-user flag (done). OmniRig, FLRig, TCI. Band advice ("15 m is open to Europe for you"). Awards progress page. Streaming decode (early results before the slot ends). Keyboard modes: PSK31, PSK63 and RTTY on the same Operate screen (owner decision D18, spec in `09-keyboard-modes.md`).
+Hound contacts (built 2026-10-12; automatic for a recognised Fox since 2026-10-13) and SuperHound (done 2026-11-14: SuperFox decoding and the Hound flow on a SuperFox, `04-domain-logic.md`; signature not checked). Alerts for wanted calls or countries (done: the Hunt list). LoTW upload through TQSL and LoTW-user flag (done). OmniRig, FLRig, TCI. Band advice ("15 m is open to Europe for you"). Awards progress page. Streaming decode (early results before the slot ends). Keyboard modes: PSK31, PSK63 and RTTY on the same Operate screen (owner decision D18, spec in `09-keyboard-modes.md`).
 
 ### Later or not planned
 
-Waterfall (optional panel in the Raw decodes tab). Other modes (WSPR, JT65, Q65, MSK144, FST4, JTTY). Contest exchanges. Fox and SuperFox. Map view. Translations. macOS builds (design for them; do not build them yet). Linux: a preview is built, transmit included (D17).
+Waterfall (optional panel in the Raw decodes tab). Other modes (WSPR, JT65, Q65, MSK144, FST4, JTTY). Contest exchanges. Fox and SuperFox transmit (dropped by the owner 2026-11-14). Map view. Translations. macOS builds (design for them; do not build them yet). Linux: a preview is built, transmit included (D17).
 
 ## Protocol facts the design relies on
 

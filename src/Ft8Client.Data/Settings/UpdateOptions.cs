@@ -16,4 +16,10 @@ public sealed class UpdateOptions
 
     /// <summary>A release the operator chose to skip (its tag), not offered again.</summary>
     public string? SkippedTag { get; set; }
+
+    /// <summary>
+    /// The version Costas closed to install, until the next start has looked at whether it took. Still set
+    /// with a different version running means that update did not install.
+    /// </summary>
+    public string? PendingVersion { get; set; }
 }

@@ -58,6 +58,8 @@ public sealed partial class UpdateBarViewModel : ObservableObject
         var r = _updates.Available;
         Visible = r is not null;
         if (r is not null) Text = BarText(r, AppInfo.Version, DownloadSize(r.InstallerSize));
+        // The last update did not install: said beside the offer to try again, until something newer replaces it.
+        if (!Busy && Detail.Length == 0 && _updates.FailedUpdate is { } failed) Detail = failed;
     }
 
     /// <summary>The bar's sentence: a release, a development build, or the way back to the latest release.</summary>
