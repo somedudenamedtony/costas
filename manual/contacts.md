@@ -8,6 +8,21 @@ difference. You start every contact; Costas never calls anyone on its own.
 Pick a station in **Next in line** and click **Call** (or double-click it, or select it and press ++enter++).
 You can also double-click a CQ in [Raw decodes](raw-decodes.md).
 
+If you click **Call** after your slot has started, the call still goes out in that slot, leaving out the part of the
+message already past, up to 3 seconds late (FT4: never more than 3 seconds). Change this with **Late start for a click**
+in [Settings › Transmitting](settings.md#transmitting). Later than that, it waits for your next slot.
+
+### Switching to another station
+
+Clicking **Call** on another station during a contact (FT8 and FT4) ends the contact you are in first: it is abandoned
+as with **Abandon** and nothing is logged, unless it was already logged. A message to the old station that is on the
+air is cut off, and the new station is called in this slot if there is still time, otherwise in your next slot.
+
+During a contact a double-click on a row does nothing, so a stray double-click cannot end your contact. To make a
+double-click switch stations as **Call** does, turn on **Double-click** in
+[Settings › Transmitting](settings.md#transmitting). It works in Next in line and Repeats. ++enter++ never switches.
+PSK and RTTY are unchanged.
+
 The top card becomes the contact panel, and the red **ON AIR** banner shows while you transmit:
 
 ![Calling a station: on the air](images/contact-on-air.png)

@@ -82,6 +82,10 @@ narrow window **Heard from** moves under the counts and your log.
 
 The stations you need that you can call right now, best first. At most 12 rows; the rest are counted underneath.
 
+In FT8 the list fills in about 13 seconds into each slot, from Costas's early decode pass, so you can pick a station
+before the slot ends. When the full decode lands a couple of seconds later, the rows already shown keep their order:
+stations found only by the full decode go in at their rank, and stations that can no longer be called drop out.
+
 A station calling CQ stays listed for 2 minutes after it was last heard (change this in
 [Settings › Who to call](settings.md#who-to-call)), so one missed decode does not drop it. *Doing now* then says
 *Calling CQ, missed last slot*, and it sorts below stations heard in their latest slot. It leaves the list as soon as
