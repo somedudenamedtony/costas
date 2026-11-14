@@ -108,8 +108,12 @@ blue under the pointer. *Doing now* takes whatever room is left. Next in line an
 resizing one resizes the other and they stay lined up. Watching has its own headings and widths. Double-click an edge
 to put that column back to its usual width. Costas remembers your widths the next time it starts.
 
-A column can't grow past the point where *Doing now* would disappear. If the **Call** buttons are cut off on a small
-window, narrow a wide column such as **Chance** or **Where** to bring them back.
+A column can't grow past the point where *Doing now* would disappear.
+
+On a small window, such as a 13-inch laptop, the **Call** buttons always stay on screen. To make room, the table first
+narrows **Chance** and **Where** (long text ends in "…"; hover for the full reason), then hides *Doing now*,
+**Last worked**, **Signal** and the **#** rank, in that order. **Last heard** is the last to go. Widen the window and
+they come back at the widths you set.
 
 How the order works: stations are grouped by need (new country first), then by chance, then by how well they hear
 you, then by their signal. The **ⓘ** beside the title shows the current rules in one sentence; click it to change

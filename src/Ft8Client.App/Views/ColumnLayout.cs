@@ -60,6 +60,52 @@ public sealed class ColumnLayout
         Changed?.Invoke();
     }
 
+    private (int Column, double Min)[] _shrink = [];
+    private int[] _drop = [];
+
+    /// <summary>
+    /// Says how the table gives way on a window too narrow for its columns: first the <paramref name="shrink"/>
+    /// columns narrow, in order, down to their minimum (their text trims), then the <paramref name="drop"/> columns
+    /// hide, in order. Columns named in neither, the last one (the Call buttons) included, always keep their width.
+    /// </summary>
+    public void GiveWay(IReadOnlyList<(int Column, double Min)> shrink, IReadOnlyList<int> drop)
+    {
+        _shrink = [.. shrink];
+        _drop = [.. drop];
+        Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// The widths to show in a table this wide: the operator's widths when they fit, otherwise narrowed and with
+    /// columns hidden (width 0) as <see cref="GiveWay"/> says, so the last column stays on screen. NaN for a star
+    /// column. A width of 0 or less means the table has not been laid out yet, and nothing gives way.
+    /// </summary>
+    public double[] Fit(double tableWidth)
+    {
+        double[] w = [.. _widths];
+        if (tableWidth <= 0) return w;
+        double Need() => w.Where(x => !double.IsNaN(x)).Sum();
+        foreach (var (column, min) in _shrink)
+        {
+            var over = Need() - tableWidth;
+            if (over <= 0) return w;
+            if (IsFixed(column)) w[column] = Math.Max(Math.Min(min, w[column]), w[column] - Math.Ceiling(over));
+        }
+        foreach (var column in _drop)
+        {
+            if (Need() <= tableWidth) break;
+            if (IsFixed(column)) w[column] = 0;
+        }
+        // Room a hidden column freed beyond what was needed goes back to the narrowed columns, last narrowed first.
+        foreach (var (column, _) in Enumerable.Reverse(_shrink))
+        {
+            var spare = Math.Floor(tableWidth - Need());
+            if (spare <= 0) break;
+            if (IsFixed(column)) w[column] = Math.Min(_widths[column], w[column] + spare);
+        }
+        return w;
+    }
+
     /// <summary>Puts one column back to its default width.</summary>
     public void Reset(int column)
     {
