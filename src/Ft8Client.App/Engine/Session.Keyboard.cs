@@ -70,8 +70,11 @@ public sealed partial class Session
     }
 
     /// <summary>
-    /// Sends typed text: starts an over that stays on the air for more typing (Enter on an empty line or 20 s of
-    /// nothing returns to receive), or adds to the over on the air.
+    /// Sends a typed line (Enter): starts an over, or adds to the over on the air, and returns to receive once the line
+    /// has gone, as a macro does (owner decision 2026-11-14: a typed line held the radio keyed
+    /// on idle for up to 20 s). Keys
+    /// typed while the line is going out keep the over open for more (<see cref="KeyboardTransmitter.Type"/>); then
+    /// Enter on an empty line, Esc or 20 s of nothing returns to receive.
     /// </summary>
     public string? SendText(string text)
     {
@@ -80,7 +83,7 @@ public sealed partial class Session
         lock (_gate)
         {
             if (!KeyboardMode || text.Length == 0) return null;
-            why = QueueAt(text, null, returnToReceive: false, cq: false);
+            why = QueueAt(text, null, returnToReceive: true, cq: false);
             _fault = why;
         }
         Publish();
@@ -165,26 +168,43 @@ public sealed partial class Session
         Publish();
     }
 
-    // Keyboard-mode Call: answer the station's CQ with F2.
+    // Keyboard-mode Call: answer the station's CQ with F2. A station not in the station list can still be answered when
+    // it is the one being read in the conversation box (its call was just read there, on that signal's offset).
     private bool CallKeyboardStation(string call)
     {
         lock (_gate)
         {
-            if (_tracker.Find(call) is not { } s) return false;
+            var station = _tracker.Find(call);
+            var reading = ShownReading();
+            if (station is null && !ReadingHas(reading, call)) return false;
             if (_keys.Active)
             {
                 _fault = "Still transmitting: press Esc to stop, or wait for the over to end.";
             }
             else
             {
-                _conversation.Clear();
-                _kbd.Answer(s.Call, s.Grid, s.OffsetHz, s.RecentText, _clock.UtcNow);
-                if (s.RecentText is { Length: > 0 } t) AddConversation(s.Call, t, mine: false);
+                BeginAnswer(call, station, reading);
                 _fault = QueueMacro(Macro.AnswerKey);
             }
         }
         Publish();
         return true;
+    }
+
+    // Under _gate. True when the conversation box is reading a signal that has sent this call, or is named for it.
+    private static bool ReadingHas(KeyboardReading? reading, string call) =>
+        reading is not null && ((reading.Call is { } c && Callsign.EqualsCall(c, call)) || reading.Lines.Any(l => Callsign.EqualsCall(l.Who, call)));
+
+    // Under _gate. Starts a contact answering <paramref name="call"/>: from the station list when it is there, otherwise
+    // from the signal being read. The conversation box starts with what they last sent.
+    private void BeginAnswer(string call, Station? station, KeyboardReading? reading)
+    {
+        var lastLine = reading?.Lines.LastOrDefault(l => !l.Mine && Callsign.EqualsCall(l.Who, call))?.Text;
+        var theirText = station?.RecentText is { Length: > 0 } recent ? recent : lastLine;
+        var offset = station?.OffsetHz ?? reading!.OffsetHz;
+        _conversation.Clear();
+        _kbd.Answer(station?.Call ?? Callsign.Normalize(call), station?.Grid, offset, theirText, _clock.UtcNow);
+        if (theirText is { Length: > 0 } t) AddConversation(station?.Call ?? Callsign.Normalize(call), t, mine: false);
     }
 
     private void ToggleKeyboardCq()
@@ -203,8 +223,11 @@ public sealed partial class Session
         if (_config.Macros.FirstOrDefault(m => m.Key == key) is not { } macro) return $"F{key} has no macro. Set one in Settings > PSK and RTTY.";
         // A second press (or a key held down) must not queue the same macro again behind itself.
         if (_keys.MacroWaiting(key)) return $"{macro.Label} is already waiting to go out.";
-        if (key != Macro.CqKey && _kbd.Partner is null && macro.Text.Contains("{CALL}", StringComparison.OrdinalIgnoreCase))
-            return $"{macro.Label} needs a station: click Call on one first.";
+        // Answer while a signal is being read (and no contact is under way): answer the station named in the box.
+        if (key == Macro.AnswerKey && !_kbd.InContact && !_keys.Active && ShownReading() is { Call: { } readCall } reading)
+            BeginAnswer(readCall, _tracker.Find(readCall), reading);
+        if (key != Macro.CqKey && (_kbd.Partner is null || (!_kbd.InContact && key == Macro.AnswerKey)) && macro.Text.Contains("{CALL}", StringComparison.OrdinalIgnoreCase))
+            return $"{macro.Label} needs a station: click a signal whose call has been read, or click Call on a station's row.";
         var text = MacroText.Expand(macro.Text, MacroValues(), out var missing);
         if (missing.Count > 0)
         {

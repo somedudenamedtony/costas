@@ -287,13 +287,32 @@ public class KeyboardContactSessionTests : IDisposable
     }
 
     [Fact]
-    public void KeyEnter_TypedOverLeftIdle_BackToReceiveAndContactGoesOn()
+    public void KeyEnter_TypedLine_UnkeysOnceSentAndContactGoesOn()
+    {
+        Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n");
+        _session.CallStation(Partner);
+        SendOver();
+        var start = _clock.UtcNow;
+
+        _session.KeyEnter("hello").Should().BeNull();
+        SendOver();
+
+        // Back to receive as soon as the line has gone, not after the 20 s idle watchdog.
+        (_clock.UtcNow - start).Should().BeLessThan(TimeSpan.FromSeconds(5));
+        _rig.PttLog.Last().On.Should().BeFalse();
+        _session.Snapshot.Contact!.Outcome.Should().Be(ContactOutcome.InProgress);
+        _session.Snapshot.Fault.Should().BeNull();
+    }
+
+    [Fact]
+    public void KeyEnter_TypingWhileLineGoesOut_OverStaysOpenUntilIdle()
     {
         Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n");
         _session.CallStation(Partner);
         SendOver();
 
         _session.KeyEnter("hello").Should().BeNull();
+        _session.TypeKey('x').Should().BeTrue();
         SendOver();
 
         _session.Snapshot.Contact!.Outcome.Should().Be(ContactOutcome.InProgress);
@@ -313,6 +332,49 @@ public class KeyboardContactSessionTests : IDisposable
     {
         _session.SetBand("20m", Mode.Ft8);
         _session.SendMacro(Macro.CqKey).Should().BeNull();
+        _rig.PttLog.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SendMacro_AnswerWhileReadingTheirCq_AnswersTheStationRead()
+    {
+        _keyboard.Listen(PartnerHz);
+        Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n");
+        _session.Snapshot.Reading!.Call.Should().Be(Partner);
+
+        _session.SendMacro(Macro.AnswerKey).Should().BeNull();
+
+        _session.Snapshot.Contact!.DxCall.Should().Be(Partner);
+        _rig.PttLog.Select(p => p.On).Should().Equal(true);
+        var v = _session.Keys.View;
+        (v.Sent + v.Waiting).Should().StartWith("KP4JRS DE W7LIT W7LIT");
+    }
+
+    [Fact]
+    public void SendMacro_AnswerWithNoSignalRead_RefusedWithoutKeying()
+    {
+        Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n");
+
+        _session.SendMacro(Macro.AnswerKey).Should().Contain("needs a station");
+
+        _session.Snapshot.Fault.Should().Contain("needs a station");
+        _rig.PttLog.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SendMacro_AnswerReadingAfterALoggedContact_AnswersTheNewStationNotTheOldOne()
+    {
+        Hear("CQ CQ CQ DE KP4JRS KP4JRS KP4JRS PSE K\n");
+        _keyboard.Listen(PartnerHz);
+        _session.CallStation(Partner).Should().BeTrue();
+        SendOver();
+        _session.LogNow();
+        _session.Snapshot.Contact!.Outcome.Should().NotBe(ContactOutcome.InProgress);
+        _rig.PttLog.Clear();
+
+        // Nothing read now and the last partner is done: F2 must not answer them again.
+        _keyboard.Listen(PartnerHz + 600);
+        _session.SendMacro(Macro.AnswerKey).Should().Contain("needs a station");
         _rig.PttLog.Should().BeEmpty();
     }
 }
