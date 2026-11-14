@@ -35,7 +35,7 @@ One window, minimum 1100 × 720, default 1440 × 900, remembers size and positio
 | Band dropdown | Lists bands from the frequency table. Changing it sets the dial frequency through the rig service, clears the station list for the old band and loads log totals for the new one. Disabled while transmitting. The closed box shows the band only. The open list adds, per band, where stations near me are heard right now (`04-domain-logic.md` section 14): an activity bar and "1,240 spots" (or "No spots"), six continent chips NA SA EU AF AS OC shaded by spots, and "You need Brazil +2" in caution colour. Tooltips give the source and the full list of needed countries. With no reports (feed or setting off, nothing received yet) the list shows band names only. A band whose reports are not being received says why instead of "No spots": "Set your grid in Settings" when my configured grid is missing or invalid, "Checking soon" for a band not yet sampled after the feed fell back to the current band; sampled bands show estimates as "~1,200 spots" |
 | Mode dropdown | FT8, FT4. Changes slot length and dial frequency. Disabled while transmitting |
 | Frequency | Dial frequency read from the radio, `14.074.000` format, MHz label. A click opens a menu (product review 2026-10-12): a box to type a frequency ("14.090", "14090" kHz or "14.090.000") with Tune, "Your frequencies" (saved dial frequencies as buttons, each with Remove) and "Save the current frequency". Tuning changes band when the frequency is on another band; frequencies outside the band plan or on a band without transmit limits are refused with a sentence. Disabled while transmitting |
-| View tabs | Operate, Raw decodes, Reach, Log, Awards. Ctrl+1 to Ctrl+5 |
+| View tabs | Operate, Raw decodes, Reach, Log, Awards, and Contest while a contest is picked (amber badge with its CQ modifier). Ctrl+1 to Ctrl+5, Ctrl+6 for Contest |
 | Clock | UTC `HH:MM:SS`. Turns caution colour with a tooltip when the clock offset exceeds 0.5 s; critical above 2 s |
 | Menu button | Mini mode (Ctrl+M), Settings, Station profile, Diagnostics, Keyboard shortcuts, About |
 
@@ -274,7 +274,7 @@ Audio dropouts, decode time per slot, median DT of decodes, clock offset, CAT ro
 | Ctrl+Q | Call CQ / stop CQ |
 | Ctrl+R | Resend |
 | Ctrl+L | Log now |
-| Ctrl+1 to Ctrl+5 | Switch view |
+| Ctrl+1 to Ctrl+5 (Ctrl+6 during a contest) | Switch view |
 | Ctrl+M | Mini mode |
 | F1 | Keyboard shortcuts |
 
@@ -285,3 +285,13 @@ Loading (skeleton or "—", never a spinner over the whole view), empty, stale (
 ## Accessibility
 
 Every control has an accessible name. The line and grids are keyboard navigable. Contrast at least 4.5:1 for text. Tx state is announced to screen readers when it starts and stops.
+
+## Contest mode (owner decision 2026-11-07)
+
+- **Picker**: the CQ modifier menu beside Call CQ gains a "Contest (changes the exchange)" heading and four contests, each with its CQ (`CQ RU`). Picking one opens the exchange sheet when no usable exchange is saved; otherwise the contest starts at once.
+- **Exchange sheet**: the contest's name, one box (state or province, or DX; or class and section; nothing for the grid contests), a note, and a preview of every message the contest sends with "‹call›" in place of the other station. Start contest is enabled only when every message encodes exactly.
+- **Contest bar**: an amber bar across the top of Operate while a contest runs: CONTEST badge, name, what I am sending, contacts, multipliers (when the contest has them), dupes, and Change exchange / End contest.
+- **Contact card**: during a contest contact the reports read "You sent" and "They sent" and show the exchanges, with no dB unit.
+- **Next in line**: Why shows "New mult · X" in green or "Dupe" in grey for contest stations.
+- **Contest view**: tiles for contacts, multipliers, claimed score and rate; a per-band table; the multiplier grid (states and provinces for the Roundup, fields for WW Digi) with worked ones in green; the contest log, newest first, with New mult and Dupe tags; a dupe check box that filters the log and says whether the call is a dupe on the current band; Export Cabrillo….
+

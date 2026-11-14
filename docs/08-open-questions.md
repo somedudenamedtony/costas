@@ -135,6 +135,18 @@ Hamlib's own scaling plus the read-back. With Hamlib 4.6.5 built from source, th
 power2mW of 1.0 gives 100000 mW, and `L RFPOWER 0.25` sends `PC025;`, so the FT-710 is right there. Not yet tried on the
 real FT-710.
 
+Radio settings from the phone (2026-11-09, Hamlib 4.6.5 source `rigs/yaesu/ft710.c`, `ft710.h`, `newcat.c`, and
+Ubuntu's 4.5.5 `rigctld -m 1049` against the FT-710 CAT emulator): the FT-710 backend reads and sets AF (`AG0`, 0 to 255
+as 0 to 1), RF (`RG0`), PREAMP (`PA0`, 0 = IPO, 10 dB = AMP 1, 20 dB = AMP 2), ATT (`RA0`, 6/12/18 dB), AGC (`GT0`; set
+OFF/FAST/MEDIUM/SLOW/AUTO, and reads `GT04` to `GT06`, auto-fast/mid/slow, all as AUTO) and the functions NB (`NB0`),
+NR (`NR0`) and TUNER (`AC001` in line, `AC000` bypassed; reading `AC` looks at the third digit, so it reads 0 while
+`AC003` tunes). `\dump_caps` lists them under "Get level", "Set level", "Get functions" and "Set functions", with the
+steps on the "Preamp", "Attenuator" and "AGC levels" lines; Costas only offers a setting the driver both reads and
+sets. Seen against the emulator with 4.5.5: `L PREAMP 20` sends `PA02;`, `L ATT 12` `RA02;`, `L AGC 3` `GT03;`,
+`U NB 1` `NB01;`, `U TUNER 1` `AC001;`, `L AF 0.3` `AG0077;`. 4.5.5 sends `L RF` for the FT-710 without its
+terminator (`RG` then nothing, `RPRT -5`); 4.6.5 sends `RG0nnn;`. Hamlib also has `set_powerstat` for the FT-710
+(`PS0`/`PS1`), not used: turning the radio on over CAT is not dependable once it is off. Not yet tried on the real radio.
+
 Other notes from M2:
 
 - 60 m transmit limits in `frequencies.json` use the ITU WRC-15 range 5351.5 to 5366.5 kHz. Checked 2026-10-31: the FCC opened 5351.5-5366.5 kHz to US General class and up on 13 February 2026 (ARRL news, FCC 25-60), at most 9.15 W ERP and 2.8 kHz; the channels at 5332, 5348, 5373 and 5405 kHz stay (100 W ERP) and the 5358.5 kHz channel is gone. Settings › Transmitting › "US data segments only" (on by default) also keeps transmissions inside the 97.305(c) data segments read from eCFR the same day (`UsDataSegments`). Power is not limited by Costas.
@@ -180,3 +192,17 @@ Hamlib network models (Hamlib master, `include/hamlib/riglist.h` and `rigs/dummy
 model 2, FLRig 4, TRXManager 5, ACLog 8, SDR# 9. Each takes its server as `host:port` in `-r` (rig_pathname) and
 defaults to `127.0.0.1:4532`, `127.0.0.1:12345`, `127.0.0.1:1003`, `127.0.0.1:1100` and `127.0.0.1:4532`. Setup shows
 the host:port box for these and prefills the default. Not yet tried against a running flrig.
+
+### Contest rules and formats (read 2026-11-07)
+
+Message formats: WSJT-X `lib/77bit/packjt77.f90` (2.7.0) for ARRL Field Day (i3=0, n3=3 and 4: `n28 n28 R intx nclass isec`, 86 sections) and ARRL RTTY Roundup (i3=3: `tu n28 n28 R rst nexch`, 171 state/province/DX entries or a serial 1..7999), checked by packing with Costas and comparing bit-for-bit against `ft8code` and `ft4code` 2.7.0-rc3 (22 messages added to the vectors). Sequence: WSJT-X `widgets/mainwindow.cpp` (contest Tx messages and auto-sequence), and the Roundup report rule `(SNR+36)/6` from the same file.
+
+Scoring, from each sponsor's rules as published for the next running:
+
+- ARRL RTTY Roundup (rules v3.0b): **only RTTY contacts count** ("RTTY only"; digital modes such as FT8 are not listed). Costas logs FT8 RU contacts but they may not score. Roundup support in the real RTTY keyboard mode is the follow-up. 1 point a contact; multipliers once each: US states and DC, Canadian provinces and territories, DXCC entities other than the US and Canada (KH6 and KL7 count as entities).
+- ARRL Field Day: 2 points a digital contact, each station once per band and mode; power multiplier and bonus points are not computed (left to the operator on the summary sheet).
+- WW Digi (World Wide Digi DX Contest): 1 point plus 1 per 3000 km between grid-square centres; multipliers are grid fields, once per band.
+- ARRL International Digital Contest: 1 point plus 1 per 500 km or part of it; no multipliers.
+
+VERIFY: Cabrillo `CATEGORY-*` lines are written as single-operator, all bands, with the power from Settings; sponsors' web forms let the operator change them. Not yet uploaded to any sponsor's log checker.
+

@@ -65,18 +65,34 @@ public static class ResizableColumns
         Unhook(grid);
         if (GetLayout(grid) is not { } name || grid.FindAncestorOfType<OperateView>() is not { } view) return;
         var layout = view.ColumnsFor(name, grid);
+        // On a window too narrow for every column the table gives way (ColumnLayout.Fit) so the Call buttons in
+        // the last column stay on screen; a hidden column's cells and grip hide with it.
         void Apply()
         {
-            for (var i = 0; i < Math.Min(layout.Count, grid.ColumnDefinitions.Count); i++)
-                if (layout.IsFixed(i) && grid.ColumnDefinitions[i].Width.Value != layout.Widths[i])
-                    grid.ColumnDefinitions[i].Width = new GridLength(layout.Widths[i]);
+            var widths = layout.Fit(grid.Bounds.Width);
+            var count = Math.Min(layout.Count, grid.ColumnDefinitions.Count);
+            for (var i = 0; i < count; i++)
+                if (layout.IsFixed(i) && grid.ColumnDefinitions[i].Width.Value != widths[i])
+                    grid.ColumnDefinitions[i].Width = new GridLength(widths[i]);
+            foreach (var child in grid.Children)
+            {
+                var column = child is Thumb { Tag: int target } ? target : Grid.GetColumn(child);
+                var shown = column >= count || !layout.IsFixed(column) || widths[column] > 0;
+                if (child.IsVisible != shown) child.IsVisible = shown;
+            }
         }
+        void OnSize(object? sender, SizeChangedEventArgs e)
+        {
+            if (e.WidthChanged) Apply();
+        }
+        var grips = GetIsHeader(grid) ? AddGrips(grid, layout, () => view.SaveColumns(name)) : [];
         Apply();
         layout.Changed += Apply;
-        var grips = GetIsHeader(grid) ? AddGrips(grid, layout, () => view.SaveColumns(name)) : [];
+        grid.SizeChanged += OnSize;
         grid.SetValue(UnhookProperty, () =>
         {
             layout.Changed -= Apply;
+            grid.SizeChanged -= OnSize;
             foreach (var grip in grips) grid.Children.Remove(grip);
         });
     }
@@ -108,6 +124,7 @@ public static class ResizableColumns
                 Cursor = new Cursor(StandardCursorType.SizeWestEast),
                 Focusable = false,
                 ZIndex = 1,
+                Tag = target,
             };
             ToolTip.SetTip(grip, "Drag to resize this column. Double-click to put it back.");
             Grid.SetColumn(grip, i);

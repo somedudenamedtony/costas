@@ -61,6 +61,17 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
             Source = QsoSource.Local,
         };
         if (parkFor?.Invoke(e.Call, c.Band) is { } park) PotaAdif.Tag(q, park);
+        if (c.Contest is { } contest && e.ExchangeSent is { } sent && e.ExchangeReceived is { } rcvd)
+        {
+            ContestAdif.Tag(q, contest, sent, rcvd);
+            q.Comment = $"{contest.ShortName}: sent {sent}, rcvd {rcvd}";
+            if (contest.Exchange == Core.Contests.ContestExchangeKind.Roundup)
+            {
+                q.RstSent = sent.Split(' ')[0];
+                q.RstRcvd = rcvd.Split(' ')[0];
+                if (Core.Encoding.ContestTables.RoundupMults.Contains(rcvd.Split(' ')[^1])) q.State ??= rcvd.Split(' ')[^1];
+            }
+        }
         var (id, _) = qsos.Upsert(q);
         q.Id = id;
         var due = hold?.Add(id) ?? DateTime.UtcNow;
@@ -70,4 +81,8 @@ public sealed class DatabaseSessionLog(QsoRepository qsos, UploadQueueRepository
         Stored?.Invoke(q);
         return q;
     }
+
+    /// <inheritdoc />
+    public IReadOnlyList<Core.Contests.ContestQso> ContestLog(Core.Contests.ContestInfo contest, DateTime sinceUtc) =>
+        ContestAdif.Log(contest, qsos.Since(sinceUtc).Where(q => q.ProfileId == profileId()));
 }

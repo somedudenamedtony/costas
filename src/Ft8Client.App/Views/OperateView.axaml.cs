@@ -207,6 +207,9 @@ public partial class OperateView : UserControl
         if (_columns.TryGetValue(name, out var layout)) return layout;
         layout = new ColumnLayout([.. template.ColumnDefinitions.Select(c => c.Width.IsAbsolute ? c.Width.Value : double.NaN)]);
         if (_savedColumns.TryGetValue(name, out var widths)) layout.Load(widths);
+        // Next in line and Repeats on a laptop: Chance and Where trim first, then Last worked, Signal, the rank and,
+        // only as a last resort, Last heard hide, so the Call button never falls off the right edge.
+        if (name == "Calls") layout.GiveWay([(8, 120), (2, 120)], [9, 7, 0, 5]);
         _columns[name] = layout;
         return layout;
     }

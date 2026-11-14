@@ -184,7 +184,38 @@ public class RankerMockupScenarioTests
         r.Line.Select(x => x.Station.Call).Should().NotContain("F4ABC");
         var watched = r.Watching.Single(x => x.Station.Call == "F4ABC");
         watched.Reason!.Kind.Should().Be(WatchReasonKind.Contest);
-        StationText.Watch(watched.Reason, Now).Should().Be($"Contest (CQ {modifier}), needs an exchange");
+        StationText.Watch(watched.Reason, Now).Should().Be($"Contest (CQ {modifier}): pick it beside Call CQ to work it");
+    }
+
+    [Fact]
+    public void Rank_ContestCqOfPickedContest_IsCallableWithMultTag()
+    {
+        var contest = Cq("F4ABC", "JN18", -5, 2, "WW");
+        var ranking = new ContestRanking(Core.Contests.ContestInfo.WwDigi, _ => false, st => Core.Messages.Grid.Field(st.Grid));
+        var r = Ranker.Rank(new RankInput([.. Stations(), contest], Log(), Reports(), new RankingSettings(), TestData.Countries.Lookup("W7LIT"),
+            "20m", "FT8", Now, Contest: ranking));
+        var line = r.Line.Single(x => x.Station.Call == "F4ABC");
+        line.ContestTag.Should().Be("New mult · JN");
+    }
+
+    [Fact]
+    public void Rank_ContestDupe_GoesToAlreadyWorked()
+    {
+        var contest = Cq("F4ABC", "JN18", -5, 2, "RU");
+        var ranking = new ContestRanking(Core.Contests.ContestInfo.RttyRoundup, call => call == "F4ABC", _ => null);
+        var r = Ranker.Rank(new RankInput([.. Stations(), contest], Log(), Reports(), new RankingSettings(), TestData.Countries.Lookup("W7LIT"),
+            "20m", "FT8", Now, Contest: ranking));
+        r.Worked.Single(x => x.Station.Call == "F4ABC").ContestTag.Should().Be("Dupe");
+    }
+
+    [Fact]
+    public void Rank_ContestCqOfOtherContest_StillWatching()
+    {
+        var contest = Cq("F4ABC", "JN18", -5, 2, "FD");
+        var ranking = new ContestRanking(Core.Contests.ContestInfo.RttyRoundup, _ => false, _ => null);
+        var r = Ranker.Rank(new RankInput([.. Stations(), contest], Log(), Reports(), new RankingSettings(), TestData.Countries.Lookup("W7LIT"),
+            "20m", "FT8", Now, Contest: ranking));
+        r.Watching.Should().Contain(x => x.Station.Call == "F4ABC");
     }
 
     [Fact]

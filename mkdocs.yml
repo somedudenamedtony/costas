@@ -75,6 +75,7 @@ nav:
       - Raw decodes: raw-decodes.md
       - PSK31, PSK63 and RTTY: keyboard-modes.md
       - Hunt list and alerts: hunt.md
+      - Contests: contests.md
       - Operating from a phone: phone.md
   - Your log:
       - Log, QRZ, LoTW and ADIF: log.md

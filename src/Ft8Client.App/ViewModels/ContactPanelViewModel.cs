@@ -47,6 +47,12 @@ public sealed class ContactPanelViewModel
     /// <summary>Report received in dB, "--" until received.</summary>
     public string Received { get; private init; } = string.Empty;
 
+    /// <summary>"You received", or "They sent" over their contest exchange.</summary>
+    public string ReceivedLabel { get; private init; } = "You received";
+
+    /// <summary>True when Sent and Received are dB reports (not contest exchanges), so the unit is shown.</summary>
+    public bool ShowsReports { get; private init; } = true;
+
     /// <summary>True when the contact is with a Fox (a Fox/Hound DXpedition) and worked the Hound way.</summary>
     public bool HoundMode { get; private init; }
 
@@ -167,8 +173,10 @@ public sealed class ContactPanelViewModel
             Need = need is { } n ? StationText.Need(n.Tag) : string.Empty,
             NeedKind = need is { } n2 ? StationRowViewModel.KindOf(n2.Tag) : TextKind.Normal,
             Subline = string.Join(" · ", parts),
-            Sent = c.ReportSent is { } rs ? Report.Format(rs) : NotYet,
-            Received = c.ReportReceived is { } rr ? Report.Format(rr) : NotYet,
+            Sent = c.ExchangeSent ?? (c.ReportSent is { } rs ? Report.Format(rs) : NotYet),
+            Received = c.ExchangeReceived ?? (c.ReportReceived is { } rr ? Report.Format(rr) : NotYet),
+            ReceivedLabel = c.Flow is ContactFlow.ContestAnswer or ContactFlow.ContestRun ? "They sent" : "You received",
+            ShowsReports = c.Flow is not (ContactFlow.ContestAnswer or ContactFlow.ContestRun),
             CanLogNow = c.CanLogNow,
             HoundMode = c.Flow == ContactFlow.Hound,
             HoundNote = c.Flow == ContactFlow.Hound ? HoundNoteFor(c, s) : string.Empty,

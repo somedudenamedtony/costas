@@ -104,6 +104,23 @@ public class TransmitterTests
     }
 
     [Fact]
+    public async Task Prepare_OutputMutedInWindows_RefusedWithoutKeying()
+    {
+        var r = new Rig();
+        r.Out.Silenced = "it is muted in Windows";
+
+        r.Tx.Prepare(new TxPlan(Slot, "CQ W7LIT DN40", null, null), Mode.Ft8, 1500, Guard(), out var why).Should().BeNull();
+        why.Should().Contain("muted").And.Contain("Unmute");
+        (await r.Tx.TuneAsync(1500, 2.0, Guard())).Should().Contain("muted");
+        r.Run(TimeSpan.FromSeconds(16));
+        r.Radio.PttLog.Should().BeEmpty();
+
+        r.Out.Silenced = null;
+        r.Tx.Prepare(new TxPlan(Slot, "CQ W7LIT DN40", null, null), Mode.Ft8, 1500, Guard(), out var again).Should().NotBeNull();
+        again.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Prepare_AudioOutputDiedWhileIdle_RefusedWithoutKeyingUntilNewOutput()
     {
         var r = new Rig();

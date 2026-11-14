@@ -11,7 +11,7 @@ using Avalonia.Input;
 namespace Ft8Client.App.Views;
 
 /// <summary>
-/// The keys that switch the main window's views: Ctrl+1 to Ctrl+5 (top row or number pad) go straight to a view, and
+/// The keys that switch the main window's views: Ctrl+1 to Ctrl+5 (Ctrl+6 for the Contest view while a contest is picked; top row or number pad) go straight to a view, and
 /// Ctrl+Tab and Ctrl+Shift+Tab step to the next and previous one, wrapping round. Ctrl with a digit or Tab types nothing,
 /// so these work while a text box or the PSK and RTTY typing line has the keyboard without taking any of its keys.
 /// </summary>
@@ -21,11 +21,15 @@ public static class TabKeys
     public const int Count = 5;
 
     /// <summary>The view a key goes to from <paramref name="current"/>, or null when the key is not a view key.</summary>
-    public static int? Target(Key key, KeyModifiers modifiers, int current)
+    /// <param name="key">The key.</param>
+    /// <param name="modifiers">The modifiers held.</param>
+    /// <param name="current">The view shown now.</param>
+    /// <param name="count">How many views there are now: six while a contest adds its view.</param>
+    public static int? Target(Key key, KeyModifiers modifiers, int current, int count = Count)
     {
         if (!modifiers.HasFlag(KeyModifiers.Control) || modifiers.HasFlag(KeyModifiers.Alt)) return null;
         var shift = modifiers.HasFlag(KeyModifiers.Shift);
-        if (key == Key.Tab) return ((current + (shift ? -1 : 1)) % Count + Count) % Count;
+        if (key == Key.Tab) return ((current + (shift ? -1 : 1)) % count + count) % count;
         if (shift) return null;
         var index = key switch
         {
@@ -33,6 +37,6 @@ public static class TabKeys
             >= Key.NumPad1 and <= Key.NumPad9 => key - Key.NumPad1,
             _ => -1,
         };
-        return index is >= 0 and < Count ? index : null;
+        return index is >= 0 && index < count ? index : null;
     }
 }

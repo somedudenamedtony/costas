@@ -12,6 +12,7 @@ the list from **☰ › Keyboard shortcuts** instead.
 | ++ctrl+r++ | Resend |
 | ++ctrl+l++ | Log now |
 | ++ctrl+1++ to ++ctrl+5++ | Operate, Raw decodes, Reach, Log, [Awards](awards.md). The number pad digits work too |
+| ++ctrl+6++ | The [Contest](contests.md) view, while a contest is picked |
 | ++ctrl+tab++, ++ctrl+shift+tab++ | Next view, previous view |
 | ++ctrl+m++ | [Mini mode](operate.md#mini-mode): a small strip that stays on top |
 | ++f1++ | This list |

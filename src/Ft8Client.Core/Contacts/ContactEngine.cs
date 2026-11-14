@@ -6,6 +6,7 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using Ft8Client.Core.Contests;
 using Ft8Client.Core.Encoding;
 using Ft8Client.Core.Messages;
 using Ft8Client.Core.Stations;
@@ -68,6 +69,12 @@ public sealed class ContactEngine
     /// </summary>
     public event Action<string>? HoundStarted;
 
+    /// <summary>My next contest serial number (RTTY Roundup sent from outside the US and Canada). The session sets it from the contest log.</summary>
+    public int NextSerial { get; set; } = 1;
+
+    /// <summary>The contest being run, or null.</summary>
+    public ContestInfo? Contest => ContestInfo.Of(_settings.Contest);
+
     /// <summary>True while calling CQ.</summary>
     public bool CallingCq => _cqRunning;
 
@@ -104,7 +111,8 @@ public sealed class ContactEngine
     /// <summary>QSO progress 0 to 5 for jt9 a-priori decoding.</summary>
     public int QsoProgress => _c is null ? 0 : (_c.Flow, _c.Phase) switch
     {
-        (ContactFlow.AnswerCq or ContactFlow.Hound, 0) => 1,
+        (ContactFlow.AnswerCq or ContactFlow.Hound or ContactFlow.ContestAnswer, 0) => 1,
+        (ContactFlow.ContestAnswer, _) => 4,
         (ContactFlow.CalledCq, 2) => 2,
         (ContactFlow.CalledCq, _) => 4,
         (_, 2) => 3,
@@ -154,8 +162,9 @@ public sealed class ContactEngine
         call = Callsign.Normalize(call);
         _finished = null;
         _extraMessage = null;
-        var flow = fox ? ContactFlow.Hound : ContactFlow.AnswerCq;
+        var flow = fox ? ContactFlow.Hound : Contest is not null ? ContactFlow.ContestAnswer : ContactFlow.AnswerCq;
         _c = new Contact(flow, call, Grid.Grid4(grid), SlotMath.Opposite(dxParity), Report.Clamp(snr), dxOffsetHz);
+        if (flow == ContactFlow.ContestAnswer) _c.ExchangeSent = MyExchange(snr);
         _c.Steps.AddRange(StepsFor(_c));
         RemoveWaiting(call);
         if (_stopped is { } s && Callsign.EqualsCall(s.Contact.DxCall, call)) ForgetStopped();
@@ -225,7 +234,7 @@ public sealed class ContactEngine
         }
         else if (_finished is { } f && f.Logged && f.Flow != ContactFlow.Hound)
         {
-            _extraMessage = Format(f, 4);
+            _extraMessage = Format(f, FinalIndex(f.Flow));
             _extraParity = f.MyParity;
         }
     }
@@ -321,7 +330,8 @@ public sealed class ContactEngine
 
         // I answered its CQ and it has not replied to me, but it was heard working someone else: it picked another
         // caller, so stop calling it rather than keep sending into its contact.
-        if (_c is { Flow: ContactFlow.AnswerCq, Phase: 0, ReportReceived: null } a && AnsweredOther(a, heard) is { } other)
+        if (_c is { Flow: ContactFlow.AnswerCq or ContactFlow.ContestAnswer, Phase: 0, ReportReceived: null, ExchangeReceived: null } a &&
+            AnsweredOther(a, heard) is { } other)
         {
             a.OtherCall = other;
             End(ContactOutcome.AnsweredOther, nowUtc);
@@ -330,7 +340,9 @@ public sealed class ContactEngine
         // Answer the first caller to my CQ.
         if (_c is null && _cqRunning && parity != _cqParity)
         {
-            var first = toMe.FirstOrDefault(x => x.M.Kind is MessageKind.GridReply or MessageKind.Report);
+            var first = Contest is { } contest
+                ? toMe.FirstOrDefault(x => ContestExchange.Read(contest, x.M) is { Roger: false })
+                : toMe.FirstOrDefault(x => x.M.Kind is MessageKind.GridReply or MessageKind.Report);
             if (first.M is not null)
             {
                 // Past the cap too: a caller to my CQ is answered even when the waiting list is full.
@@ -432,7 +444,14 @@ public sealed class ContactEngine
         _c.AwaitingReply = true;
         _c.Steps[_c.Phase] = step with { Count = step.Count + 1, TimeUtc = startedUtc };
 
-        if (_c.Flow == ContactFlow.CalledCq && _c.Phase == 4)
+        if (_c.Flow == ContactFlow.ContestAnswer && _c.Phase == 2)
+        {
+            // Contest, answering: logged when RR73 has been transmitted, as WSJT-X does; their 73 is not waited for.
+            _c.Steps[2] = _c.Steps[2] with { State = StepState.Done };
+            if (_settings.AutoLog) DoLog(_c, startedUtc);
+            End(ContactOutcome.Logged, startedUtc);
+        }
+        else if (_c.Flow == ContactFlow.CalledCq && _c.Phase == 4)
         {
             // Flow B: logged when RR73 has been transmitted. DX's 73 is optional and not waited for.
             _c.Steps[4] = _c.Steps[4] with { State = StepState.Done };
@@ -459,7 +478,7 @@ public sealed class ContactEngine
     // The DX station's sign-off that would have logged a held contact (see Advance and AdvanceHound).
     private static bool CompletesHeld(Contact c, ParsedMessage m) => c.Phase == 2 && (c.Flow == ContactFlow.Hound
         ? m.Kind == MessageKind.RogerBye
-        : c.Flow != ContactFlow.CalledCq && m.Kind is MessageKind.RogerBye or MessageKind.Roger or MessageKind.Bye);
+        : c.Flow is not (ContactFlow.CalledCq or ContactFlow.ContestAnswer) && m.Kind is MessageKind.RogerBye or MessageKind.Roger or MessageKind.Bye);
 
     // Logs a held contact that calling CQ set aside, without showing it in the top slot again or sending anything.
     private void LogSetAside(Contact c, ParsedMessage m, DateTime slotUtc, DateTime nowUtc)
@@ -471,11 +490,25 @@ public sealed class ContactEngine
         RemoveWaiting(c.DxCall);
     }
 
-    private static bool IsFinalCourtesy(Contact c, int phase) => c.Flow != ContactFlow.CalledCq && phase == 4;
+    private static bool IsFinalCourtesy(Contact c, int phase) => c.Flow is not (ContactFlow.CalledCq or ContactFlow.ContestAnswer) && phase == 4;
+
+    // The index of my last message: RR73 when I answered in a contest, else the 73 (or RR73) at index 4.
+    private static int FinalIndex(ContactFlow flow) => flow == ContactFlow.ContestAnswer ? 2 : 4;
 
     private bool Advance(Contact c, ParsedMessage m, DateTime slotUtc, DateTime nowUtc, HeardMessage? heard = null)
     {
         if (c.Flow == ContactFlow.Hound) return AdvanceHound(c, m, slotUtc, nowUtc, heard);
+        if (c.Flow == ContactFlow.ContestAnswer) return AdvanceContestAnswer(c, m, slotUtc);
+        if (c.Flow == ContactFlow.ContestRun && Contest is { } contest && ContestExchange.Read(contest, m) is { Roger: false })
+        {
+            // They sent their exchange again: they did not copy my R and exchange, so send it again.
+            if (c.Phase == 2)
+            {
+                Count(c, 1, slotUtc);
+                c.AwaitingReply = false;
+            }
+            return false;
+        }
         if (c.Flow == ContactFlow.CalledCq)
         {
             switch (m.Kind)
@@ -526,6 +559,17 @@ public sealed class ContactEngine
             default:
                 return false;
         }
+    }
+
+    // Contest, I answered a CQ: their R and exchange moves me to RR73; anything else waits (the retry limit applies).
+    private bool AdvanceContestAnswer(Contact c, ParsedMessage m, DateTime slotUtc)
+    {
+        if (Contest is not { } contest || ContestExchange.Read(contest, m) is not { Roger: true } x) return false;
+        if (c.Phase != 0) return false;
+        c.ExchangeReceived = x.Exchange;
+        MarkReceived(c, 1, m.Text, slotUtc);
+        SetPhase(c, 2);
+        return true;
     }
 
     // A Hound (WSJT-X mainwindow.cpp, hound_reply and the RR73 check before it): the Fox's report, alone or in a
@@ -616,7 +660,8 @@ public sealed class ContactEngine
                 if (!Callsign.EqualsCall(m.SenderCall, c.DxCall)) continue;
                 if (m.IsAddressedTo(_myCall)) return null; // it is also working me (a multi-stream DXpedition, say)
                 // A report or a grid starts a contact; a sign-off (RR73, 73) only finishes an earlier one.
-                if (m.To is { Unresolved: false } to && m.Kind is MessageKind.Report or MessageKind.RogerReport or MessageKind.GridReply)
+                if (m.To is { Unresolved: false } to &&
+                    m.Kind is MessageKind.Report or MessageKind.RogerReport or MessageKind.GridReply or MessageKind.ContestExchange)
                     other ??= to.Call;
             }
         }
@@ -629,6 +674,16 @@ public sealed class ContactEngine
         foreach (var (_, m) in toMe)
         {
             if (!Callsign.EqualsCall(m.SenderCall, l.DxCall) || l.Flow == ContactFlow.Hound) continue;
+            if (l.Flow == ContactFlow.ContestAnswer)
+            {
+                // They sent R and their exchange again: my RR73 was not copied, so it goes once more.
+                if (m is { Kind: MessageKind.ContestExchange, Roger: true })
+                {
+                    _extraMessage = Format(l.Contact, 2);
+                    _extraParity = l.MyParity;
+                }
+                continue;
+            }
             // After my RR73, their 73 is the normal answer, not a repeat.
             var signedOffRr73 = Format(l.Contact, 4).EndsWith(" RR73", StringComparison.Ordinal);
             if (l.Flow != ContactFlow.CalledCq && (m.Kind is MessageKind.RogerBye or MessageKind.Roger || (m.Kind == MessageKind.Bye && !signedOffRr73)))
@@ -661,6 +716,18 @@ public sealed class ContactEngine
             SetPhase(c, 2);
             _c = c;
         }
+        else if (Contest is not null && (w.Exchange ?? (w.Kind == MessageKind.GridReply && Contest.Exchange == ContestExchangeKind.Grid ? w.Grid : null)) is { } theirs)
+        {
+            var c = new Contact(ContactFlow.ContestRun, w.Call, Grid.Grid4(w.Grid), parity, Report.Clamp(w.Snr), w.OffsetHz)
+            {
+                ExchangeReceived = theirs, ExchangeSent = MyExchange(w.Snr),
+            };
+            c.Steps.AddRange(StepsFor(c));
+            c.Steps[0] = c.Steps[0] with { State = StepState.Done };
+            MarkReceived(c, 1, w.LastMessage ?? $"{_myCall} {Dx(w.Call)} {theirs}", w.LastCalledUtc);
+            SetPhase(c, 2);
+            _c = c;
+        }
         else if (w.Kind == MessageKind.Report)
         {
             var c = new Contact(ContactFlow.CalledCqSkippedGrid, w.Call, w.Grid, parity, Report.Clamp(w.Snr), w.OffsetHz) { ReportReceived = w.Report };
@@ -690,7 +757,7 @@ public sealed class ContactEngine
             Resume(s, nowUtc);
             return true;
         }
-        if (w.Kind is not (MessageKind.GridReply or MessageKind.Report)) return false;
+        if (w.Kind is not (MessageKind.GridReply or MessageKind.Report or MessageKind.ContestExchange)) return false;
         StartFromCaller(w);
         return true;
     }
@@ -721,7 +788,8 @@ public sealed class ContactEngine
         _stopped = null;
         var i = _waiting.FindIndex(x => x.AfterStop && Callsign.EqualsCall(x.Call, s.Contact.DxCall));
         if (i < 0) return;
-        if (_waiting[i].Kind is MessageKind.GridReply or MessageKind.Report) _waiting[i] = _waiting[i] with { AfterStop = false };
+        if (_waiting[i].Kind is MessageKind.GridReply or MessageKind.Report || _waiting[i].Exchange is not null)
+            _waiting[i] = _waiting[i] with { AfterStop = false };
         else _waiting.RemoveAt(i);
     }
 
@@ -760,7 +828,11 @@ public sealed class ContactEngine
         if (c.Logged) return;
         c.Logged = true;
         c.LoggedUtc = nowUtc;
-        Logged?.Invoke(new ContactLogEntry(c.DxCall, c.DxGrid, c.ReportSent, c.ReportReceived, c.TimeOnUtc ?? nowUtc, nowUtc));
+        var contest = c.Flow is ContactFlow.ContestAnswer or ContactFlow.ContestRun;
+        if (contest && Contest is { } info && ContestExchange.SendsSerial(info, _settings.ContestExchange)) NextSerial++;
+        var grid = c.DxGrid ?? (Contest?.Exchange == ContestExchangeKind.Grid ? Grid.Grid4(c.ExchangeReceived) : null);
+        Logged?.Invoke(new ContactLogEntry(c.DxCall, grid, contest ? null : c.ReportSent, c.ReportReceived, c.TimeOnUtc ?? nowUtc, nowUtc,
+            contest ? c.ExchangeSent : null, contest ? c.ExchangeReceived : null));
     }
 
     private static void SetPhase(Contact c, int phase)
@@ -792,17 +864,24 @@ public sealed class ContactEngine
             _waiting[i] = w with
             {
                 LastCalledUtc = slotUtc, Snr = h.Decode.Snr, Parity = parity, OffsetHz = h.Decode.OffsetHz,
-                Kind = m.Kind is MessageKind.GridReply or MessageKind.Report ? m.Kind : w.Kind,
+                Kind = m.Kind is MessageKind.GridReply or MessageKind.Report or MessageKind.ContestExchange ? m.Kind : w.Kind,
+                Exchange = ContestFrom(m) ?? w.Exchange,
                 Grid = m.Grid ?? w.Grid, Report = m.Report ?? w.Report,
                 AfterStop = w.AfterStop || afterStop, LastMessage = m.Text,
             };
             return;
         }
         if (!afterStop && !ignoreCap && _waiting.Count >= MaxWaiting) return;
-        if (!afterStop && m.Kind is not (MessageKind.GridReply or MessageKind.Report or MessageKind.RogerReport or MessageKind.Bare)) return;
+        var exchange = ContestFrom(m);
+        if (!afterStop && exchange is null && m.Kind is not (MessageKind.GridReply or MessageKind.Report or MessageKind.RogerReport or MessageKind.Bare)) return;
         _waiting.Add(new WaitingCaller(call, m.Grid, h.Decode.Snr, m.Kind == MessageKind.RogerReport ? MessageKind.Report : m.Kind,
-            m.Report, parity, h.Decode.OffsetHz, slotUtc, slotUtc, AfterStop: afterStop, LastMessage: m.Text));
+            m.Report, parity, h.Decode.OffsetHz, slotUtc, slotUtc, AfterStop: afterStop, LastMessage: m.Text, Exchange: exchange));
     }
+
+    // Their exchange when it opens a contest contact with me (no R), in the contest being run.
+    private string? ContestFrom(ParsedMessage m) => Contest is { } c && ContestExchange.Read(c, m) is { Roger: false } x ? x.Exchange : null;
+
+    private string MyExchange(int snr) => Contest is { } c ? ContestExchange.Mine(c, _settings.ContestExchange, _myGrid, snr, NextSerial) : string.Empty;
 
     private void RemoveWaiting(string call) => _waiting.RemoveAll(x => Callsign.EqualsCall(x.Call, call));
 
@@ -832,6 +911,15 @@ public sealed class ContactEngine
             [
                 Mine(OutgoingMessages.Reply(dx, me, _myGrid, _settings)), Theirs($"{me} {dx} ±NN"), Mine($"{dx} {me} R{rpt}"), Theirs($"{me} {dx} RR73"),
             ],
+            ContactFlow.ContestAnswer =>
+            [
+                Mine($"{dx} {me} {c.ExchangeSent}"), Theirs($"{me} {dx} R {TheirExchangeHint()}"), Mine($"{dx} {me} RR73"), Theirs($"{me} {dx} 73"),
+            ],
+            ContactFlow.ContestRun =>
+            [
+                Mine(cq), Theirs($"{me} {dx} {c.ExchangeReceived}"), Mine($"{dx} {me} R {c.ExchangeSent}"), Theirs($"{me} {dx} RR73"),
+                Mine($"{dx} {me} 73"),
+            ],
             ContactFlow.CalledCq =>
             [
                 Mine(cq), Theirs($"{me} {dx} {c.DxGrid}".TrimEnd()), Mine($"{dx} {me} {rpt}"), Theirs($"{me} {dx} R±NN"),
@@ -843,6 +931,14 @@ public sealed class ContactEngine
             ],
         };
     }
+
+    // What their exchange looks like, for the step not yet received.
+    private string TheirExchangeHint() => Contest?.Exchange switch
+    {
+        ContestExchangeKind.Roundup => "5x9 ST",
+        ContestExchangeKind.FieldDay => "nX SEC",
+        _ => "GRID",
+    };
 
     private ContactView ViewOf(Contact c)
     {
@@ -862,7 +958,9 @@ public sealed class ContactEngine
             }
             steps.Add(s);
         }
-        var sentAny = c.Steps.Any(s => s.Mine && s.Count > 0 && s.Message.Contains(Report.Format(c.ReportSent), StringComparison.Ordinal));
+        var isContest = c.Flow is ContactFlow.ContestAnswer or ContactFlow.ContestRun;
+        var sentAny = c.Steps.Any(s => s.Mine && s.Count > 0 &&
+            s.Message.Contains(isContest ? c.ExchangeSent ?? "\u0000" : Report.Format(c.ReportSent), StringComparison.Ordinal));
         var status = c.Outcome switch
         {
             ContactOutcome.InProgress when c.Held => $"Transmitting stopped. Still listening to {c.DxCall}; Ctrl+R carries on, Esc abandons.",
@@ -877,8 +975,13 @@ public sealed class ContactEngine
             ContactOutcome.AnsweredOther => c.OtherCall is null ? $"{c.DxCall} answered someone else. Stopped calling." : $"{c.DxCall} answered {c.OtherCall} instead. Stopped calling.",
             _ => $"Stopped calling {c.DxCall}.",
         };
-        return new ContactView(c.DxCall, c.DxGrid, c.Flow, c.Outcome, sentAny ? c.ReportSent : null, c.ReportReceived, steps, c.Logged,
-            !c.Logged && sentAny && c.ReportReceived is not null, status) { MyParity = c.MyParity, Held = c.Held && c.Outcome == ContactOutcome.InProgress };
+        var received = isContest ? c.ExchangeReceived is not null : c.ReportReceived is not null;
+        return new ContactView(c.DxCall, c.DxGrid, c.Flow, c.Outcome, sentAny && !isContest ? c.ReportSent : null, c.ReportReceived, steps, c.Logged,
+            !c.Logged && sentAny && received, status)
+        {
+            MyParity = c.MyParity, Held = c.Held && c.Outcome == ContactOutcome.InProgress,
+            ExchangeSent = isContest && sentAny ? c.ExchangeSent : null, ExchangeReceived = isContest ? c.ExchangeReceived : null,
+        };
     }
 
     private sealed class Contact(ContactFlow flow, string dxCall, string? dxGrid, SlotParity myParity, int reportSent, int dxOffset)
@@ -922,6 +1025,10 @@ public sealed class ContactEngine
         public ContactOutcome Outcome { get; set; } = ContactOutcome.InProgress;
 
         public string? OtherCall { get; set; }
+
+        public string? ExchangeSent { get; set; }
+
+        public string? ExchangeReceived { get; set; }
 
         public bool BusyAtStart { get; set; }
     }

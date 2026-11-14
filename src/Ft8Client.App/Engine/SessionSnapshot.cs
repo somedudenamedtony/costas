@@ -25,6 +25,9 @@ public sealed record SessionSnapshot
     /// <summary>My call.</summary>
     public string MyCall { get; init; } = string.Empty;
 
+    /// <summary>The contest being run, or null.</summary>
+    public ContestSnapshot? Contest { get; init; }
+
     /// <summary>My grid.</summary>
     public string MyGrid { get; init; } = string.Empty;
 

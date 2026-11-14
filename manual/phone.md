@@ -31,6 +31,9 @@ The page can sit on your home screen with the Costas icon, like an app.
 If the station computer's address changes (for example, your router hands it a new one), add the page again from the
 new address.
 
+If you use Tailscale, one icon can work at home and away: see
+[One icon for home and away](#one-icon-for-home-and-away).
+
 ## Operating away from home
 
 The same page works from anywhere (on mobile data, at work, on holiday) through
@@ -42,11 +45,31 @@ Nothing is opened on your router, and only devices signed in to your Tailscale a
 2. On the phone, install the **Tailscale** app (App Store or Google Play) and sign in with the same account. On iPhone,
    allow it to add a VPN configuration. Turning on **VPN On Demand** in the app keeps it connected.
 3. Open **Settings › Mobile connection** on the station computer. Under **Away from home** it shows the Tailscale
-   address to open, for example `http://100.101.102.103:8073/`. Add that address to your home screen as well; it
-   works at home too while Tailscale is connected.
+   address to open, for example `http://100.101.102.103:8073/`.
 4. Before you leave, check that the station computer will not sleep (Windows **Settings › System › Power** › **Sleep:
    Never**), that Costas is running and that the mobile connection is on. If Windows restarts for an update, Costas
    has to be started again before the page comes back.
+
+### One icon for home and away
+
+A home-screen icon always opens the one address it was added from. Normally the home address (such as
+`http://192.168.1.20:8073/`) only works on your Wi-Fi and the Tailscale address only works while Tailscale is on. One
+setting in Tailscale makes the home address work away from home as well, so the icon you already added at home works
+everywhere, and at home it works with Tailscale off:
+
+1. Give the station computer a fixed address on your router (often called a **DHCP reservation**), so the home address
+   does not change.
+2. Open **Settings › Mobile connection** in Costas. Under **Away from home** it shows a command such as
+   `tailscale set --advertise-routes=192.168.1.20/32`. Open a Command Prompt on the station computer and run it.
+3. Sign in to the [Tailscale admin console](https://login.tailscale.com/admin/machines), open the station computer,
+   choose **Edit route settings** and turn on the route.
+
+Away from home, with Tailscale on in the phone, the home address now reaches the station computer through Tailscale.
+At home it goes straight over your Wi-Fi whether Tailscale is on or off. The route covers only the station computer,
+not the rest of your home network.
+
+If you skip this, add the **Tailscale** address to your home screen instead: it works at home too, as long as
+Tailscale is on in the phone.
 
 The phone page and all its safety rules work exactly as they do at home: transmit stops 15 seconds after the phone
 loses touch, and the watchdog is at most 3 minutes. You do not hear the radio's audio, which FT8 and FT4 do not need.
@@ -56,9 +79,9 @@ has no password, so anyone who found it could transmit.
 
 ## What the phone can do
 
-The top of the page shows the band and frequency (tap it to change band, offset or power), the link to the station and
+The top of the page shows the band and frequency (tap it to change band or offset), the link to the station and
 the radio, the clock and the decoder, and who is in control. Below it, five tabs cover what the desk's Operate view
-shows. **HALT TX** is always at the bottom of the screen.
+shows, and a sixth, **Radio**, holds the radio's own controls. **HALT TX** is always at the bottom of the screen.
 
 The phone's **Operate** tab is a set of tiles built for a small screen rather than a copy of the desk:
 
@@ -120,25 +143,42 @@ offset box on the desk: band changes wait until the current transmission ends, c
 (the phone asks first), and a fixed offset must be between 200 and 2900 Hz. Changes are saved, so the desk shows
 them too.
 
-![Band, offset and power on the phone](images/phone-band.png){ width="320" }
+![Band and offset on the phone](images/phone-band.png){ width="320" }
 
-### Radio power
+### Radio tab
 
-The same sheet shows the radio's power setting under **Radio power**, the same as the power in the desk's bottom bar.
-Type a power and press **Use**, or step it with **−5** and **+5**. Anything from 1 W up to the radio's maximum is
-accepted; anything outside that is refused, not rounded. If the radio has its own minimum (5 W on the FT-710), it
-keeps that and the phone says what it set.
+The **Radio** tab (on phones and tablets) gathers the controls you would reach for on the radio's front panel:
 
-- It only changes the power setting. It never keys the radio, and it is not allowed while a transmission is on the
-  air (as with band changes).
-- It needs a radio connected by CAT that reports its power. With an audio-only (VOX) radio the section does not show.
-- On the FT-710 it needs Hamlib 4.6 or newer, which the Windows installer includes. Older Hamlib releases (such as
-  the one many Linux distributions package) scale the FT-710's power wrongly, so Costas leaves power control off
-  there rather than send the wrong power.
+![The Radio tab](images/phone-radio.png){ width="320" }
 
+- **Power**: the radio's power setting, the same as the power in the desk's bottom bar. Type a power and press
+  **Use**, or step it with **−5** and **+5**. Anything from 1 W up to the radio's maximum is accepted; anything
+  outside that is refused, not rounded. Going up to three quarters of the maximum or more asks first. If the radio
+  has its own minimum (5 W on the FT-710), it keeps that and the phone says what it set.
+- **Tune**: the same as Tune on the desk. It starts the radio's own antenna tuner, or sends a steady tone for up to
+  10 seconds when the radio has none, under all the usual transmit checks (band edges, clock, radio errors). Tap
+  **Stop tune** to end it sooner. It waits while you are calling CQ or in a contact. This is the only control on the
+  tab that transmits.
+- **Antenna tuner**: puts the radio's tuner in line or bypasses it. Switching it does not start a tune.
+- **Meters**: power out, ALC and SWR, live while you transmit and held from the last transmission afterwards, with
+  the same warnings as the desk.
+- **Receive**: AF gain (speaker volume), RF gain, preamp, attenuator and AGC.
+- **Noise**: noise blanker and noise reduction. DSP noise reduction can hide weak FT8 signals, so leave it off unless
+  the band is noisy.
+
+Only what your radio reports over CAT is shown: Costas asks Hamlib which settings the radio can read and change, and
+leaves the rest out. With an audio-only (VOX) radio only Tune and the meters show. Settings are read from the radio
+every few seconds while a phone has the tab open, and not at all otherwise.
+
+- Changing a setting never keys the radio, and nothing changes while a transmission is on the air.
+- Power control on the FT-710 needs Hamlib 4.6 or newer, which the Windows installer includes. Older Hamlib releases
+  (such as the one many Linux distributions package) scale the FT-710's power wrongly, so Costas leaves power control
+  off there rather than send the wrong power. The same old releases cannot set the FT-710's RF gain.
+- Turning the radio itself on or off is not offered: once it is off, there is no dependable way to turn it back on
+  from the phone.
 
 Settings, editing the log and the waterfall stay on the desk. Opening a station's details or switching tabs does not
-take control; calling, answering, band, offset and power changes do.
+take control; calling, answering, Tune, and band, offset, power and radio setting changes do. Opening the Radio tab does not.
 
 ## Who is in control
 

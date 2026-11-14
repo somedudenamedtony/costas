@@ -58,10 +58,14 @@ public sealed partial class OperateViewModel : ObservableObject
         _repeats = new LineStabilizer<IReadOnlyList<RankedStation>>(now);
         _repeats.AppliedChanged += ApplyRepeats;
         Keyboard = new KeyboardPanelViewModel(commands);
+        ContestBar = new ContestBarViewModel(commands);
     }
 
     /// <summary>The PSK and RTTY conversation box, type-ahead line and macro keys.</summary>
     public KeyboardPanelViewModel Keyboard { get; }
+
+    /// <summary>The contest bar.</summary>
+    public ContestBarViewModel ContestBar { get; }
 
     /// <summary>RTTY: mark and space swapped (the Reverse switch beside the macro keys). Saved as the setting.</summary>
     [ObservableProperty]
@@ -298,7 +302,7 @@ public sealed partial class OperateViewModel : ObservableObject
     public partial string AutoCallText { get; set; } = "Auto-call";
 
     /// <summary>The CQ modifiers in the picker beside Call CQ.</summary>
-    public ObservableCollection<CqModifierChoice> CqModifiers { get; } = new(CqModifierChoice.Common.Select(m => new CqModifierChoice(m)));
+    public ObservableCollection<CqModifierChoice> CqModifiers { get; } = new(CqModifierChoice.All());
 
     /// <summary>The CQ modifier in use; picking another saves it.</summary>
     [ObservableProperty]
@@ -306,16 +310,27 @@ public sealed partial class OperateViewModel : ObservableObject
 
     private bool _showingCqModifier;
 
-    /// <summary>Shows the modifier from settings in the picker, adding it to the choices if it is not a common one.</summary>
-    public void ShowCqModifier(string modifier)
+    /// <summary>
+    /// Shows the modifier from settings in the picker, adding it to the choices if it is not a common one; while a contest
+    /// runs, shows the contest.
+    /// </summary>
+    public void ShowCqModifier(string modifier, Core.Contests.ContestId contest = Core.Contests.ContestId.None)
     {
         var m = modifier.Trim().ToUpperInvariant();
-        if (SelectedCqModifier?.Modifier == m) return;
-        var choice = CqModifiers.FirstOrDefault(c => c.Modifier == m);
+        if (contest != Core.Contests.ContestId.None)
+        {
+            if (SelectedCqModifier?.Contest == contest) return;
+            _showingCqModifier = true;
+            SelectedCqModifier = CqModifiers.FirstOrDefault(c => c.Contest == contest);
+            _showingCqModifier = false;
+            return;
+        }
+        if (SelectedCqModifier is { Contest: Core.Contests.ContestId.None, IsHeader: false } cur && cur.Modifier == m) return;
+        var choice = CqModifiers.FirstOrDefault(c => c.Modifier == m && c is { Contest: Core.Contests.ContestId.None, IsHeader: false });
         if (choice is null)
         {
             choice = new CqModifierChoice(m);
-            CqModifiers.Add(choice);
+            CqModifiers.Insert(CqModifiers.IndexOf(CqModifierChoice.ContestHeader), choice);
         }
         _showingCqModifier = true;
         SelectedCqModifier = choice;
@@ -324,7 +339,10 @@ public sealed partial class OperateViewModel : ObservableObject
 
     partial void OnSelectedCqModifierChanged(CqModifierChoice? value)
     {
-        if (!_showingCqModifier && value is not null) _commands.SetCqModifier(value.Modifier);
+        if (_showingCqModifier || value is null) return;
+        if (value.IsHeader) return; // the heading cannot be picked; the next snapshot shows the real choice again
+        if (value.Contest != Core.Contests.ContestId.None) _commands.SetContest(value.Contest);
+        else _commands.SetCqModifier(value.Modifier);
     }
 
     /// <summary>True while transmitting.</summary>
@@ -385,6 +403,7 @@ public sealed partial class OperateViewModel : ObservableObject
         AutoCallText = s.AutoCall ? "Stop auto-call" : "Auto-call";
         Transmitting = s.Transmitting;
         Keyboard.Apply(s);
+        ContestBar.Apply(s.Contest);
         ReportUnit = ModeInfo.IsSlotted(s.Mode) ? "dB" : string.Empty;
         UpdateSlot(now);
 

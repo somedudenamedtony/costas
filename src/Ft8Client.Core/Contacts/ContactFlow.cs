@@ -25,4 +25,15 @@ public enum ContactFlow
     /// contact is logged on its RR73. I send nothing after that.
     /// </summary>
     Hound,
+
+    /// <summary>
+    /// Contest, I answered a CQ (WSJT-X contest sequence): I send my exchange, it sends R and its exchange, I send RR73 and
+    /// the contact is logged when RR73 goes out.
+    /// </summary>
+    ContestAnswer,
+
+    /// <summary>
+    /// Contest, I called CQ: it sends its exchange, I send R and mine, it sends RR73 (logged), I send 73 once.
+    /// </summary>
+    ContestRun,
 }
