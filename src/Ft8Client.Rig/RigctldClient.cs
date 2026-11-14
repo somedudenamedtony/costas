@@ -85,7 +85,7 @@ public sealed class RigctldClient : IAsyncDisposable
     public async Task SetAsync(string command, CancellationToken ct)
     {
         var r = await SendAsync(command, ct).ConfigureAwait(false);
-        if (!r.Ok) throw new RigException($"The radio refused '{command.Split(' ')[0]}' (RPRT {r.Code}).") { Refused = true };
+        if (!r.Ok) throw new RigException($"The radio refused '{command.Split(' ')[0]}' (RPRT {r.Code}).") { Refused = true, Code = r.Code };
     }
 
     /// <summary>Reads the frequency.</summary>

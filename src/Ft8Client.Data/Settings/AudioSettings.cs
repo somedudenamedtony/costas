@@ -17,6 +17,12 @@ public sealed class AudioSettings
     /// <summary>Playback device id.</summary>
     public string? OutputId { get; set; }
 
+    /// <summary>Capture device name, to find it again when Windows gives it a new id.</summary>
+    public string? InputName { get; set; }
+
+    /// <summary>Playback device name, to find it again when Windows gives it a new id.</summary>
+    public string? OutputName { get; set; }
+
     /// <summary>
     /// Transmit digital gain in dBFS as the operator set it: used on a band with no level of its own, and the base that
     /// automatic level may rise at most 6 dB above.
