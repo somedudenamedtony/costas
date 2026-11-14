@@ -19,7 +19,7 @@ namespace Ft8Client.App.Tests;
 
 /// <summary>
 /// Next in line from a slot's early pass, then its full decode, which does not reorder the rows already shown
-/// (owner request 2026-11-13).
+/// (PR #150, owner sign-off 2026-11-14).
 /// </summary>
 public class LineSecondUpdateTests
 {

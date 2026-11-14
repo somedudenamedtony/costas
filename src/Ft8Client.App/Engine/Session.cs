@@ -577,7 +577,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             var now = _clock.UtcNow;
             // An operator command (calling a station, CQ) may still start in the current slot well after its Tx start,
             // leaving out the part already past; anything automatic only within the late-start limit.
-            if (late && now > txStart + (command ? _config.CommandStartLimit : _config.LateStartLimit)) return;
+            if (late && now > txStart + (command ? _config.CommandStartLimitFor(mode) : _config.LateStartLimit)) return;
             // Already on the air with this slot's message. A message cut off to switch stations does not count: the
             // transmitter was halted, so nothing of it is still going out.
             if (_tx.AudioStarted(slot) && !(afterHalt && _tx.CurrentMessage is null)) return;
@@ -720,7 +720,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     public bool CallStation(string call) => CallStation(call, afterHalt: false);
 
     /// <summary>
-    /// Calls a station from an operator click (owner request 2026-11-13). In FT8 and FT4, a contact in progress with
+    /// Calls a station from an operator click (PR #150, owner sign-off 2026-11-14). In FT8 and FT4, a contact in progress with
     /// another station is ended first: one already logged ends as logged, otherwise it is abandoned as the Abandon button
     /// does (nothing logged), and a message to it already on the air is cut off. The call then goes out in this slot if
     /// it is my slot for the new station and the click start limit has not passed, else in my next slot of that parity.

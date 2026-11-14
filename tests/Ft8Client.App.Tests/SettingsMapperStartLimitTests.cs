@@ -29,4 +29,17 @@ public class SettingsMapperStartLimitTests
         s.Operating.CommandStartLimitMs = storedMs;
         SettingsMapper.ToConfig(s).CommandStartLimit.Should().Be(TimeSpan.FromMilliseconds(expectedMs));
     }
+
+    [Theory]
+    [InlineData(5000, 3000)]
+    [InlineData(3000, 3000)]
+    [InlineData(1500, 1500)]
+    public void CommandStartLimitFor_Ft4_CappedAtThreeSeconds(int setMs, int expectedMs) =>
+        new Ft8Client.App.Engine.SessionConfig { CommandStartLimit = TimeSpan.FromMilliseconds(setMs) }
+            .CommandStartLimitFor(Ft8Client.Core.Mode.Ft4).Should().Be(TimeSpan.FromMilliseconds(expectedMs));
+
+    [Fact]
+    public void CommandStartLimitFor_Ft8_UsesSetting() =>
+        new Ft8Client.App.Engine.SessionConfig { CommandStartLimit = TimeSpan.FromSeconds(5) }
+            .CommandStartLimitFor(Ft8Client.Core.Mode.Ft8).Should().Be(TimeSpan.FromSeconds(5));
 }

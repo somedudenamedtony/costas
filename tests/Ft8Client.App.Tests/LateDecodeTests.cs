@@ -332,7 +332,7 @@ public class LateDecodeTests
         started.Should().BeCloseTo(MySecondSlot.AddSeconds(0.5), TimeSpan.FromMilliseconds(2));
     }
 
-    // Double-click switch (owner request 2026-11-13): N8WCR and K1ABC both call CQ in the even slot; I am sending my grid
+    // Double-click switch (PR #150, owner sign-off 2026-11-14): N8WCR and K1ABC both call CQ in the even slot; I am sending my grid
     // to N8WCR in the odd slot when I switch to K1ABC, whom I also answer in the odd slots.
     private static async Task<Rig> CallingN8wcrWithK1abcAlsoOnAsync()
     {

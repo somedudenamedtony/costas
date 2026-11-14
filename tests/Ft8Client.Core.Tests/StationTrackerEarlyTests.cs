@@ -11,7 +11,7 @@ using Ft8Client.Core.Stations;
 
 namespace Ft8Client.Core.Tests;
 
-/// <summary>The early pass in the station list before the full decode (owner request 2026-11-13).</summary>
+/// <summary>The early pass in the station list before the full decode (PR #150, owner sign-off 2026-11-14).</summary>
 public class StationTrackerEarlyTests
 {
     private static readonly DateTime T0 = new(2026, 1, 4, 2, 50, 0, DateTimeKind.Utc); // even slot

@@ -79,7 +79,7 @@ public sealed class OperatingSettings
 
     /// <summary>
     /// In FT8 and FT4, double-clicking another station in Next in line or Repeats during a contact abandons the contact
-    /// and calls that station (owner request 2026-11-13). Off by default: during a contact a double-click does nothing.
+    /// and calls that station (PR #150, owner sign-off 2026-11-14). Off by default: during a contact a double-click does nothing.
     /// </summary>
     public bool DoubleClickSwitches { get; set; }
 

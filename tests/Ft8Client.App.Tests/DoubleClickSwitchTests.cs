@@ -18,7 +18,7 @@ using Ft8Client.Core.Time;
 
 namespace Ft8Client.App.Tests;
 
-/// <summary>Double-clicking a station in Next in line or Repeats, in and out of a contact (owner request 2026-11-13).</summary>
+/// <summary>Double-clicking a station in Next in line or Repeats, in and out of a contact (PR #150, owner sign-off 2026-11-14).</summary>
 public class DoubleClickSwitchTests
 {
     private static readonly DateTime Slot = new(2026, 11, 13, 14, 30, 0, DateTimeKind.Utc);

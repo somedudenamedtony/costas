@@ -399,7 +399,7 @@ public sealed partial class OperateViewModel : ObservableObject
         // Re-rank only when a slot's early pass or full decode has arrived, or the band or mode changed (the old band's
         // stations, with Call buttons that no longer work, stayed until the next decode). A keyboard mode has no slots,
         // so it re-ranks every few seconds. The full decode after the early pass of the same slot does not reorder the
-        // list: rows shown keep their order and new ones go in at their rank (owner request 2026-11-13).
+        // list: rows shown keep their order and new ones go in at their rank (PR #150, owner sign-off 2026-11-14).
         var bandMode = (s.Band, s.Mode);
         var keyboardDue = !ModeInfo.IsSlotted(s.Mode) && now - _lastKeyboardRank >= KeyboardRankEvery;
         var listKey = RankedKey(s);

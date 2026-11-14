@@ -10,7 +10,7 @@ namespace Ft8Client.Core.Ranking;
 
 /// <summary>
 /// The second update of a slot's list (the full decode after the early pass) without reordering what the operator is
-/// already looking at (owner request 2026-11-13; docs/02-ui-spec.md, "Next in line").
+/// already looking at (PR #150, owner sign-off 2026-11-14; docs/02-ui-spec.md, "Next in line").
 /// </summary>
 public static class LineMerge
 {
