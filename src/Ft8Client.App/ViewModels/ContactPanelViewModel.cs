@@ -77,11 +77,15 @@ public sealed class ContactPanelViewModel
     /// <summary>True when there are steps to show in the conversation strip.</summary>
     public bool HasSteps => Steps.Count > 0;
 
+    /// <summary>True for the idle cards: no contact, so the card folds to one line and the band strip sits under it.</summary>
+    public bool IsIdle { get; private init; }
+
     /// <summary>The card when no contact is running: nothing exchanged, no strip, contact buttons disabled.</summary>
     public static ContactPanelViewModel Idle { get; } = new()
     {
         Caption = "Not in a contact",
         Call = "—",
+        IsIdle = true,
         Subline = "Call a station in Next in line, or call CQ.",
         Sent = NotYet,
         Received = NotYet,
@@ -92,6 +96,7 @@ public sealed class ContactPanelViewModel
     {
         Caption = "Auto-call on",
         Call = "—",
+        IsIdle = true,
         Subline = "Calls the next station in Next in line as soon as one can be called.",
         Sent = NotYet,
         Received = NotYet,
@@ -102,6 +107,7 @@ public sealed class ContactPanelViewModel
     {
         Caption = "Calling CQ",
         Call = "—",
+        IsIdle = true,
         Subline = "Waiting for a station to answer.",
         Sent = NotYet,
         Received = NotYet,

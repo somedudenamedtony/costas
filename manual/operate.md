@@ -57,26 +57,27 @@ Two banners can appear under the top bar:
 A **Hunt list** bar appears below them when a station on your [Hunt list](hunt.md) is heard, with **Go to** *band*
 and **Dismiss**.
 
-## The top slot: band summary
+## The top slot: idle card and band strip
 
-When you are not in a contact, the top card summarises the band.
+When you are not in a contact, the card at the top folds to two short lines so the call list gets the room, which
+matters most on a laptop.
 
-**20 m right now** (named after the current band): stations heard in the last 5 minutes, how many countries, how
-many are calling CQ, and **You need** (stations that are new to you in some way). The line under it gives decodes
-in the last slot and the average per slot over the past hour.
+The first line says **Not in a contact** (or *Calling CQ*, or *Auto-call on*) with the slot countdown, **Call CQ**,
+the CQ picker and **Auto-call**. **Resend**, **Log now** and **Abandon** come back with the full card when a contact
+starts.
 
-**Heard from**: a bar per continent (N. Am., Europe, Asia, Oceania, S. Am., Africa).
+The second line is the **band strip**: **20 m now** (named after the current band), stations heard in the last 5
+minutes, countries, how many are calling CQ, and **You need** (stations that are new to you in some way). Next to the
+counts is a small bar per continent (NA, EU, AS, OC, SA, AF; hover for the count) and one line for your log on this
+band, such as *19 countries · 46/50 states · 142 grids*. Hover over it for the states you still need.
 
-**Your log on 20 m**: countries worked and confirmed on this band, US states worked (and the first few you still
-need), grid squares worked, and **This session**: contacts, new countries and new bands this session. A session starts
-when you open Costas, or after 2 hours with no contact.
+**More ▾** opens the **Band** tab in the [side column](#side-column) with the full summary. While that tab is
+showing, the strip is hidden, so the same numbers are never on screen twice.
 
 When you call or answer a station, this card becomes the contact panel. See [Making contacts](contacts.md).
 
-The contact card and this summary stay put at the top. Only the call list below them (Next in line, Repeats and
-Watching) scrolls, so the countdown, Call CQ and the contact's progress are always in view. On a short window there is
-not room for both, so the summary moves to the top of the call list and scrolls with it instead of being cut off. On a
-narrow window **Heard from** moves under the counts and your log.
+The card stays put at the top. Only the call list below it (Next in line, Repeats and Watching) scrolls, so the
+countdown, Call CQ and the contact's progress are always in view.
 
 ## Next in line
 
@@ -234,20 +235,35 @@ If you are in a contact of your own when the station comes free, your contact ca
 once yours ends, if it is still free then. You can mark more than one station; the first one marked that comes
 free is called first. A marked station is never folded away, even past the first eight rows.
 
-## Right column
+## Side column
 
-From top to bottom:
+The column at the right has four tabs, one showing at a time. Costas remembers the tab you left it on.
 
-- **Heard here**: a map of the stations you have decoded in the last 15 minutes. See
-  [Maps and who hears you](maps.md#heard-here).
-- **Band activity, last hour**: a bar per minute of decodes per slot (grey) and needed stations per slot (blue),
-  with a sentence saying whether the band is busier or quieter than half an hour ago.
-- **Your signal on 20 m**: how many stations hear you, which countries they are in (*USA 12 · Canada 3 · Japan 1*, most stations first; after six countries it says *+4 more*, and hovering over the line lists every country with its best report and farthest station), the farthest and the best report, plus a graph of distinct receivers in five-minute intervals over the last hour. Each receiver counts once per interval. Times are local and the faded final bar is still incomplete. History stays available when you switch back to a band or mode during this session; recent stored reports refill it at start-up, and changing your station clears the in-memory counts. Reports may arrive late, and transmitting less or losing the feed can lower counts even when the band has not changed.
+- **Band**: the full band summary. **20 m right now** has stations heard in the last 5 minutes, countries, how many
+  are calling CQ and **You need**, with decodes in the last slot and the average per slot over the past hour.
+  **Heard from** is a bar per continent (N. Am., Europe, Asia, Oceania, S. Am., Africa). **Your log on 20 m** has
+  countries worked and confirmed on this band, US states worked (and the first few you still need), grid squares
+  worked, and **This session**: contacts, new countries and new bands this session. A session starts when you open
+  Costas, or after 2 hours with no contact. This tab stays available during a contact.
+- **Heard**: **Heard here**, a map of the stations you have decoded in the last 15 minutes (see
+  [Maps and who hears you](maps.md#heard-here)), and **Band activity, last hour**: a bar per minute of decodes per
+  slot (grey) and needed stations per slot (blue), with a sentence saying whether the band is busier or quieter than
+  half an hour ago.
+- **Signal**: **Your signal on 20 m**: how many stations hear you, which countries they are in (*USA 12 · Canada 3 · Japan 1*, most stations first; after six countries it says *+4 more*, and hovering over the line lists every country with its best report and farthest station), the farthest and the best report, plus a graph of distinct receivers in five-minute intervals over the last hour. Each receiver counts once per interval. Times are local and the faded final bar is still incomplete. History stays available when you switch back to a band or mode during this session; recent stored reports refill it at start-up, and changing your station clears the in-memory counts. Reports may arrive late, and transmitting less or losing the feed can lower counts even when the band has not changed.
   **Open reach view** goes to the full view.
-- **Worked this session**: your latest contacts this session with their QRZ upload state. **Show all in the log** opens
-  the Log view.
+- **Session**: **Worked this session**, your latest contacts this session with their QRZ upload state. **Show all in
+  the log** opens the Log view.
 
-![Lower part of the right column](images/right-column-lower.png){ width="320" }
+![The Band tab](images/side-column-band.png){ width="320" }
+
+### Folding the side column
+
+Press **»** at the top right of the column to fold it to a thin rail. The call list then takes the full width of the
+window, so on a laptop the columns that were trimmed or hidden to keep the **Call** buttons on screen come back. The
+rail still says what matters, such as *20 m · 198 you need* and *Your signal · 146 heard you*. Click either to open
+the column on that tab, or **«** to open it where you left it. Costas remembers whether the column is folded.
+
+![The folded side column](images/side-column-folded.png){ width="400" }
 
 ## Bottom bar
 

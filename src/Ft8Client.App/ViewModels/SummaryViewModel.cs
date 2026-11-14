@@ -42,7 +42,9 @@ public sealed class SummaryViewModel
                   + $"{Math.Round(keyboardActivity.Average(a => a.Decodes)).ToString(CultureInfo.InvariantCulture)} per three minutes over the past hour";
         var max = Math.Max(1, s.HeardFrom.Values.DefaultIfEmpty(0).Max());
         Continents = BandSummary.ContinentOrder.Select(c => new ContinentBar(ContinentNames[c], s.HeardFrom.GetValueOrDefault(c),
-            48.0 * s.HeardFrom.GetValueOrDefault(c) / max)).ToList();
+            48.0 * s.HeardFrom.GetValueOrDefault(c) / max, c)).ToList();
+        StripTitle = $"{band} now";
+        LogLine = $"{s.LogCountriesWorked} countries · {s.StatesWorked}/50 states · {s.GridsWorked} grids";
         LogCountries = $"{s.LogCountriesWorked} worked · {s.LogCountriesConfirmed} confirmed";
         var missing = s.StatesMissing.Count == 0 ? string.Empty
             : " · need " + string.Join(", ", s.StatesMissing) + (s.StatesMoreMissing > 0 ? $" and {s.StatesMoreMissing} more" : string.Empty);
@@ -54,6 +56,15 @@ public sealed class SummaryViewModel
 
     /// <summary>"20 m right now".</summary>
     public string Title { get; }
+
+    /// <summary>"20 m now", the idle strip's title.</summary>
+    public string StripTitle { get; }
+
+    /// <summary>The log on this band in one line for the idle strip: "19 countries · 46/50 states · 142 grids".</summary>
+    public string LogLine { get; }
+
+    /// <summary>The log on this band in full, for the tooltip over <see cref="LogLine"/>.</summary>
+    public string LogTip => $"{LogTitle}{Environment.NewLine}Countries: {LogCountries}{Environment.NewLine}US states: {LogStates}{Environment.NewLine}Grid squares: {LogGrids}";
 
     /// <summary>"Your log on 20 m".</summary>
     public string LogTitle { get; }
