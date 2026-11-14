@@ -43,6 +43,9 @@ public interface IOperateCommands
     /// <summary>Answer a waiting caller after this contact.</summary>
     void AnswerAfter(string call);
 
+    /// <summary>Take a caller off Calling you without answering it.</summary>
+    void DismissCaller(string call);
+
     /// <summary>Resend the current step.</summary>
     void Resend();
 

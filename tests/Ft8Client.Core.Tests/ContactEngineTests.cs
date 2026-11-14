@@ -428,6 +428,61 @@ public class ContactEngineTests
     }
 
     [Fact]
+    public void DismissCaller_KeepsCalling_StaysOffAndNothingIsSent()
+    {
+        var s = new Sim();
+        s.Step();
+        s.Step("W7LIT K1AA FN42", "W7LIT K2BB FN42");
+        s.E.DismissCaller("K1AA", s.Now);
+        s.E.Waiting.Select(w => w.Call).Should().Equal("K2BB");
+        for (var i = 0; i < 12; i++) s.Step("W7LIT K1AA FN42"); // 3 minutes, longer than DismissQuiet
+        s.E.Waiting.Select(w => w.Call).Should().Equal("K2BB");
+        s.Sent.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void DismissCaller_CallsAgainAfterQuiet_ShownAgain()
+    {
+        var s = new Sim();
+        s.Step();
+        s.Step("W7LIT K1AA FN42");
+        s.E.DismissCaller("K1AA", s.Now);
+        s.Steps((int)(ContactEngine.DismissQuiet.TotalSeconds / 15) + 1);
+        s.Step("W7LIT K1AA FN42");
+        s.E.Waiting.Should().ContainSingle(w => w.Call == "K1AA");
+    }
+
+    [Fact]
+    public void DismissCaller_CalledByOperator_DismissalEnds()
+    {
+        var s = new Sim();
+        s.Step();
+        s.Step("W7LIT K1AA FN42");
+        s.E.DismissCaller("K1AA", s.Now);
+        s.E.CallStation("K1AA", "FN42", -12, SlotParity.Odd, 1200, s.Now);
+        s.E.Abandon(s.Now);
+        s.Step("W7LIT K1AA FN42");
+        s.E.Waiting.Should().ContainSingle(w => w.Call == "K1AA");
+    }
+
+    [Fact]
+    public void DismissCaller_AbandonedStationRepliesLate_StaysOffAndNothingIsSent()
+    {
+        var s = new Sim();
+        s.E.CallStation("ZL2RPA", "RF70", -19, SlotParity.Odd, 1500, Sim.T0);
+        s.Step().Should().Be("ZL2RPA W7LIT DN40");
+        s.E.Abandon(s.Now);
+        s.Step("W7LIT ZL2RPA -22");
+        s.E.Waiting.Should().ContainSingle(w => w.AfterStop);
+        s.E.DismissCaller("ZL2RPA", s.Now);
+        s.Step();
+        s.Step("W7LIT ZL2RPA -22");
+        s.E.Waiting.Should().BeEmpty();
+        s.Steps(4);
+        s.Sent.Should().HaveCount(1);
+    }
+
+    [Fact]
     public void NoOperatorCommand_NeverTransmits()
     {
         var s = new Sim();

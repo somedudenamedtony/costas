@@ -31,6 +31,9 @@ public interface IRemoteTarget
     /// <summary>Answers a waiting caller after this contact.</summary>
     void AnswerAfterThisContact(string call);
 
+    /// <summary>Takes a caller off Calling you without answering it.</summary>
+    void DismissCaller(string call);
+
     /// <summary>Starts or stops calling CQ.</summary>
     void ToggleCq();
 

@@ -695,6 +695,10 @@ public sealed partial class OperateViewModel : ObservableObject
         else _commands.Answer(row.Call);
     }
 
+    /// <summary>Takes a caller off Calling you without answering it.</summary>
+    [RelayCommand]
+    private void DismissRow(WaitingRowViewModel row) => _commands.DismissCaller(row.Call);
+
     /// <summary>Calls or answers a station in Repeats.</summary>
     [RelayCommand]
     private void CallRepeat(RepeatRowViewModel row)

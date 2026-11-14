@@ -703,6 +703,14 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
     }
 
     /// <inheritdoc />
+    public void DismissCaller(string call)
+    {
+        Activity();
+        _host.Usage.Track("caller_dismissed", "mode", SelectedMode);
+        _host.Session.DismissCaller(call);
+    }
+
+    /// <inheritdoc />
     [RelayCommand]
     public void Resend()
     {

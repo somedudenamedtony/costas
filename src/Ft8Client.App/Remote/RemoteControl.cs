@@ -177,6 +177,9 @@ public sealed class RemoteControl
             case "answerAfter" when call.Length > 0:
                 _target.AnswerAfterThisContact(call);
                 return null;
+            case "dismiss" when call.Length > 0:
+                _target.DismissCaller(call);
+                return null;
             case "cq":
                 _target.ToggleCq();
                 return null;
@@ -226,7 +229,7 @@ public sealed class RemoteControl
     private static bool Understood(RemoteCommand cmd, string call) => cmd.Type switch
     {
         "halt" or "abandon" or "cq" or "resend" or "logNow" or "band" or "offsetAuto" => true,
-        "call" or "answer" or "answerAfter" => call.Length > 0,
+        "call" or "answer" or "answerAfter" or "dismiss" => call.Length > 0,
         "jump" => cmd.Step is not null,
         "offset" => cmd.Hz is not null,
         "power" => cmd.Watts is not null,

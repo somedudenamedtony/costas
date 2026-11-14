@@ -887,6 +887,13 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         Publish();
     }
 
+    /// <summary>Takes a caller off Calling you without answering it; nothing is sent.</summary>
+    public void DismissCaller(string call)
+    {
+        lock (_gate) _engine.DismissCaller(call, _clock.UtcNow);
+        Publish();
+    }
+
     /// <summary>Resend the current step.</summary>
     public void Resend()
     {
