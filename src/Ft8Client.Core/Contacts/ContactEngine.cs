@@ -1027,6 +1027,9 @@ public sealed class ContactEngine
         {
             MyParity = c.MyParity, Held = c.Held && c.Outcome == ContactOutcome.InProgress,
             ExchangeSent = isContest && sentAny ? c.ExchangeSent : null, ExchangeReceived = isContest ? c.ExchangeReceived : null,
+            DxOffsetHz = c.DxOffset,
+            HoundReplyOffsetHz = c.Flow == ContactFlow.Hound && c.Phase > 0 ? c.TxOffset : null,
+            HoundCallEndsUtc = c is { Flow: ContactFlow.Hound, Phase: 0, StepStartedUtc: { } first } ? first + HoundCallLimit : null,
         };
     }
 

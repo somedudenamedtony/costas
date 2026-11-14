@@ -119,14 +119,14 @@ public static class RemoteStateBuilder
     {
         x.UpdateCallers(s.Pileups.GetValueOrDefault(Callsign.Normalize(x.Call)));
         return new(x.Call, x.Where, x.Why, x.DoingNow, x.Db, x.CallText, x.HearsYou, x.Chance, x.LastHeard, x.LastWorked, x.ChanceReason)
-            { Calling = x.Callers };
+            { Calling = x.Callers, Fox = x.IsFox };
     }
 
     private static RemoteStation Repeat(RepeatRowViewModel x, SessionSnapshot s)
     {
         x.UpdateCallers(s.Pileups.GetValueOrDefault(Callsign.Normalize(x.Call)));
         return new(x.Call, x.Where, x.Why, x.DoingNow, x.Db, x.CanCall ? x.CallText : string.Empty, x.HearsYou, x.Chance, x.LastHeard, x.LastWorked,
-            x.ChanceReason) { Calling = x.Callers };
+            x.ChanceReason) { Calling = x.Callers, Fox = x.IsFox };
     }
 
     private static RemoteDecode Decode(RawDecodeLine l)
@@ -224,8 +224,13 @@ public static class RemoteStateBuilder
         };
     }
 
-    private static RemoteContact Contact(ContactPanelViewModel c) => new(c.HoundMode ? $"{c.Caption} · Hound mode" : c.Caption, c.Call, c.Need, c.Subline, c.Sent, c.Received, c.Active, c.CanLogNow,
-        [.. c.Steps.Select(x => new RemoteStep(x.Index, x.Mine, x.Who, x.Time, x.Message, x.Status, Look(x.Look), x.CanJump))]);
+    private static RemoteContact Contact(ContactPanelViewModel c) => new(c.Caption, c.Call, c.Need, c.Subline, c.Sent, c.Received, c.Active, c.CanLogNow,
+        [.. c.Steps.Select(x => new RemoteStep(x.Index, x.Mine, x.Who, x.Time, x.Message, x.Status, Look(x.Look), x.CanJump))])
+    {
+        Hound = c.HoundMode,
+        HoundLine = c.HoundLine,
+        HoundNote = c.HoundNote,
+    };
 
     private static string Look(StepLook look) => look switch
     {

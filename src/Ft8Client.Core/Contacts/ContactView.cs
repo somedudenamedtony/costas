@@ -52,4 +52,19 @@ public sealed record ContactView(string DxCall, string? DxGrid, ContactFlow Flow
 
     /// <summary>True while the operator has stopped transmitting but kept the contact (first Esc).</summary>
     public bool Held { get; init; }
+
+    /// <summary>The audio offset the DX station was last heard on, in hertz (for a Fox, the stream it sends on).</summary>
+    public int? DxOffsetHz { get; init; }
+
+    /// <summary>
+    /// In a <see cref="ContactFlow.Hound"/> contact once the Fox has answered, the audio offset my R-report goes out on
+    /// (the frequency the Fox answered on), in hertz; otherwise null.
+    /// </summary>
+    public int? HoundReplyOffsetHz { get; init; }
+
+    /// <summary>
+    /// In a <see cref="ContactFlow.Hound"/> contact still calling the Fox, when the calling limit
+    /// (<see cref="ContactEngine.HoundCallLimit"/>) runs out; null before the first call goes out and once the Fox answers.
+    /// </summary>
+    public DateTime? HoundCallEndsUtc { get; init; }
 }

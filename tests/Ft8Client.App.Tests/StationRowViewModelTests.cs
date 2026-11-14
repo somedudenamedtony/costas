@@ -49,6 +49,25 @@ public class StationRowViewModelTests
     }
 
     [Fact]
+    public void Constructor_Fox_ShowsFoxTag()
+    {
+        var station = new Station { Call = "KH1X", LastHeardUtc = Heard, State = StationState.CallingCq, RunsFox = true };
+        var ranked = new RankedStation(station, new NeedResult(NeedTag.NewCountry, 1), new HearsYou(HearsYouKind.None), Chance.Good, true, null);
+        var row = new StationRowViewModel(ranked, 1, DistanceUnit.Miles, Heard);
+
+        row.IsFox.Should().BeTrue();
+        StationRowViewModel.FoxTag.Should().Be("Fox · Hound");
+        StationRowViewModel.FoxTip.Should().Contain("Hound way").And.Contain("every slot");
+        row.CallText.Should().Be("Call", "calling a Fox is the same click; Costas works it the Hound way");
+    }
+
+    [Fact]
+    public void Constructor_OrdinaryStation_NoFoxTag()
+    {
+        Row(Heard).IsFox.Should().BeFalse();
+    }
+
+    [Fact]
     public void Constructor_NotInLog_LastWorkedNever()
     {
         var row = Row(Heard);

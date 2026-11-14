@@ -82,6 +82,35 @@ public class RemoteStateBuilderTests
     }
 
     [Fact]
+    public void Build_FoxInLine_RowCarriesFoxFlag()
+    {
+        var fox = Ranked("KH1X", NeedTag.NewCountry, true);
+        fox = fox with { Station = fox.Station with { RunsFox = true } };
+        var snap = Snap() with { Rank = new RankResult([fox], [], [], []), Stations = [fox.Station] };
+
+        var s = RemoteStateBuilder.Build(snap, Now, Ctx, "you", null);
+
+        s.Line.Single().Fox.Should().BeTrue();
+        RemoteStateBuilder.Build(Snap(), Now, Ctx, "you", null).Line.Single().Fox.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Build_HoundContact_CarriesChipAndBannerWithoutCaptionSuffix()
+    {
+        var c = new Ft8Client.Core.Contacts.ContactView("KH1X", "AJ10", Ft8Client.Core.Contacts.ContactFlow.Hound, Ft8Client.Core.Contacts.ContactOutcome.InProgress, null, null,
+            [new Ft8Client.Core.Contacts.ContactStep(true, "KH1X W7LIT DN40", Ft8Client.Core.Contacts.StepState.Now, 0, null)], false, false, string.Empty)
+            { DxOffsetHz = 420 };
+        var snap = Snap() with { Contact = c };
+
+        var s = RemoteStateBuilder.Build(snap, Now, Ctx, "you", null);
+
+        s.Contact!.Hound.Should().BeTrue();
+        s.Contact.Caption.Should().Be("Calling", "the chip says Hound mode, so the caption does not repeat it");
+        s.Contact.HoundLine.Should().StartWith("Fox at 420 Hz · You call at 1200 Hz, every slot");
+        s.Contact.HoundNote.Should().Contain("every slot");
+    }
+
+    [Fact]
     public void Build_Decodes_NewestFirstWithKinds()
     {
         var s = RemoteStateBuilder.Build(Snap(), Now, Ctx, "you", null);

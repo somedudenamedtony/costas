@@ -151,8 +151,9 @@ arrived in time: a late RR73 logs the contact and sends 73, a late report gets y
 Many DXpeditions run **Fox/Hound**: the DXpedition (the Fox) transmits below 1000 Hz, in the first slot of each pair,
 and works several callers (Hounds) at once. Hounds call above 1000 Hz and must follow its rules, or the Fox never
 hears them. Costas spots a Fox when it sends a multi-answer message such as `K1ABC RR73; W7LIT <KH1X> -12`, or
-two messages in the same slot on different frequencies (one per stream), and shows it in Next in line as
-*DXpedition (Fox/Hound), working Hounds*. There is nothing to switch on:
+two messages in the same slot on different frequencies (one per stream). Its row in Next in line (and Repeats)
+gets a purple **Fox · Hound** tag under the call, and Doing now reads *DXpedition (Fox/Hound), working Hounds*.
+There is nothing to switch on:
 
 1. Tune the radio to the DXpedition's frequency (they usually announce it; it is rarely the standard FT8 one).
 2. Click **Call** on the Fox. Costas works it the way WSJT-X's Hound mode does, and every other station as usual:
@@ -164,10 +165,14 @@ two messages in the same slot on different frequencies (one per stream), and sho
 | 3 | You | `KH1X W7LIT R-08` | On the **Fox's** frequency; the report is how strong the Fox was when it answered you |
 | 4 | Fox | `W7LIT KH1X RR73`, or `W7LIT RR73; K1ABC <KH1X> -12` | Logged. You send nothing after it |
 
-While you work a Fox, the contact card shows a **Hound mode** tag next to its caption, with a line saying what
-happens now: where you are calling and for how long, then that your report goes back on the Fox's frequency. The
-strip has four boxes instead of five, because a Hound sends no 73. On the phone remote the caption reads
-*Calling · Hound mode*.
+While you work a Fox, the contact card shows a purple **HOUND MODE** chip beside the call, and a Hound banner under
+the station's details. Its first line has the figures: where the Fox is, where you are calling and how long is left,
+for example *Fox at 612 Hz · You call at 1700 Hz, every slot · 1:24 left*. Once the Fox answers it reads
+*Fox answered at 732 Hz · Your report goes at 732 Hz · Its RR73 logs it*. The strip has four boxes instead of five,
+because a Hound sends no 73. The phone remote shows the same chip and banner, and the Fox tag on its rows.
+
+Costas **keeps sending your call every slot** while it waits for the Fox, just as WSJT-X does: that is how the Fox
+finds you among the other Hounds. Leave it running; you don't need to click anything until the 2 minutes are up.
 
 - If the Fox doesn't answer within 2 minutes, Costas stops calling and says so. Click **Call** again to keep trying,
   as WSJT-X asks you to re-enable Tx every 2 minutes.

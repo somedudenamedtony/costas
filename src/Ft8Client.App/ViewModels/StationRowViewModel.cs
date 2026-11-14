@@ -67,6 +67,7 @@ public sealed partial class StationRowViewModel : ObservableObject
         _heardEndUtc = r.Station.LastHeardEndUtc;
         Refresh(nowUtc);
         CallText = r.CallingMe ? "Answer" : "Call";
+        IsFox = r.Station.RunsFox;
     }
 
     /// <summary>SNR in the station's last few own slots, oldest first, for the sparkline.</summary>
@@ -97,6 +98,15 @@ public sealed partial class StationRowViewModel : ObservableObject
 
     /// <summary>The ranked station.</summary>
     public RankedStation Source { get; }
+
+    /// <summary>True for a Fox (Fox/Hound DXpedition): the row carries the Fox tag, and Call works it the Hound way.</summary>
+    public bool IsFox { get; }
+
+    /// <summary>The Fox tag text.</summary>
+    public static string FoxTag => StationText.FoxTag;
+
+    /// <summary>The Fox tag tooltip.</summary>
+    public static string FoxTip => StationText.FoxTip;
 
     /// <summary>Rank from 1.</summary>
     public int Rank { get; }

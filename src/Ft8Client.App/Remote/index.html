@@ -16,9 +16,10 @@
 <title>Costas remote</title>
 <style>
 :root{--bg:#141414;--card:#202020;--line:#333;--tx:#eee;--mut:#9a9a9a;--btn:#3a3a3a;--red:#e8584e;--halt:#b3261e;--grn:#4caf6a;--amb:#e0a83a;
-  --tag-bg:#2f4a36;--tag-tx:#9fe0b0;--warn-bg:#3b2a12;--warn-line:#6b4a1a;--warn-tx:#f3c77a;--accent:#58a6ff}
+  --tag-bg:#2f4a36;--tag-tx:#9fe0b0;--warn-bg:#3b2a12;--warn-line:#6b4a1a;--warn-tx:#f3c77a;--accent:#58a6ff;
+  --fox-bg:#2c2240;--fox-line:#5b4585;--fox-tx:#c9aef5;--fox-chip:#7e57c2}
 @media (prefers-color-scheme: light){:root{--bg:#f3f3f3;--card:#fff;--line:#ddd;--tx:#1a1a1a;--mut:#666;--btn:#e4e4e4;--tag-bg:#dcf1e1;--tag-tx:#1f6b34;
-  --warn-bg:#fff4e0;--warn-line:#e8c27a;--warn-tx:#7a4d00;--accent:#0a66c2}}
+  --warn-bg:#fff4e0;--warn-line:#e8c27a;--warn-tx:#7a4d00;--accent:#0a66c2;--fox-bg:#f3ecfc;--fox-line:#c9b3e8;--fox-tx:#6b3fa0;--fox-chip:#6b3fa0}}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.35 "Segoe UI",system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
 body{min-height:100vh;display:flex;flex-direction:column}
@@ -59,6 +60,12 @@ main{padding:12px 14px 120px;display:flex;flex-direction:column;gap:12px;flex:1}
 .c{font-weight:600;font-size:16px}.s{font-size:12px;color:var(--mut)}
 .tag{white-space:nowrap;font-size:11px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--tag-bg);color:var(--tag-tx)}
 .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+/* Fox/Hound, as on the desk: a purple tag on a Fox's row, a filled chip and a banner on a contact worked the Hound way. */
+.tag.fox{background:var(--fox-bg);color:var(--fox-tx);border:1px solid var(--fox-line)}
+.hchip{display:inline-block;vertical-align:middle;margin-left:8px;font-size:11px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:4px;background:var(--fox-chip);color:#fff}
+.hband{margin-top:8px;padding:7px 10px;border-radius:8px;background:var(--fox-bg);border:1px solid var(--fox-line);border-left-width:3px;font-size:13px}
+.hband b{display:block;color:var(--fox-tx)}.hband span{color:var(--mut)}
+.hero.tx .hband{background:rgba(0,0,0,.25);border-color:rgba(255,255,255,.4)}.hero.tx .hband b,.hero.tx .hband span{color:#fff}
 .banner{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-tx);border-radius:12px;padding:12px;font-size:14px}
 .note{position:fixed;left:14px;right:14px;bottom:110px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;display:none;z-index:3}
 /* The "Logged" notice: one slim line above HALT TX with a countdown bar; it closes itself after 5 s. */
@@ -508,9 +515,11 @@ function renderContact(s) {
   }
   box.append(el("div", "lbl", c.caption));
   const call = el("div", "call", c.call);
+  if (c.hound) call.append(el("span", "hchip", "HOUND MODE"));
   if (c.need) call.append(el("span", "tag", c.need));
   box.append(call);
   if (c.subline) box.append(el("div", "sub", c.subline));
+  if (c.hound) box.append(houndBand(c));
   const rep = el("div", "reports");
   const sent = el("span", null, "Sent "); sent.append(el("b", null, c.sent));
   const rcvd = el("span", null, "Received "); rcvd.append(el("b", null, c.received));
@@ -604,6 +613,21 @@ function list(box, key, title, sub, rows, empty, build, columns) {
   });
 }
 
+// The Fox tag on a station row, with what Call does for a Fox.
+function foxTag(r) {
+  const t = el("span", "tag fox", "Fox · Hound");
+  t.title = "DXpedition Fox. Call works it the Hound way: your call every slot above 1000 Hz for up to 2 minutes, then your report on its frequency.";
+  return t;
+}
+
+// The Hound banner on a contact worked the Hound way: where the Fox is, where you call and how long is left.
+function houndBand(c) {
+  const b = el("div", "hband");
+  if (c.houndLine) b.append(el("b", null, c.houndLine));
+  if (c.houndNote) b.append(el("span", null, c.houndNote));
+  return b;
+}
+
 // The desk's Next in line columns; Chance carries what it is based on beside it, as on the desk.
 const COLUMNS = ["Call", "Where", "Doing now", "Signal", "Chance", "Last heard", "Last worked", ""];
 
@@ -613,6 +637,7 @@ function stationRow(r, command) {
     const row = el("div", "trow");
     const cl = el("div", "cl");
     cl.append(el("b", null, r.call));
+    if (r.fox) cl.append(foxTag(r));
     if (r.need) cl.append(el("span", "tag", r.need));
     cl.onclick = () => openDetails(r.call);
     const age = el("span", "cell wrap s");
@@ -628,6 +653,7 @@ function stationRow(r, command) {
   const it = el("div", "it");
   const left = el("div", "left");
   const c = el("div", "c", r.call + " ");
+  if (r.fox) c.append(foxTag(r), " ");
   if (r.need) c.append(el("span", "tag", r.need));
   left.append(c, el("div", "s", [r.doing, r.where, r.db ? r.db + " dB" : ""].filter(Boolean).join(" · ")));
   const more = [r.chance ? r.chance + " chance" + (r.chanceReason ? " (" + r.chanceReason + ")" : "") : "",
@@ -977,10 +1003,12 @@ function dashContact(s) {
     const top = el("div", "callrow");
     const call = el("span", "big", c.call);
     const where = el("span", "where");
+    if (c.hound) where.append(el("span", "hchip", "HOUND MODE"));
     if (c.need) where.append(el("span", "tag", c.need));
     if (c.subline) where.append(el("div", null, c.subline));
     top.append(call, where);
     box.append(top);
+    if (c.hound) box.append(houndBand(c));
     const now = s.transmitting && s.onAir ? "→ " + s.onAir : cur >= 0 && !c.steps[cur].mine ? "← waiting for " + c.steps[cur].message : "";
     if (now) box.append(el("div", "txline mono", now));
     box.append(el("div", "reps", "Sent " + c.sent + " · Received " + c.received));
@@ -1090,6 +1118,7 @@ function dashLine(s) {
     cl.append(el("b", null, r.call), el("span", "s", [r.where, r.chance ? r.chance + " chance" : ""].filter(Boolean).join(" · ")));
     cl.onclick = () => openDetails(r.call);
     const why = el("span");
+    if (r.fox) { const f = foxTag(r); f.textContent = "Fox"; why.append(f, " "); }
     if (shortNeed(r.need)) why.append(el("span", "tag", shortNeed(r.need)));
     const pile = el("span");
     const n = parseInt(r.calling, 10);
