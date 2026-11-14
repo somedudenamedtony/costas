@@ -56,6 +56,9 @@ The port opens but the radio does not reply.
   **Hamlib settings**, for example `civaddr=0x94`.
 - Close any other program that uses the port: WSJT-X, JTDX, Flrig, N1MM+, the radio maker's utility. Only one
   program can open a COM port.
+- FlexRadio with SmartSDR CAT COM ports: choose **Kenwood › TS-2000**, not **FlexRadio › 6xxx**. Hamlib's FlexRadio
+  6xxx model only connects over the network, so it never talks to a COM port. See
+  [FlexRadio in Station setup](setup.md).
 
 ### The radio does not key, or keys but sends nothing
 

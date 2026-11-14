@@ -27,8 +27,59 @@ public sealed record HamlibModel(int Number, string Manufacturer, string Model, 
     /// <summary>The address Hamlib uses for the model when none is given, in host:port form.</summary>
     public string? DefaultAddress => DefaultAddressFor(Number);
 
-    /// <summary>Whether a Hamlib model number connects over TCP rather than a serial port.</summary>
-    public static bool IsNetworkModel(int number) => DefaultAddressFor(number) is not null;
+    /// <summary>Hamlib model number of the FlexRadio 6xxx driver (<c>RIG_MODEL_F6K</c>).</summary>
+    public const int Flex6xxxModel = 2036;
+
+    /// <summary>Hamlib model number of the Kenwood TS-2000, the radio SmartSDR CAT's COM ports imitate.</summary>
+    public const int KenwoodTs2000Model = 2014;
+
+    /// <summary>
+    /// Hamlib's SmartSDR Slice A to H models (<c>RIG_MODEL_SMARTSDR_A</c> .. <c>_H</c>), which talk to a FlexRadio's own
+    /// API over the network.
+    /// </summary>
+    public static bool IsSmartSdrSlice(int number) => number is >= 23005 and <= 23012;
+
+    /// <summary>
+    /// Whether a Hamlib model number connects over TCP rather than a serial port. Besides the programs with a known
+    /// default address, Hamlib's FlexRadio 6xxx and SmartSDR drivers are network only (<c>port_type</c> network in
+    /// Hamlib 4.5 and 4.6): given a COM port they try to reach it as a host name and never touch the serial port.
+    /// </summary>
+    public static bool IsNetworkModel(int number) =>
+        DefaultAddressFor(number) is not null || number == Flex6xxxModel || IsSmartSdrSlice(number);
+
+    /// <summary>
+    /// Why a saved serial port cannot work for a network-only model (COM5, /dev/ttyUSB0 given to FlexRadio 6xxx), or
+    /// null when it can. Hamlib would treat the port as a host name and wait for an answer that never comes.
+    /// </summary>
+    public static string? SerialPortProblem(int number, string? port)
+    {
+        if (!IsNetworkModel(number) || string.IsNullOrWhiteSpace(port)) return null;
+        var p = port.Trim();
+        var serial = System.Text.RegularExpressions.Regex.IsMatch(p, @"^COM[0-9]+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+                     || p.StartsWith("/dev/", StringComparison.Ordinal);
+        if (!serial) return null;
+        return number == Flex6xxxModel
+            ? $"Hamlib's FlexRadio 6xxx driver connects over the network, so it cannot use {p}. For SmartSDR CAT COM ports, choose Kenwood TS-2000 in Station setup."
+            : $"This radio model connects over the network, so it cannot use {p}. Open Station setup and enter its network address.";
+    }
+
+    /// <summary>
+    /// A note shown in Setup under the radio model, or null. FlexRadio owners usually make COM ports in SmartSDR CAT,
+    /// which Hamlib's FlexRadio 6xxx driver cannot use.
+    /// </summary>
+    public static string? SetupNoteFor(int number) =>
+        number == Flex6xxxModel
+            ? "Hamlib's FlexRadio 6xxx driver connects over the network, to a TCP port set up in SmartSDR CAT. If you made COM ports in SmartSDR CAT, choose Kenwood as the manufacturer and TS-2000 as the model instead, with the CAT port (and the PTT port if you made one)."
+            : IsSmartSdrSlice(number)
+                ? "Enter the radio's own IP address with port 4992, not 127.0.0.1. Using SmartSDR CAT COM ports instead? Choose Kenwood TS-2000."
+                : null;
+
+    /// <summary>A note shown in Setup under the radio model, or null.</summary>
+    public string? SetupNote => SetupNoteFor(Number);
+
+    /// <summary>An example address for the host:port box: the default where Hamlib has a useful one.</summary>
+    public static string? ExampleAddressFor(int number) =>
+        DefaultAddressFor(number) ?? (IsSmartSdrSlice(number) ? "192.168.1.20:4992" : null);
 
     /// <summary>
     /// Hamlib's default host:port for its network models (DEFAULTPATH in rigs/dummy/*.c), or null for a serial model.
@@ -46,6 +97,8 @@ public sealed record HamlibModel(int Number, string Manufacturer, string Model, 
     /// <summary>The program a network model connects to, for messages.</summary>
     public static string ServerNameFor(int number) => number switch
     {
+        Flex6xxxModel => "SmartSDR CAT",
+        >= 23005 and <= 23012 => "SmartSDR",
         4 => "flrig",
         5 => "TRXManager",
         8 => "ACLog",

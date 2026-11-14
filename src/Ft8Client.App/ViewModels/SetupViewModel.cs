@@ -44,7 +44,7 @@ public sealed partial class SetupViewModel : ObservableObject
         Port = networkModel ? string.Empty : RigctldRig.CleanSerialPort(s.Profile.Rig.Port, OperatingSystem.IsWindows()) ?? string.Empty;
         NetworkAddress = networkModel && IsNetworkAddress(s.Profile.Rig.Port)
             ? s.Profile.Rig.Port!
-            : HamlibModel.DefaultAddressFor(s.Profile.Rig.Model ?? 0) ?? "127.0.0.1:4532";
+            : HamlibModel.DefaultAddressFor(s.Profile.Rig.Model ?? 0) ?? (networkModel ? string.Empty : "127.0.0.1:4532");
         Baud = s.Profile.Rig.Baud?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         Ptt = s.Profile.Rig.Ptt;
         PttPort = RigctldRig.CleanSerialPort(s.Profile.Rig.PttPort, OperatingSystem.IsWindows()) ?? string.Empty;
@@ -240,7 +240,18 @@ public sealed partial class SetupViewModel : ObservableObject
         Enumerable.Range(1, 20).Select(HamlibModel.DefaultAddressFor).Contains(address.Trim(), StringComparer.Ordinal);
 
     /// <summary>The message shown when the server address is not host:port.</summary>
-    public string AddressProblem => $"Enter the {ServerName} server as host:port, for example {Model?.DefaultAddress ?? "127.0.0.1:4532"}.";
+    public string AddressProblem => Model is { } m && m.IsNetwork && HamlibModel.ExampleAddressFor(m.Number) is null
+        ? $"Enter the {ServerName} server as host:port: the address and TCP port set up in {ServerName}."
+        : $"Enter the {ServerName} server as host:port, for example {AddressPlaceholder}.";
+
+    /// <summary>Example shown in the empty address box: the model's default, or a made-up radio address for SmartSDR.</summary>
+    public string AddressPlaceholder => Model is { } m && m.IsNetwork ? HamlibModel.ExampleAddressFor(m.Number) ?? "host:port" : "127.0.0.1:4532";
+
+    /// <summary>
+    /// A note about the chosen model, shown under the radio fields: FlexRadio 6xxx connects only over the network, so a
+    /// SmartSDR CAT COM port needs Kenwood TS-2000 instead.
+    /// </summary>
+    public string? ModelNote => AudioOnly ? null : Model?.SetupNote;
 
     /// <summary>Serial ports.</summary>
     public ObservableCollection<string> Ports { get; } = [];
@@ -386,6 +397,12 @@ public sealed partial class SetupViewModel : ObservableObject
         // to the new model's default; an address the operator typed is kept.
         if (value?.DefaultAddress is { } address && (!IsNetworkAddress(NetworkAddress) || IsDefaultAddress(NetworkAddress)))
             NetworkAddress = address;
+        // A network model with no useful default (FlexRadio 6xxx, SmartSDR): another program's default address would
+        // only point at the wrong server, so leave the box empty for the operator to fill in.
+        else if (value is { IsNetwork: true, DefaultAddress: null } && IsDefaultAddress(NetworkAddress))
+            NetworkAddress = string.Empty;
+        OnPropertyChanged(nameof(ModelNote));
+        OnPropertyChanged(nameof(AddressPlaceholder));
         OnPropertyChanged(nameof(IsNetwork));
         OnPropertyChanged(nameof(ServerName));
         OnPropertyChanged(nameof(ServerLabel));
@@ -416,6 +433,7 @@ public sealed partial class SetupViewModel : ObservableObject
         if (value) Ptt = "vox";
         else if (Ptt == "vox") Ptt = "cat";
         OnPropertyChanged(nameof(PttChoice));
+        OnPropertyChanged(nameof(ModelNote));
     }
 
     partial void OnStepChanged(int value)

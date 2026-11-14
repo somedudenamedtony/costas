@@ -1115,6 +1115,13 @@ public sealed class AppHost : IAsyncDisposable
                     : r.Model is null ? "No radio model chosen. Open Station setup to choose your radio."
                     : "No port chosen for the radio. Open Station setup and press Test connection to find it.", Clock.UtcNow);
             }
+            else if (HamlibModel.SerialPortProblem(r.Model.Value, r.Port) is { } wrongPort)
+            {
+                // A network-only model (FlexRadio 6xxx) given a COM port: rigctld would look for a host called COM5 and
+                // the radio would never answer. Say what to change instead of "rigctld is not answering".
+                rig = new VoxRig(dialHz);
+                status = new ServiceStatus(ServiceHealth.Down, wrongPort, Clock.UtcNow);
+            }
             else
             {
                 if (old is RigctldRig)

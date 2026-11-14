@@ -43,6 +43,14 @@ If flrig controls the radio, choose **FLRig** as the manufacturer, then enter fl
 runs on another PC or listens on another port (flrig's *Config › Setup › Server* page shows both).
 Keep flrig running: it owns the radio's COM port. TRXManager and ACLog work the same way.
 
+FlexRadio (6000 and 8000 series, including the 8600): if you made COM ports in **SmartSDR CAT**, choose
+**Kenwood › TS-2000** and the SmartSDR CAT port as **Port**. SmartSDR CAT's COM ports answer as a TS-2000, and their
+baud rate does not matter. If you also made a PTT port in SmartSDR CAT, choose **RTS line on a serial port** under
+**Transmit (PTT)** and pick it as **PTT port**; otherwise leave **CAT command**. Hamlib's own **FlexRadio › 6xxx**
+model connects only over the network, to a TCP port set up in SmartSDR CAT, so Costas shows an address box for it
+instead of a COM port. The **SmartSDR Slice A** to **H** models talk to the radio itself: enter the radio's IP address
+with port `4992`.
+
 PTT choices:
 
 - **CAT command (most radios with USB)**: Costas tells the radio to transmit over the same cable. Use this for an

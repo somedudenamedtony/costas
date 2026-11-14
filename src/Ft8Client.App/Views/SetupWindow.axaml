@@ -44,7 +44,7 @@
             <TextBlock Grid.Row="2" IsVisible="{Binding !IsNetwork}" Text="Port" VerticalAlignment="Center" />
             <ComboBox Grid.Row="2" Grid.Column="1" IsVisible="{Binding !IsNetwork}" ItemsSource="{Binding Ports}" SelectedItem="{Binding Port}" Width="300" PlaceholderText="Find automatically" />
             <TextBlock Grid.Row="2" Text="{Binding ServerLabel}" IsVisible="{Binding IsNetwork}" VerticalAlignment="Center" TextWrapping="Wrap" />
-            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding NetworkAddress}" IsVisible="{Binding IsNetwork}" Width="300" HorizontalAlignment="Left" PlaceholderText="{Binding Model.DefaultAddress, FallbackValue=127.0.0.1:4532}" />
+            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding NetworkAddress}" IsVisible="{Binding IsNetwork}" Width="300" HorizontalAlignment="Left" PlaceholderText="{Binding AddressPlaceholder}" />
             <TextBlock Grid.Row="3" IsVisible="{Binding !IsNetwork}" Text="Speed (baud)" VerticalAlignment="Center" />
             <ComboBox Grid.Row="3" Grid.Column="1" IsVisible="{Binding !IsNetwork}" ItemsSource="{Binding BaudChoices}" SelectedItem="{Binding BaudChoice}" Width="300" />
             <TextBlock Grid.Row="4" Text="Transmit (PTT)" VerticalAlignment="Center" />
@@ -56,6 +56,8 @@
             <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding HamlibConfig}" Width="300" HorizontalAlignment="Left" PlaceholderText="Optional, for example civaddr=0x94"
                      ToolTip.Tip="Extra Hamlib settings as name=value pairs separated by commas. For an Icom radio whose CI-V address is not the default, enter civaddr= and the address set in the radio, for example civaddr=0x94." />
           </Grid>
+          <TextBlock Text="{Binding ModelNote}" IsVisible="{Binding ModelNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     TextWrapping="Wrap" Margin="130,0,0,0" Foreground="{DynamicResource AccentTextBrush}" />
           <StackPanel Spacing="8" IsEnabled="{Binding !AudioOnly}" Margin="130,0,0,0">
             <StackPanel Orientation="Horizontal" Spacing="8">
               <Button Content="Test connection" Command="{Binding ScanCommand}" IsEnabled="{Binding !Busy}" />

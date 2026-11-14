@@ -258,9 +258,64 @@ public class RigTests
         model.ServerName.Should().Be(server);
     }
 
+    // Issue #138: a Flex 8600 with SmartSDR CAT COM ports never answered. Hamlib's FlexRadio 6xxx driver (2036) is
+    // network only (port_type RIG_PORT_NETWORK in 4.5.5 and 4.6.5), so "-r COM5" is read as a host name.
+    [Theory]
+    [InlineData(HamlibModel.Flex6xxxModel, "SmartSDR CAT")]
+    [InlineData(23005, "SmartSDR")]
+    [InlineData(23012, "SmartSDR")]
+    public void HamlibModel_FlexNetworkDriver_IsNetworkWithoutDefaultAddress(int number, string server)
+    {
+        var model = new HamlibModel(number, "FlexRadio", "6xxx", "Stable");
+        model.IsNetwork.Should().BeTrue();
+        model.DefaultAddress.Should().BeNull();
+        model.ServerName.Should().Be(server);
+        model.SetupNote.Should().Contain("TS-2000");
+    }
+
+    [Fact]
+    public void HamlibModel_SmartSdrSlice_ExampleUsesRadioApiPort()
+    {
+        HamlibModel.ExampleAddressFor(23005).Should().Be("192.168.1.20:4992");
+        HamlibModel.ExampleAddressFor(HamlibModel.Flex6xxxModel).Should().BeNull();
+        HamlibModel.ExampleAddressFor(4).Should().Be("127.0.0.1:12345");
+    }
+
+    [Fact]
+    public void Options_Flex6xxx_UsesServerAddressWithoutBaud()
+    {
+        string.Join(' ', new RigctldOptions("rigctld", HamlibModel.Flex6xxxModel, "127.0.0.1:5002", 115200).Arguments(4532))
+            .Should().Be("-m 2036 -r 127.0.0.1:5002 -P RIG -T 127.0.0.1 -t 4532");
+    }
+
+    [Theory]
+    [InlineData(HamlibModel.Flex6xxxModel, "COM5", true)]
+    [InlineData(HamlibModel.Flex6xxxModel, "com12", true)]
+    [InlineData(HamlibModel.Flex6xxxModel, "/dev/ttyUSB0", true)]
+    [InlineData(23005, "COM5", true)]
+    [InlineData(HamlibModel.Flex6xxxModel, "127.0.0.1:5002", false)]
+    [InlineData(HamlibModel.Flex6xxxModel, null, false)]
+    [InlineData(HamlibModel.KenwoodTs2000Model, "COM5", false)]
+    [InlineData(3073, "COM5", false)]
+    [InlineData(4, "127.0.0.1:12345", false)]
+    public void SerialPortProblem_NetworkOnlyModelWithComPort_Explains(int number, string? port, bool problem)
+    {
+        var why = HamlibModel.SerialPortProblem(number, port);
+        if (problem) why.Should().Contain(port!.Trim()).And.Contain("network");
+        else why.Should().BeNull();
+    }
+
+    [Fact]
+    public void SerialPortProblem_Flex6xxxComPort_PointsToTs2000()
+    {
+        HamlibModel.SerialPortProblem(HamlibModel.Flex6xxxModel, "COM5").Should().Contain("Kenwood TS-2000");
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(3073)]
+    [InlineData(HamlibModel.KenwoodTs2000Model)]
+    [InlineData(2048)]
     public void HamlibModel_SerialModel_IsNotNetwork(int number)
     {
         var model = new HamlibModel(number, "Icom", "IC-7300", "Stable");
@@ -577,6 +632,71 @@ public class RigTests
             sent.Should().Contain("MD0C;", "DATA-U is the FT-710's data mode");
             sent.Should().ContainInOrder("TX1;", "RM4;", "RM6;", "TX0;");
             sent.Should().NotContain(l => l.StartsWith("SH0", StringComparison.Ordinal) && l.Length > 4, "the operator's receive filter is left alone");
+        }
+        finally
+        {
+            emu.Kill();
+            File.Delete(log);
+        }
+    }
+
+    // Issue #138: SmartSDR CAT COM ports with Hamlib's FlexRadio 6xxx driver never answered. That driver is network
+    // only, so rigctld looks for a host named after the COM port and nothing reaches the serial port at all.
+    [Fact]
+    public async Task StartAsync_Flex6xxxOnSmartSdrCatComPort_NothingReachesThePort()
+    {
+        var exe = HamlibModels.Find("rigctld", null);
+        var python = HamlibModels.Find("python3", null);
+        Assert.SkipWhen(exe is null || python is null || !OperatingSystem.IsLinux(), "Needs Linux with rigctld and python3.");
+        var ct = TestContext.Current.CancellationToken;
+        var log = Path.Combine(Path.GetTempPath(), $"smartsdr-{Guid.NewGuid():N}.log");
+        using var emu = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(python!,
+            [Path.Combine(AppContext.BaseDirectory, "Emulators", "smartsdr_cat.py"), log]) { RedirectStandardOutput = true })!;
+        try
+        {
+            var pty = (await emu.StandardOutput.ReadLineAsync(ct))!.Trim();
+            HamlibModel.SerialPortProblem(HamlibModel.Flex6xxxModel, pty).Should().Contain("Kenwood TS-2000");
+            var start = async () =>
+            {
+                await using var rig = await RigctldRig.StartAsync(new RigctldOptions(exe!, HamlibModel.Flex6xxxModel, pty, 115200),
+                    NullProcessGuard.Instance, SystemClock.Instance, ct);
+            };
+            await start.Should().ThrowAsync<RigException>();
+            File.ReadAllLines(log).Should().BeEmpty("Hamlib's FlexRadio 6xxx driver never opens a serial port");
+        }
+        finally
+        {
+            emu.Kill();
+            File.Delete(log);
+        }
+    }
+
+    // The setting Setup now points SmartSDR CAT COM port owners to: Kenwood TS-2000 on the CAT port reads the slice and
+    // keys and unkeys it.
+    [Fact]
+    public async Task Ts2000_SmartSdrCatComPort_ReadsAndKeys()
+    {
+        var exe = HamlibModels.Find("rigctld", null);
+        var python = HamlibModels.Find("python3", null);
+        Assert.SkipWhen(exe is null || python is null || !OperatingSystem.IsLinux(), "Needs Linux with rigctld and python3.");
+        var ct = TestContext.Current.CancellationToken;
+        var log = Path.Combine(Path.GetTempPath(), $"smartsdr-{Guid.NewGuid():N}.log");
+        using var emu = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(python!,
+            [Path.Combine(AppContext.BaseDirectory, "Emulators", "smartsdr_cat.py"), log]) { RedirectStandardOutput = true })!;
+        try
+        {
+            var pty = (await emu.StandardOutput.ReadLineAsync(ct))!.Trim();
+            HamlibModel.SerialPortProblem(HamlibModel.KenwoodTs2000Model, pty).Should().BeNull();
+            await using (var rig = await RigctldRig.StartAsync(new RigctldOptions(exe!, HamlibModel.KenwoodTs2000Model, pty, 115200),
+                             NullProcessGuard.Instance, SystemClock.Instance, ct))
+            {
+                (await rig.GetStateAsync(ct)).Should().Match<RigState>(s => s.FrequencyHz == 14_074_000 && s.Mode == "USB" && !s.Ptt);
+                await rig.SetPttAsync(true, ct);
+                (await rig.GetStateAsync(ct)).Ptt.Should().BeTrue();
+                await rig.SetPttAsync(false, ct);
+                (await rig.GetStateAsync(ct)).Ptt.Should().BeFalse();
+            }
+            File.ReadAllLines(log).Should().Contain("ID;").And.Contain("RX;");
         }
         finally
         {
