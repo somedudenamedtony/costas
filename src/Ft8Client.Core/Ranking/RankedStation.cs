@@ -28,4 +28,10 @@ public sealed record RankedStation(Station Station, NeedResult Need, HearsYou He
 
     /// <summary>True when a POTA spot puts the station at a park that is not in the log.</summary>
     public bool NewPark { get; init; }
+
+    /// <summary>While a contest runs: <c>New mult · FN</c>, <c>Dupe</c>, or null.</summary>
+    public string? ContestTag { get; init; }
+
+    /// <summary>While a contest runs: true when the station was already worked in it on this band.</summary>
+    public bool ContestDupe { get; init; }
 }

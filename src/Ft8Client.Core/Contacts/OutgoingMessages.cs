@@ -26,7 +26,8 @@ public static class OutgoingMessages
     /// <param name="me">My call.</param>
     /// <param name="grid">My 4-character grid, or empty.</param>
     /// <param name="s">The settings.</param>
-    public static string Cq(string me, string grid, ContactSettings s) => Join("CQ", Modifier(s.CqModifier), me, grid);
+    public static string Cq(string me, string grid, ContactSettings s) =>
+        Join("CQ", Contests.ContestInfo.Of(s.Contest) is { } c ? c.CqModifier : Modifier(s.CqModifier), me, grid);
 
     /// <summary>My answer to a CQ: <c>DX ME [GRID]</c>.</summary>
     /// <param name="dx">The DX call as it is sent (a nonstandard call in angle brackets).</param>

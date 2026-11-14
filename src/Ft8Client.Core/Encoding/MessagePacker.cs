@@ -12,7 +12,8 @@ namespace Ft8Client.Core.Encoding;
 
 /// <summary>
 /// Packs message text into the 77-bit FT8/FT4 payload: standard messages (i3 = 1 and 2), nonstandard-call messages
-/// (i3 = 4) and free text (i3 = 0, n3 = 0). Port of ft8_lib ft8/message.c (MIT, Kārlis Goba), checked against
+/// (i3 = 4), free text (i3 = 0, n3 = 0) and, through <see cref="ContestPacker"/>, the ARRL Field Day and RTTY Roundup
+/// exchanges. Port of ft8_lib ft8/message.c (MIT, Kārlis Goba), checked against
 /// WSJT-X's ft8code; where they differ the ft8code behaviour is used.
 /// </summary>
 public static class MessagePacker
@@ -67,7 +68,15 @@ public static class MessagePacker
         }
 
         // Try each form and keep the first that a receiver will decode exactly as written (ft8code behaviour).
-        var candidates = new List<PackResult>(3);
+        var candidates = new List<PackResult>(4);
+        // The contest exchanges (WSJT-X tries Field Day before the standard message and Roundup after it).
+        if (tokens.Length >= 4)
+        {
+            var fd = ContestPacker.PackFieldDay(tokens);
+            if (fd.Ok) candidates.Add(fd);
+            var ru = ContestPacker.PackRoundup(tokens);
+            if (ru.Ok) candidates.Add(ru);
+        }
         if (pos == tokens.Length && callDe.Length > 0)
         {
             candidates.Add(PackStandard(callTo, callDe, extra));

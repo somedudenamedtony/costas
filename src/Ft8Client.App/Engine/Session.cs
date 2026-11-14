@@ -10,6 +10,7 @@ using Ft8Client.Audio.Timing;
 using Ft8Client.Core;
 using Ft8Client.Core.Bands;
 using Ft8Client.Core.Contacts;
+using Ft8Client.Core.Contests;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Core.Geo;
 using Ft8Client.Core.Keyboard;
@@ -133,6 +134,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         _keys.Changed += Publish;
         foreach (var name in new[] { ServiceNames.Radio, ServiceNames.Audio, ServiceNames.Decoder, ServiceNames.Qrz, ServiceNames.Psk, ServiceNames.Rbn })
             _services[name] = ServiceStatus.Off("Not started");
+        lock (_gate) ReloadContestLog();
         Publish();
     }
 
@@ -674,7 +676,9 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             var need = _logIndex.Need(entry.Call, entity?.Entity.Key, entry.Grid, _config.Band, LogModeKey.Of(_config.Mode),
                 _config.Ranking.TierOrder, _config.Ranking.ConfirmedOnly);
             ctx = new LogContext(_config.Band, _config.Mode, frequencyHz, _config.MyCall, _config.MyGrid, _config.PowerWatts, need,
-                entity?.Entity.Key, entity?.Entity.Name, name ?? lk?.Name, lk?.State, entity?.Continent, qth ?? lk?.City);
+                entity?.Entity.Key, entity?.Entity.Name, name ?? lk?.Name, lk?.State, entity?.Continent, qth ?? lk?.City,
+                entry.ExchangeSent is null ? null : ContestNow);
+            AddContestQso(entry, frequencyHz);
             if (entry.TimeOffUtc - _lastContactUtc > TimeSpan.FromHours(2)) _tonight.Clear();
             _lastContactUtc = entry.TimeOffUtc;
             _tonight.Add(new TonightContact(entry.Call, _config.Band, entry.TimeOffUtc, need.Tag, LogModeKey.Of(_config.Mode)));
@@ -706,7 +710,9 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             var now = _clock.UtcNow;
-            if (_engine.Waiting.Any(w => Callsign.EqualsCall(w.Call, call)))
+            var refused = ContestRefusal();
+            if (refused is not null) _fault = refused;
+            else if (_engine.Waiting.Any(w => Callsign.EqualsCall(w.Call, call)))
             {
                 _engine.AnswerCaller(call, now);
             }
@@ -722,7 +728,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 if (s.RunsFox) HoundCallOffset(SlotMath.Opposite(parity));
                 _engine.CallStation(s.Call, s.Grid, s.LastSnr, parity, s.OffsetHz, now, busyWith, fox: s.RunsFox);
             }
-            _fault = null;
+            if (refused is null) _fault = null;
         }
         AfterCommand();
         return true;
@@ -767,9 +773,9 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         _fault = null;
     }
 
-    private RankInput RankInputAt(List<Station> stations, DateTime now) =>
+    private RankInput RankInputAt(List<Station> stations, DateTime now, ContestScore? score = null) =>
         new(stations, _logIndex, _hearsMe.Available ? _hearsMe : null, _config.Ranking, _myEntity, _config.Band, LogModeKey.Of(_config.Mode), now,
-            _countries, Lotw: _lotwUsers, Parks: _parks);
+            _countries, Lotw: _lotwUsers, Parks: _parks, Contest: ContestRankingAt(score ?? ScoreNow()));
 
     // Moves my offset to 1000 Hz or above for calling a Fox: the fixed offset if it is that high, else a clear spot there.
     // Under _gate. The offset then holds until the Hound contact ends.
@@ -797,12 +803,16 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate)
         {
             if (_engine.CallingCq) _engine.StopCq(_clock.UtcNow);
+            else if (ContestRefusal() is { } why)
+            {
+                _fault = why;
+            }
             else
             {
                 _engine.CallCq(_config.CqParity, _clock.UtcNow);
                 if (_engine.View is null) _finishedShownAt = null;
+                _fault = null;
             }
-            _fault = null;
         }
         AfterCommand();
     }
@@ -811,7 +821,11 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     public void AnswerCaller(string call)
     {
         if (RefuseKeyboardTransmit()) return;
-        lock (_gate) _engine.AnswerCaller(call, _clock.UtcNow);
+        lock (_gate)
+        {
+            if (ContestRefusal() is { } why) _fault = why;
+            else _engine.AnswerCaller(call, _clock.UtcNow);
+        }
         AfterCommand();
     }
 
@@ -1060,6 +1074,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             var stationChanged = config.MyCall != _config.MyCall || config.MyGrid != _config.MyGrid;
             _config = config;
             _engine.Configure(config.MyCall, config.MyGrid, CappedContact());
+            ReloadContestLog();
             _kbd.Configure(config.MyCall);
             if (stationChanged)
             {
@@ -1320,11 +1335,13 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             var now = _clock.UtcNow;
             var keyboard = !ModeInfo.IsSlotted(_config.Mode);
             var stations = _tracker.Stations.ToList();
-            var rank = Ranker.Rank(RankInputAt(stations, now));
+            var contestScore = ScoreNow();
+            var rank = Ranker.Rank(RankInputAt(stations, now, contestScore));
             var summary = BandSummaryCalculator.Compute(stations, _logIndex, _config.Band, LogModeKey.Of(_config.Mode), now, _slotCounts, _tonight,
                 _config.Ranking);
             snap = new SessionSnapshot
             {
+                Contest = ContestSnapshotAt(contestScore, now),
                 MyCall = _config.MyCall,
                 MyGrid = _config.MyGrid,
                 Band = _config.Band,

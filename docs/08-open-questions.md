@@ -191,3 +191,17 @@ Hamlib network models (Hamlib master, `include/hamlib/riglist.h` and `rigs/dummy
 model 2, FLRig 4, TRXManager 5, ACLog 8, SDR# 9. Each takes its server as `host:port` in `-r` (rig_pathname) and
 defaults to `127.0.0.1:4532`, `127.0.0.1:12345`, `127.0.0.1:1003`, `127.0.0.1:1100` and `127.0.0.1:4532`. Setup shows
 the host:port box for these and prefills the default. Not yet tried against a running flrig.
+
+### Contest rules and formats (read 2026-11-07)
+
+Message formats: WSJT-X `lib/77bit/packjt77.f90` (2.7.0) for ARRL Field Day (i3=0, n3=3 and 4: `n28 n28 R intx nclass isec`, 86 sections) and ARRL RTTY Roundup (i3=3: `tu n28 n28 R rst nexch`, 171 state/province/DX entries or a serial 1..7999), checked by packing with Costas and comparing bit-for-bit against `ft8code` and `ft4code` 2.7.0-rc3 (22 messages added to the vectors). Sequence: WSJT-X `widgets/mainwindow.cpp` (contest Tx messages and auto-sequence), and the Roundup report rule `(SNR+36)/6` from the same file.
+
+Scoring, from each sponsor's rules as published for the next running:
+
+- ARRL RTTY Roundup (rules v3.0b): **only RTTY contacts count** ("RTTY only"; digital modes such as FT8 are not listed). Costas logs FT8 RU contacts but they may not score. Roundup support in the real RTTY keyboard mode is the follow-up. 1 point a contact; multipliers once each: US states and DC, Canadian provinces and territories, DXCC entities other than the US and Canada (KH6 and KL7 count as entities).
+- ARRL Field Day: 2 points a digital contact, each station once per band and mode; power multiplier and bonus points are not computed (left to the operator on the summary sheet).
+- WW Digi (World Wide Digi DX Contest): 1 point plus 1 per 3000 km between grid-square centres; multipliers are grid fields, once per band.
+- ARRL International Digital Contest: 1 point plus 1 per 500 km or part of it; no multipliers.
+
+VERIFY: Cabrillo `CATEGORY-*` lines are written as single-operator, all bands, with the power from Settings; sponsors' web forms let the operator change them. Not yet uploaded to any sponsor's log checker.
+

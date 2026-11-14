@@ -113,6 +113,16 @@
                 Content="Log" Command="{Binding ShowTabCommand}" CommandParameter="3" ToolTip.Tip="Your contacts: search, edit, import and export (Ctrl+4)" />
         <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}"
                 Content="Awards" Command="{Binding ShowTabCommand}" CommandParameter="4" ToolTip.Tip="DXCC, WAS, WAZ and VUCC progress, and when you hear the countries you still need (Ctrl+5)" />
+        <Button Classes="tab" Classes.selected="{Binding Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=5}"
+                Command="{Binding ShowTabCommand}" CommandParameter="5" IsVisible="{Binding Contest.Visible}"
+                ToolTip.Tip="Score, rate, multipliers and the contest log, with a dupe check and Cabrillo export (Ctrl+6)">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Contest" />
+            <Border Background="{DynamicResource CautionBrush}" CornerRadius="3" Padding="4,0" VerticalAlignment="Center">
+              <TextBlock Text="{Binding Contest.Badge}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource CardBackgroundBrush}" />
+            </Border>
+          </StackPanel>
+        </Button>
         <Button Content="Pop out" Padding="8,3" Margin="2,0,0,0" VerticalAlignment="Center" Command="{Binding PopOutCommand}" IsVisible="{Binding CanPopOut}"
                 ToolTip.Tip="{Binding CurrentTabName, StringFormat='Open {0} in its own window, for example on a second monitor'}"
                 AutomationProperties.Name="Pop this view out into its own window" />
@@ -237,6 +247,7 @@
         <v:ReachView DataContext="{Binding Reach}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=2}" />
         <v:LogView DataContext="{Binding LogView}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=3}" />
         <v:AwardsView DataContext="{Binding Awards}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=4}" />
+        <v:ContestView DataContext="{Binding Contest}" IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).Tab, Converter={x:Static v:Converters.IntEquals}, ConverterParameter=5}" />
       </Panel>
       <!-- The selected view is in its own window: say where it went and offer to bring it back. -->
       <StackPanel IsVisible="{Binding CurrentTabOut}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">

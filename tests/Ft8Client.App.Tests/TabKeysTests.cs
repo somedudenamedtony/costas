@@ -55,4 +55,12 @@ public class TabKeysTests
     [Fact]
     public void Target_PlainTab_NullSoFocusStillMoves() =>
         TabKeys.Target(Key.Tab, KeyModifiers.None, current: 0).Should().BeNull();
+
+    [Fact]
+    public void Target_CtrlSixDuringContest_GoesToContestView() =>
+        TabKeys.Target(Key.D6, KeyModifiers.Control, current: 0, count: 6).Should().Be(5);
+
+    [Fact]
+    public void Target_CtrlTabFromContestView_WrapsToOperate() =>
+        TabKeys.Target(Key.Tab, KeyModifiers.Control, current: 5, count: 6).Should().Be(0);
 }

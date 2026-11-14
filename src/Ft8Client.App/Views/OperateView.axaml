@@ -22,6 +22,29 @@
   </UserControl.Styles>
   <Grid x:Name="Root" ColumnDefinitions="*,300" RowDefinitions="*,Auto" Margin="16,0,16,12">
     <DockPanel x:Name="LeftPane" Grid.Column="0" Grid.Row="0">
+    <!-- Contest bar: shown only while a contest is picked, so it is always clear the exchange is not the usual one. -->
+    <Border x:Name="ContestBarBorder" DockPanel.Dock="Top" DataContext="{Binding ContestBar}" x:DataType="vm:ContestBarViewModel" IsVisible="{Binding Visible}"
+            Margin="0,0,12,12" Padding="14,8" CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource CautionBorderBrush}"
+            Background="{DynamicResource CautionBackgroundBrush}" AutomationProperties.Name="Contest">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button Content="Change exchange" Command="{Binding ChangeExchangeCommand}" ToolTip.Tip="Change what you send in this contest" />
+          <Button Content="End contest" Command="{Binding EndCommand}" ToolTip.Tip="Back to normal CQs and reports. Contest contacts stay in your log." />
+        </StackPanel>
+        <WrapPanel ItemSpacing="20" LineSpacing="4" VerticalAlignment="Center">
+          <Border Background="{DynamicResource CautionBrush}" CornerRadius="4" Padding="8,2" VerticalAlignment="Center">
+            <TextBlock Text="CONTEST" FontWeight="Bold" Foreground="{DynamicResource CardBackgroundBrush}" />
+          </Border>
+          <TextBlock Text="{Binding Name}" Classes="secondary" VerticalAlignment="Center" />
+          <TextBlock VerticalAlignment="Center"><Run Text="Sending " Classes="secondary" /><Run Text="{Binding Sending}" FontWeight="SemiBold" FontFamily="{StaticResource MessageFont}" /></TextBlock>
+          <TextBlock VerticalAlignment="Center"><Run Text="Contacts " Classes="secondary" /><Run Text="{Binding Contacts}" FontWeight="SemiBold" /></TextBlock>
+          <TextBlock VerticalAlignment="Center" IsVisible="{Binding HasMults}"><Run Text="Mults " Classes="secondary" /><Run Text="{Binding Mults}" FontWeight="SemiBold" /></TextBlock>
+          <TextBlock VerticalAlignment="Center"><Run Text="Dupes " Classes="secondary" /><Run Text="{Binding Dupes}" FontWeight="SemiBold" /></TextBlock>
+          <TextBlock Text="{Binding Problem}" Foreground="{DynamicResource CautionBrush}" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center"
+                     IsVisible="{Binding Problem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </WrapPanel>
+      </DockPanel>
+    </Border>
     <!-- Calling you: pinned above everything else whenever a station is calling me, so it is never scrolled away. -->
     <Border x:Name="CallingYou" DockPanel.Dock="Top" Classes="card" Padding="14,10" Margin="0,0,12,12" IsVisible="{Binding HasWaiting}"
             BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2" AutomationProperties.Name="Calling you">
@@ -65,14 +88,16 @@
                       <TextBlock Text="You sent" Classes="secondary" />
                       <StackPanel Orientation="Horizontal" Spacing="4">
                         <TextBlock Text="{Binding Sent}" FontSize="24" FontWeight="SemiBold" Classes="num" />
-                        <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ReportUnit}" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5" />
+                        <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ReportUnit}" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5"
+                                   IsVisible="{Binding ShowsReports}" />
                       </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1">
-                      <TextBlock Text="You received" Classes="secondary" />
+                      <TextBlock Text="{Binding ReceivedLabel}" Classes="secondary" />
                       <StackPanel Orientation="Horizontal" Spacing="4">
                         <TextBlock Text="{Binding Received}" FontSize="24" FontWeight="SemiBold" Classes="num" />
-                        <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ReportUnit}" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5" />
+                        <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ReportUnit}" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5"
+                                   IsVisible="{Binding ShowsReports}" />
                       </StackPanel>
                     </StackPanel>
                     <StackPanel x:Name="CardSlot" Grid.Column="2" MinWidth="150" AutomationProperties.LiveSetting="Polite" IsVisible="{DynamicResource StandardSkin}">
@@ -94,10 +119,18 @@
                               SelectedItem="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SelectedCqModifier}"
                               MinWidth="96" AutomationProperties.Name="CQ modifier"
                               IsVisible="{Binding !$parent[UserControl].((vm:OperateViewModel)DataContext).Keyboard.Visible}"
-                              ToolTip.Tip="What your CQ says: CQ for everyone, CQ DX for stations outside your country, CQ NA and the like for one continent. Applies to your next CQ.">
+                              ToolTip.Tip="What your CQ says: CQ for everyone, CQ DX for stations outside your country, CQ NA and the like for one continent. A contest also changes the exchange. Applies to your next CQ.">
+                      <ComboBox.Styles>
+                        <Style Selector="ComboBoxItem" x:DataType="vm:CqModifierChoice">
+                          <Setter Property="IsEnabled" Value="{Binding Selectable}" />
+                        </Style>
+                      </ComboBox.Styles>
                       <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:CqModifierChoice">
-                          <TextBlock Text="{Binding Label}" />
+                          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                            <TextBlock Text="{Binding Label}" Classes.secondary="{Binding IsHeader}" FontWeight="{Binding IsHeader, Converter={x:Static v:Converters.Bold}}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Hint}" Classes="secondary" FontFamily="{StaticResource MessageFont}" />
+                          </Grid>
                         </DataTemplate>
                       </ComboBox.ItemTemplate>
                     </ComboBox>

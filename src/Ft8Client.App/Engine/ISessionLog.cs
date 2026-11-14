@@ -16,4 +16,7 @@ public interface ISessionLog
 {
     /// <summary>Writes a contact. Returns its row in the log, or null if it could not be stored.</summary>
     QsoRecord? Write(ContactLogEntry entry, LogContext context);
+
+    /// <summary>The contacts made in <paramref name="contest"/> since <paramref name="sinceUtc"/>, oldest first.</summary>
+    IReadOnlyList<Core.Contests.ContestQso> ContestLog(Core.Contests.ContestInfo contest, DateTime sinceUtc) => [];
 }

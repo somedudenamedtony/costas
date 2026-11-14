@@ -17,6 +17,7 @@ public static class MessageParser
         var norm = string.Join(' ', (text ?? string.Empty).ToUpperInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
         var t = norm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
+        if (t.Length >= 5 && t[0] == "TU;" && IsCallToken(t[1]) && IsCallToken(t[2]) && TryContest(norm, t[1..], out var tu)) return tu;
         if (norm.Contains(';', StringComparison.Ordinal) && TryDxpedition(norm, out var dx)) return dx;
         if (t.Length >= 2 && t[0] == "CQ" && TryCq(norm, t, out var cq)) return cq;
         if (t.Length >= 2 && IsCallToken(t[0]) && IsCallToken(t[1]) && t[0] != "CQ") return TwoCall(norm, t);
@@ -82,10 +83,43 @@ public static class MessageParser
             if (Report.TryParse(x, out var rep)) return Make(MessageKind.Report) with { Report = rep };
             if (x.Length == 4 && x[0] == 'R' && Report.TryParse(x[1..], out var rr)) return Make(MessageKind.RogerReport) with { Report = rr };
         }
+        if (TryContest(norm, t, out var contest)) return contest;
         return Make(MessageKind.Exchange);
 
         ParsedMessage Make(MessageKind k) => new() { Kind = k, Text = norm, To = to, From = from };
     }
+
+    // The contest exchanges WSJT-X packs (lib/77bit/packjt77.f90): Roundup 5x9 + state/province/serial, Field Day
+    // class + section, and R + grid (NA VHF, WW Digi, ARRL Digi).
+    private static bool TryContest(string norm, string[] t, out ParsedMessage msg)
+    {
+        msg = null!;
+        var rest = t[2..];
+        var roger = rest.Length > 1 && rest[0] == "R";
+        if (roger) rest = rest[1..];
+        var ok = rest.Length switch
+        {
+            1 => roger && Grid.IsGrid4(rest[0]),
+            2 => IsRoundup(rest[0], rest[1]) || IsFieldDay(rest[0], rest[1]),
+            _ => false,
+        };
+        if (!ok) return false;
+        msg = new ParsedMessage
+        {
+            Kind = MessageKind.ContestExchange, Text = norm, To = CallToken.Parse(t[0]), From = CallToken.Parse(t[1]),
+            Exchange = string.Join(' ', rest), Roger = roger, Grid = rest.Length == 1 ? rest[0] : null,
+        };
+        return true;
+    }
+
+    private static bool IsRoundup(string rpt, string x) =>
+        rpt.Length == 3 && rpt[0] == '5' && rpt[1] is >= '2' and <= '9' && rpt[2] == '9' &&
+        (Encoding.ContestTables.RoundupMults.Contains(x) || (x.Length == 4 && x.All(char.IsAsciiDigit) && x != "0000"));
+
+    private static bool IsFieldDay(string cls, string sec) =>
+        cls.Length is 2 or 3 && cls[^1] is >= 'A' and <= 'F' && cls[..^1].All(char.IsAsciiDigit) &&
+        int.TryParse(cls[..^1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) && n is >= 1 and <= 32 &&
+        Encoding.ContestTables.Sections.Contains(sec);
 
     private static bool TryDxpedition(string norm, out ParsedMessage msg)
     {

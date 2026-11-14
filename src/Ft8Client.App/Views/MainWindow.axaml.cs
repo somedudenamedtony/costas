@@ -96,6 +96,8 @@ public partial class MainWindow : Window
         vm.Host.Session.Changed += s => Dispatcher.UIThread.Post(() => vm.Apply(s));
         vm.Apply(vm.Host.Session.Snapshot);
         vm.OpenDialog += OpenDialog;
+        vm.ContestExchangeNeeded += id => Dispatcher.UIThread.Post(() => AskContestExchange(vm, id));
+        vm.CabrilloReady += (name, text) => Dispatcher.UIThread.Post(() => SaveCabrillo(vm, name, text));
         vm.Mini.ExpandRequested += CloseMini;
         vm.AttentionRequested += () => TaskbarFlash.Flash(_mini is { } m ? m : this);
         _timer.Tick += (_, _) =>
@@ -348,6 +350,38 @@ public partial class MainWindow : Window
         w.ShowDialog(this);
     }
 
+    // Asks for my exchange; the contest starts only when the operator presses Start. Cancel leaves things as they were,
+    // and the picker shows what is really running again.
+    private async void AskContestExchange(MainViewModel vm, Core.Contests.ContestId id)
+    {
+        if (Core.Contests.ContestInfo.Of(id) is not { } info) return;
+        var s = vm.Host.Settings.Current;
+        var w = new ContestExchangeWindow
+        {
+            DataContext = new ContestExchangeViewModel(info, s.Profile.Callsign, s.Profile.Grid, s.Operating.ContestExchanges.GetValueOrDefault(id.ToString())),
+        };
+        var exchange = await w.ShowDialog<string?>(this);
+        if (exchange is not null) vm.StartContest(id, exchange);
+        else vm.Operate.ShowCqModifier(vm.Host.Settings.Current.Operating.CqModifier, Services.SettingsMapper.ContestOf(vm.Host.Settings.Current.Operating.Contest));
+    }
+
+    private async void SaveCabrillo(MainViewModel vm, string name, string text)
+    {
+        if (StorageProvider is not { } sp) return;
+        var file = await sp.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+        {
+            Title = "Export Cabrillo",
+            SuggestedFileName = name,
+            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("Cabrillo log") { Patterns = ["*.log", "*.cbr"] }],
+        });
+        if (file is null) return;
+        await using var stream = await file.OpenWriteAsync();
+        stream.SetLength(0);
+        await using var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(false));
+        await writer.WriteAsync(text);
+        vm.Host.Usage.Track("contest_export", "contest", vm.Host.Session.Snapshot.Contest?.Info.Id.ToString() ?? string.Empty);
+    }
+
     // The feedback HTTP client leaves the callsign out of its User-Agent: a report identifies the station only if the
     // operator types their callsign or ticks the log.
     private static FeedbackWindow NewFeedbackWindow(AppHost host)
@@ -438,7 +472,7 @@ public partial class MainWindow : Window
                        && e.Source is not (Button or ComboBox or ComboBoxItem or MenuItem or Slider or NumericUpDown);
         // Ctrl+1 to Ctrl+5 and Ctrl+Tab switch views, even from a text box or the typing line (they type nothing). An open
         // drop-down or menu keeps its keys.
-        if (!inPopup && TabKeys.Target(e.Key, e.KeyModifiers, vm.Tab) is { } tab)
+        if (!inPopup && TabKeys.Target(e.Key, e.KeyModifiers, vm.Tab, vm.TabCount) is { } tab)
         {
             vm.Tab = tab;
             e.Handled = true;
