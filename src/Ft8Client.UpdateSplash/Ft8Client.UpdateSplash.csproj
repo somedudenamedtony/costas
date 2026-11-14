@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The small window that stays on screen while Costas closes, Velopack applies an update and the new Costas opens.
+    It is a separate program because the app's own process (and its files) must be gone before the update can be
+    applied. scripts/build-installer.ps1 publishes it with native AOT (one small exe, no .NET runtime beside it), and
+    Costas copies it out of the install folder before starting it, so it holds nothing that the update replaces.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>CostasUpdateSplash</AssemblyName>
+    <RootNamespace>Ft8Client.UpdateSplash</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsAotCompatible>true</IsAotCompatible>
+    <ApplicationIcon>..\Ft8Client.App\Assets\costas.ico</ApplicationIcon>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <StackTraceSupport>false</StackTraceSupport>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ft8Client.UpdateSplash.Tests" />
+  </ItemGroup>
+</Project>

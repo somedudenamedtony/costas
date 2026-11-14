@@ -90,7 +90,7 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
         };
         _ = heard.Refresh();
         Update = new UpdateBarViewModel(host.Updates, () => host.Session.Snapshot.Transmitting || host.Session.Snapshot.Contact is { Outcome: ContactOutcome.InProgress },
-            () => Shutdown());
+            () => Shutdown(), version => ShowUpdateSplash(version));
         Logged = new LoggedNoticeViewModel(() => host.Clock.UtcNow, new LoggedContactStore(host.Qsos, host.Countries, host.LogHold, host.RebuildLogIndex));
         Mini = new MiniViewModel(Operate, this, () => HaltCommand.Execute(null));
         Mini.HuntDismissed += () => HuntDismissCommand.Execute(null);
@@ -150,6 +150,12 @@ public sealed partial class MainViewModel : ObservableObject, IOperateCommands
 
     /// <summary>Closes the app normally (set by the app; releases PTT and stops the child processes).</summary>
     public static Action Shutdown { get; set; } = () => { };
+
+    /// <summary>
+    /// Puts the update splash up where the main window is, in the theme's colours, before Costas closes for an update
+    /// (set by App; returns the splash, or null when there is none). The argument is the version being installed.
+    /// </summary>
+    public static Func<string, Task<System.Diagnostics.Process?>> ShowUpdateSplash { get; set; } = _ => Task.FromResult<System.Diagnostics.Process?>(null);
 
     /// <summary>Red bar text while the radio is keyed.</summary>
     [ObservableProperty]

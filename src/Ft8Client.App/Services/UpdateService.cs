@@ -79,6 +79,16 @@ public sealed class UpdateService : IDisposable
         }
     }
 
+    /// <summary>
+    /// The update runs with nothing of its own on screen, so the update splash covers it: a Velopack update (applied
+    /// silently once Costas has closed) or a classic install moving to Velopack (its installer runs silently). The
+    /// classic installer shows its own progress window and reopens Costas itself, so it needs none.
+    /// </summary>
+    public bool ShowsSplash => OperatingSystem.IsWindows() && (_velopack is not null || Available is { IsVelopackSetup: true });
+
+    /// <summary>Where downloads (and the update splash's copy) go; emptied at the next start.</summary>
+    public string DownloadFolder => _downloadFolder;
+
     /// <summary>Installed by Velopack, so updates download only what changed.</summary>
     public bool DeltaUpdates => _velopack is not null;
 

@@ -44,7 +44,12 @@ public sealed class App : Application
             MainViewModel.Dispatch = a => Dispatcher.UIThread.Post(a);
             MainViewModel.Shutdown = () => Dispatcher.UIThread.Post(() => desktop.Shutdown());
             var vm = new MainViewModel(host);
-            desktop.MainWindow = new MainWindow { DataContext = vm };
+            var window = new MainWindow { DataContext = vm };
+            desktop.MainWindow = window;
+            MainViewModel.ShowUpdateSplash = version => UpdateSplashLauncher.ShowAsync(AppContext.BaseDirectory, host.Updates.DownloadFolder,
+                UpdateSplashLook.For(window, version), UpdateSplashLauncher.ShownWait);
+            // After an update, the splash that covered it closes once this window has drawn (Background runs after render).
+            window.Opened += (_, _) => Dispatcher.UIThread.Post(UpdateSplashLauncher.SignalReady, DispatcherPriority.Background);
             WatchForUnexpectedErrors(host, vm);
             // Exit, not ShutdownRequested: a shutdown for an update is forced and never raises ShutdownRequested, which
             // skipped the final saves (neighbour history, logs) and the services' clean stop.

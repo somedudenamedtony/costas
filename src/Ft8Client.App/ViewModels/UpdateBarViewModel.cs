@@ -21,13 +21,18 @@ public sealed partial class UpdateBarViewModel : ObservableObject
     private readonly UpdateService _updates;
     private readonly Func<bool> _busyOnAir;
     private readonly Action _shutdown;
+    private readonly Func<string, Task<Process?>>? _showSplash;
 
-    /// <summary>Creates the bar. <paramref name="busyOnAir"/> is true while transmitting or in a contact.</summary>
-    public UpdateBarViewModel(UpdateService updates, Func<bool> busyOnAir, Action shutdown)
+    /// <summary>
+    /// Creates the bar. <paramref name="busyOnAir"/> is true while transmitting or in a contact. <paramref name="showSplash"/>
+    /// puts up the window that stays on screen while Costas closes, updates and reopens (given the version).
+    /// </summary>
+    public UpdateBarViewModel(UpdateService updates, Func<bool> busyOnAir, Action shutdown, Func<string, Task<Process?>>? showSplash = null)
     {
         _updates = updates;
         _busyOnAir = busyOnAir;
         _shutdown = shutdown;
+        _showSplash = showSplash;
         updates.Changed += () => MainViewModel.Dispatch(Refresh);
         Refresh();
     }
@@ -98,7 +103,20 @@ public sealed partial class UpdateBarViewModel : ObservableObject
                 return;
             }
             Detail = "Updating; Costas will reopen when the update has installed…";
-            _updates.ApplyAndReopen(path);
+            // The splash stays up from here until the new Costas is on screen, so the app does not just vanish.
+            var splash = _updates.ShowsSplash && _showSplash is not null && _updates.Available is { } target
+                ? await _showSplash(target.Version.ToString())
+                : null;
+            try
+            {
+                _updates.ApplyAndReopen(path);
+            }
+            catch
+            {
+                CloseSplash(splash);
+                throw;
+            }
+            splash?.Dispose();
             _shutdown();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or InvalidDataException
@@ -110,6 +128,21 @@ public sealed partial class UpdateBarViewModel : ObservableObject
         {
             Busy = false;
         }
+    }
+
+    // The update did not start, so Costas stays open and the splash must not sit over it.
+    private static void CloseSplash(Process? splash)
+    {
+        if (splash is null) return;
+        try
+        {
+            if (!splash.HasExited) splash.Kill();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            // Already gone.
+        }
+        splash.Dispose();
     }
 
     /// <summary>Opens the release page.</summary>

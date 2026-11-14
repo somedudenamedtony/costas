@@ -21,6 +21,8 @@ internal static class Program
         // First, before anything else: Velopack's installer and updater start the app with their own arguments to run
         // install and update steps, and this handles those and exits. Otherwise it returns at once.
         VelopackApp.Build().Run();
+        // After an update: the splash that covered it says Costas is opening (it closes when the window is up).
+        UpdateSplashLauncher.SignalStarted();
         var cmd = CommandLine.Parse(args);
         try
         {
