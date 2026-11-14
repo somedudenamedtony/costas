@@ -16,4 +16,14 @@ public sealed class RigException(string message, Exception? inner = null) : Exce
     /// not a reason to restart rigctld.
     /// </summary>
     public bool Refused { get; init; }
+
+    /// <summary>The RPRT code rigctld answered with, when <see cref="Refused"/>.</summary>
+    public int? Code { get; init; }
+
+    /// <summary>
+    /// Hamlib's RIG_EINVAL (RPRT -1). Besides a bad argument, Hamlib answers every command with it once it has lost the
+    /// radio's port (rig not open), so for a command that always takes the same argument, such as PTT, it means the link
+    /// to the radio is gone even though rigctld still answers.
+    /// </summary>
+    public bool LinkLostCode => Refused && Code == -1;
 }

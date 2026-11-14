@@ -137,6 +137,12 @@ public sealed class ContactEngine
         _settings = settings;
     }
 
+    /// <summary>
+    /// True while a message after a finished contact (the operator's free text, or one more 73) is waiting for my next
+    /// slot. Starting a contact drops it, so anything Costas starts by itself waits for it.
+    /// </summary>
+    public bool ExtraPending => _extraMessage is not null;
+
     /// <summary>True once the Tx watchdog time has passed with no operator input.</summary>
     public bool WatchdogExpired(DateTime nowUtc) => nowUtc - _lastInputUtc >= TimeSpan.FromMinutes(_settings.WatchdogMinutes);
 

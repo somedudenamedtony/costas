@@ -139,6 +139,14 @@
                         </DataTemplate>
                       </ComboBox.ItemTemplate>
                     </ComboBox>
+                    <!-- Auto-call (owner request 2026-11-09): calls down Next in line, one station after another. Filled in the
+                         accent colour while on, so a running list is plain to see. FT8 and FT4 only. -->
+                    <Button Content="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).AutoCallText}"
+                            Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ToggleAutoCallCommand}"
+                            Classes="autocall" Classes.on="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).AutoCallOn}"
+                            IsVisible="{Binding !$parent[UserControl].((vm:OperateViewModel)DataContext).Keyboard.Visible}"
+                            AutomationProperties.Name="Auto-call"
+                            ToolTip.Tip="Calls the top station in Next in line, then the next one each time a contact ends, logged or not. Each station is called once per run. Stops on Esc, Halt Tx, Abandon, Call CQ, a band or mode change, anything that refuses to transmit, or after the Tx watchdog time with no click." />
                     <!-- PSK and RTTY resend with the macro keys, so Resend is an FT8 and FT4 control. -->
                     <Button Content="Resend" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ResendCommand}" IsEnabled="{Binding Active}"
                             IsVisible="{Binding !$parent[UserControl].((vm:OperateViewModel)DataContext).Keyboard.Visible}" />

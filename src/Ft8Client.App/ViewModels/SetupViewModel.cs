@@ -53,8 +53,17 @@ public sealed partial class SetupViewModel : ObservableObject
         RefreshPttPortChoices();
         foreach (var d in host.AudioBackend.ListInputs()) Inputs.Add(d);
         foreach (var d in host.AudioBackend.ListOutputs()) Outputs.Add(d);
-        Input = Inputs.FirstOrDefault(d => d.Id == s.Profile.Audio.InputId);
-        Output = Outputs.FirstOrDefault(d => d.Id == s.Profile.Audio.OutputId);
+        // A saved device is found by id, or by name when Windows gave it a new id. With nothing saved yet the radio's
+        // USB sound card is offered (the operator still sees and saves it). A saved device that is not plugged in
+        // stays saved: leaving the list blank must not forget it.
+        var audio = s.Profile.Audio;
+        Input = AudioDeviceMatch.Find(Inputs, audio.InputId, audio.InputName)
+                ?? (audio.InputId is null ? AudioDeviceMatch.SuggestRadio(Inputs) : null);
+        Output = AudioDeviceMatch.Find(Outputs, audio.OutputId, audio.OutputName)
+                 ?? (audio.OutputId is null ? AudioDeviceMatch.SuggestRadio(Outputs) : null);
+        _missingInput = Input is null && audio.InputId is not null ? (audio.InputId, audio.InputName) : null;
+        _missingOutput = Output is null && audio.OutputId is not null ? (audio.OutputId, audio.OutputName) : null;
+        AudioMissingText = MissingText(_missingInput?.Name, _missingOutput?.Name);
         LogbookKey = host.Secrets.Get(SecretNames.QrzLogbookKey(s.Profile.Id)) ?? string.Empty;
         QrzUser = host.Secrets.Get(SecretNames.QrzUsername) ?? string.Empty;
         QrzPassword = host.Secrets.Get(SecretNames.QrzPassword) ?? string.Empty;
@@ -271,6 +280,24 @@ public sealed partial class SetupViewModel : ObservableObject
 
     /// <summary>Output devices.</summary>
     public ObservableCollection<AudioDevice> Outputs { get; } = [];
+
+    private (string? Id, string? Name)? _missingInput;
+    private (string? Id, string? Name)? _missingOutput;
+
+    /// <summary>Says which saved audio device is not plugged in now, or empty.</summary>
+    [ObservableProperty]
+    public partial string AudioMissingText { get; set; } = string.Empty;
+
+    private static string MissingText(string? input, string? output)
+    {
+        string Name(string? n) => string.IsNullOrEmpty(n) ? "the saved device" : $"\"{n}\"";
+        if (input is null && output is null) return string.Empty;
+        var what = input is not null && output is not null
+            ? $"Input {Name(input)} and output {Name(output)} are"
+            : input is not null ? $"Input {Name(input)} is" : $"Output {Name(output)} is";
+        return $"{what} not connected right now, so the list is blank. Costas keeps your choice and uses it again when "
+               + "the device is back: check the radio is on and its USB cable is plugged in. Or pick another device.";
+    }
 
     /// <summary>Input.</summary>
     [ObservableProperty]
@@ -715,8 +742,9 @@ public sealed partial class SetupViewModel : ObservableObject
         s.Profile.Rig.Ptt = Ptt;
         s.Profile.Rig.PttPort = UsesPttLine && !string.IsNullOrEmpty(PttPort) ? PttPort : null;
         s.Profile.Rig.Config = NormalizedConfig;
-        s.Profile.Audio.InputId = Input?.Id;
-        s.Profile.Audio.OutputId = Output?.Id;
+        // A blank list over a saved device that is not plugged in keeps that device (see the constructor).
+        (s.Profile.Audio.InputId, s.Profile.Audio.InputName) = Input is { } i ? (i.Id, i.Name) : _missingInput ?? (null, null);
+        (s.Profile.Audio.OutputId, s.Profile.Audio.OutputName) = Output is { } o ? (o.Id, o.Name) : _missingOutput ?? (null, null);
     }
 
     // Hamlib settings with the spaces around commas removed, or null for none or an invalid entry.

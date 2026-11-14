@@ -186,7 +186,18 @@ public sealed class RigctldRig : IRig
         {
             // Set before sending: a "T 1" that times out may still have keyed the radio.
             _pttMayBeOn = true;
-            await Run(c => c.SetAsync("T 1", ct), ct).ConfigureAwait(false);
+            try
+            {
+                await Run(c => c.SetAsync("T 1", ct), ct).ConfigureAwait(false);
+            }
+            catch (RigException ex) when (ex.LinkLostCode && !_disposed)
+            {
+                // Hamlib answers every command with RPRT -1 once it has lost the radio's port (comm_state 0), so a PTT
+                // command refused means the link is gone even though rigctld is running: restart it to reopen the port.
+                RaiseFault(LostLinkText(ex));
+                _ = Task.Run(() => RestartAsync(CancellationToken.None), CancellationToken.None);
+                throw new RigException(LostLinkText(ex));
+            }
             return;
         }
         // Releasing PTT: try hard, over a fresh connection if needed. A restart already under way (started by the
@@ -202,11 +213,15 @@ public sealed class RigctldRig : IRig
             }
             catch (Exception ex) when (ex is RigException or ObjectDisposedException)
             {
-                RaiseFault($"PTT release failed: {ex.Message}");
+                var refused = ex is RigException { LinkLostCode: true };
+                RaiseFault(refused ? $"PTT release failed: {LostLinkText((RigException)ex)}" : $"PTT release failed: {ex.Message}");
                 if (_disposed) break;
                 await _restartLock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
                 _restartLock.Release();
-                if (!ProcessRunning) await RestartAsync(CancellationToken.None).ConfigureAwait(false);
+                // A refused "T 0" comes from a rigctld that lost the radio's port (see SetPttAsync): only a new rigctld
+                // reopens it, and it sends "T 0" itself once it is up.
+                if (!ProcessRunning || refused) await RestartAsync(CancellationToken.None).ConfigureAwait(false);
+                if (!_pttMayBeOn) return;
             }
         }
         throw new RigException("PTT could not be released through rigctld. Switch the radio off or unplug the PTT line.");
@@ -552,6 +567,9 @@ public sealed class RigctldRig : IRig
             await f(c).ConfigureAwait(false);
             return true;
         }, ct).ConfigureAwait(false);
+
+    private static string LostLinkText(RigException ex) =>
+        $"rigctld lost its connection to the radio ({ex.Message}); reconnecting. If this happens while transmitting, RF may be getting into the USB cable.";
 
     private void RaiseFault(string message) => Faulted?.Invoke(this, new RigFault(message, _clock.UtcNow));
 

@@ -32,6 +32,11 @@ public interface IOperateCommands
     {
     }
 
+    /// <summary>Turns Auto-call (calling down Next in line, one station after another) on or off.</summary>
+    void SetAutoCall(bool on)
+    {
+    }
+
     /// <summary>Answer a waiting caller now.</summary>
     void Answer(string call);
 

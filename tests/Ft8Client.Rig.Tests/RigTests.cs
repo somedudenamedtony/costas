@@ -449,6 +449,41 @@ public class RigTests
     }
 
     [Fact]
+    public async Task SetPtt_RigctldLostThePort_RestartsItAndReleasesThroughTheNewOne()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "The stand-in rigctld is a Python script run directly.");
+        var dir = Directory.CreateTempSubdirectory("costas-lostport-").FullName;
+        var log = Path.Combine(dir, "log");
+        File.WriteAllText(log, string.Empty);
+        var exe = Path.Combine(dir, "rigctld");
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Emulators", "lost_port_rigctld.py"), exe);
+        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Environment.SetEnvironmentVariable("COSTAS_FAKE_LOG", log);
+        try
+        {
+            var ct = TestContext.Current.CancellationToken;
+            await using var rig = await RigctldRig.StartAsync(new RigctldOptions(exe, 1035, "/dev/ttyCostasFake", 38400), NullProcessGuard.Instance, SystemClock.Instance, ct);
+            var faults = new List<string>();
+            rig.Faulted += (_, f) => { lock (faults) faults.Add(f.Message); };
+
+            // The first rigctld answers PTT with RPRT -1, as Hamlib does once it has lost the radio's port.
+            var key = () => rig.SetPttAsync(true, ct);
+            (await key.Should().ThrowAsync<RigException>()).Which.Message.Should().Contain("lost its connection");
+            await rig.SetPttAsync(false, ct);
+
+            var lines = File.ReadAllLines(log);
+            lines.Count(l => l == "start").Should().BeGreaterThanOrEqualTo(2, "a refused PTT restarts rigctld");
+            lines.SkipWhile(l => l != "start").Skip(1).SkipWhile(l => l != "start").Should().Contain("T 0", "the new rigctld unkeys the radio");
+            lock (faults) faults.Should().Contain(f => f.Contains("lost its connection"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("COSTAS_FAKE_LOG", null);
+            try { Directory.Delete(dir, recursive: true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
     public async Task Rigctld_DummyRig_SetsAndReadsBackAndRecoversFromCrash()
     {
         var exe = HamlibModels.Find("rigctld", null);

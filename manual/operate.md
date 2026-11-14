@@ -101,6 +101,29 @@ it is heard working someone else, and moves to Watching once the time is up.
 | **Last worked** | Your most recent contact with that call on any band or mode (*2026-10-03 · 40 m*), or *Never*. Hover for the details |
 | button | **Call**, or **Answer** when they are calling you |
 
+### Auto-call
+
+**Auto-call**, beside **Call CQ** on the contact card, works down Next in line for you. Click it and Costas calls the
+top station in your next slot. When that contact ends, logged or not, it calls the next station at the top of the list,
+and so on. The button fills in the accent colour and reads **Stop auto-call** while it runs, and between contacts the card says *Auto-call on*. Click the button
+again to stop.
+
+- Each station is called once per run. One that did not answer (after the usual retries) is not called again until
+  you stop and start Auto-call.
+- Only stations heard in their latest slot are called. A CQ caller that missed a slot waits until it is heard again.
+- Stations you have worked drop out of the list as usual, so they are not called again.
+- If someone you marked **Call when free** comes free, that station goes first.
+- A DXpedition Fox is worked the Hound way, just as when you click **Call**.
+
+Auto-call stops when you press **Esc** (even the first Esc, which keeps the contact so a late `RR73` still logs),
+**Halt Tx**, **Abandon** or **Call CQ**, when you change band or mode (also on the radio), and when Costas refuses or
+fails to transmit, for example with the dial outside the band. It also stops after the Tx watchdog time (6 minutes,
+**Settings › Transmitting › Watchdog**) with no click or key from you, so it never keeps calling after you have walked away. Auto-call
+is FT8 and FT4 only, and it is always off when Costas starts.
+
+You still need to be at the radio: Auto-call saves clicks, it does not make the station unattended. The watchdog is
+there for that reason.
+
 ### Resizing columns
 
 Drag the edge between two column headings to make a column wider or narrower; a faint line marks each edge and turns

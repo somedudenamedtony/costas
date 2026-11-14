@@ -69,6 +69,12 @@ Use [Station setup › Transmit test](setup.md#4-transmit-test) into a dummy loa
   or at zero volume in Windows, Costas refuses to transmit and says so; unmute it and set its volume to 100.
 - **Meters read "≤5 W"**: some radios (the FT-710 among them) cannot report less than 5 W, so "≤5 W" while the radio's
   own PO meter reads 0 means no power is going out. Check the audio as above.
+- **"PTT release failed … RPRT -1" or "rigctld lost its connection to the radio"**: Hamlib lost the radio's serial
+  port, usually because the radio's USB connection dropped. Costas restarts rigctld to reconnect. If it happens while
+  transmitting, RF is probably getting into the USB cable: test at low power, add clip-on ferrites at both ends of the
+  USB cable, check the antenna's choke or ground, and turn off Windows' USB selective suspend.
+- **Audio lists blank in Station setup**: the saved device is not plugged in right now (the radio is off, or its USB
+  dropped). Costas keeps your choice and finds the device again, by name if Windows gives it a new id.
 - **"The radio cannot report whether it transmitted"**: some radios do not report PTT state over CAT. Watch the TX
   light instead.
 
