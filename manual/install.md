@@ -29,6 +29,9 @@ appears at the top of the main window:
 
 - **Update** downloads only what changed since your build (usually a few MB; the bar shows the size), checks it,
   closes Costas, swaps in the new files and opens Costas again, all within a few seconds. There is nothing to click.
+  While that happens a small **Updating Costas** window stays where Costas was, saying what it is doing (closing,
+  installing the new version, opening it), and goes away once the new Costas is on screen. If the update cannot be
+  applied, Costas opens again as it was.
   It is refused while you are transmitting or in a contact: finish or halt first.
 - **Release notes** opens the release on GitHub.
 - **Skip this version** hides the bar until a newer build comes out.

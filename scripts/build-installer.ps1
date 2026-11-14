@@ -30,6 +30,14 @@ if (-not (Test-Path (Join-Path $tp 'wsjtx/bin/jt9.exe')) -or -not (Test-Path (Jo
 # The app, self-contained so no .NET install is needed.
 dotnet publish src/Ft8Client.App -c Release -r win-x64 --self-contained -o $stage "-p:Version=$version"
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed' }
+# The update splash (src/Ft8Client.UpdateSplash): the window that stays up while Costas closes, updates and reopens.
+# Native AOT makes it one small exe that runs without the .NET files beside it, because Costas copies it out of the
+# install folder before Velopack replaces that folder.
+$splash = Join-Path $art 'splash'
+dotnet publish src/Ft8Client.UpdateSplash -c Release -r win-x64 -p:PublishAot=true -o $splash "-p:Version=$version"
+if ($LASTEXITCODE -ne 0) { throw 'dotnet publish (update splash) failed' }
+Copy-Item (Join-Path $splash 'CostasUpdateSplash.exe') $stage
+Write-Host "Update splash: $([math]::Round((Get-Item (Join-Path $stage 'CostasUpdateSplash.exe')).Length / 1KB)) KB"
 Get-ChildItem $stage -Filter '*.xml' | Remove-Item
 Copy-Item (Join-Path $root 'LICENSE') $stage
 if (-not (Test-Path (Join-Path $stage 'Costas.exe'))) { throw 'Costas.exe missing from the publish output' }

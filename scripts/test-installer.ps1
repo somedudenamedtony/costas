@@ -140,3 +140,58 @@ while ((Get-Date) -lt $deadline -and -not (Test-Path (Join-Path $startMenu 'Cost
 Assert-File (Join-Path $startMenu 'Costas.lnk')
 $running | Stop-Process -Force
 Write-Host 'The classic install moved to Velopack'
+
+Write-Host 'Update splash: stays up while the old Costas closes and the update applies, then closes once Costas is on screen'
+# What UpdateSplashLauncher does when the operator presses Update: copy the splash out of the install folder, start it
+# with the closing Costas's process id, and wait for its "shown" event. ping stands in for the Costas that is closing.
+$splashExe = Join-Path $vpDir 'current\CostasUpdateSplash.exe'
+Assert-File $splashExe
+Write-Host "Splash: $([math]::Round((Get-Item $splashExe).Length / 1KB)) KB"
+$splashCopy = Join-Path $env:RUNNER_TEMP 'splash-test.exe'
+Copy-Item $splashExe $splashCopy -Force
+$shots = Join-Path $root 'artifacts\update-splash'
+New-Item -ItemType Directory -Force -Path $shots | Out-Null
+function Save-Shot($name) {
+    # Best effort: a picture of the middle of the screen, where the splash sits, for the pull request.
+    try {
+        Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+        $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+        $w = 520; $h = 220
+        $bmp = [System.Drawing.Bitmap]::new($w, $h)
+        $g = [System.Drawing.Graphics]::FromImage($bmp)
+        $g.CopyFromScreen([int]($b.Width / 2 - $w / 2), [int]($b.Height / 2 - $h / 2), 0, 0, [System.Drawing.Size]::new($w, $h))
+        $bmp.Save((Join-Path $shots "$name.png"))
+        $g.Dispose(); $bmp.Dispose()
+    } catch { Write-Warning "No screenshot ($name): $_" }
+}
+$old = Start-Process (Join-Path $env:SystemRoot 'System32\PING.EXE') -ArgumentList '-n', '600', '127.0.0.1' -PassThru -WindowStyle Hidden
+$shown = [System.Threading.EventWaitHandle]::new($false, [System.Threading.EventResetMode]::ManualReset, 'Local\Costas.UpdateSplash.Shown')
+$splashProc = Start-Process $splashCopy -ArgumentList '--pid', $old.Id, '--version', '0.1.999' -PassThru
+if (-not $shown.WaitOne(10000)) { throw 'The update splash did not show within 10 s' }
+Start-Sleep -Milliseconds 700
+Save-Shot 'closing-dark'
+if ($splashProc.HasExited) { throw "The update splash closed by itself (code $($splashProc.ExitCode))" }
+Stop-Process -Id $old.Id
+Start-Sleep -Seconds 2
+Save-Shot 'installing-dark'
+if ($splashProc.HasExited) { throw 'The update splash closed when the old Costas exited, before a new one was on screen' }
+$splashHome = Join-Path $env:RUNNER_TEMP 'costas-splash-home'
+$sw = [System.Diagnostics.Stopwatch]::StartNew()
+$new = Start-Process $vpApp -ArgumentList '--home', $splashHome -PassThru
+if (-not $splashProc.WaitForExit(90000)) {
+    Save-Shot 'stuck'
+    Stop-Process -Id $splashProc.Id -Force
+    throw 'The update splash did not close once Costas was on screen'
+}
+Write-Host "The splash closed $([math]::Round($sw.Elapsed.TotalSeconds, 1)) s after Costas started"
+if ($new.HasExited) { throw "Costas exited by itself (code $($new.ExitCode))" }
+Stop-Process -Id $new.Id -Force
+$new.WaitForExit(10000) | Out-Null
+# The light theme's colours, as Costas passes them, for the picture; nothing to wait for (no process id), so it is installing.
+$shown.Reset() | Out-Null
+$light = Start-Process $splashCopy -ArgumentList '--version', '0.1.999', '--background', 'FFFFFF', '--border', 'E0E0E0', '--text', '1A1A1A',
+    '--secondary', '5F5F5F', '--accent', '0067C0' -PassThru
+if ($shown.WaitOne(10000)) { Start-Sleep -Milliseconds 700; Save-Shot 'installing-light' }
+Stop-Process -Id $light.Id -Force -ErrorAction SilentlyContinue
+$shown.Dispose()
+Write-Host 'The update splash handed over to Costas'

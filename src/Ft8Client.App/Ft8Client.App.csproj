@@ -30,6 +30,11 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
+    <!-- What the app and the update splash (a separate program) agree on, compiled into both. -->
+    <Compile Include="..\Ft8Client.UpdateSplash\SplashProtocol.cs" Link="Services\UpdateSplash\SplashProtocol.cs" />
+    <Compile Include="..\Ft8Client.UpdateSplash\SplashOptions.cs" Link="Services\UpdateSplash\SplashOptions.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="Ft8Client.App.Tests" />
   </ItemGroup>
   <ItemGroup Condition="'$(APTABASE_APP_KEY)' != ''">
