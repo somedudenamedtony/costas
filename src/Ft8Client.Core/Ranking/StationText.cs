@@ -88,6 +88,13 @@ public static class StationText
         _ => "—",
     };
 
+    /// <summary>The tag on a Fox's row (a Fox/Hound DXpedition): it can only be worked the Hound way.</summary>
+    public const string FoxTag = "Fox · Hound";
+
+    /// <summary>What calling a Fox does, for the tooltip on <see cref="FoxTag"/>.</summary>
+    public const string FoxTip = "DXpedition Fox (Fox/Hound). Click Call and Costas works it the Hound way: your call every slot " +
+                                 "above 1000 Hz for up to 2 minutes, then your report on the frequency the Fox answers on. Its RR73 logs the contact.";
+
     /// <summary>The "Doing now" column.</summary>
     public static string DoingNow(Station s)
     {

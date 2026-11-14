@@ -201,8 +201,8 @@ air, it says so.
 
 Stations you need that you cannot call yet: they went quiet, or are in a contact with someone else
 (*In a contact with EA5HVK*, *Finishing a contact with K7RGB*). They move into Next in line when that changes.
-A DXpedition running Fox/Hound is never here: it is always working someone, so it stays in Next in line as
-*DXpedition (Fox/Hound), working Hounds*. See [Working a DXpedition](contacts.md#working-a-dxpedition-foxhound).
+A DXpedition running Fox/Hound is never here: it is always working someone, so it stays in Next in line with a
+purple **Fox · Hound** tag, as *DXpedition (Fox/Hound), working Hounds*. See [Working a DXpedition](contacts.md#working-a-dxpedition-foxhound).
 
 A station calling CQ in a contest (`CQ RU`, `CQ FD`, `CQ WW`, `CQ TEST` and the like) is listed here as *Contest
 (CQ RU): pick it beside Call CQ to work it*. It expects a contest exchange, so it can only be called once you

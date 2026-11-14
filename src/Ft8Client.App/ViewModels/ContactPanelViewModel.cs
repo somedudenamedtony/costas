@@ -59,6 +59,15 @@ public sealed class ContactPanelViewModel
     /// <summary>What Hound mode means for this contact right now, in one or two sentences. Empty outside Hound mode.</summary>
     public string HoundNote { get; private init; } = string.Empty;
 
+    /// <summary>
+    /// The Hound banner's headline while the contact runs: where the Fox is, where I transmit and for how long, such as
+    /// "Fox at 612 Hz · You call at 1700 Hz, every slot · 1:24 left". Empty outside Hound mode and once it ends.
+    /// </summary>
+    public string HoundLine { get; private init; } = string.Empty;
+
+    /// <summary>The Hound banner has a headline.</summary>
+    public bool HasHoundLine => HoundLine.Length > 0;
+
     /// <summary>Log now is enabled.</summary>
     public bool CanLogNow { get; private init; }
 
@@ -179,7 +188,8 @@ public sealed class ContactPanelViewModel
             ShowsReports = c.Flow is not (ContactFlow.ContestAnswer or ContactFlow.ContestRun),
             CanLogNow = c.CanLogNow,
             HoundMode = c.Flow == ContactFlow.Hound,
-            HoundNote = c.Flow == ContactFlow.Hound ? HoundNoteFor(c, s) : string.Empty,
+            HoundNote = c.Flow == ContactFlow.Hound ? HoundNoteFor(c) : string.Empty,
+            HoundLine = c.Flow == ContactFlow.Hound ? HoundLineFor(c, s, nowUtc) : string.Empty,
             Active = c.Outcome == ContactOutcome.InProgress,
             Steps = [.. steps.Select((x, i) => x with
             {
@@ -306,15 +316,35 @@ public sealed class ContactPanelViewModel
         return currentSlot + slotLen;
     }
 
-    // Calling: where I call and how long; answered: where the R-report goes and that the Fox's RR73 ends it.
-    private static string HoundNoteFor(ContactView c, SessionSnapshot s)
+    // Calling: that Costas keeps sending the call every slot until the Fox answers or the limit runs out (as WSJT-X
+    // does); answered: where the R-report goes and that the Fox's RR73 ends it. The figures are in HoundLineFor.
+    private static string HoundNoteFor(ContactView c)
     {
         if (c.Outcome == ContactOutcome.Logged) return $"Worked as a Hound: {c.DxCall}'s RR73 logged the contact, so no 73 was sent.";
         if (c.Outcome != ContactOutcome.InProgress) return $"{c.DxCall} is a DXpedition Fox, worked the Hound way. Call it again to keep trying.";
         return c.ReportReceived is null
-            ? $"{c.DxCall} is a DXpedition Fox working several stations at once. You call at {s.TxOffsetHz} Hz, above 1000 Hz where it listens, " +
-              $"for up to {ContactEngine.HoundCallLimit.TotalMinutes:0} minutes. Keep waiting: it answers when it gets to you."
-            : $"{c.DxCall} answered. Your report goes back on its frequency; its RR73 logs the contact, and no 73 is sent.";
+            ? $"{c.DxCall} is a DXpedition Fox working several stations at once. Costas sends your call every slot, above 1000 Hz " +
+              $"where it listens, for up to {ContactEngine.HoundCallLimit.TotalMinutes:0} minutes. Leave it running: the Fox answers when it gets to you."
+            : $"{c.DxCall} answered. Costas sends your report on the Fox's frequency; its RR73 logs the contact, and no 73 is sent.";
+    }
+
+    // "Fox at 612 Hz · You call at 1700 Hz, every slot · 1:24 left", or, once answered,
+    // "Fox answered at 612 Hz · Your report goes at 612 Hz · its RR73 logs it". Empty once the contact ends.
+    private static string HoundLineFor(ContactView c, SessionSnapshot s, DateTime nowUtc)
+    {
+        if (c.Outcome != ContactOutcome.InProgress) return string.Empty;
+        if (c.ReportReceived is not null)
+        {
+            var at = c.HoundReplyOffsetHz ?? c.DxOffsetHz;
+            return at is { } hz ? $"Fox answered at {hz} Hz · Your report goes at {hz} Hz · Its RR73 logs it" : "Fox answered · Its RR73 logs it";
+        }
+        var parts = new List<string>();
+        if (c.DxOffsetHz is { } fox) parts.Add($"Fox at {fox} Hz");
+        parts.Add($"You call at {s.TxOffsetHz} Hz, every slot");
+        var left = c.HoundCallEndsUtc is { } end ? end - nowUtc : ContactEngine.HoundCallLimit;
+        if (left < TimeSpan.Zero) left = TimeSpan.Zero;
+        parts.Add($"{(int)left.TotalMinutes}:{left.Seconds:00} left");
+        return string.Join(" · ", parts);
     }
 
     private static string Time(DateTime? t) => t?.ToString("HH:mm:ss", CultureInfo.InvariantCulture) ?? string.Empty;

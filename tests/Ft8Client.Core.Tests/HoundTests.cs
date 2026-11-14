@@ -60,6 +60,44 @@ public class HoundTests
     }
 
     [Fact]
+    public void View_HoundCalling_CarriesFoxOffsetAndCallingDeadline()
+    {
+        var s = new Sim();
+        s.CallFox();
+        s.E.View!.DxOffsetHz.Should().Be(420);
+        s.E.View.HoundCallEndsUtc.Should().BeNull("the 2-minute limit counts from the first call, not yet sent");
+
+        s.Step();
+        s.Step();
+        s.E.View.HoundCallEndsUtc.Should().Be(Sim.Start(1).AddSeconds(0.5) + ContactEngine.HoundCallLimit);
+        s.E.View.HoundReplyOffsetHz.Should().BeNull();
+    }
+
+    [Fact]
+    public void View_HoundAnswered_CarriesReplyOffsetAndNoDeadline()
+    {
+        var s = new Sim();
+        s.CallFox();
+        s.Step();
+        s.Step();
+        s.Step(("W9XYZ RR73; W7LIT <KH1X> -09", 480, -7));
+
+        s.E.View!.HoundReplyOffsetHz.Should().Be(480);
+        s.E.View.HoundCallEndsUtc.Should().BeNull();
+    }
+
+    [Fact]
+    public void View_OrdinaryContact_NoHoundFields()
+    {
+        var e = new ContactEngine("W7LIT", "DN40", new ContactSettings(), Sim.T0);
+        e.CallStation("K1ABC", "FN42", -10, SlotParity.Even, 1200, Sim.T0);
+
+        e.View!.HoundCallEndsUtc.Should().BeNull();
+        e.View.HoundReplyOffsetHz.Should().BeNull();
+        e.View.DxOffsetHz.Should().Be(1200);
+    }
+
+    [Fact]
     public void CallStation_HoundFoxWorkingOthers_CallsAndLogsOnRr73WithNothingAfter()
     {
         var s = new Sim();

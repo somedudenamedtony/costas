@@ -19,4 +19,14 @@ namespace Ft8Client.App.Remote;
 /// <param name="CanLogNow">Log now is allowed.</param>
 /// <param name="Steps">The conversation strip.</param>
 public sealed record RemoteContact(string Caption, string Call, string Need, string Subline, string Sent, string Received, bool Active, bool CanLogNow,
-                                   IReadOnlyList<RemoteStep> Steps);
+                                   IReadOnlyList<RemoteStep> Steps)
+{
+    /// <summary>True when the contact is with a Fox and worked the Hound way; the phone shows a Hound mode chip.</summary>
+    public bool Hound { get; init; }
+
+    /// <summary>The Hound banner headline ("Fox at 612 Hz · You call at 1700 Hz, every slot · 1:24 left"), or blank.</summary>
+    public string HoundLine { get; init; } = string.Empty;
+
+    /// <summary>What Hound mode means for this contact right now, or blank.</summary>
+    public string HoundNote { get; init; } = string.Empty;
+}

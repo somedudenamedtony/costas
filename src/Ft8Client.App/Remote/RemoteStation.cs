@@ -25,4 +25,7 @@ public sealed record RemoteStation(string Call, string Where, string Need, strin
 {
     /// <summary>Other stations calling this one right now, "3 calling", or blank; as the tag on the desk's rows.</summary>
     public string Calling { get; init; } = string.Empty;
+
+    /// <summary>True for a Fox (Fox/Hound DXpedition): the row carries the Fox tag, and Call works it the Hound way.</summary>
+    public bool Fox { get; init; }
 }

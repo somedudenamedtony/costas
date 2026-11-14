@@ -138,9 +138,59 @@ public class ContactPanelViewModelTests
         var p = ContactPanelViewModel.From(c, new SessionSnapshot { Mode = Mode.Ft8, Contact = c, TxOffsetHz = 1730 }, Slot.AddSeconds(14), DistanceUnit.Miles, null);
 
         p.HoundMode.Should().BeTrue();
-        p.HoundNote.Should().Contain("1730 Hz").And.Contain("2 minutes");
+        p.HoundLine.Should().Contain("You call at 1730 Hz, every slot");
+        p.HoundNote.Should().Contain("every slot").And.Contain("2 minutes").And.NotContain("Keep waiting");
         p.Steps[2].Status.Should().Be("Then logged", "a Hound sends nothing after the Fox's RR73");
     }
+
+    [Fact]
+    public void From_HoundCalling_LineShowsFoxOffsetAndTimeLeft()
+    {
+        var c = HoundCalling() with { DxOffsetHz = 612, HoundCallEndsUtc = SentAt + TimeSpan.FromMinutes(2) };
+        var p = ContactPanelViewModel.From(c, new SessionSnapshot { Mode = Mode.Ft8, Contact = c, TxOffsetHz = 1700 }, SentAt.AddSeconds(36),
+            DistanceUnit.Miles, null);
+
+        p.HoundLine.Should().Be("Fox at 612 Hz · You call at 1700 Hz, every slot · 1:24 left");
+        p.HasHoundLine.Should().BeTrue();
+    }
+
+    [Fact]
+    public void From_HoundBeforeFirstCall_ShowsFullCallingLimit()
+    {
+        var c = HoundCalling();
+        var p = ContactPanelViewModel.From(c, new SessionSnapshot { Mode = Mode.Ft8, Contact = c, TxOffsetHz = 1700 }, Slot.AddSeconds(14), DistanceUnit.Miles, null);
+
+        p.HoundLine.Should().EndWith("2:00 left");
+    }
+
+    [Fact]
+    public void From_HoundAnswered_LineShowsWhereTheReportGoes()
+    {
+        var c = HoundCalling() with { ReportReceived = -12, DxOffsetHz = 612, HoundReplyOffsetHz = 840 };
+        var p = ContactPanelViewModel.From(c, new SessionSnapshot { Mode = Mode.Ft8, Contact = c, TxOffsetHz = 1700 }, Slot.AddSeconds(14), DistanceUnit.Miles, null);
+
+        p.HoundLine.Should().Be("Fox answered at 840 Hz · Your report goes at 840 Hz · Its RR73 logs it");
+        p.HoundNote.Should().Contain("answered");
+    }
+
+    [Fact]
+    public void From_HoundEnded_NoLine()
+    {
+        var c = HoundCalling() with { Outcome = ContactOutcome.NoReply };
+        var p = ContactPanelViewModel.From(c, new SessionSnapshot { Mode = Mode.Ft8, Contact = c, TxOffsetHz = 1700 }, Slot.AddSeconds(14), DistanceUnit.Miles, null);
+
+        p.HoundMode.Should().BeTrue();
+        p.HasHoundLine.Should().BeFalse();
+        p.HoundNote.Should().Contain("Call it again");
+    }
+
+    private static ContactView HoundCalling() => new("C5R", "IK13", ContactFlow.Hound, ContactOutcome.InProgress, null, null,
+    [
+        new ContactStep(true, "C5R W7LIT DN40", StepState.Done, 3, SentAt),
+        new ContactStep(false, "W7LIT C5R ±NN", StepState.Now, 0, null),
+        new ContactStep(true, "C5R W7LIT R-16", StepState.Upcoming, 0, null),
+        new ContactStep(false, "W7LIT C5R RR73", StepState.Upcoming, 0, null),
+    ], false, false, string.Empty);
 
     [Fact]
     public void From_OrdinaryContact_NoHoundMode()

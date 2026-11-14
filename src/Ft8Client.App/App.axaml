@@ -17,6 +17,10 @@
           <SolidColorBrush x:Key="CautionBrush" Color="#8A4B00" />
           <SolidColorBrush x:Key="CautionBackgroundBrush" Color="#FFF4CE" />
           <SolidColorBrush x:Key="CautionBorderBrush" Color="#E8C27A" />
+          <SolidColorBrush x:Key="HoundBrush" Color="#6B3FA0" />
+          <SolidColorBrush x:Key="HoundBackgroundBrush" Color="#F3ECFC" />
+          <SolidColorBrush x:Key="HoundBorderBrush" Color="#C9B3E8" />
+          <SolidColorBrush x:Key="HoundChipBrush" Color="#6B3FA0" />
           <SolidColorBrush x:Key="CriticalBrush" Color="#C42B1C" />
           <SolidColorBrush x:Key="SuccessBrush" Color="#0F7B0F" />
           <SolidColorBrush x:Key="SelectedRowBrush" Color="#E5F1FB" />
@@ -36,6 +40,10 @@
           <SolidColorBrush x:Key="CautionBrush" Color="#F0A64B" />
           <SolidColorBrush x:Key="CautionBackgroundBrush" Color="#3B2A12" />
           <SolidColorBrush x:Key="CautionBorderBrush" Color="#6B4A1A" />
+          <SolidColorBrush x:Key="HoundBrush" Color="#C9AEF5" />
+          <SolidColorBrush x:Key="HoundBackgroundBrush" Color="#2C2240" />
+          <SolidColorBrush x:Key="HoundBorderBrush" Color="#5B4585" />
+          <SolidColorBrush x:Key="HoundChipBrush" Color="#7E57C2" />
           <SolidColorBrush x:Key="CriticalBrush" Color="#E5584A" />
           <SolidColorBrush x:Key="SuccessBrush" Color="#6CCB5F" />
           <SolidColorBrush x:Key="SelectedRowBrush" Color="#1F3A55" />
@@ -78,6 +86,43 @@
       <Setter Property="FontSize" Value="11" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="{DynamicResource CautionBrush}" />
+    </Style>
+    <!-- Fox/Hound: one purple family, apart from the need colours and the amber attention colours. The row tag marks a
+         Fox before the click; the chip and banner mark a contact worked the Hound way. -->
+    <Style Selector="Border.fox">
+      <Setter Property="Background" Value="{DynamicResource HoundBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HoundBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.fox > TextBlock">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource HoundBrush}" />
+    </Style>
+    <Style Selector="Border.houndChip">
+      <Setter Property="Background" Value="{DynamicResource HoundChipBrush}" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="8,2" />
+    </Style>
+    <Style Selector="Border.houndChip > TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="LetterSpacing" Value="0.6" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Border.houndBanner">
+      <Setter Property="Background" Value="{DynamicResource HoundBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HoundBorderBrush}" />
+      <Setter Property="BorderThickness" Value="3,1,1,1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+    <Style Selector="TextBlock.houndLine">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource HoundBrush}" />
     </Style>
     <Style Selector="Border.attention">
       <Setter Property="Background" Value="{DynamicResource CautionBackgroundBrush}" />

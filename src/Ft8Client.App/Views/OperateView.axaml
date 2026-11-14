@@ -156,22 +156,26 @@
                 </StackPanel>
               </Border>
               <StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <TextBlock Text="{Binding Caption}" Classes="secondary" VerticalAlignment="Center" />
-                  <!-- A Fox (Fox/Hound DXpedition) is worked the Hound way: say so, since the strip looks much like a normal contact. -->
-                  <Border IsVisible="{Binding HoundMode}" CornerRadius="9" Padding="8,1" BorderThickness="1"
-                          BorderBrush="{DynamicResource AccentTextBrush}" AutomationProperties.Name="Hound mode"
-                          ToolTip.Tip="This station is a DXpedition Fox. Costas works it the Hound way: calls above 1000 Hz, your report on the Fox's frequency, and its RR73 ends the contact.">
-                    <TextBlock Text="Hound mode" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" />
-                  </Border>
-                </StackPanel>
+                <TextBlock Text="{Binding Caption}" Classes="secondary" />
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <TextBlock Text="{Binding Call}" FontSize="40" FontWeight="SemiBold" />
+                  <!-- A Fox (Fox/Hound DXpedition) is worked the Hound way: a filled chip beside the call, where the eye already is. -->
+                  <Border Classes="houndChip" IsVisible="{Binding HoundMode}" VerticalAlignment="Bottom" Margin="0,0,0,9"
+                          AutomationProperties.Name="Hound mode"
+                          ToolTip.Tip="This station is a DXpedition Fox. Costas works it the Hound way: your call every slot above 1000 Hz, your report on the Fox's frequency, and its RR73 ends the contact.">
+                    <TextBlock Text="HOUND MODE" />
+                  </Border>
                   <TextBlock Text="{Binding Need}" FontWeight="SemiBold" VerticalAlignment="Bottom" Margin="0,0,0,8"
                              Foreground="{Binding NeedKind, Converter={x:Static v:Converters.KindBrush}}" />
                 </StackPanel>
                 <TextBlock Text="{Binding Subline}" FontSize="15" />
-                <TextBlock Text="{Binding HoundNote}" IsVisible="{Binding HoundMode}" Classes="secondary" TextWrapping="Wrap" Margin="0,4,0,0" />
+                <!-- The Hound banner: where the Fox is, where I transmit and how long is left, then what happens next. -->
+                <Border Classes="houndBanner" IsVisible="{Binding HoundMode}" Margin="0,6,0,0" HorizontalAlignment="Left">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{Binding HoundLine}" IsVisible="{Binding HasHoundLine}" Classes="houndLine" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding HoundNote}" Classes="secondary" TextWrapping="Wrap" />
+                  </StackPanel>
+                </Border>
               </StackPanel>
             </DockPanel>
             <!-- The conversation strip: a progress track with one marker per step, and the boxes below it, mine raised and theirs lowered. -->
@@ -449,9 +453,13 @@
                                 BorderBrush="{Binding IsSelected, Converter={x:Static v:Converters.CursorOutline}}" />
                         <Grid ColumnDefinitions="36,100,190,160,*,100,46,64,230,120,74" v:ResizableColumns.Layout="Calls" MinHeight="40" Margin="14,0">
                           <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
-                          <!-- The call, with an amber "3 calling" tag under it while others are calling this station. -->
+                          <!-- The call, with a purple Fox tag for a DXpedition Fox and an amber "3 calling" tag while others are calling this station. -->
                           <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                             <TextBlock Text="{Binding Call}" FontWeight="SemiBold" />
+                            <!-- A Fox (Fox/Hound DXpedition): Call works it the Hound way, so say so before the click. -->
+                            <Border Classes="fox" IsVisible="{Binding IsFox}" ToolTip.Tip="{Binding FoxTip}" AutomationProperties.Name="{Binding FoxTip}">
+                              <TextBlock Text="{Binding FoxTag}" />
+                            </Border>
                             <Border Classes="callers" IsVisible="{Binding HasCallers}" ToolTip.Tip="{Binding CallersTip}"
                                     AutomationProperties.Name="{Binding CallersTip}">
                               <TextBlock Text="{Binding Callers}" />
@@ -557,6 +565,9 @@
                         <TextBlock Grid.Column="0" Text="{Binding Rank}" Classes="num secondary" VerticalAlignment="Center" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                           <TextBlock Text="{Binding Call}" FontWeight="SemiBold" />
+                          <Border Classes="fox" IsVisible="{Binding IsFox}" ToolTip.Tip="{Binding FoxTip}" AutomationProperties.Name="{Binding FoxTip}">
+                            <TextBlock Text="{Binding FoxTag}" />
+                          </Border>
                           <Border Classes="callers" IsVisible="{Binding HasCallers}" ToolTip.Tip="{Binding CallersTip}"
                                   AutomationProperties.Name="{Binding CallersTip}">
                             <TextBlock Text="{Binding Callers}" />
