@@ -76,6 +76,11 @@ Use [Station setup › Transmit test](setup.md#4-transmit-test) into a dummy loa
   port, usually because the radio's USB connection dropped. Costas restarts rigctld to reconnect. If it happens while
   transmitting, RF is probably getting into the USB cable: test at low power, add clip-on ferrites at both ends of the
   USB cable, check the antenna's choke or ground, and turn off Windows' USB selective suspend.
+  If you had already exchanged reports, Costas keeps the contact: the other station's `RR73` still logs it, and
+  ++ctrl+r++ sends your last message again once the radio is back.
+- **"The radio did not answer the transmit command within 2 s"**: Costas waits for the radio to confirm it has keyed
+  before any audio goes out, so a slow answer starts the message a little late instead of cutting off its start. No
+  answer at all means the radio link is stuck: check the USB cable and the radio indicator, then try again.
 - **Audio lists blank in Station setup**: the saved device is not plugged in right now (the radio is off, or its USB
   dropped). Costas keeps your choice and finds the device again, by name if Windows gives it a new id.
 - **"The radio cannot report whether it transmitted"**: some radios do not report PTT state over CAT. Watch the TX

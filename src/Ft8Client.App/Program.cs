@@ -24,6 +24,9 @@ internal static class Program
         // After an update: the splash that covered it says Costas is opening (it closes when the window is up).
         UpdateSplashLauncher.SignalStarted();
         var cmd = CommandLine.Parse(args);
+        // An exception on any other thread (capture, decoding, a timer) ends the process without passing the catch
+        // below, and a radio keyed over CAT would stay keyed with nobody left to unkey it.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => LastChance(e.ExceptionObject as Exception);
         try
         {
             App.Host = AppHost.StartAsync(cmd).GetAwaiter().GetResult();
@@ -51,6 +54,29 @@ internal static class Program
         {
             // Sends a crash report that is waiting (briefly, and only when online); the cache keeps it otherwise.
             App.Host?.Crashes?.Dispose();
+            Log.CloseAndFlush();
+        }
+    }
+
+    private static int s_lastChance;
+
+    // The process is about to end: release PTT while rigctld is still there to do it, and get the error into the log.
+    private static void LastChance(Exception? ex)
+    {
+        if (Interlocked.Exchange(ref s_lastChance, 1) != 0) return;
+        try
+        {
+            Log.Fatal(ex, "Unhandled exception on a background thread");
+            if (App.Host?.Transmitter is { } tx && !tx.HaltAsync().Wait(TimeSpan.FromSeconds(3)))
+                Log.Error("PTT release after crash did not finish in 3 s");
+            if (ex is not null) Ft8Client.Integrations.Crash.CrashReporter.Capture(ex);
+        }
+        catch (Exception haltEx)
+        {
+            Log.Error(haltEx, "PTT release after crash failed");
+        }
+        finally
+        {
             Log.CloseAndFlush();
         }
     }

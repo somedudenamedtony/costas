@@ -97,6 +97,7 @@ When transmitting in a slot, nothing is recorded or decoded for that slot.
 
 - **Audio threads** (WASAPI callbacks, PortAudio's blocking read and write threads on Linux): copy samples to or from a single-producer single-consumer ring buffer. No allocation, locks, logging or exceptions.
 - **Slot thread**: one dedicated thread drives `SlotClock` with a high-resolution timer and schedules PTT and Tx start. It never waits on I/O.
+- **Session work queue** (`WorkQueue`): one thread that runs, in order, what follows the start of a transmission or a slot: the log write, the journal and the snapshot rebuild. The slot thread only posts to it (`Session.Defer`), so a locked database or a slow disk cannot delay PTT release or the next slot's marks.
 - **Worker tasks**: decoding, rig polling (1 s), QRZ, PSK Reporter, database writes. All async, all cancellable.
 - **UI thread**: rendering only. Snapshots are immutable, so no locks are shared with the core.
 

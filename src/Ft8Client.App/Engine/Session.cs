@@ -96,6 +96,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     private LoggedContact? _lastLogged;
     private DateTime _lastContactUtc = DateTime.MinValue;
     private SessionSnapshot _snapshot = new();
+    private string? _logFault; // a contact that could not be written to the log
     private int? _watchdogCap;
 
     /// <summary>Creates a session.</summary>
@@ -178,6 +179,13 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     /// <summary>Decoder runs whose result has been applied (or dropped), so tests can wait for each to finish.</summary>
     internal int DecodesApplied => Volatile.Read(ref _decodesApplied);
 
+    /// <summary>
+    /// Runs work that the slot thread must not wait for: the log write, the journal and the screen rebuild that follow
+    /// the start of a transmission or a slot. The app gives it a background queue that keeps the order; by default the
+    /// work runs at once on the caller, which is what tests with a manual clock rely on.
+    /// </summary>
+    public Action<Action> Defer { get; set; } = work => work();
+
     private int _decodesApplied;
 
     /// <summary>The configuration.</summary>
@@ -240,7 +248,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate) _recordingSlot = transmitting ? null : e.SlotStartUtc;
         if (transmitting) _source.CancelSlot();
         else _source.BeginSlot(e.SlotStartUtc, e.Mode);
-        Publish();
+        Defer(Publish);
     }
 
     /// <summary>
@@ -651,8 +659,12 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 null, false, Transmitted: true, Mode: tx.Mode));
             if (_engine.View is { Outcome: not ContactOutcome.InProgress }) _finishedShownAt = tx.Plan.SlotStartUtc;
         }
-        Transmitting?.Invoke(tx, startedUtc);
-        Publish();
+        // On the slot thread, which also releases PTT: the journal, the other listeners and the screen wait their turn.
+        Defer(() =>
+        {
+            Transmitting?.Invoke(tx, startedUtc);
+            Publish();
+        });
     }
 
     private void OnTxFault(string message)
@@ -661,7 +673,18 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         {
             _fault = message;
             StopAutoCall(null);
-            _engine.Abandon(_clock.UtcNow);
+            // A contact with both reports exchanged is kept, as the first Esc keeps it: nothing more is sent, but the
+            // other station's RR73 or 73 still logs it, and Ctrl+R carries on once the radio is back. Earlier than
+            // that there is nothing worth keeping.
+            if (_engine.View is { Outcome: ContactOutcome.InProgress, ReportSent: not null, ReportReceived: not null } kept)
+            {
+                _engine.Hold(_clock.UtcNow);
+                _fault = $"{message} The contact with {kept.DxCall} is kept: its RR73 still logs it, and Ctrl+R sends again.";
+            }
+            else
+            {
+                _engine.Abandon(_clock.UtcNow);
+            }
         }
         Publish();
     }
@@ -700,12 +723,32 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             if (ModeInfo.IsSlotted(_config.Mode)) _finishedShownAt ??= SlotMath.SlotStart(_clock.UtcNow, _config.Mode);
             place = StationText.Place(entity, lk?.State);
         }
-        var row = _log?.Write(entry, ctx);
-        lock (_gate)
+        // The database write (and the uploads it queues) can be slow or blocked, and this can be the slot thread at the
+        // start of my RR73: it runs deferred, in order, and the Logged notice follows it.
+        var logged = _clock.UtcNow;
+        Defer(() =>
         {
-            _lastLogged = new LoggedContact((_lastLogged?.Id ?? 0) + 1, entry.Call, ctx.Need.Tag, place, ctx.Band,
-                ctx.Mode, entry.ReportSent, entry.ReportReceived, _clock.UtcNow, row?.Id, row?.TxPwr);
-        }
+            QsoRecord? row = null;
+            string? failed = null;
+            try
+            {
+                row = _log?.Write(entry, ctx);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                // A contact that did not reach the log must never pass unnoticed.
+                failed = $"The contact with {entry.Call} could not be written to the log ({ex.Message}). Write it down, then check the disk and restart Costas.";
+                Serilog.Log.Error(ex, "Log write failed");
+            }
+            lock (_gate)
+            {
+                // Kept until a later contact is written: the next transmission must not wipe it off the bottom bar.
+                _logFault = failed;
+                _lastLogged = new LoggedContact((_lastLogged?.Id ?? 0) + 1, entry.Call, ctx.Need.Tag, place, ctx.Band,
+                    ctx.Mode, entry.ReportSent, entry.ReportReceived, logged, row?.Id, row?.TxPwr);
+            }
+            Publish();
+        });
     }
 
     // ---------------------------------------------------------------- commands
@@ -1439,7 +1482,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 TxOffsetClear = _txOffsetClear,
                 TxOffsetAuto = _config.FixedTxOffsetHz is null,
                 LastLogged = _lastLogged,
-                Fault = _fault ?? _engine.StopReason,
+                Fault = _logFault ?? _fault ?? _engine.StopReason,
                 ClockOffsetSeconds = ClockEstimate.Offset(_sntpOffset, _medianDt),
                 ReceiveLevelWarning = _receiveLevelWarning,
                 Waiting = _engine.Waiting.ToList(),

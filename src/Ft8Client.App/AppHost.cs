@@ -65,6 +65,7 @@ public sealed class AppHost : IAsyncDisposable
     private int _keyboardRadioBusy;
     private ChimePlayer? _chime;
     private SlotLoop? _loop;
+    private WorkQueue? _work;
     private IRig _rig;
     private string? _rigKey;
     // Costas's own retunes running, and how many have finished: a poll that read the radio before or during one of them
@@ -392,6 +393,10 @@ public sealed class AppHost : IAsyncDisposable
             () => TxMeters.PowerWatts, () => !Simulating && Settings.Current.Profile.Eqsl.UploadOnComplete, (call, band) => Pota?.ParkFor(call, band),
             LogHold, () => !Simulating && Settings.Current.Profile.Cloudlog.UploadOnComplete);
         Session = new Session(config, decoder, source, Transmitter, Clock, Countries, Frequencies, log);
+        // What follows the start of a transmission (the log write, the journal, the screen) runs on its own thread, in
+        // order, so a slow disk or a locked database never holds up the slot thread, which also releases PTT.
+        _work = new WorkQueue("SessionWork", ex => Log.Error(ex, "Deferred session work failed"));
+        Session.Defer = _work.Post;
         TxMeters = new TxMeterMonitor(Transmitter, () => _rig)
         {
             SwrStopAt = () => Settings.Current.Profile.Audio.StopOnHighSwr ? SwrGuard.DefaultLimit : null,
@@ -1182,7 +1187,9 @@ public sealed class AppHost : IAsyncDisposable
             try
             {
                 await Task.Delay(1000, _cts.Token).ConfigureAwait(false);
-                if (Transmitter.Transmitting) continue; // never poll during a transmission
+                // Never poll during a transmission, or with one about to start: the poll's four commands share the
+                // radio's line with the PTT command.
+                if (Transmitter.Transmitting || Transmitter.Pending is not null) continue;
                 var retunes = Volatile.Read(ref _retunesDone);
                 if (Volatile.Read(ref _retunesRunning) > 0) continue;
                 var st = await _rig.GetStateAsync(_cts.Token).ConfigureAwait(false);
@@ -1349,6 +1356,8 @@ public sealed class AppHost : IAsyncDisposable
         if (RadioPower is not null) await RadioPower.DisposeAsync().ConfigureAwait(false);
         if (RadioControls is not null) await RadioControls.DisposeAsync().ConfigureAwait(false);
         _loop?.Dispose();
+        // After the slot thread has stopped posting: a contact still waiting to be written reaches the log.
+        _work?.Dispose();
         _pump?.Dispose();
         _keyboardSim?.Dispose();
         Keyboard?.Dispose();
