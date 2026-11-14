@@ -377,7 +377,6 @@
       </Thumb>
       <Grid x:Name="WaterfallStrip" Grid.Row="2">
         <v:WaterfallView x:Name="ReceiveWaterfall" Cursor="Cross" LabelInset="64"
-                         ToolTip.Tip="Click between 200 and 2900 Hz to select your transmit channel. Red line: selected offset."
                          AutomationProperties.Name="Receive waterfall; click to select transmit channel" />
         <Button x:Name="PopOutButton" Classes="wfoverlay" Content="Pop out" HorizontalAlignment="Right" VerticalAlignment="Top"
                 ToolTip.Tip="Open the waterfall in its own window" AutomationProperties.Name="Pop out the waterfall" />

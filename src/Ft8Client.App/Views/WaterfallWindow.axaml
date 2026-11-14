@@ -7,7 +7,6 @@
   <!-- The popped-out waterfall. Closing it, or Pop in, puts the strip back in the main window. -->
   <Grid Margin="6">
     <v:WaterfallView x:Name="Waterfall" Cursor="Cross" LabelInset="64"
-                     ToolTip.Tip="Click between 200 and 2900 Hz to select your transmit channel. Red line: selected offset."
                      AutomationProperties.Name="Receive waterfall; click to select transmit channel" />
     <Button x:Name="PopInButton" Classes="wfoverlay" Content="Pop in" HorizontalAlignment="Right" VerticalAlignment="Top"
             ToolTip.Tip="Put the waterfall back in the main window" AutomationProperties.Name="Pop the waterfall back in" />
