@@ -1,7 +1,8 @@
 # Making contacts
 
 Costas runs the standard FT8 exchange for you, the same messages WSJT-X sends, so other stations cannot tell the
-difference. You start every contact; Costas never calls anyone on its own.
+difference. You start every contact. The one exception is [Auto-call](operate.md#auto-call), which you switch on yourself: it then calls
+down Next in line until you stop it or the watchdog does.
 
 ## Calling a station
 

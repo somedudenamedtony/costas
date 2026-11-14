@@ -97,7 +97,7 @@ They can also drive Costas back, the same way they drive WSJT-X:
 
 - **Calling from another program.** Double-clicking a CQ in GridTracker (or a station calling you) calls it in Costas,
   exactly as double-clicking it in [Raw decodes](raw-decodes.md) would. Costas acts only if it decoded that same
-  message itself, and never calls anyone on its own.
+  message itself, and never starts a call that neither you nor that program asked for.
 - **Halt.** A Halt Tx from the other program stops transmitting at once.
 - **Highlights.** Colours JTAlert or GridTracker give a callsign show in Raw decodes.
 

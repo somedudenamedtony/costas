@@ -2,7 +2,7 @@
 
 # Costas
 
-**An FT8 and FT4 program for Windows that shows you stations, not messages.**
+**An FT8 and FT4 program for Windows (with PSK31, PSK63 and RTTY in preview) that shows you stations, not messages.**
 
 Costas uses the same decoder as WSJT-X, so it decodes as well and sounds identical on the air. What changes is the
 screen: instead of a scrolling list of decoded lines, you get one row per station, ranked by what you need for your
@@ -25,7 +25,12 @@ log, whether the station is free to call, and whether it can hear you.
   Good / Fair / Long shot rating.
 - **One-click contacts**: click **Call** or press Enter. Costas runs the standard exchange, shows each step on a
   progress strip, and logs the contact when it completes. Clicking **Call** on a recognised DXpedition Fox works it
-  the Hound way automatically.
+  the Hound way automatically, SuperFox included.
+- **Auto-call**: a switch you turn on that calls down Next in line, one station after another, until you stop it
+  or the watchdog does.
+- **DXpeditions**: the announced DX operations on the air now and coming up, flagged in the station list.
+- **Contests**: ARRL RTTY Roundup, Field Day, WW Digi and ARRL Digi exchanges in FT8 and FT4.
+- **PSK31, PSK63 and RTTY (preview)**: keyboard modes on the same screen, with macros and live receive text.
 - **Calling you bar**: anyone who calls you is pinned above the list with an **Answer** button, and a station that
   replies after you gave up can be picked up again with **Resume**.
 - **Hunt list**: the countries, calls, US states or grids you are after, with an alert when one is heard, on your
@@ -38,10 +43,16 @@ log, whether the station is free to call, and whether it can hear you.
 - **A waterfall you can size**: drag it taller in the main window or pop it out into its own window.
 - **Mini mode and phone remote**: shrink Costas to a strip that stays on top, or operate from a phone or tablet on
   your home network.
-- **Works with your other tools**: WSJT-X UDP for GridTracker, JTAlert and loggers; FLRig and network rigctld as
-  well as direct Hamlib control.
-- **Safe by design**: it never transmits on its own, never changes a message silently, and has a watchdog,
-  band-edge check, clock check and PTT release on any fault.
+- **Transmit level that sets itself**: audio level per band from your radio's ALC, with live power, ALC and SWR
+  meters and a stop on high SWR.
+- **Works with your other tools**: WSJT-X UDP for GridTracker, JTAlert and loggers; Wavelog and Cloudlog upload;
+  Reverse Beacon Network spots; FLRig and network rigctld as well as direct Hamlib control.
+- **Safe by design**: it never starts transmitting without you, never changes a message silently, and has a
+  watchdog, band-edge check, clock check and PTT release on any fault.
+
+**How far along it is:** FT8 and FT4 are in daily use at the author's station on one radio (a Yaesu FT-710). Other
+radios, PSK and RTTY, and the Linux build have had much less time on the air. Use low power for your first contacts
+and [report what you find](https://github.com/somedudenamedtony/costas/issues).
 
 <table>
 <tr>
@@ -146,7 +157,7 @@ child processes. Rules for working on the code are in [`CLAUDE.md`](CLAUDE.md); 
 | [`docs/06-data-model.md`](docs/06-data-model.md) | SQLite schema, settings, files on disk, ADIF mapping |
 | [`docs/07-milestones.md`](docs/07-milestones.md) | Build order, M0 to M13, with acceptance tests |
 | [`docs/08-open-questions.md`](docs/08-open-questions.md) | Decisions assumed, facts not yet verified, known risks |
-| [`docs/09-keyboard-modes.md`](docs/09-keyboard-modes.md) | PSK31, PSK63 and RTTY on the same Operate screen (planned) |
+| [`docs/09-keyboard-modes.md`](docs/09-keyboard-modes.md) | PSK31, PSK63 and RTTY on the same Operate screen (built, in preview) |
 | [`docs/09-next-up.md`](docs/09-next-up.md) | Proposed next features and fixes, for the owner to pick from |
 | [`mockups/`](mockups/) | The original approved screen designs |
 
