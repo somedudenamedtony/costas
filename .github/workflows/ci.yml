@@ -56,9 +56,11 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     env:
-      # Release runs code-sign the app and installers once Artifact Signing is set up (the ARTIFACT_SIGNING_* repository
-      # variables and AZURE_* secrets; see scripts/sign.ps1). Test and pull-request builds stay unsigned.
-      COSTAS_SIGN: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.ARTIFACT_SIGNING_ACCOUNT != '' && '1' || '' }}
+      # Release runs and development builds (pushes to main) code-sign the app and installers once Artifact Signing is
+      # set up (the ARTIFACT_SIGNING_* repository variables and AZURE_* secrets; see scripts/sign.ps1). Windows' Smart
+      # App Control blocks an unsigned Costas.dll outright, so a development build has to be signed to start on such a
+      # PC. Pull-request and branch builds stay unsigned: they never see the secrets.
+      COSTAS_SIGN: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && vars.ARTIFACT_SIGNING_ACCOUNT != '' && '1' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -136,7 +138,8 @@ jobs:
     # Each green push to main replaces the one development build: a GitHub prerelease tagged "dev". GitHub never makes a
     # prerelease the latest release, so normal update checks never see it; only installs with development builds on
     # (Settings, Developer) follow it. It holds one build at a time so it never crowds releases out of the short list of
-    # recent releases Velopack reads. Built without the Aptabase key, Sentry DSN or code signing, like any non-release run.
+    # recent releases Velopack reads. Built without the Aptabase key or Sentry DSN, like any non-release run, but
+    # code-signed like a release once signing is set up (COSTAS_SIGN above).
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [linux, windows, installer]
     runs-on: ubuntu-24.04

@@ -6,7 +6,8 @@ network. It applies to every file published on the
 
 ## Current status
 
-Releases are **not code-signed yet**, so Windows SmartScreen may warn about the installer (see [Install](install.md)).
+Releases are **not code-signed yet**, so Windows SmartScreen may warn about the installer (see [Install](install.md)), and
+Windows 11's Smart App Control blocks it (see [Troubleshooting](troubleshooting.md#smart-app-control)).
 Signing is wired into the release build and turns on as soon as a signing certificate is in place. Once it is, this
 page will name the certificate provider, and the installer will name its publisher.
 
@@ -20,8 +21,10 @@ build produced.
   hosted runners. Nothing is built or signed on a personal computer.
 - A release is only made from the `main` branch, after the build and tests pass, and only when the maintainer starts
   it by hand (**Actions › CI › Run workflow**). Pull request builds are never released or signed.
-- Signing happens inside that release run. The signing credentials are stored as GitHub repository secrets, are
-  available only to release runs on `main`, and are never written to the build logs.
+- Development builds, for testers who turn them on in **Settings › Developer**, are made the same way from each
+  change merged to `main` and are signed like a release.
+- Signing happens inside that run. The signing credentials are stored as GitHub repository secrets, are
+  available only to runs on `main`, and are never written to the build logs.
 
 ## What gets signed
 

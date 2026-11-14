@@ -145,9 +145,56 @@ public sealed class UpdateService : IDisposable
     /// <summary>Why the last check failed, or null.</summary>
     public string? LastError { get; private set; }
 
+    /// <summary>
+    /// Set at start when the last update Costas closed for did not install (the version running is not the one it was
+    /// updating to): what happened and where the help is. Null otherwise.
+    /// </summary>
+    public string? FailedUpdate { get; private set; }
+
+    /// <summary>
+    /// What to say when Costas closed to install <paramref name="pendingVersion"/> and <paramref name="running"/> is what
+    /// started afterwards; null when there was no update, or it took.
+    /// </summary>
+    internal static string? FailedUpdateText(string? pendingVersion, string running)
+    {
+        if (string.IsNullOrWhiteSpace(pendingVersion)) return null;
+        var wanted = pendingVersion.TrimStart('v', 'V');
+        // 0.1.612 and 0.1.612.0 are the same build.
+        static Version Four(Version v) => new(v.Major, v.Minor, Math.Max(v.Build, 0), Math.Max(v.Revision, 0));
+        var same = Version.TryParse(wanted, out var w) && Version.TryParse(running, out var r)
+            ? Four(w) == Four(r)
+            : string.Equals(wanted, running, StringComparison.OrdinalIgnoreCase);
+        if (same) return null;
+        return $"The update to {wanted} did not install; this is still {running}. Windows may have blocked it: see Troubleshooting in the manual (Costas does not open after an update).";
+    }
+
+    // Looks once at the update Costas last closed for, and forgets it either way so the note shows for one start only.
+    private void CheckLastUpdate()
+    {
+        var pending = _settings.Current.Updates.PendingVersion;
+        if (pending is null) return;
+        FailedUpdate = FailedUpdateText(pending, AppInfo.Version);
+        if (FailedUpdate is not null) Log.Warning("Update to {Wanted} did not install; still running {Version}", pending, AppInfo.Version);
+        TrySave(s => s.Updates.PendingVersion = null);
+    }
+
+    // Settings are a convenience here: a file that cannot be written must not stop an update or a start.
+    private void TrySave(Action<Ft8Client.Data.Settings.AppSettings> change)
+    {
+        try
+        {
+            _settings.Update(change);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warning("Update state not saved: {Error}", ex.Message);
+        }
+    }
+
     /// <summary>Removes installers from earlier updates (they have run by now) and starts the schedule.</summary>
     public void Start()
     {
+        CheckLastUpdate();
         if (Directory.Exists(_downloadFolder))
         {
             foreach (var f in Directory.EnumerateFiles(_downloadFolder))
@@ -306,6 +353,8 @@ public sealed class UpdateService : IDisposable
     /// </summary>
     public void ApplyAndReopen(string? installerPath)
     {
+        // Remembered so the next start can tell whether the update took (CheckLastUpdate).
+        if (Available is { } wanted) TrySave(s => s.Updates.PendingVersion = wanted.Version.ToString());
         if (_velopack is not null)
         {
             var target = _delta?.TargetFullRelease ?? throw new InvalidOperationException("No update has been downloaded.");

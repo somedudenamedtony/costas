@@ -206,7 +206,8 @@ build)`), with the installers, the Linux package and a Velopack package in the `
 prerelease the latest release, so ordinary installs never see it. An install with developer mode and **Settings ›
 Developer › Development builds** on follows it instead; turning that off makes the update check offer the latest
 release even though it is older (a Velopack channel switch with downgrade allowed). Development builds carry no
-usage-statistics key or crash-report DSN and are not code-signed, like any run that is not a release.
+usage-statistics key or crash-report DSN. They are code-signed like a release once signing is set up, because
+Windows 11's Smart App Control will not start an unsigned build at all.
 
 ### The manual
 

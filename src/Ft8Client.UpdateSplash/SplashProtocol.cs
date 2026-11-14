@@ -29,6 +29,9 @@ public static class SplashProtocol
     /// <summary>Set by Costas as it starts.</summary>
     public const string StartedEvent = @"Local\Costas.UpdateSplash.Started";
 
+    /// <summary>The manual's page for an update that did not open, which the splash opens when it gives up.</summary>
+    public const string FailedHelpUrl = "https://costasdigi.com/troubleshooting/#costas-does-not-open-after-an-update";
+
     /// <summary>Set by Costas once its main window is on screen.</summary>
     public const string ReadyEvent = @"Local\Costas.UpdateSplash.Ready";
 }

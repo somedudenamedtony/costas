@@ -20,6 +20,12 @@ public enum SplashPhase
     /// <summary>A Costas has started and its window is on the way.</summary>
     Opening,
 
+    /// <summary>
+    /// Nothing started after the files were swapped, or a Costas started and never showed its window: the update did
+    /// not work. The splash says so and opens the help page before it closes.
+    /// </summary>
+    Failed,
+
     /// <summary>Costas is on screen, or the splash gave up waiting: the splash closes.</summary>
     Done,
 }

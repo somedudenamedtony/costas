@@ -117,6 +117,21 @@ internal static unsafe class SplashWindow
         return (cx - w / 2, cy - h / 2, w, h);
     }
 
+    private static bool s_helpOpened;
+
+    // The update did not work and Costas is not on screen to say so: the manual's page on it is the only help there is.
+    private static void OpenHelp()
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(SplashProtocol.FailedHelpUrl) { UseShellExecute = true })?.Dispose();
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or PlatformNotSupportedException)
+        {
+            // No browser: the splash still says what happened.
+        }
+    }
+
     private static SplashPhase Tick()
     {
         var (oldExited, started, ready) = s_poll();
@@ -136,8 +151,14 @@ internal static unsafe class SplashWindow
                     Paint(hwnd);
                     return 0;
                 case WM_TIMER:
-                    if (Tick() == SplashPhase.Done) DestroyWindow(hwnd);
+                    var phase = Tick();
+                    if (phase == SplashPhase.Done) DestroyWindow(hwnd);
                     else InvalidateRect(hwnd, 0, false);
+                    if (phase == SplashPhase.Failed && !s_helpOpened)
+                    {
+                        s_helpOpened = true;
+                        OpenHelp();
+                    }
                     return 0;
                 case WM_DESTROY:
                     KillTimer(hwnd, TimerId);
@@ -199,7 +220,7 @@ internal static unsafe class SplashWindow
         var oldFont = SelectObject(dc, s_titleFont);
         SetTextColor(dc, ColorRef(o.Text));
         var title = new RECT { Left = textLeft, Top = Px(16), Right = w - pad, Bottom = Px(44) };
-        DrawText(dc, "Updating Costas", -1, ref title, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+        DrawText(dc, s_progress.Title, -1, ref title, DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
         SelectObject(dc, s_statusFont);
         SetTextColor(dc, ColorRef(o.SecondaryText));
         var status = new RECT { Left = textLeft, Top = Px(44), Right = w - pad, Bottom = Px(66) };
@@ -215,7 +236,8 @@ internal static unsafe class SplashWindow
         var frac = s_clock.Elapsed.TotalMilliseconds % BarPeriod.TotalMilliseconds / BarPeriod.TotalMilliseconds;
         var start = track.Left - segment + (int)(frac * (length + segment));
         var bar = new RECT { Left = Math.Max(track.Left, start), Top = track.Top, Right = Math.Min(track.Right, start + segment), Bottom = track.Bottom };
-        if (bar.Right > bar.Left) Fill(dc, bar, o.Accent);
+        // Nothing is moving once the update has failed.
+        if (bar.Right > bar.Left && s_progress.Phase != SplashPhase.Failed) Fill(dc, bar, o.Accent);
     }
 
     private static void Fill(nint dc, RECT r, int rgb)

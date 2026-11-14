@@ -24,6 +24,9 @@ public sealed class SplashProgress
     /// <summary>From Costas starting to its window being on screen.</summary>
     public static readonly TimeSpan OpeningLimit = TimeSpan.FromMinutes(2);
 
+    /// <summary>How long the splash says the update did not work before it closes.</summary>
+    public static readonly TimeSpan FailedShown = TimeSpan.FromSeconds(45);
+
     /// <summary>After this long installing, the status says it is still going.</summary>
     public static readonly TimeSpan SlowInstall = TimeSpan.FromSeconds(20);
 
@@ -35,7 +38,8 @@ public sealed class SplashProgress
 
     /// <summary>
     /// Updates the phase at <paramref name="now"/> (time since the splash started) and returns it. A phase is never
-    /// gone back to.
+    /// gone back to. Running out of time while installing or opening is a failed update (<see cref="SplashPhase.Failed"/>,
+    /// shown for <see cref="FailedShown"/>); a Costas that shows its window after all still ends the splash at once.
     /// </summary>
     public SplashPhase Update(TimeSpan now, bool oldExited, bool started, bool ready)
     {
@@ -54,11 +58,20 @@ public sealed class SplashProgress
             SplashPhase.Closing => ClosingLimit,
             SplashPhase.Installing => InstallingLimit,
             SplashPhase.Opening => OpeningLimit,
+            SplashPhase.Failed => FailedShown,
             _ => TimeSpan.MaxValue,
         };
-        if (Phase != SplashPhase.Done && now - _phaseStart >= limit) Phase = SplashPhase.Done;
+        if (Phase != SplashPhase.Done && now - _phaseStart >= limit)
+        {
+            // The old Costas never closing is not the new one failing: nothing was installed, so there is nothing to say.
+            Phase = Phase is SplashPhase.Installing or SplashPhase.Opening ? SplashPhase.Failed : SplashPhase.Done;
+            _phaseStart = now;
+        }
         return Phase;
     }
+
+    /// <summary>The title for the current phase.</summary>
+    public string Title => Phase == SplashPhase.Failed ? "Costas did not open" : "Updating Costas";
 
     /// <summary>The status line under the title for the current phase.</summary>
     public string Status(string version)
@@ -69,6 +82,7 @@ public sealed class SplashProgress
             SplashPhase.Closing => "Closing Costas…",
             SplashPhase.Installing when _now - _phaseStart >= SlowInstall => $"Still installing{(version.Length > 0 ? $" version {version}" : string.Empty)}; this can take a minute…",
             SplashPhase.Installing => version.Length > 0 ? $"Installing version {version}…" : "Installing the update…",
+            SplashPhase.Failed => "Windows may have blocked the update. Opening the help page…",
             _ => $"Opening Costas{v}…",
         };
     }

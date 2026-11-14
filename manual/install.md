@@ -18,6 +18,9 @@ bundled. You do not need WSJT-X installed.
     signed, the warning names the publisher, and it stops appearing as the signature builds a download history with
     Microsoft.
 
+    Windows 11's **Smart App Control** is stricter: it blocks unsigned programs with no **Run anyway**. See
+    [Troubleshooting](troubleshooting.md#smart-app-control).
+
 Requirements: 64-bit Windows 10 (version 1809) or later, or Windows 11.
 
 ## Updates
