@@ -43,13 +43,14 @@ public class LateDecodeTests
         public readonly NullAudioOutput Output;
         public readonly List<(string Message, DateTime StartedUtc)> Sent = [];
 
-        public Rig()
+        public Rig(TimeSpan? commandStartLimit = null)
         {
             Radio = new SimulatedRig(Clock);
             Output = new NullAudioOutput { Now = () => Clock.UtcNow };
             var freqs = ReferenceData.LoadFrequencies();
             Tx = new Transmitter(Radio, Output, Clock, freqs);
             var config = new SessionConfig { MyCall = "W7LIT", MyGrid = "DN40", FixedTxOffsetHz = 1080 };
+            if (commandStartLimit is { } limit) config = config with { CommandStartLimit = limit };
             Session = new Session(config, Decoder, new SilentSource(), Tx, Clock, ReferenceData.LoadCountries(), freqs);
             Session.Transmitting += (tx, at) => Sent.Add((tx.Plan.Message, at));
             Slots = new SlotClock(Clock, Mode.Ft8);
@@ -296,6 +297,159 @@ public class LateDecodeTests
         var (message, started) = r.Sent.Should().ContainSingle().Subject;
         message.Should().Be("N8WCR W7LIT DN40");
         started.Should().BeCloseTo(MySecondSlot.AddSeconds(0.5), TimeSpan.FromMilliseconds(2));
+    }
+
+    [Fact]
+    public async Task Call_ClickStartLimitRaised_ClickedAt4sStartsNowLeavingOutThePartAlreadyPast()
+    {
+        var r = new Rig(TimeSpan.FromSeconds(4.5));
+        r.Decoder.Script(CqSlot, TimeSpan.FromSeconds(3.4), "CQ N8WCR EN81");
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(4));
+
+        r.Session.CallStation("N8WCR").Should().BeTrue();
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(15));
+
+        var (message, started) = r.Sent.Should().ContainSingle().Subject;
+        message.Should().Be("N8WCR W7LIT DN40");
+        started.Should().BeCloseTo(MyFirstSlot.AddSeconds(4.2), TimeSpan.FromMilliseconds(2));
+        var played = r.Output.Played.Single().Samples.Length / (double)r.Output.SampleRate;
+        played.Should().BeApproximately(12.64 - 3.7, 0.002);
+    }
+
+    [Fact]
+    public async Task Call_ClickStartLimitLowered_ClickedAt2_8sGoesOutInMyNextSlot()
+    {
+        var r = new Rig(TimeSpan.FromSeconds(2));
+        r.Decoder.Script(CqSlot, TimeSpan.FromSeconds(3.4), "CQ N8WCR EN81");
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(2.8));
+
+        r.Session.CallStation("N8WCR").Should().BeTrue();
+        await r.RunUntilAsync(MySecondSlot.AddSeconds(1));
+
+        r.Radio.PttLog.Should().NotContain(p => p.TimeUtc < MySecondSlot, "the click was past the operator's limit");
+        var (message, started) = r.Sent.Should().ContainSingle().Subject;
+        message.Should().Be("N8WCR W7LIT DN40");
+        started.Should().BeCloseTo(MySecondSlot.AddSeconds(0.5), TimeSpan.FromMilliseconds(2));
+    }
+
+    // Double-click switch (PR #150, owner sign-off 2026-11-14): N8WCR and K1ABC both call CQ in the even slot; I am sending my grid
+    // to N8WCR in the odd slot when I switch to K1ABC, whom I also answer in the odd slots.
+    private static async Task<Rig> CallingN8wcrWithK1abcAlsoOnAsync()
+    {
+        var r = new Rig();
+        r.Decoder.Script(CqSlot, TimeSpan.FromSeconds(0.5), "CQ N8WCR EN81", "CQ K1ABC FN42");
+        await r.RunUntilAsync(CqSlot.AddSeconds(14.5));
+        r.Session.CallStation("N8WCR").Should().BeTrue();
+        return r;
+    }
+
+    [Fact]
+    public async Task CallStationAsync_SwitchWithinClickLimit_CutsOffOldMessageAndCallsInThisSlot()
+    {
+        var r = await CallingN8wcrWithK1abcAlsoOnAsync();
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(2));
+        r.Tx.CurrentMessage.Should().Be("N8WCR W7LIT DN40", "my grid to N8WCR is on the air");
+
+        (await r.Session.CallStationAsync("K1ABC")).Should().BeTrue();
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(15));
+
+        r.Sent.Select(s => s.Message).Should().Equal("N8WCR W7LIT DN40", "K1ABC W7LIT DN40");
+        r.Sent[1].StartedUtc.Should().BeCloseTo(MyFirstSlot.AddSeconds(2.2), TimeSpan.FromMilliseconds(2));
+        var ptt = r.Radio.PttLog.Where(p => p.TimeUtc >= MyFirstSlot).Select(p => p.On).ToList();
+        ptt.Should().Equal([true, false, true, false], "PTT drops for N8WCR before it comes up for K1ABC");
+        r.Session.Snapshot.Contact!.DxCall.Should().Be("K1ABC");
+        r.Session.Snapshot.LastLogged.Should().BeNull("the abandoned contact is not logged");
+    }
+
+    [Fact]
+    public async Task CallStationAsync_SwitchPastClickLimit_CutsOffOldMessageAndCallsInMyNextSlot()
+    {
+        var r = await CallingN8wcrWithK1abcAlsoOnAsync();
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(4));
+
+        (await r.Session.CallStationAsync("K1ABC")).Should().BeTrue();
+        await r.RunUntilAsync(MySecondSlot.AddSeconds(1));
+
+        r.Tx.CurrentMessage.Should().Be("K1ABC W7LIT DN40");
+        r.Sent.Select(s => s.Message).Should().Equal("N8WCR W7LIT DN40", "K1ABC W7LIT DN40");
+        r.Sent[1].StartedUtc.Should().BeCloseTo(MySecondSlot.AddSeconds(0.5), TimeSpan.FromMilliseconds(2));
+        r.Radio.PttLog.Should().ContainSingle(p => !p.On && p.TimeUtc > MyFirstSlot && p.TimeUtc < MyFirstSlot.AddSeconds(4.1),
+            "the message to N8WCR is cut off at the click");
+        r.Radio.PttLog.Should().NotContain(p => p.On && p.TimeUtc > MyFirstSlot.AddSeconds(1) && p.TimeUtc < MySecondSlot);
+    }
+
+    [Fact]
+    public async Task CallStationAsync_SwitchInTheirSlot_CallsInMyNextSlot()
+    {
+        var r = await CallingN8wcrWithK1abcAlsoOnAsync();
+        await r.RunUntilAsync(ReportSlot.AddSeconds(5));
+
+        (await r.Session.CallStationAsync("K1ABC")).Should().BeTrue();
+        await r.RunUntilAsync(MySecondSlot.AddSeconds(1));
+
+        r.Sent.Select(s => s.Message).Should().Equal("N8WCR W7LIT DN40", "K1ABC W7LIT DN40");
+        r.Sent[1].StartedUtc.Should().BeCloseTo(MySecondSlot.AddSeconds(0.5), TimeSpan.FromMilliseconds(2));
+    }
+
+    [Fact]
+    public async Task CallStationAsync_ClickedWhileSendingFinal73_73FinishesThenCallsInMyNextSlot()
+    {
+        // The contact ended and was logged when RR73 arrived; the 73 after it is not cut off.
+        var r = await CallingN8wcrWithK1abcAlsoOnAsync();
+        r.Decoder.Script(ReportSlot, TimeSpan.FromSeconds(0.5), "W7LIT N8WCR -16");
+        var rr73Slot = MySecondSlot.AddSeconds(15);
+        var myThirdSlot = rr73Slot.AddSeconds(15);
+        r.Decoder.Script(rr73Slot, TimeSpan.FromSeconds(0.5), "W7LIT N8WCR RR73", "CQ K1ABC FN42");
+        await r.RunUntilAsync(myThirdSlot.AddSeconds(2));
+        r.Tx.CurrentMessage.Should().Be("N8WCR W7LIT 73");
+        r.Session.Snapshot.Contact!.Outcome.Should().Be(ContactOutcome.Logged);
+        var logged = r.Session.Snapshot.LastLogged;
+        logged!.Call.Should().Be("N8WCR");
+
+        (await r.Session.CallStationAsync("K1ABC")).Should().BeTrue();
+        await r.RunUntilAsync(myThirdSlot.AddSeconds(31));
+
+        r.Sent.Select(s => s.Message).Should().Equal("N8WCR W7LIT DN40", "N8WCR W7LIT R-09", "N8WCR W7LIT 73", "K1ABC W7LIT DN40");
+        r.Output.Played.Count(p => p.Samples.Length == r.Output.SampleRate * 1264 / 100).Should().Be(4, "every message went out whole");
+        r.Sent[3].StartedUtc.Should().BeCloseTo(myThirdSlot.AddSeconds(30.5), TimeSpan.FromMilliseconds(2));
+        r.Session.Snapshot.LastLogged.Should().BeSameAs(logged, "N8WCR is logged once");
+        r.Session.Snapshot.Contact!.DxCall.Should().Be("K1ABC");
+    }
+
+    [Fact]
+    public async Task CallStationAsync_ClickedAfterRr73BeforeMy73_LoggedOnceAndNo73()
+    {
+        // RR73 decoded and logged; my 73 has not started. The switch ends the contact and sends no 73.
+        var r = await CallingN8wcrWithK1abcAlsoOnAsync();
+        r.Decoder.Script(ReportSlot, TimeSpan.FromSeconds(0.5), "W7LIT N8WCR -16");
+        var rr73Slot = MySecondSlot.AddSeconds(15);
+        var myThirdSlot = rr73Slot.AddSeconds(15);
+        r.Decoder.Script(rr73Slot, TimeSpan.FromSeconds(0.5), "W7LIT N8WCR RR73", "CQ K1ABC FN42");
+        await r.RunUntilAsync(rr73Slot.AddSeconds(14.6));
+        var before = r.Session.Snapshot;
+        before.Contact!.Outcome.Should().Be(ContactOutcome.InProgress);
+        before.Contact.Logged.Should().BeTrue();
+
+        (await r.Session.CallStationAsync("K1ABC")).Should().BeTrue();
+        await r.RunUntilAsync(myThirdSlot.AddSeconds(3));
+
+        r.Sent.Select(s => s.Message).Should().Equal("N8WCR W7LIT DN40", "N8WCR W7LIT R-09", "K1ABC W7LIT DN40");
+        r.Session.Snapshot.LastLogged!.Call.Should().Be("N8WCR");
+        r.Session.Snapshot.LastLogged.Should().BeSameAs(before.LastLogged, "N8WCR is logged once");
+        r.Session.Snapshot.Contact!.DxCall.Should().Be("K1ABC");
+    }
+
+    [Fact]
+    public async Task CallStationAsync_StationNotInList_ContactLeftAlone()
+    {
+        var r = await CallingN8wcrWithK1abcAlsoOnAsync();
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(2));
+
+        (await r.Session.CallStationAsync("W9XYZ")).Should().BeFalse();
+
+        r.Tx.CurrentMessage.Should().Be("N8WCR W7LIT DN40", "nothing was cut off");
+        r.Session.Snapshot.Contact!.DxCall.Should().Be("N8WCR");
+        r.Session.Snapshot.Contact.Outcome.Should().Be(ContactOutcome.InProgress);
     }
 
     [Fact]

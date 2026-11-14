@@ -71,6 +71,18 @@ public sealed class OperatingSettings
     /// <summary>Latest a transmission may start after the slot boundary, in ms.</summary>
     public int LateStartLimitMs { get; set; } = 1000;
 
+    /// <summary>
+    /// Latest a transmission the operator has just asked for (calling a station, CQ) may start after the slot's Tx start,
+    /// in ms, leaving out the part already past. 0 to 5000; past it the message waits for the next slot.
+    /// </summary>
+    public int CommandStartLimitMs { get; set; } = 3000;
+
+    /// <summary>
+    /// In FT8 and FT4, double-clicking another station in Next in line or Repeats during a contact abandons the contact
+    /// and calls that station (PR #150, owner sign-off 2026-11-14). Off by default: during a contact a double-click does nothing.
+    /// </summary>
+    public bool DoubleClickSwitches { get; set; }
+
     /// <summary>PTT lead before audio, in ms.</summary>
     public int PttLeadMs { get; set; } = 200;
 

@@ -80,6 +80,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         LoadMacros(SettingsMapper.Macros(s.Operating));
         CqParity = s.Operating.CqParity;
         ClockBlock = s.Operating.ClockBlockSeconds.ToString("0.0", CultureInfo.InvariantCulture);
+        CommandStartLimit = (Math.Clamp(s.Operating.CommandStartLimitMs, 0, SettingsMapper.MaxCommandStartLimitMs) / 1000.0)
+            .ToString("0.0", CultureInfo.InvariantCulture);
+        DoubleClickSwitches = s.Operating.DoubleClickSwitches;
         CorrectClock = s.Operating.CorrectClock;
         UsDataSegmentsOnly = s.Operating.UsDataSegmentsOnly;
         foreach (var t in SettingsMapper.ToRanking(s.Ranking).TierOrder) TierOrder.Add(new TierItem(t, StationText.Need(t)));
@@ -589,6 +592,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Clock block seconds.</summary>
     [ObservableProperty]
     public partial string ClockBlock { get; set; }
+
+    /// <summary>Latest start for a call or CQ the operator clicks, in seconds after the slot's Tx start.</summary>
+    [ObservableProperty]
+    public partial string CommandStartLimit { get; set; }
+
+    /// <summary>Double-clicking another station during a contact abandons the contact and calls it (FT8 and FT4).</summary>
+    [ObservableProperty]
+    public partial bool DoubleClickSwitches { get; set; }
 
     /// <summary>Tier order.</summary>
     public ObservableCollection<TierItem> TierOrder { get; } = [];
@@ -1204,6 +1215,8 @@ public sealed partial class SettingsViewModel : ObservableObject
                 .Select(m => new MacroOptions { Key = m.Key, Label = m.Label.Trim(), Text = m.Text.Trim() })];
             s.Operating.CqParity = CqParity;
             s.Operating.ClockBlockSeconds = Dbl(ClockBlock, 0.5, 10, 2);
+            s.Operating.CommandStartLimitMs = (int)Math.Round(Dbl(CommandStartLimit, 0, SettingsMapper.MaxCommandStartLimitMs / 1000.0, 3) * 1000);
+            s.Operating.DoubleClickSwitches = DoubleClickSwitches;
             s.Operating.CorrectClock = CorrectClock;
             s.Operating.UsDataSegmentsOnly = UsDataSegmentsOnly;
             s.Qrz.LogbookEnabled = LogbookEnabled;

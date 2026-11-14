@@ -43,7 +43,11 @@ public sealed partial class OperateViewModel : ObservableObject
     private static readonly TimeSpan KeyboardRankEvery = TimeSpan.FromSeconds(3);
     private DateTime _lastKeyboardRank;
     private readonly LineStabilizer<IReadOnlyList<RankedStation>> _repeats;
-    private DateTime? _lastRankedSlot;
+    private (DateTime? Slot, bool Early)? _lastRanked;
+
+    // What the snapshot's station list reflects: a slot's early pass, until that slot's full decode has been applied.
+    private static (DateTime? Slot, bool Early) RankedKey(SessionSnapshot s) =>
+        s.EarlyDecodedSlot is { } early && (s.LastDecodedSlot is not { } full || early > full) ? (early, true) : (s.LastDecodedSlot, false);
     private (string Band, Ft8Client.Core.Mode Mode) _lastRankedBand;
     private SessionSnapshot? _snap;
     private string? _inContact;
@@ -407,20 +411,30 @@ public sealed partial class OperateViewModel : ObservableObject
         ReportUnit = ModeInfo.IsSlotted(s.Mode) ? "dB" : string.Empty;
         UpdateSlot(now);
 
-        // Re-rank only when a new slot has been decoded, or the band or mode changed (the old band's stations, with
-        // Call buttons that no longer work, stayed until the next decode). A keyboard mode has no slots, so it re-ranks
-        // every few seconds.
+        // Re-rank only when a slot's early pass or full decode has arrived, or the band or mode changed (the old band's
+        // stations, with Call buttons that no longer work, stayed until the next decode). A keyboard mode has no slots,
+        // so it re-ranks every few seconds. The full decode after the early pass of the same slot does not reorder the
+        // list: rows shown keep their order and new ones go in at their rank (PR #150, owner sign-off 2026-11-14).
         var bandMode = (s.Band, s.Mode);
         var keyboardDue = !ModeInfo.IsSlotted(s.Mode) && now - _lastKeyboardRank >= KeyboardRankEvery;
-        if (_lastRankedSlot != s.LastDecodedSlot || _line.Applied is null || _lastRankedBand != bandMode || keyboardDue)
+        var listKey = RankedKey(s);
+        if (_lastRanked != listKey || _line.Applied is null || _lastRankedBand != bandMode || keyboardDue)
         {
-            _lastRankedSlot = s.LastDecodedSlot;
+            var secondUpdate = _lastRankedBand == bandMode && _lastRanked is { Early: true } before && !listKey.Early && before.Slot == listKey.Slot;
+            _lastRanked = listKey;
             _lastKeyboardRank = now;
             _lastRankedBand = bandMode;
-            _line.Offer(s.Rank.Line);
             var log = Log?.Invoke();
             var mode = ModeInfo.Name(s.Mode);
-            _repeats.Offer(RepeatOrder(s.Rank.Worked, r => log?.CallConfirmed(r.Station.Call, s.Band, mode) ?? false));
+            var line = s.Rank.Line;
+            var repeats = RepeatOrder(s.Rank.Worked, r => log?.CallConfirmed(r.Station.Call, s.Band, mode) ?? false);
+            if (secondUpdate)
+            {
+                line = LineMerge.KeepOrder(_line.Pending ?? _line.Applied ?? [], line);
+                repeats = LineMerge.KeepOrder(_repeats.Pending ?? _repeats.Applied ?? [], repeats);
+            }
+            _line.Offer(line);
+            _repeats.Offer(repeats);
         }
         ListUpdated = _line.HasPending;
         MarkInContact();
@@ -620,6 +634,37 @@ public sealed partial class OperateViewModel : ObservableObject
         var i = Selected is null ? 0 : Line.IndexOf(Selected) + delta;
         _line.Clicked();
         Select(Line[Math.Clamp(i, 0, Line.Count - 1)]);
+    }
+
+    /// <summary>
+    /// Double-clicking another station during a contact abandons the contact and calls it (FT8 and FT4; the operator's
+    /// <c>Operating.DoubleClickSwitches</c>, off by default).
+    /// </summary>
+    public bool DoubleClickSwitches { get; set; }
+
+    /// <summary>A row in Next in line was double-clicked.</summary>
+    public void DoubleClickedRow(StationRowViewModel row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        _line.Clicked();
+        CallOnDoubleClick(row.Call);
+    }
+
+    /// <summary>A row in Repeats was double-clicked.</summary>
+    public void DoubleClickedRepeat(RepeatRowViewModel row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        _repeats.Clicked();
+        CallOnDoubleClick(row.Call);
+    }
+
+    // Outside a contact a double-click calls the station. During one it does nothing, unless the operator turned on
+    // DoubleClickSwitches: then, in FT8 and FT4, another station is called and the contact is abandoned on the way
+    // (the session does that). The station already in contact is left alone.
+    private void CallOnDoubleClick(string call)
+    {
+        if (Contact is { Active: true } c && (!DoubleClickSwitches || Keyboard.Visible || Callsign.EqualsCall(c.Call, call))) return;
+        _commands.Call(call);
     }
 
     /// <summary>Calls the selected row (Enter). In a contact, nothing.</summary>

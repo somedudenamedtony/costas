@@ -170,7 +170,7 @@ public sealed class RemoteControl
         switch (cmd.Type)
         {
             case "call" when call.Length > 0:
-                return _target.CallStation(call) ? null : $"{call} is not in the station list.";
+                return await _target.CallStationAsync(call).ConfigureAwait(false) ? null : $"{call} is not in the station list.";
             case "answer" when call.Length > 0:
                 _target.AnswerCaller(call);
                 return null;

@@ -186,6 +186,23 @@
               </StackPanel>
             </Grid>
             <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Late start for a click" />
+              <StackPanel Grid.Column="1">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBox Text="{Binding CommandStartLimit}" Width="70" AutomationProperties.Name="Late start for a click, in seconds" />
+                  <TextBlock Text="seconds into my slot, at most" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="help" Text="When you click Call or CQ after your slot has started, it still goes out in this slot up to this late, leaving out the part of the message already past. Later, it waits for your next slot. 0 to 5 seconds, default 3; FT4 never more than 3, as its message is only 5 seconds long. In FT8, a message up to 3 seconds short still decodes down to about -18 dB; later than that, the other station is less likely to decode you." TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
+              <TextBlock Classes="label" Text="Double-click" />
+              <StackPanel Grid.Column="1">
+                <CheckBox Content="Double-click a station during a contact to abandon it and call the new one" IsChecked="{Binding DoubleClickSwitches}" />
+                <TextBlock Classes="help" Text="FT8 and FT4, in Next in line and Repeats. The contact ends at once, as with Abandon (one already logged stays in the log), and the new station is called in this slot if there is still time, otherwise in your next slot. Off: during a contact a double-click does nothing; use Abandon first. Enter never switches." TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+            <Grid Classes="field" ColumnDefinitions="210,*">
               <TextBlock Classes="label" Text="Where to transmit" />
               <StackPanel Grid.Column="1">
                 <CheckBox Content="US data segments only" IsChecked="{Binding UsDataSegmentsOnly}" />

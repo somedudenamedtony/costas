@@ -54,9 +54,20 @@ public sealed record SessionConfig
     /// <summary>
     /// Latest start after the slot's Tx start for a transmission the operator has just asked for (calling a station or
     /// CQ). Past the late-start limit the part of the message already past is left out; up to 3 s missing still decodes
-    /// at full sensitivity down to about -18 dB (measured with ft8sim and jt9).
+    /// at full sensitivity down to about -18 dB (measured with ft8sim and jt9). Set by the operator
+    /// (<c>Operating.CommandStartLimitMs</c>, 0 to 5 s, default 3 s).
     /// </summary>
     public TimeSpan CommandStartLimit { get; init; } = TimeSpan.FromSeconds(3);
+
+    /// <summary>The most an FT4 click may start late: its message is 5.04 s long, so later leaves too little of it.</summary>
+    public static readonly TimeSpan Ft4CommandStartCap = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// <see cref="CommandStartLimit"/> for a mode. FT4 is held to <see cref="Ft4CommandStartCap"/>, the fixed limit it
+    /// had before the setting existed, since a 5 s late start would leave nothing of its message.
+    /// </summary>
+    public TimeSpan CommandStartLimitFor(Mode mode) =>
+        ModeInfo.Slotted(mode) == Mode.Ft4 && CommandStartLimit > Ft4CommandStartCap ? Ft4CommandStartCap : CommandStartLimit;
 
     /// <summary>PTT lead.</summary>
     public TimeSpan PttLead { get; init; } = TimeSpan.FromMilliseconds(200);

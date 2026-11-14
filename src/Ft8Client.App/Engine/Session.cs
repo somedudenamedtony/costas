@@ -79,6 +79,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     private DateTime? _rigTuningUntil;
     private bool _txOffsetClear = true;
     private DateTime? _lastDecodedSlot;
+    private DateTime? _earlyDecodedSlot;
     private TimeSpan _lastDecodeTime;
     private double? _medianDt;
     private double? _sntpOffset;
@@ -244,8 +245,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
 
     /// <summary>
     /// The early pass, as WSJT-X runs it: with a decoder that keeps jt9 running, the first 11.8 s of an FT8 slot are
-    /// decoded while the slot is still running. Its decodes go to the contact engine and the raw decodes at once; the
-    /// station list and the slot's counts wait for the full decode, which lists every decode of the slot.
+    /// decoded while the slot is still running. Its decodes go to the contact engine, the raw decodes and the station
+    /// list at once; missed slots and the slot's counts wait for the full decode, which lists every decode of the slot.
     /// </summary>
     private void OnEarlyDecode(SlotEvent e)
     {
@@ -294,6 +295,13 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             var heard = result.Decodes.Select(HeardMessage.From).ToList();
             AddRaw(audio.SlotStartUtc, heard);
             FeedEngine(audio.SlotStartUtc, audio.Mode, heard, _clock.UtcNow);
+            // The stations heard go into Next in line now, about 2 s before the full decode lands (owner request
+            // 2026-11-13). Display only: the engine has them already. Skipped if the full decode got there first.
+            if (_lastDecodedSlot is not { } done || done < audio.SlotStartUtc)
+            {
+                _tracker.ApplyEarly(audio.SlotStartUtc, heard);
+                _earlyDecodedSlot = audio.SlotStartUtc;
+            }
         }
         Publish();
     }
@@ -554,7 +562,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
 
     // ---------------------------------------------------------------- transmit planning
 
-    private void PlanFor(DateTime slot, Mode mode, bool late, bool command = false)
+    private void PlanFor(DateTime slot, Mode mode, bool late, bool command = false, bool afterHalt = false)
     {
         TxPlan? plan;
         TxGuardInput guard;
@@ -570,8 +578,10 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             var now = _clock.UtcNow;
             // An operator command (calling a station, CQ) may still start in the current slot well after its Tx start,
             // leaving out the part already past; anything automatic only within the late-start limit.
-            if (late && now > txStart + (command ? _config.CommandStartLimit : _config.LateStartLimit)) return;
-            if (_tx.AudioStarted(slot)) return; // already on the air with this slot's message
+            if (late && now > txStart + (command ? _config.CommandStartLimitFor(mode) : _config.LateStartLimit)) return;
+            // Already on the air with this slot's message. A message cut off to switch stations does not count: the
+            // transmitter was halted, so nothing of it is still going out.
+            if (_tx.AudioStarted(slot) && !(afterHalt && _tx.CurrentMessage is null)) return;
             pending = _tx.Pending is { } p && p.Plan.SlotStartUtc == slot ? p : null;
             held = pending is not null && _tx.Held;
             plan = _engine.PlanTransmission(slot, mode, now);
@@ -706,8 +716,45 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         lock (_gate) _engine.OperatorActivity(_clock.UtcNow);
     }
 
-    /// <summary>Calls a station from the line or the raw decodes.</summary>
-    public bool CallStation(string call)
+    /// <summary>
+    /// Calls a station. A contact in progress is replaced without being ended first; operator clicks use
+    /// <see cref="CallStationAsync"/>, which ends it properly.
+    /// </summary>
+    public bool CallStation(string call) => CallStation(call, afterHalt: false);
+
+    /// <summary>
+    /// Calls a station from an operator click (PR #150, owner sign-off 2026-11-14). In FT8 and FT4, a contact in progress with
+    /// another station is ended first: one already logged ends as logged, otherwise it is abandoned as the Abandon button
+    /// does (nothing logged), and a message to it already on the air is cut off. The call then goes out in this slot if
+    /// it is my slot for the new station and the click start limit has not passed, else in my next slot of that parity.
+    /// False, with the contact left alone, when the station is not in the station list. PSK and RTTY are unchanged.
+    /// </summary>
+    public async Task<bool> CallStationAsync(string call)
+    {
+        if (!ModeInfo.IsSlotted(Config.Mode)) return CallStation(call);
+        bool switching;
+        lock (_gate)
+        {
+            if (!CanCall(call)) return false;
+            switching = _engine.InContact && !Callsign.EqualsCall(_engine.DxCall!, call);
+            if (switching)
+            {
+                var now = _clock.UtcNow;
+                if (_engine.View is { Logged: true }) _engine.LogNow(now);
+                else _engine.Abandon(now);
+            }
+        }
+        if (!switching) return CallStation(call);
+        await _tx.HaltAsync().ConfigureAwait(false);
+        return CallStation(call, afterHalt: true);
+    }
+
+    // A station that can be called now: one waiting for me, or one in the station list heard in a known slot.
+    private bool CanCall(string call) =>
+        _engine.Waiting.Any(w => Callsign.EqualsCall(w.Call, call)) || _tracker.Find(call)?.Parity is not null;
+
+    // afterHalt: my transmission in this slot was just cut off for this call, so the slot may be used again.
+    private bool CallStation(string call, bool afterHalt)
     {
         if (!ModeInfo.IsSlotted(Config.Mode)) return CallKeyboardStation(call);
         lock (_gate)
@@ -733,7 +780,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             }
             if (refused is null) _fault = null;
         }
-        AfterCommand();
+        AfterCommand(afterHalt);
         return true;
     }
 
@@ -1319,7 +1366,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         return true;
     }
 
-    private void AfterCommand()
+    // afterHalt: the transmission in this slot was cut off for this command, which may then use the slot itself.
+    private void AfterCommand(bool afterHalt = false)
     {
         // A command may start a transmission in the current slot if its start is still within the late limit.
         var mode = Config.Mode;
@@ -1328,7 +1376,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             Publish();
             return;
         }
-        PlanFor(SlotMath.SlotStart(_clock.UtcNow, mode), mode, late: true, command: true);
+        PlanFor(SlotMath.SlotStart(_clock.UtcNow, mode), mode, late: true, command: true, afterHalt);
         Publish();
     }
 
@@ -1361,6 +1409,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
                 Summary = summary,
                 RawDecodes = _raw.Where(r => r.Mode == _config.Mode).ToList(),
                 LastDecodedSlot = _lastDecodedSlot,
+                EarlyDecodedSlot = _earlyDecodedSlot,
                 LastDecodeTime = _lastDecodeTime,
                 MedianDt = _medianDt,
                 LogIsEmpty = _logIndex.IsEmpty,

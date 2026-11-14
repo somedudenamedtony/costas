@@ -57,6 +57,26 @@ public class EarlyDecodeTests
     }
 
     [Fact]
+    public async Task EarlyPass_StationsFound_InNextInLineBeforeSlotEnds()
+    {
+        var r = new Rig();
+        // The early pass is done at 12.45 s; the full decode not until 17.2 s, well into the next slot.
+        r.Decoder.Script(CqSlot, early: TimeSpan.FromSeconds(0.6), full: TimeSpan.FromSeconds(3.6), "CQ N8WCR EN81");
+
+        await r.RunUntilAsync(CqSlot.AddSeconds(13));
+
+        var snap = r.Session.Snapshot;
+        snap.Rank.Line.Should().Contain(x => x.Station.Call == "N8WCR");
+        snap.EarlyDecodedSlot.Should().Be(CqSlot);
+        snap.LastDecodedSlot.Should().NotBe(CqSlot, "the full decode has not landed");
+        r.Session.CallStation("N8WCR").Should().BeTrue("a station listed from the early pass can be called");
+
+        await r.RunUntilAsync(MyFirstSlot.AddSeconds(3));
+        r.Session.Snapshot.LastDecodedSlot.Should().Be(CqSlot);
+        r.Session.Snapshot.Stations.Single(s => s.Call == "N8WCR").SnrHistory.Should().HaveCount(1, "one reading for the slot");
+    }
+
+    [Fact]
     public async Task EarlyPass_TransmitSlot_NotRun()
     {
         var r = new Rig();
