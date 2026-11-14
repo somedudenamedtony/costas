@@ -52,6 +52,7 @@ public class PanelWindowTests
                 window.Show();
                 try
                 {
+                    ToolTip.GetTip(window.FindControl<WaterfallView>("ReceiveWaterfall")!).Should().BeNull("a tooltip over the waterfall hides the signals");
                     vm.Tab = 2;
                     vm.CanPopOut.Should().BeTrue();
                     vm.PopOutCommand.Execute(null);

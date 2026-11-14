@@ -48,11 +48,6 @@ public partial class OperateView : UserControl
         LeftPane.SizeChanged += (_, _) => FitPinned();
         CallingYou.SizeChanged += (_, _) => FitPinned();
         ContactCard.SizeChanged += (_, _) => FitPinned();
-        SummaryCard.SizeChanged += (_, e) =>
-        {
-            ReflowSummary(e.NewSize.Width);
-            FitPinned();
-        };
         CallingYou.PropertyChanged += (_, e) =>
         {
             if (e.Property == IsVisibleProperty) FitPinned();
@@ -62,6 +57,11 @@ public partial class OperateView : UserControl
         DataContextChanged += (_, _) =>
         {
             if (Vm is not { } vm) return;
+            vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(OperateViewModel.SideCollapsed)) Relayout(Bounds.Width);
+            };
+            Relayout(Bounds.Width);
             // Follow new text only while the operator is at the end; scrolled back to read, the box stays put.
             vm.Keyboard.Conversation.CollectionChanged += (_, _) =>
             {
@@ -232,57 +232,36 @@ public partial class OperateView : UserControl
         if ((e.Source as Control)?.DataContext is StationRowViewModel row) Vm?.RowClicked(row);
     }
 
+    /// <summary>Width of the folded side column's rail.</summary>
+    public const double RailWidth = 36;
+
     // Below 1100 px the right column drops under the left. On wide screens it grows so the map has room.
+    // Folded, it is a thin rail at the side (a one-line bar underneath when narrow) and the call list takes the rest.
     private void Relayout(double width)
     {
         var narrow = width < 1100;
         var wide = width >= 1600;
-        Root.ColumnDefinitions = narrow ? new ColumnDefinitions("*") : new ColumnDefinitions(wide ? "*,460" : "*,300");
+        var folded = Vm?.SideCollapsed == true;
+        var side = folded ? RailWidth.ToString(System.Globalization.CultureInfo.InvariantCulture) : wide ? "460" : "300";
+        Root.ColumnDefinitions = narrow ? new ColumnDefinitions("*") : new ColumnDefinitions($"*,{side}");
         Root.RowDefinitions = narrow ? new RowDefinitions("*,Auto") : new RowDefinitions("*");
         Grid.SetColumn(RightColumn, narrow ? 0 : 1);
         Grid.SetRow(RightColumn, narrow ? 1 : 0);
         // Leave room to operate when a faceplate or status banner takes vertical space from a small window.
         RightColumn.MaxHeight = narrow ? Math.Min(320, Math.Max(100, Bounds.Height / 3)) : double.PositiveInfinity;
+        // The rail reads bottom to top at the side, and left to right when it lies under the list.
+        RailStack.Orientation = narrow ? Avalonia.Layout.Orientation.Horizontal : Avalonia.Layout.Orientation.Vertical;
+        var turn = narrow ? null : new RotateTransform(-90);
+        RailBandText.LayoutTransform = turn;
+        RailSignalText.LayoutTransform = turn;
     }
 
     // The contact card stays pinned above the call list, which always keeps enough height to show a few rows.
-    // The idle band summary is pinned under the card only while both fit whole. Otherwise it moves to the top of
-    // the call list and scrolls with it, so it is never cut off inside a box with a scroll bar of its own.
     // The pinned area itself only scrolls when the contact card alone is taller than the room left.
     private void FitPinned()
     {
         const double listRoom = 220;
         var calling = CallingYou.IsVisible ? CallingYou.Bounds.Height + CallingYou.Margin.Bottom : 0;
-        var room = Math.Max(120, LeftPane.Bounds.Height - calling - listRoom);
-        PinnedScroll.MaxHeight = room;
-
-        // Hidden during a contact: leave it where it is until it shows again and has a size to judge by.
-        if (!SummaryCard.IsVisible || SummaryCard.Bounds.Height <= 0) return;
-        var needed = ContactCard.Bounds.Height + PinnedStack.Spacing + SummaryCard.Bounds.Height + PinnedStack.Margin.Bottom;
-        var pinned = SummaryCard.Parent == PinnedStack;
-        if (needed <= room && !pinned)
-        {
-            ListStack.Children.Remove(SummaryCard);
-            PinnedStack.Children.Add(SummaryCard);
-        }
-        else if (needed > room && pinned)
-        {
-            PinnedStack.Children.Remove(SummaryCard);
-            ListStack.Children.Insert(0, SummaryCard);
-        }
-    }
-
-    // On a narrow card the three summary columns are too tight (continent names collide, the log column wraps
-    // word by word), so Heard from moves to a full-width row under the counts and the log.
-    private void ReflowSummary(double width)
-    {
-        var narrow = width < 1000;
-        if (narrow == (Grid.GetRow(SummaryHeardFrom) == 1)) return;
-        SummaryGrid.ColumnDefinitions = new ColumnDefinitions(narrow ? "*,*" : "*,*,*");
-        Grid.SetColumn(SummaryLog, narrow ? 1 : 2);
-        Grid.SetColumn(SummaryHeardFrom, narrow ? 0 : 1);
-        Grid.SetRow(SummaryHeardFrom, narrow ? 1 : 0);
-        Grid.SetColumnSpan(SummaryHeardFrom, narrow ? 2 : 1);
-        SummaryHeardFrom.Margin = narrow ? new Thickness(0, 14, 0, 0) : new Thickness(12, 0);
+        PinnedScroll.MaxHeight = Math.Max(120, LeftPane.Bounds.Height - calling - listRoom);
     }
 }

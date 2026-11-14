@@ -65,10 +65,25 @@ public sealed partial class KeyboardPanelViewModel : ObservableObject
 
     /// <summary>
     /// True while the box shows a contact's conversation, whose words can be clicked into the contact; false while it
-    /// reads a clicked signal.
+    /// reads a clicked signal, whose words offer to answer the station instead (see <see cref="WordsAnswer"/>).
     /// </summary>
     [ObservableProperty]
     public partial bool WordsClickable { get; set; } = true;
+
+    /// <summary>True while the box reads a clicked signal: a word there offers "Answer this station".</summary>
+    [ObservableProperty]
+    public partial bool WordsAnswer { get; set; }
+
+    /// <summary>
+    /// Why the last thing the operator asked for did not go out, or why transmitting stopped (a refused macro, a
+    /// transmit guard, the SWR stop), shown under the macros where it is seen; empty when nothing was refused.
+    /// </summary>
+    [ObservableProperty]
+    public partial string SendNote { get; set; } = string.Empty;
+
+    /// <summary>True while <see cref="SendNote"/> has something to say.</summary>
+    [ObservableProperty]
+    public partial bool HasSendNote { get; set; }
 
     /// <summary>The line still arriving, shown character by character under the finished lines.</summary>
     [ObservableProperty]
@@ -223,6 +238,9 @@ public sealed partial class KeyboardPanelViewModel : ObservableObject
         }
         _shown = lines;
         WordsClickable = s.Reading is null;
+        WordsAnswer = s.Reading is not null;
+        SendNote = s.Fault ?? string.Empty;
+        HasSendNote = SendNote.Length > 0;
         ApplyHeading(s);
         LiveWho = s.LiveLine?.Who ?? string.Empty;
         LiveText = s.LiveLine?.Text ?? string.Empty;
@@ -244,11 +262,16 @@ public sealed partial class KeyboardPanelViewModel : ObservableObject
         var next = s.Macros.FirstOrDefault(m => m.Key == s.NextMacro);
         var keys = KeysText(s.Macros.Select(m => m.Key));
         var macroHint = keys.Length == 0 ? "No macros: add them in Settings > PSK and RTTY" : $"{keys} {(s.Macros.Count == 1 ? "sends its macro" : "send a macro")}";
+        // Reading a signal whose call is known: say plainly how to answer it.
+        var answer = s.Reading is { Call: { } readCall } && s.Macros.Any(m => m.Key == Macro.AnswerKey)
+            ? $"F{Macro.AnswerKey} answers {readCall} · "
+            : string.Empty;
+        var words = s.Reading is null ? "Click a word to use it" : "Click a call to answer it";
         Hints = OnAir
             ? "Typing goes out as you type · Backspace takes back what has not gone · Enter on an empty line returns to receive · Esc stops now"
             : next is not null
-                ? $"Enter sends F{next.Key} {next.Label} (or what you typed) · {macroHint} · Click a word to use it · Esc stops"
-                : $"Type and press Enter to send · {macroHint} · Click a word to use it · Esc stops";
+                ? $"{answer}Enter sends F{next.Key} {next.Label} (or what you typed) · {macroHint} · {words} · Esc stops"
+                : $"{answer}Type and press Enter to send · {macroHint} · {words} · Esc stops";
         Readout();
     }
 
@@ -361,4 +384,17 @@ public sealed partial class KeyboardPanelViewModel : ObservableObject
     /// <summary>Captures the word as the partner's call.</summary>
     [RelayCommand]
     private void CaptureCall(string word) => Capture(ExchangeField.Call, word);
+
+    /// <summary>
+    /// A word clicked while reading a signal: when it is a callsign, answers that station (as Call on its row does, with
+    /// the Answer macro). Not a callsign: nothing is sent and the bottom bar says so.
+    /// </summary>
+    [RelayCommand]
+    private void AnswerWord(string word)
+    {
+        ArgumentNullException.ThrowIfNull(word);
+        var call = word.Trim().Trim(',', '.', ';', ':', '!', '?', '/').ToUpperInvariant();
+        if (OverReader.IsCall(call)) _commands.Call(call);
+        else Capture(ExchangeField.Call, word); // refused there, with "... is not a callsign" in the bottom bar
+    }
 }

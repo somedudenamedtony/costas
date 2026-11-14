@@ -6,6 +6,7 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
+using System.Globalization;
 using Ft8Client.App.Engine;
 using Ft8Client.App.Remote;
 using Ft8Client.App.Services;
@@ -403,7 +404,11 @@ public sealed class AppHost : IAsyncDisposable
         };
         TxMeters.SwrTripped += swr =>
         {
-            Log.Warning("Transmit stopped: SWR {Swr:0.0} held at or above {Limit}", swr, SwrGuard.DefaultLimit);
+            // Power, ALC, band and mode with it, so a misread SWR (one mode or power level only) can be told from a real one.
+            var r = TxMeters.TrippedReading;
+            Log.Warning("Transmit stopped: SWR {Swr:0.0} held at or above {Limit} (power {Watts} W, ALC {Alc}, {Band} {Mode})", swr, SwrGuard.DefaultLimit,
+                r?.Watts?.ToString("0", CultureInfo.InvariantCulture) ?? "?", r?.Alc?.ToString("0.00", CultureInfo.InvariantCulture) ?? "?",
+                Settings.Current.Operating.Band, Settings.Current.Operating.Mode);
             _ = Session.HaltAsync(SwrGuard.StopText(swr));
         };
         TxMeters.Measured += r => Session.SetTxMeters(TxLevel.OnMeasured(r));

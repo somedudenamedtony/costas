@@ -180,6 +180,45 @@ public sealed partial class OperateViewModel : ObservableObject
     [ObservableProperty]
     public partial SummaryViewModel? Summary { get; set; }
 
+    /// <summary>Side column tabs, in order.</summary>
+    public const int BandTab = 0, HeardTab = 1, SignalTab = 2, SessionTab = 3;
+
+    /// <summary>The side column tab showing: Band, Heard, Signal or Session. Starts on Heard, the map.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowStrip))]
+    public partial int SideTab { get; set; } = HeardTab;
+
+    /// <summary>True when the side column is folded to a thin rail, so the call list has the full width.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowStrip))]
+    public partial bool SideCollapsed { get; set; }
+
+    /// <summary>
+    /// True when the one-line band strip shows under the idle contact card: no contact, and the full band summary
+    /// is not already on screen in the side column's Band tab (nothing is shown twice).
+    /// </summary>
+    public bool ShowStrip => !InContact && Summary is not null && (SideCollapsed || SideTab != BandTab);
+
+    /// <summary>The band on the folded side column's rail: "20 m · 198 you need".</summary>
+    [ObservableProperty]
+    public partial string RailBand { get; set; } = "Band";
+
+    /// <summary>My signal on the folded side column's rail: "Your signal · 146 heard you".</summary>
+    [ObservableProperty]
+    public partial string RailSignal { get; set; } = "Your signal";
+
+    /// <summary>Opens the side column on a tab; the rail and the strip's More button use it.</summary>
+    [RelayCommand]
+    private void ShowSide(string tab)
+    {
+        SideTab = Math.Clamp(int.Parse(tab, System.Globalization.CultureInfo.InvariantCulture), BandTab, SessionTab);
+        SideCollapsed = false;
+    }
+
+    /// <summary>Folds the side column to its rail, or opens it again.</summary>
+    [RelayCommand]
+    private void ToggleSide() => SideCollapsed = !SideCollapsed;
+
     /// <summary>The contact (top slot in a contact).</summary>
     [ObservableProperty]
     public partial ContactPanelViewModel? Contact { get; set; }
@@ -466,6 +505,8 @@ public sealed partial class OperateViewModel : ObservableObject
         Summary = s.Summary is null ? null : new SummaryViewModel(s.Summary, s.LogIsEmpty, ModeInfo.IsSlotted(s.Mode) ? null : s.Activity);
         Contact = s.Contact is null ? null : ContactPanelViewModel.For(s.Contact, s, now, Units, QrzName?.Invoke(s.Contact.DxCall));
         OnPropertyChanged(nameof(InContact));
+        OnPropertyChanged(nameof(ShowStrip));
+        RailBand = s.Summary is null ? "Band" : $"{BandPlan.Display(s.Summary.Band)} · {s.Summary.YouNeed} you need";
         OnPropertyChanged(nameof(Panel));
         Calling = s.Contact is null ? null : DetailsFor(s.Contact.DxCall, s, now);
         // A lookup may have arrived since the flyout opened.
@@ -831,6 +872,7 @@ public sealed partial class OperateViewModel : ObservableObject
         if (Countries is null || Log is null) return;
         var points = ReachPoint.From(s.Reports, now, TimeSpan.FromMinutes(15), s.MyGrid, Countries, Log(), s.Band, ModeInfo.Name(s.Mode));
         var countries = CountryReach.From(points, Countries, Units);
+        RailSignal = points.Count == 0 ? "Your signal" : $"Your signal · {points.Count} heard you";
         SignalHeadline = points.Count == 0
             ? "No reports yet. Reports appear a few minutes after you transmit."
             : $"{points.Count} stations in {countries.Count} countries heard you in the last 15 minutes.";
