@@ -56,6 +56,9 @@ public sealed class TxMeterMonitor
     /// <summary>Raised once, from the reader, with the SWR that should stop the transmission now on the air.</summary>
     public event Action<double>? SwrTripped;
 
+    /// <summary>The whole reading (power and ALC with the SWR) that last tripped the SWR stop, for the log; null until one does.</summary>
+    public TxMeterReading? TrippedReading { get; private set; }
+
     /// <summary>Raised with each reading that has at least one meter value, while the transmission is on the air.</summary>
     public event Action<TxMeterReading>? Read;
 
@@ -106,7 +109,11 @@ public sealed class TxMeterMonitor
                 var reading = await _rig().ReadTxMetersAsync(ct).ConfigureAwait(false);
                 readings.Add(reading);
                 if (reading.Any && !ct.IsCancellationRequested) Read?.Invoke(reading);
-                if (guard is not null && !ct.IsCancellationRequested && guard.Add(reading)) SwrTripped?.Invoke(guard.TrippedAt!.Value);
+                if (guard is not null && !ct.IsCancellationRequested && guard.Add(reading))
+                {
+                    TrippedReading = reading;
+                    SwrTripped?.Invoke(guard.TrippedAt!.Value);
+                }
                 await Task.Delay(Interval, ct).ConfigureAwait(false);
             }
         }
