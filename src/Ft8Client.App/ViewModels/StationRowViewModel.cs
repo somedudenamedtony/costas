@@ -103,10 +103,10 @@ public sealed partial class StationRowViewModel : ObservableObject
     public bool IsFox { get; }
 
     /// <summary>The Fox tag text.</summary>
-    public static string FoxTag => StationText.FoxTag;
+    public string FoxTag => StationText.FoxTagFor(Source.Station);
 
     /// <summary>The Fox tag tooltip.</summary>
-    public static string FoxTip => StationText.FoxTip;
+    public string FoxTip => StationText.FoxTipFor(Source.Station);
 
     /// <summary>Rank from 1.</summary>
     public int Rank { get; }

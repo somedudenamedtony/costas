@@ -120,6 +120,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         _engine = new ContactEngine(config.MyCall, config.MyGrid, config.Contact, clock.UtcNow);
         _engine.Logged += OnLogged;
         _engine.IsFox = call => _tracker.Find(call)?.RunsFox == true; // read under _gate, as every engine call is
+        _engine.IsSuperFox = call => _tracker.Find(call)?.RunsSuperFox == true;
         // A station I was calling as an ordinary CQ turned out to be a Fox: my calls move up to where it listens. Under _gate.
         _engine.HoundStarted += _ => { if (_engine.View is { } v) HoundCallOffset(v.MyParity); };
         _tx.Started += OnTxStarted;
@@ -327,11 +328,16 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         {
             DecodesStarted++;
             var full = Task.Run(() => FullDecodeAsync(audio));
-            if (QuickContext() is { } quick)
+            if (QuickContext(e.SlotStartUtc) is { } quick)
             {
                 DecodesStarted++;
                 _quickSlot = e.SlotStartUtc;
                 _decodeTask = Task.WhenAll(full, Task.Run(() => QuickDecodeAsync(audio, quick)));
+            }
+            else if (SuperFoxWatchContext(e) is { } watch)
+            {
+                DecodesStarted++;
+                _decodeTask = Task.WhenAll(full, Task.Run(() => SuperFoxWatchAsync(audio, watch)));
             }
             else
             {
@@ -345,7 +351,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
     /// takes 3 s or more on a busy band), so my next message is chosen on time. In a contact: only the other station's
     /// frequency, full depth and a-priori. Calling CQ: the whole band at depth 1. Otherwise none.
     /// </summary>
-    private DecodeContext? QuickContext()
+    private DecodeContext? QuickContext(DateTime slotStartUtc)
     {
         var myGrid = Grid.Grid4(_config.MyGrid) ?? string.Empty;
         if (_engine.InContact && _engine.DxOffsetHz is { } dx)
@@ -354,13 +360,74 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
             if (_engine.InHoundContact)
             {
                 return new DecodeContext(_config.MyCall, myGrid, _engine.DxCall, _engine.DxGrid, LowHz: 100,
-                    HighHz: Math.Max(TxOffsetPicker.HoundLowHz, dx + QuickSpanHz), Depth: 3, QsoProgress: _engine.QsoProgress, RxOffsetHz: dx) { Hound = true };
+                    HighHz: Math.Max(TxOffsetPicker.HoundLowHz, dx + QuickSpanHz), Depth: 3, QsoProgress: _engine.QsoProgress, RxOffsetHz: dx)
+                {
+                    Hound = true,
+                    // A SuperFox sends one wide signal in the Fox's slots, which jt9 only decodes when asked to.
+                    SuperFox = _engine.DxCall is { } fox && _tracker.Find(fox)?.RunsSuperFox == true && IsFoxSlot(slotStartUtc, _config.Mode) && KeepsRunning(_config.Mode),
+                };
             }
             return new DecodeContext(_config.MyCall, myGrid, _engine.DxCall, _engine.DxGrid, LowHz: Math.Max(100, dx - QuickSpanHz),
                 HighHz: dx + QuickSpanHz, Depth: 3, QsoProgress: _engine.QsoProgress, RxOffsetHz: dx);
         }
         if (_engine.CallingCq) return new DecodeContext(_config.MyCall, myGrid, null, null, Depth: 1, RxOffsetHz: _txOffset);
         return null;
+    }
+
+    // A Fox, SuperFox or not, transmits in the even slots: seconds 0 and 30.
+    private static bool IsFoxSlot(DateTime slotStartUtc, Mode mode) => mode == Mode.Ft8 && SlotMath.Parity(slotStartUtc, mode) == SlotParity.Even;
+
+    // SuperFox is decoded only by a jt9 that stays running, the one that also gives the early pass.
+    private bool KeepsRunning(Mode mode) => _decoder is IEarlyDecoder early && early.HasEarlyPass(mode);
+
+    /// <summary>
+    /// The SuperFox watch: with nothing else for the quick decoder to do, each Fox (even) FT8 slot is also decoded for
+    /// a SuperFox signal, which the ordinary decode cannot read. That is how a SuperFox DXpedition gets into the
+    /// station list, where Call works it the Hound way. Under <c>_gate</c>.
+    /// </summary>
+    private DecodeContext? SuperFoxWatchContext(SlotEvent e)
+    {
+        if (!IsFoxSlot(e.SlotStartUtc, e.Mode) || !KeepsRunning(e.Mode)) return null;
+        return new DecodeContext(_config.MyCall, Grid.Grid4(_config.MyGrid) ?? string.Empty, _engine.DxCall, _engine.DxGrid, LowHz: 100,
+            HighHz: 3000, Depth: 3, QsoProgress: _engine.QsoProgress, RxOffsetHz: _txOffset) { Hound = true, SuperFox = true, Quick = true };
+    }
+
+    private async Task SuperFoxWatchAsync(SlotAudio audio, DecodeContext ctx)
+    {
+        try
+        {
+            DecodeResult result;
+            try
+            {
+                result = await _decoder.DecodeAsync(audio, ctx, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return; // the watch is an extra: the full decode still runs
+            }
+            if (!result.Succeeded || result.Decodes.Count == 0) return;
+            lock (_gate)
+            {
+                if (audio.Mode != _config.Mode) return;
+                ApplySuperFox(audio.SlotStartUtc, audio.Mode, result);
+            }
+            PlanFor(SlotMath.SlotStart(_clock.UtcNow, audio.Mode), audio.Mode, late: true);
+            Publish();
+        }
+        finally
+        {
+            Interlocked.Increment(ref _decodesApplied);
+        }
+    }
+
+    // Under _gate: what a SuperFox pass decoded goes to the station list (marked SuperFox), Raw decodes and the engine.
+    private void ApplySuperFox(DateTime slot, Mode mode, DecodeResult result)
+    {
+        var heard = result.Decodes.Select(HeardMessage.From).ToList();
+        if (heard.Count == 0) return;
+        _tracker.ApplySuperFox(slot, heard);
+        AddRaw(slot, heard);
+        FeedEngine(slot, mode, heard, _clock.UtcNow);
     }
 
     private async Task QuickDecodeAsync(SlotAudio audio, DecodeContext ctx)
@@ -390,7 +457,8 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         {
             if (_quickSlot == audio.SlotStartUtc) _quickSlot = null;
             if (audio.Mode != _config.Mode) return;
-            FeedEngine(audio.SlotStartUtc, audio.Mode, result.Decodes.Select(HeardMessage.From).ToList(), _clock.UtcNow);
+            if (ctx.SuperFox) ApplySuperFox(audio.SlotStartUtc, audio.Mode, result);
+            else FeedEngine(audio.SlotStartUtc, audio.Mode, result.Decodes.Select(HeardMessage.From).ToList(), _clock.UtcNow);
         }
         PlanFor(SlotMath.SlotStart(_clock.UtcNow, audio.Mode), audio.Mode, late: true);
         Publish();

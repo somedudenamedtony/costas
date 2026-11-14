@@ -325,7 +325,9 @@ public sealed class ContactPanelViewModel
         return c.ReportReceived is null
             ? $"{c.DxCall} is a DXpedition Fox working several stations at once. Costas sends your call every slot, above 1000 Hz " +
               $"where it listens, for up to {ContactEngine.HoundCallLimit.TotalMinutes:0} minutes. Leave it running: the Fox answers when it gets to you."
-            : $"{c.DxCall} answered. Costas sends your report on the Fox's frequency; its RR73 logs the contact, and no 73 is sent.";
+            : c.SuperFox
+                ? $"{c.DxCall} answered. Costas sends your report where you have been calling (a SuperFox does not move its Hounds); its RR73 logs the contact, and no 73 is sent."
+                : $"{c.DxCall} answered. Costas sends your report on the Fox's frequency; its RR73 logs the contact, and no 73 is sent.";
     }
 
     // "Fox at 612 Hz · You call at 1700 Hz, every slot · 1:24 left", or, once answered,
@@ -335,11 +337,12 @@ public sealed class ContactPanelViewModel
         if (c.Outcome != ContactOutcome.InProgress) return string.Empty;
         if (c.ReportReceived is not null)
         {
+            if (c.SuperFox) return $"SuperFox answered · Your report goes at {s.TxOffsetHz} Hz · Its RR73 logs it";
             var at = c.HoundReplyOffsetHz ?? c.DxOffsetHz;
             return at is { } hz ? $"Fox answered at {hz} Hz · Your report goes at {hz} Hz · Its RR73 logs it" : "Fox answered · Its RR73 logs it";
         }
         var parts = new List<string>();
-        if (c.DxOffsetHz is { } fox) parts.Add($"Fox at {fox} Hz");
+        if (c.DxOffsetHz is { } fox) parts.Add(c.SuperFox ? $"SuperFox at {fox} Hz" : $"Fox at {fox} Hz");
         parts.Add($"You call at {s.TxOffsetHz} Hz, every slot");
         var left = c.HoundCallEndsUtc is { } end ? end - nowUtc : ContactEngine.HoundCallLimit;
         if (left < TimeSpan.Zero) left = TimeSpan.Zero;

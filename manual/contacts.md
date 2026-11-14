@@ -185,8 +185,29 @@ finds you among the other Hounds. Leave it running; you don't need to click anyt
   multi-answer messages nearly every slot, so this is rarely more than a moment.
 - Your R-report goes out below 1000 Hz. On some radios very low audio lets harmonics through; keep the transmit
   audio clean (the automatic level helps), and watch the ALC warning.
-- **SuperFox** DXpeditions (WSJT-X 2.7's SuperHound mode) can't be worked yet: their signal needs a decoder that
-  Costas can't run until it keeps `jt9` running between slots.
+
+### SuperFox DXpeditions
+
+Most big DXpeditions now run **SuperFox**: one wide signal near 750 Hz that answers up to nine Hounds at once, in
+place of separate streams. The ordinary FT8 decode can't read it, so on FT8 Costas also listens for a SuperFox in
+every slot a Fox could be sending in (the ones starting at :00 and :30) whenever you are not in a contact or calling
+CQ. There is nothing to switch on.
+
+- A SuperFox station appears in the list with a **SuperFox · Hound** tag, and its answers show in Raw decodes like
+  any other message.
+- Click **Call** and Costas works it the Hound way, as above, with one difference: your report goes out on the
+  frequency you have been calling on. A SuperFox does not move its Hounds, and neither does WSJT-X.
+- The banner reads *SuperFox at 750 Hz · You call at 1700 Hz, every slot · 1:24 left*, then *SuperFox answered ·
+  Your report goes at 1700 Hz · Its RR73 logs it*.
+- Tune to the frequency the DXpedition announced. SuperFox runs away from the usual FT8 frequencies.
+- **Costas does not check the SuperFox signature.** WSJT-X checks a code in the signal against an online service
+  to show the Fox is the real DXpedition and not a pirate; Costas shows the `$VERIFY$` line in Raw decodes but does
+  not look it up. If that matters for a contact, compare the callsign and frequency with the DXpedition's own
+  announcement.
+- It needs the `jt9` that comes with Costas, kept running between slots (the normal case; see **jt9 runs** in
+  [Troubleshooting](troubleshooting.md)).
+- This has been checked against a SuperFox signal made with WSJT-X's own test tool, not yet against a DXpedition on
+  the air. Please [report](troubleshooting.md) how it goes.
 
 ## Halting
 

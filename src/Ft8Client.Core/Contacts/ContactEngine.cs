@@ -112,6 +112,12 @@ public sealed class ContactEngine
     /// </summary>
     public Func<string, bool>? IsFox { get; set; }
 
+    /// <summary>
+    /// Tells whether a Fox runs SuperFox. A Hound that works one sends its R-report where it has been calling, not on
+    /// the frequency of the Fox's signal (WSJT-X does not move a Hound in SuperFox mode).
+    /// </summary>
+    public Func<string, bool>? IsSuperFox { get; set; }
+
     /// <summary>The DX station's grid, if known.</summary>
     public string? DxGrid => _c?.DxGrid;
 
@@ -616,7 +622,7 @@ public sealed class ContactEngine
                 c.ReportReceivedUtc = slotUtc;
                 if (heard is not null)
                 {
-                    c.TxOffset = heard.Decode.OffsetHz;
+                    c.TxOffset = IsSuperFox?.Invoke(c.DxCall) == true ? null : heard.Decode.OffsetHz;
                     c.ReportSent = Report.Clamp(heard.Decode.Snr);
                 }
                 c.Steps[2] = c.Steps[2] with { Message = $"{Dx(c.DxCall)} {_myCall} R{Report.Format(c.ReportSent)}" };
@@ -740,7 +746,8 @@ public sealed class ContactEngine
             // A Fox's report with no Hound contact running (I stopped calling it): my R-report on its frequency.
             var c = new Contact(ContactFlow.Hound, w.Call, w.Grid, parity, Report.Clamp(w.Snr), w.OffsetHz)
             {
-                ReportReceived = w.Report, ReportReceivedUtc = w.LastCalledUtc, TxOffset = w.OffsetHz,
+                ReportReceived = w.Report, ReportReceivedUtc = w.LastCalledUtc,
+                TxOffset = IsSuperFox?.Invoke(w.Call) == true ? null : w.OffsetHz,
             };
             c.Steps.AddRange(StepsFor(c));
             c.Steps[0] = c.Steps[0] with { State = StepState.Done };
@@ -1029,6 +1036,7 @@ public sealed class ContactEngine
             ExchangeSent = isContest && sentAny ? c.ExchangeSent : null, ExchangeReceived = isContest ? c.ExchangeReceived : null,
             DxOffsetHz = c.DxOffset,
             HoundReplyOffsetHz = c.Flow == ContactFlow.Hound && c.Phase > 0 ? c.TxOffset : null,
+            SuperFox = c.Flow == ContactFlow.Hound && IsSuperFox?.Invoke(c.DxCall) == true,
             HoundCallEndsUtc = c is { Flow: ContactFlow.Hound, Phase: 0, StepStartedUtc: { } first } ? first + HoundCallLimit : null,
         };
     }

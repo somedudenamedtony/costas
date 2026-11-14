@@ -142,6 +142,25 @@ public class Jt9PersistentDecoderTests
     }
 
     [Fact]
+    public async Task DecodeAsync_SuperFoxContext_DecodesSuperFoxSignal()
+    {
+        var jt9 = Jt9OrSkip(out var version);
+        Assert.SkipWhen(version!.Contains("-rc", StringComparison.Ordinal), $"jt9 from {version} is a release candidate; its SuperFox decoder printed nothing (docs/05-integrations.md).");
+        // sfoxsim 750 0.0 MM K1JT 2 2 1 0 1 -5 (WSJT-X 2.7.0): two RR73s, two reports and a CQ in one SuperFox signal.
+        var audio = SampleFile.Load(Path.Combine(TestPaths.RepoRoot, "tests", "Ft8Client.Decoding.Tests", "Data", "superfox", "000000_000000.wav")).Audio;
+        using var decoder = new Jt9PersistentDecoder(Options(jt9), version);
+        var watch = new DecodeContext("W7LIT", "DN40", null, null, LowHz: 100) { Hound = true, SuperFox = true, Quick = true };
+
+        var superFox = await decoder.DecodeAsync(audio, watch, TestContext.Current.CancellationToken);
+        var ordinary = await decoder.DecodeAsync(audio, DecodeContext.Anonymous, TestContext.Current.CancellationToken);
+
+        superFox.Status.Should().Be(DecodeStatus.Ok, superFox.Message);
+        superFox.Decodes.Select(d => d.Text).Should().Contain(["W0AAA K1JT RR73", "W1BBB K1JT RR73", "W5FFF K1JT -18", "W6GGG K1JT -15", "CQ K1JT"]);
+        superFox.Decodes.Should().OnlyContain(d => d.OffsetHz == 750);
+        ordinary.Decodes.Should().NotContain(d => d.Text.Contains("K1JT", StringComparison.Ordinal), "the ordinary FT8 decode cannot read a SuperFox signal");
+    }
+
+    [Fact]
     public async Task DecodeAsync_Jt9NeverAnswers_FallsBackToFileModeAfterThreeTries()
     {
         Assert.SkipUnless(SharedMemorySegment.Supported, "Shared memory with jt9 needs Windows or Linux.");

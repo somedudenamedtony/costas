@@ -125,6 +125,19 @@ public sealed class StationTracker
     /// </summary>
     public void ApplyEarly(DateTime slotStartUtc, IEnumerable<HeardMessage> heard) => ApplyHeard(slotStartUtc, heard);
 
+    /// <summary>
+    /// Applies the decodes of a slot's SuperFox pass (<see cref="Decoding.DecodeContext.SuperFox"/>), which holds only
+    /// what the SuperFox signal carried, so every sender in it is a SuperFox station. Like <see cref="ApplyEarly"/>,
+    /// nobody gets a miss and nobody is removed.
+    /// </summary>
+    public void ApplySuperFox(DateTime slotStartUtc, IEnumerable<HeardMessage> heard)
+    {
+        foreach (var call in ApplyHeard(slotStartUtc, heard))
+        {
+            if (_stations.TryGetValue(call, out var s)) _stations[call] = s with { RunsFox = true, RunsSuperFox = true };
+        }
+    }
+
     // Adds or updates every station heard in the slot; returns their calls.
     private HashSet<string> ApplyHeard(DateTime slotStartUtc, IEnumerable<HeardMessage> heard)
     {

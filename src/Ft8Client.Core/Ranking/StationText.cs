@@ -95,9 +95,25 @@ public static class StationText
     public const string FoxTip = "DXpedition Fox (Fox/Hound). Click Call and Costas works it the Hound way: your call every slot " +
                                  "above 1000 Hz for up to 2 minutes, then your report on the frequency the Fox answers on. Its RR73 logs the contact.";
 
+    /// <summary>The tag on a SuperFox station's row.</summary>
+    public const string SuperFoxTag = "SuperFox · Hound";
+
+    /// <summary>What calling a SuperFox station does, for the tooltip on <see cref="SuperFoxTag"/>.</summary>
+    public const string SuperFoxTip = "DXpedition SuperFox. Click Call and Costas works it the Hound way: your call every slot " +
+                                      "above 1000 Hz for up to 2 minutes, then your report on the same frequency. Its RR73 logs the contact. " +
+                                      "Costas does not check the SuperFox signature, so it cannot tell the real DXpedition from a pirate.";
+
+    /// <summary>The Fox tag for a station: SuperFox or the older Fox/Hound.</summary>
+    public static string FoxTagFor(Station s) => s.RunsSuperFox ? SuperFoxTag : FoxTag;
+
+    /// <summary>The Fox tag tooltip for a station.</summary>
+    public static string FoxTipFor(Station s) => s.RunsSuperFox ? SuperFoxTip : FoxTip;
+
     /// <summary>The "Doing now" column.</summary>
     public static string DoingNow(Station s)
     {
+        if (s.RunsSuperFox && s.State != StationState.CallingMe)
+            return "DXpedition (SuperFox), working Hounds";
         if (s.RunsFox && s.State != StationState.CallingMe) return "DXpedition (Fox/Hound), working Hounds";
         // A keyboard-mode station shows what it is sending (docs/09-keyboard-modes.md section 6).
         if (s.RecentText is { } text) return text.Trim();

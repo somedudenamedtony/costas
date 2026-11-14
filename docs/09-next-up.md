@@ -10,7 +10,7 @@ Do these five next: two fix things that cost contacts or hide controls today, on
 2. **Contact-flow fixes that lose QSOs (M).** An RR73 on the last retry is thrown away and the contact is not logged (T4); logging runs on the slot thread and can hold PTT past the audio (T3); clicking a station now calling CQ can send an old R-report (T8); compound calls like PJ4/K1ABC can't be clicked (T7, T11).
 3. **One on-air test session with a checklist (S).** Auto ALC thresholds, follow-the-radio's-band, FLRig, decode timing and the PSK/RTTY branch are all untested on the FT-710. A one-page checklist plus a Diagnostics "save test report" button turns one evening on the air into a list of real fixes.
 4. **Ask before abandoning a contact (S).** Band and mode menus, dial changes and Hunt "Go to 40 m" end a contact or CQ without asking, while the phone remote asks. Pair it with the owner's Esc decision so Esc in a text box stops ending QSOs.
-5. **SuperFox decoding, which unlocks SuperHound (M).** Most big DXpeditions now run SuperFox; today Costas can't decode them, so they can't be worked the Hound way.
+5. **SuperFox decoding, which unlocks SuperHound (M).** Done 2026-11-14: Costas watches for a SuperFox in every Fox slot and works it the Hound way. Not yet tried on a DXpedition on the air.
 
 ## UX polish
 
@@ -37,7 +37,7 @@ Ordered by value to an FT8 operator against effort. Anything that changes what g
 
 | # | Item | Why it helps | Size |
 | --- | --- | --- | --- |
-| C1 | SuperFox decoding, then SuperHound | Most large DXpeditions use SuperFox; Costas can't hear them yet | M |
+| C1 | SuperFox decoding, then SuperHound | Done 2026-11-14 (signature check and an on-air try still open) | M |
 | C2 | Club Log real-time upload | Club Log already feeds the Rarity meter; uploading closes the loop for DXCC tracking and OQRS | S |
 | C3 | Compound and portable calls (type 4 messages) | VE3/W7LIT as your own call, or answering PJ4/K1ABC, fails today | M |
 | C4 | DX cluster and RBN spots, display only, beside POTA spots | Shows rare stations on other bands before they show up on the waterfall | M |

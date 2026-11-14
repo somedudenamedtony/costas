@@ -91,6 +91,13 @@ public sealed record Station
     /// </summary>
     public bool RunsFox { get; init; }
 
+    /// <summary>
+    /// True once its SuperFox signal has been decoded: a Fox that sends one wide signal in place of separate streams.
+    /// It is worked the Hound way, except that my report goes out on my own frequency (WSJT-X does not move a Hound
+    /// that works a SuperFox).
+    /// </summary>
+    public bool RunsSuperFox { get; init; }
+
     /// <summary>The last characters of its text, for a station heard in a keyboard mode; otherwise null.</summary>
     public string? RecentText { get; init; }
 

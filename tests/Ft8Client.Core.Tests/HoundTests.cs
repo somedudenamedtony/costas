@@ -356,4 +356,21 @@ public class HoundTests
         started.Should().BeNull();
         s.E.View!.Flow.Should().Be(ContactFlow.AnswerCq);
     }
+
+    [Fact]
+    public void OnDecodes_SuperFoxReport_ReportStaysOnMyFrequency()
+    {
+        var s = new Sim();
+        s.E.IsSuperFox = call => call == "KH1X";
+        s.CallFox();
+        s.Step(("W0AAA KH1X RR73", 750, -15)).Should().BeNull();
+        s.Step()!.TxOffsetHz.Should().BeNull();
+        s.Step(("W7LIT KH1X -09", 750, -4));
+        var report = s.Step()!;
+
+        report.Message.Should().Be("KH1X W7LIT R-04");
+        report.TxOffsetHz.Should().BeNull("a SuperFox does not move its Hounds to its own frequency");
+        s.E.View!.SuperFox.Should().BeTrue();
+        s.E.View!.HoundReplyOffsetHz.Should().BeNull();
+    }
 }

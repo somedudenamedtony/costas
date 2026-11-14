@@ -56,8 +56,8 @@ public class StationRowViewModelTests
         var row = new StationRowViewModel(ranked, 1, DistanceUnit.Miles, Heard);
 
         row.IsFox.Should().BeTrue();
-        StationRowViewModel.FoxTag.Should().Be("Fox · Hound");
-        StationRowViewModel.FoxTip.Should().Contain("Hound way").And.Contain("every slot");
+        row.FoxTag.Should().Be("Fox · Hound");
+        row.FoxTip.Should().Contain("Hound way").And.Contain("every slot");
         row.CallText.Should().Be("Call", "calling a Fox is the same click; Costas works it the Hound way");
     }
 
