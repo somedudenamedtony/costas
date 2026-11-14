@@ -55,4 +55,10 @@ public sealed class WindowOptions
     /// in pixels for each resizable column from left to right. A missing table uses the default widths.
     /// </summary>
     public Dictionary<string, List<double>> ColumnWidths { get; set; } = [];
+
+    /// <summary>Operate side column: the tab showing, 0 Band, 1 Heard, 2 Signal, 3 Session.</summary>
+    public int SideTab { get; set; } = 1;
+
+    /// <summary>Operate side column: true when it is folded to a thin rail.</summary>
+    public bool SideCollapsed { get; set; }
 }

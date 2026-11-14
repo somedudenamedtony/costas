@@ -223,10 +223,18 @@
         </DockPanel>
       </DockPanel>
     </Border>
-    <Border IsVisible="{Binding Update.Visible}" Margin="16,0,16,8" Padding="12,8" CornerRadius="6"
+    <!-- One slim line (owner decision 2026-11-14): on a laptop a full-height bar cost a row of the call list. -->
+    <Border x:Name="UpdateBar" IsVisible="{Binding Update.Visible}" Margin="16,0,16,6" Padding="10,2" CornerRadius="6"
             Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+      <Border.Styles>
+        <Style Selector="Button">
+          <Setter Property="Padding" Value="9,1" />
+          <Setter Property="MinHeight" Value="24" />
+          <Setter Property="FontSize" Value="12" />
+        </Style>
+      </Border.Styles>
       <DockPanel LastChildFill="True">
-        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
           <Button Content="Update" Classes="accent" Command="{Binding Update.InstallCommand}" IsEnabled="{Binding !Update.Busy}" />
           <Button Content="Release notes" Command="{Binding Update.ReleaseNotesCommand}" />
           <Button Content="Skip this version" Command="{Binding Update.SkipCommand}" IsEnabled="{Binding !Update.Busy}" />

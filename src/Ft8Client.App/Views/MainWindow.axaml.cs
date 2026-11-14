@@ -82,6 +82,17 @@ public partial class MainWindow : Window
         SetWaterfallHeight(w.WaterfallHeight, save: false);
         OperatePage.LoadColumns(w.ColumnWidths);
         OperatePage.ColumnsSaved += (name, widths) => vm.Host.Settings.Update(s => s.Window.ColumnWidths[name] = [.. widths]);
+        vm.Operate.SideTab = Math.Clamp(w.SideTab, OperateViewModel.BandTab, OperateViewModel.SessionTab);
+        vm.Operate.SideCollapsed = w.SideCollapsed;
+        vm.Operate.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(OperateViewModel.SideTab) or nameof(OperateViewModel.SideCollapsed))
+                vm.Host.Settings.Update(s =>
+                {
+                    s.Window.SideTab = vm.Operate.SideTab;
+                    s.Window.SideCollapsed = vm.Operate.SideCollapsed;
+                });
+        };
         if (w.WaterfallOut) Dispatcher.UIThread.Post(PopOutWaterfall);
         vm.PanelOutChanged += (tab, isOut) =>
         {

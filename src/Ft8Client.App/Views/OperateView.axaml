@@ -19,6 +19,108 @@
       <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
       <Setter Property="Width" Value="2" />
     </Style>
+    <!-- The contact card. Idle (no contact) it folds to one line: the 40 pt call and the two empty reports go, the
+         countdown and the CQ buttons sit beside the caption, and the band strip follows underneath. -->
+    <Style Selector="Border#ContactCard">
+      <Setter Property="Padding" Value="18,12" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle">
+      <Setter Property="Padding" Value="14,8" />
+    </Style>
+    <Style Selector="Border#OnAir">
+      <Setter Property="Padding" Value="14,10" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle Border#OnAir">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="16,0,0,0" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel#OnAirStack">
+      <Setter Property="Spacing" Value="10" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle StackPanel#OnAirStack">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="16" />
+    </Style>
+    <Style Selector="Grid#Reports">
+      <Setter Property="ColumnSpacing" Value="24" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle Grid#Reports">
+      <Setter Property="ColumnSpacing" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle StackPanel.report, Border#ContactCard.idle StackPanel#CallRow, Border#ContactCard.idle StackPanel#ContactButtons">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="TextBlock.reportValue">
+      <Setter Property="FontSize" Value="24" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.reportUnit">
+      <Setter Property="Margin" Value="0,0,0,5" />
+    </Style>
+    <Style Selector="StackPanel#CardSlot">
+      <Setter Property="MinWidth" Value="150" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle StackPanel#CardSlot">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="8" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle StackPanel#CardSlot > TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle TextBlock.reportValue">
+      <Setter Property="FontSize" Value="18" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle TextBlock.reportUnit">
+      <Setter Property="Margin" Value="0,0,0,3" />
+    </Style>
+    <Style Selector="ProgressBar#SlotBar">
+      <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle ProgressBar#SlotBar">
+      <Setter Property="Width" Value="110" />
+      <Setter Property="MinWidth" Value="110" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock#PanelSubline">
+      <Setter Property="FontSize" Value="15" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle TextBlock#PanelSubline">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle TextBlock#PanelCaption">
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border#ContactCard.idle StackPanel#PanelWho">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- The side column's tabs: compact so all four and the fold button fit across 300 px. -->
+    <Style Selector="TabControl.side > TabItem">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Padding" Value="8,2" />
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style Selector="TabControl.side">
+      <Setter Property="Padding" Value="0,10,0,0" />
+    </Style>
+    <Style Selector="Button.rail">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="4,6" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
   </UserControl.Styles>
   <Grid x:Name="Root" ColumnDefinitions="*,300" RowDefinitions="*,Auto" Margin="16,0,16,12">
     <DockPanel x:Name="LeftPane" Grid.Column="0" Grid.Row="0">
@@ -74,46 +176,45 @@
         </ItemsControl>
       </StackPanel>
     </Border>
-    <!-- Pinned: the contact card (and the band summary when idle) stays put while the call list below scrolls.
-         When the band summary does not fit under the card it moves to the top of the call list and scrolls with it
-         (see OperateView.FitPinned). -->
+    <!-- Pinned: the contact card stays put while the call list below scrolls. Idle it is one line with the band strip
+         under it; the full band summary is the side column's Band tab. -->
     <ScrollViewer x:Name="PinnedScroll" DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
       <StackPanel x:Name="PinnedStack" Spacing="12" Margin="0,0,12,12">
 
         <!-- Top slot: the contact card, always shown. With no contact it is idle: no call, empty reports, the countdown and Call CQ. -->
-        <Border x:Name="ContactCard" Classes="card" Padding="18,12">
+        <Border x:Name="ContactCard" Classes="card" Classes.idle="{Binding Panel.IsIdle}">
           <StackPanel DataContext="{Binding Panel}" x:DataType="vm:ContactPanelViewModel" Spacing="4">
             <DockPanel>
               <!-- On-air panel: the reports, the slot countdown and every control that acts on this contact or the next transmission, together. -->
-              <Border DockPanel.Dock="Right" VerticalAlignment="Top" CornerRadius="8" Padding="14,10" BorderThickness="1"
+              <Border x:Name="OnAir" DockPanel.Dock="Right" CornerRadius="8"
                       BorderBrush="{DynamicResource ControlBorderBrush}" AutomationProperties.Name="On air">
-                <StackPanel Spacing="10">
-                  <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="24">
-                    <StackPanel>
+                <StackPanel x:Name="OnAirStack">
+                  <Grid x:Name="Reports" ColumnDefinitions="Auto,Auto,*">
+                    <StackPanel Classes="report">
                       <TextBlock Text="You sent" Classes="secondary" />
                       <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="{Binding Sent}" FontSize="24" FontWeight="SemiBold" Classes="num" />
+                        <TextBlock Text="{Binding Sent}" Classes="num reportValue" />
                         <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ReportUnit}" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5"
                                    IsVisible="{Binding ShowsReports}" />
                       </StackPanel>
                     </StackPanel>
-                    <StackPanel Grid.Column="1">
+                    <StackPanel Grid.Column="1" Classes="report">
                       <TextBlock Text="{Binding ReceivedLabel}" Classes="secondary" />
                       <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="{Binding Received}" FontSize="24" FontWeight="SemiBold" Classes="num" />
+                        <TextBlock Text="{Binding Received}" Classes="num reportValue" />
                         <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ReportUnit}" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5"
                                    IsVisible="{Binding ShowsReports}" />
                       </StackPanel>
                     </StackPanel>
-                    <StackPanel x:Name="CardSlot" Grid.Column="2" MinWidth="150" AutomationProperties.LiveSetting="Polite" IsVisible="{DynamicResource StandardSkin}">
+                    <StackPanel x:Name="CardSlot" Grid.Column="2" AutomationProperties.LiveSetting="Polite" IsVisible="{DynamicResource StandardSkin}">
                       <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLabel}" Classes="secondary" />
                       <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLeft}" FontSize="24" FontWeight="SemiBold" Classes="num"
+                        <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLeft}" Classes="num reportValue"
                                    Foreground="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).Transmitting, Converter={x:Static v:Converters.TransmittingText}}" />
-                        <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotUnit}" Classes="secondary" VerticalAlignment="Bottom" Margin="0,0,0,5"
+                        <TextBlock Text="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotUnit}" Classes="secondary reportUnit" VerticalAlignment="Bottom"
                                    IsVisible="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotLeft, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                       </StackPanel>
-                      <ProgressBar Value="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotProgress}" Maximum="1" Height="4" MinHeight="4" Margin="0,2,0,0"
+                      <ProgressBar x:Name="SlotBar" Value="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).SlotProgress}" Maximum="1" Height="4" MinHeight="4"
                                    Foreground="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).Transmitting, Converter={x:Static v:Converters.ProgressBrush}}" />
                     </StackPanel>
                   </Grid>
@@ -147,17 +248,20 @@
                             IsVisible="{Binding !$parent[UserControl].((vm:OperateViewModel)DataContext).Keyboard.Visible}"
                             AutomationProperties.Name="Auto-call"
                             ToolTip.Tip="Calls the top station in Next in line, then the next one each time a contact ends, logged or not. Each station is called once per run. Stops on Esc, Halt Tx, Abandon, Call CQ, a band or mode change, anything that refuses to transmit, or after the Tx watchdog time with no click." />
+                    <!-- The contact's own buttons. Idle there is no contact to act on, so they go and the card stays one line. -->
+                    <StackPanel x:Name="ContactButtons" Orientation="Horizontal" Spacing="8">
                     <!-- PSK and RTTY resend with the macro keys, so Resend is an FT8 and FT4 control. -->
                     <Button Content="Resend" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).ResendCommand}" IsEnabled="{Binding Active}"
                             IsVisible="{Binding !$parent[UserControl].((vm:OperateViewModel)DataContext).Keyboard.Visible}" />
                     <Button Content="Log now" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).LogNowCommand}" IsEnabled="{Binding CanLogNow}" />
                     <Button Content="Abandon (Esc)" Classes="critical" Command="{Binding $parent[UserControl].((vm:OperateViewModel)DataContext).AbandonCommand}" IsEnabled="{Binding Active}" />
+                    </StackPanel>
                   </StackPanel>
                 </StackPanel>
               </Border>
-              <StackPanel>
-                <TextBlock Text="{Binding Caption}" Classes="secondary" />
-                <StackPanel Orientation="Horizontal" Spacing="10">
+              <StackPanel x:Name="PanelWho">
+                <TextBlock x:Name="PanelCaption" Text="{Binding Caption}" Classes="secondary" />
+                <StackPanel x:Name="CallRow" Orientation="Horizontal" Spacing="10">
                   <TextBlock Text="{Binding Call}" FontSize="40" FontWeight="SemiBold" />
                   <!-- A Fox (Fox/Hound DXpedition) is worked the Hound way: a filled chip beside the call, where the eye already is. -->
                   <Border Classes="houndChip" IsVisible="{Binding HoundMode}" VerticalAlignment="Bottom" Margin="0,0,0,9"
@@ -168,7 +272,7 @@
                   <TextBlock Text="{Binding Need}" FontWeight="SemiBold" VerticalAlignment="Bottom" Margin="0,0,0,8"
                              Foreground="{Binding NeedKind, Converter={x:Static v:Converters.KindBrush}}" />
                 </StackPanel>
-                <TextBlock Text="{Binding Subline}" FontSize="15" />
+                <TextBlock x:Name="PanelSubline" Text="{Binding Subline}" />
                 <!-- The Hound banner: where the Fox is, where I transmit and how long is left, then what happens next. -->
                 <Border Classes="houndBanner" IsVisible="{Binding HoundMode}" Margin="0,6,0,0" HorizontalAlignment="Left">
                   <StackPanel Spacing="2">
@@ -178,6 +282,40 @@
                 </Border>
               </StackPanel>
             </DockPanel>
+            <!-- Idle: the band in one line (owner decision 2026-11-14). The full summary is the side column's Band tab; More opens it.
+                 Hidden while that tab is already showing, so nothing is on screen twice. -->
+            <Border x:Name="BandStrip" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource RowDividerBrush}" Padding="0,6,0,0" Margin="0,4,0,0"
+                    IsVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).ShowStrip}" AutomationProperties.Name="Band strip">
+              <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="16"
+                    DataContext="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Summary}" x:DataType="vm:SummaryViewModel">
+                <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding StripTitle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock VerticalAlignment="Center"><Run Text="{Binding StationsHeard}" FontSize="16" FontWeight="SemiBold" /><Run Text=" heard" Foreground="{DynamicResource TextSecondaryBrush}" /></TextBlock>
+                  <TextBlock VerticalAlignment="Center"><Run Text="{Binding Countries}" FontSize="16" FontWeight="SemiBold" /><Run Text=" countries" Foreground="{DynamicResource TextSecondaryBrush}" /></TextBlock>
+                  <TextBlock VerticalAlignment="Center"><Run Text="{Binding CallingCq}" FontSize="16" FontWeight="SemiBold" /><Run Text=" CQ" Foreground="{DynamicResource TextSecondaryBrush}" /></TextBlock>
+                  <TextBlock VerticalAlignment="Center"><Run Text="{Binding YouNeed}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" /><Run Text=" you need" Foreground="{DynamicResource TextSecondaryBrush}" /></TextBlock>
+                </StackPanel>
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding Continents}" VerticalAlignment="Center" AutomationProperties.Name="Heard from">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ContinentBar">
+                      <Grid RowDefinitions="14,Auto" Width="20" Background="Transparent" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
+                        <Border Height="{Binding MiniHeight}" VerticalAlignment="Bottom" Background="{DynamicResource AccentBrush}" />
+                        <TextBlock Grid.Row="1" Text="{Binding Code}" Classes="secondary" FontSize="10" HorizontalAlignment="Center" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Grid.Column="2" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding LogTip}">
+                  <Run Text="Log  " Foreground="{DynamicResource TextSecondaryBrush}" /><Run Text="{Binding LogLine}" />
+                </TextBlock>
+                <Button Grid.Column="3" Classes="link" VerticalAlignment="Center" AutomationProperties.Name="More about the band"
+                        Command="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).ShowSideCommand}" CommandParameter="0"
+                        ToolTip.Tip="Open the Band tab at the side: the full counts, Heard from and your log on this band.">
+                  <TextBlock Text="More ▾" />
+                </Button>
+              </Grid>
+            </Border>
             <!-- The conversation strip: a progress track with one marker per step, and the boxes below it, mine raised and theirs lowered. -->
             <ItemsControl ItemsSource="{Binding Steps}" Margin="0,8,0,0" AutomationProperties.Name="Conversation" IsVisible="{Binding HasSteps}">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
@@ -351,53 +489,6 @@
                                DataContext="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Calling}"
                                IsVisible="{Binding $parent[v:OperateView].((vm:OperateViewModel)DataContext).Calling, Converter={x:Static ObjectConverters.IsNotNull}}" />
           </StackPanel>
-        </Border>
-        <!-- Top slot: band summary (idle). Three columns; on a narrow card Heard from drops under the other two
-             (see OperateView.ReflowSummary). -->
-        <Border x:Name="SummaryCard" Classes="card" Padding="18,14" IsVisible="{Binding !InContact}" AutomationProperties.Name="Band summary">
-          <Grid x:Name="SummaryGrid" ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" DataContext="{Binding Summary}" x:DataType="vm:SummaryViewModel">
-            <StackPanel Grid.Column="0" Spacing="6">
-              <TextBlock Text="{Binding Title}" Classes="title" />
-              <WrapPanel ItemSpacing="22" LineSpacing="6">
-                <StackPanel><TextBlock Text="{Binding StationsHeard}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Stations heard" Classes="secondary" /></StackPanel>
-                <StackPanel><TextBlock Text="{Binding Countries}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Countries" Classes="secondary" /></StackPanel>
-                <StackPanel><TextBlock Text="{Binding CallingCq}" FontSize="26" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Calling CQ" Classes="secondary" /></StackPanel>
-                <StackPanel><TextBlock Text="{Binding YouNeed}" FontSize="26" FontWeight="SemiBold" Classes="num" Foreground="{DynamicResource AccentTextBrush}" /><TextBlock Text="You need" Classes="secondary" /></StackPanel>
-              </WrapPanel>
-              <TextBlock Text="{Binding Caption}" Classes="secondary num" TextWrapping="Wrap" Margin="0,0,12,0" />
-              <TextBlock Text="{Binding LogNotice}" IsVisible="{Binding HasLogNotice}" Foreground="{DynamicResource CautionBrush}" TextWrapping="Wrap" Margin="0,0,12,0" />
-            </StackPanel>
-            <StackPanel x:Name="SummaryHeardFrom" Grid.Column="1" Spacing="6" Margin="12,0">
-              <TextBlock Text="Heard from" Classes="title" />
-              <ItemsControl ItemsSource="{Binding Continents}" MaxWidth="560" HorizontalAlignment="Left">
-                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ContinentBar">
-                    <Grid RowDefinitions="72,Auto" Margin="2,0">
-                      <Grid Grid.Row="0" VerticalAlignment="Bottom">
-                        <StackPanel VerticalAlignment="Bottom">
-                          <TextBlock Text="{Binding Count}" HorizontalAlignment="Center" FontWeight="SemiBold" Classes="num" />
-                          <Border Height="{Binding BarHeight}" MinHeight="2" Background="{DynamicResource AccentBrush}" Margin="4,2,4,0" />
-                        </StackPanel>
-                      </Grid>
-                      <TextBlock Grid.Row="1" Text="{Binding Name}" Classes="secondary" HorizontalAlignment="Center" FontSize="12" Margin="0,4,0,0" />
-                    </Grid>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </StackPanel>
-            <Grid x:Name="SummaryLog" Grid.Column="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
-              <TextBlock Grid.ColumnSpan="2" Text="{Binding LogTitle}" Classes="title" Margin="0,0,0,6" />
-              <TextBlock Grid.Row="1" Text="Countries" Classes="secondary" Margin="0,2,16,2" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LogCountries}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
-              <TextBlock Grid.Row="2" Text="US states" Classes="secondary" Margin="0,2,16,2" />
-              <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LogStates}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
-              <TextBlock Grid.Row="3" Text="Grid squares" Classes="secondary" Margin="0,2,16,2" />
-              <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding LogGrids}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
-              <TextBlock Grid.Row="4" Text="This session" Classes="secondary" Margin="0,2,16,2" />
-              <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Tonight}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
-            </Grid>
-          </Grid>
         </Border>
       </StackPanel>
     </ScrollViewer>
@@ -662,12 +753,63 @@
     </ScrollViewer>
     </DockPanel>
 
-    <!-- Right column -->
-    <ScrollViewer Grid.Column="1" Grid.Row="0" x:Name="RightColumn" VerticalScrollBarVisibility="Auto">
-      <StackPanel Spacing="12">
-        <!-- Heard here: map and band activity -->
-        <Border Classes="card" Padding="14,12">
-          <StackPanel Spacing="8">
+    <!-- Right column (owner decision 2026-11-14): one card with four tabs, Band, Heard, Signal and Session, one showing
+         at a time. The » button folds it to a thin rail so the call list gets the full width; the rail opens it again. -->
+    <Panel Grid.Column="1" Grid.Row="0" x:Name="RightColumn">
+      <Border x:Name="SideCard" Classes="card" Padding="14,6,14,12" IsVisible="{Binding !SideCollapsed}">
+        <Panel>
+          <TabControl x:Name="SideTabs" Classes="side" SelectedIndex="{Binding SideTab}" AutomationProperties.Name="Side column">
+            <TabItem Header="Band" AutomationProperties.Name="Band">
+              <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+                <StackPanel Spacing="8" DataContext="{Binding Summary}" x:DataType="vm:SummaryViewModel" AutomationProperties.Name="Band summary">
+                  <TextBlock Text="{Binding Title}" Classes="title" />
+                  <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                    <StackPanel><TextBlock Text="{Binding StationsHeard}" FontSize="22" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Stations heard" Classes="secondary" /></StackPanel>
+                    <StackPanel Grid.Column="1"><TextBlock Text="{Binding Countries}" FontSize="22" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Countries" Classes="secondary" /></StackPanel>
+                    <StackPanel Grid.Row="1"><TextBlock Text="{Binding CallingCq}" FontSize="22" FontWeight="SemiBold" Classes="num" /><TextBlock Text="Calling CQ" Classes="secondary" /></StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="1"><TextBlock Text="{Binding YouNeed}" FontSize="22" FontWeight="SemiBold" Classes="num" Foreground="{DynamicResource AccentTextBrush}" /><TextBlock Text="You need" Classes="secondary" /></StackPanel>
+                  </Grid>
+                  <TextBlock Text="{Binding Caption}" Classes="secondary num" FontSize="12" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding LogNotice}" IsVisible="{Binding HasLogNotice}" Foreground="{DynamicResource CautionBrush}" TextWrapping="Wrap" />
+                  <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlBorderBrush}" Padding="0,10,0,0">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="Heard from" Classes="title" />
+                      <ItemsControl ItemsSource="{Binding Continents}" HorizontalAlignment="Stretch">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:ContinentBar">
+                            <Grid RowDefinitions="72,Auto" Margin="1,0" ToolTip.Tip="{Binding Tip}">
+                              <Grid Grid.Row="0" VerticalAlignment="Bottom">
+                                <StackPanel VerticalAlignment="Bottom">
+                                  <TextBlock Text="{Binding Count}" HorizontalAlignment="Center" FontWeight="SemiBold" Classes="num" />
+                                  <Border Height="{Binding BarHeight}" MinHeight="2" Background="{DynamicResource AccentBrush}" />
+                                </StackPanel>
+                              </Grid>
+                              <TextBlock Grid.Row="1" Text="{Binding Name}" Classes="secondary" HorizontalAlignment="Center" FontSize="10" Margin="0,4,0,0" />
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+                  <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlBorderBrush}" Padding="0,10,0,0">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                      <TextBlock Grid.ColumnSpan="2" Text="{Binding LogTitle}" Classes="title" Margin="0,0,0,6" />
+                      <TextBlock Grid.Row="1" Text="Countries" Classes="secondary" Margin="0,2,16,2" />
+                      <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LogCountries}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
+                      <TextBlock Grid.Row="2" Text="US states" Classes="secondary" Margin="0,2,16,2" />
+                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LogStates}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
+                      <TextBlock Grid.Row="3" Text="Grid squares" Classes="secondary" Margin="0,2,16,2" />
+                      <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding LogGrids}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
+                      <TextBlock Grid.Row="4" Text="This session" Classes="secondary" Margin="0,2,16,2" />
+                      <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Tonight}" Classes="num" TextWrapping="Wrap" Margin="0,2" />
+                    </Grid>
+                  </Border>
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Heard" AutomationProperties.Name="Heard here">
+              <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
             <StackPanel Spacing="8" DataContext="{Binding Map}" x:DataType="vm:HeardMapViewModel">
               <TextBlock Text="Heard here" Classes="title" />
               <TextBlock Text="{Binding Headline}" Classes="secondary" FontSize="12" TextWrapping="Wrap" Margin="0,-4,0,0" />
@@ -710,7 +852,10 @@
                 </StackPanel>
               </StackPanel>
             </StackPanel>
-            <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlBorderBrush}" Padding="0,10,0,0">
+              </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Signal" AutomationProperties.Name="Your signal">
+              <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
               <StackPanel Spacing="6">
                 <TextBlock Text="{Binding SignalTitle}" Classes="title" />
                 <TextBlock Text="{Binding SignalSource}" Classes="secondary" FontSize="12" Margin="0,-4,0,0" />
@@ -750,11 +895,10 @@
                 </ItemsControl>
                 <Button Classes="link" Command="{Binding OpenReachCommand}"><TextBlock Text="Open reach view" /></Button>
               </StackPanel>
-            </Border>
-          </StackPanel>
-        </Border>
-
-        <Border Classes="card" Padding="14,12">
+              </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Session" AutomationProperties.Name="This session">
+              <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
           <StackPanel Spacing="4">
             <TextBlock Text="{Binding TonightTitle}" Classes="title" />
             <TextBlock Text="{Binding TonightSubline}" Classes="secondary" />
@@ -774,9 +918,28 @@
             </ItemsControl>
             <Button Classes="link" Command="{Binding OpenLogCommand}" Margin="0,6,0,0"><TextBlock Text="{Binding TonightLink}" /></Button>
           </StackPanel>
-        </Border>
-
-      </StackPanel>
-    </ScrollViewer>
+              </ScrollViewer>
+            </TabItem>
+          </TabControl>
+          <Button Classes="rail" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,-8,0" Content="»" FontSize="15"
+                  Command="{Binding ToggleSideCommand}" AutomationProperties.Name="Fold the side column"
+                  ToolTip.Tip="Fold this column to a thin rail, so the call list gets the full width." />
+        </Panel>
+      </Border>
+      <Border x:Name="SideRail" Classes="card" Padding="2,6" IsVisible="{Binding SideCollapsed}" AutomationProperties.Name="Side column, folded">
+        <StackPanel x:Name="RailStack" Spacing="6">
+          <Button Classes="rail" Content="«" FontSize="15" HorizontalAlignment="Center" Command="{Binding ToggleSideCommand}"
+                  AutomationProperties.Name="Open the side column" ToolTip.Tip="Open the side column again." />
+          <Button Classes="rail" HorizontalAlignment="Center" Command="{Binding ShowSideCommand}" CommandParameter="0"
+                  AutomationProperties.Name="{Binding RailBand}" ToolTip.Tip="Open the Band tab.">
+            <LayoutTransformControl x:Name="RailBandText"><TextBlock Text="{Binding RailBand}" /></LayoutTransformControl>
+          </Button>
+          <Button Classes="rail" HorizontalAlignment="Center" Command="{Binding ShowSideCommand}" CommandParameter="2"
+                  AutomationProperties.Name="{Binding RailSignal}" ToolTip.Tip="Open the Signal tab.">
+            <LayoutTransformControl x:Name="RailSignalText"><TextBlock Text="{Binding RailSignal}" /></LayoutTransformControl>
+          </Button>
+        </StackPanel>
+      </Border>
+    </Panel>
   </Grid>
 </UserControl>

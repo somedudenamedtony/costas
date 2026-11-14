@@ -74,7 +74,7 @@ calling.* If they come back to you within 5 minutes, they
 show in the Calling you bar with a **Resume** button, as below. A station that only signs off an earlier contact
 (RR73, 73) or calls CQ again does not end your call.
 
-After logging, the panel shows *Logged* for one slot and then goes back to the band summary. The station drops out
+After logging, the panel shows *Logged* for one slot and then goes back to the idle card and band strip. The station drops out
 of Next in line (it is now worked on this band) and your tallies update:
 
 ![After logging](images/after-logging.png)
