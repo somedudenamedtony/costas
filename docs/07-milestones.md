@@ -71,7 +71,7 @@ Accept:
 
 ## M6 · PSK Reporter
 
-Build: MQTT feed client and `spot` storage; query fallback; `HearsMe` wired into ranking (Hears you, Chance); signal card; Reach view with plot label collision handling; spot uploader (IPFIX), off by default.
+Build: MQTT feed client and `spot` storage; query fallback; `HearsMe` wired into ranking (Hears you, Chance); signal card; Reach view with plot label collision handling; spot uploader (IPFIX), off by default (changed to on for new installs, D7, 2026-11-18).
 
 Resolve VERIFY: topic form for calls with `/`; query attribute names and limit; IPFIX template layout.
 

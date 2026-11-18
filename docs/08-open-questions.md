@@ -10,7 +10,7 @@
 | D4 | Decoder packaging | Run `jt9` in place from an installed WSJT-X during development; bundle for release | Bundling needs the dependent DLL set and licence notices |
 | D5 | Units | Miles by default, km as a setting | |
 | D6 | "Confirmed" in need tiers | Tiers use worked, not confirmed; setting to switch | |
-| D7 | Uploading spots to PSK Reporter | Off until the operator turns it on | WSJT-X has it on by default for most users |
+| D7 | Uploading spots to PSK Reporter | **Decided by the owner (2026-11-18): on by default for new installs**, as WSJT-X does. A settings file that already says off keeps it off; the operator can turn it off in Setup or Settings. Never in simulation | Was off until the operator turned it on, which left Costas nearly invisible in PSK Reporter's software list (13 reporting stations in the week to 2026-11-18) |
 | D8 | Split operation | Off in v1 | Enable "Fake it" later if Tx audio purity matters on the owner's radio |
 | D9 | Simulation by default | **Decided by the owner (2026-10-04):** no replayed or made-up data unless asked. Simulation only with `--simulate` or the hidden developer mode (seven clicks on the product name in About), which can also use Hamlib's test radio | |
 | D10 | Tuning the radio at start-up | Not done: the dial is read from the radio, and only picking a band tunes it. If the radio is outside the selected band, transmit is refused by the band-edge check | Owner to decide whether start-up should tune the radio to the selected band |
@@ -176,7 +176,7 @@ Other notes from M2:
 
 1. Which radio and audio interface is the primary test station? (Assumed IC-7300 over USB.)
 2. Do you have QRZ XML Logbook Data subscription or higher? Sync and upload need it.
-3. Should the app upload your reception spots to PSK Reporter by default?
+3. ~~Should the app upload your reception spots to PSK Reporter by default?~~ Yes, for new installs (D7, 2026-11-18).
 4. Any preference for the product name?
 5. Is the app for your own station first, or for public release from the start? That decides how early the installer, signing and user guide matter.
 6. Setup's input meter counts -40 to -10 dBFS (RMS) as a good receive level and calls a sample peak at -1 dBFS clipping. These are a first guess for FT8 band noise on a USB codec; change them if your station sits elsewhere.

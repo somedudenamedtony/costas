@@ -20,8 +20,11 @@ public sealed class PskReporterOptions
     /// <summary>Follow stations near me on every band, to show in the band menu where they are being heard. Needs the feed.</summary>
     public bool BandActivity { get; set; } = true;
 
-    /// <summary>Upload my reception spots. Off until the operator turns it on.</summary>
-    public bool UploadSpots { get; set; }
+    /// <summary>
+    /// Upload my reception spots. On by default for new installs (owner decision D7, 2026-11-18); a settings file that
+    /// already says off keeps it off. Never uploads in simulation.
+    /// </summary>
+    public bool UploadSpots { get; set; } = true;
 
     /// <summary>Contact address passed to the query service (<c>appcontact</c>), optional.</summary>
     public string? AppContact { get; set; }

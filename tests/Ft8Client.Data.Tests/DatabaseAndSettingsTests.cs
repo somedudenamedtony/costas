@@ -185,6 +185,23 @@ public class DatabaseAndSettingsTests
     }
 
     [Fact]
+    public void PskReporterOptions_NewInstall_UploadsSpots()
+    {
+        new AppSettings().PskReporter.UploadSpots.Should().BeTrue();
+    }
+
+    [Fact]
+    public void SettingsStore_FileWithUploadSpotsOff_KeepsItOff()
+    {
+        var path = Path.Combine(Directory.CreateTempSubdirectory("ft8set").FullName, "settings.json");
+        var store = new SettingsStore(path);
+        var s = new AppSettings();
+        s.PskReporter.UploadSpots = false;
+        store.Save(s);
+        store.Load().PskReporter.UploadSpots.Should().BeFalse();
+    }
+
+    [Fact]
     public void SettingsStore_GoodFile_NoLoadProblem()
     {
         var path = Path.Combine(Directory.CreateTempSubdirectory("ft8set").FullName, "settings.json");

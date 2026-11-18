@@ -148,7 +148,7 @@ All optional. QRZ has two separate services with two separate sign-ins:
 - **QRZ username and password**: used only for callsign lookups (name, city, state, grid of other stations). The API
   key cannot do lookups. Full details need a QRZ XML subscription; without one QRZ returns fewer fields. Press
   **Test login**.
-- **Upload the stations I hear to PSK Reporter**: shares your reception reports with other operators.
+- **Upload the stations I hear to PSK Reporter**: on unless you clear it. Shares your reception reports with other operators.
 
 Your key and password are stored in Windows Credential Manager, never in a settings file or log.
 
