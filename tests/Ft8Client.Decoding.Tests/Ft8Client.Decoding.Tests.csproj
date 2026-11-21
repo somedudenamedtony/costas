@@ -21,4 +21,7 @@
     </PackageReference>
     <PackageReference Include="xunit.v3" Version="4.0.1" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Shared\ExecutableScript.cs" Link="Shared\ExecutableScript.cs" />
+  </ItemGroup>
 </Project>

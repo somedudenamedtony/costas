@@ -6,7 +6,6 @@
 // License, or (at your option) any later version. This program is distributed WITHOUT ANY WARRANTY;
 // see the GNU General Public License in LICENSE for details.
 
-using System.Diagnostics;
 using Ft8Client.Core.Transmit;
 using Ft8Client.Rig;
 
@@ -49,6 +48,12 @@ public sealed class TxMeterMonitor
 
     /// <summary>No reading starts later than this before the audio ends.</summary>
     public TimeSpan StopBeforeEnd { get; init; } = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>
+    /// Time for the waits and the reading window. Tests pass a clock that moves only when waited on, so the number of
+    /// readings a short tone gets no longer depends on how busy the machine is.
+    /// </summary>
+    public TimeProvider Time { get; init; } = TimeProvider.System;
 
     /// <summary>The SWR at or above which a transmission is stopped, read at the start of each one; null to never stop.</summary>
     public Func<double?> SwrStopAt { get; init; } = () => null;
@@ -97,14 +102,14 @@ public sealed class TxMeterMonitor
     private async Task<TxMeterResult?> ReadAsync(TimeSpan duration, SwrGuard? guard, CancellationToken ct)
     {
         var readings = new List<TxMeterReading>();
-        var sw = Stopwatch.StartNew();
+        var start = Time.GetTimestamp();
         var last = duration - StopBeforeEnd;
         try
         {
-            await Task.Delay(Settle, ct).ConfigureAwait(false);
+            await Task.Delay(Settle, Time, ct).ConfigureAwait(false);
             // Kept until the next reading completes, so a contact logged as its last transmission starts still gets it.
             Volatile.Write(ref _powerWatts, await _rig().ReadPowerWattsAsync(ct).ConfigureAwait(false) ?? 0);
-            while (sw.Elapsed <= last)
+            while (Time.GetElapsedTime(start) <= last)
             {
                 var reading = await _rig().ReadTxMetersAsync(ct).ConfigureAwait(false);
                 readings.Add(reading);
@@ -114,7 +119,7 @@ public sealed class TxMeterMonitor
                     TrippedReading = reading;
                     SwrTripped?.Invoke(guard.TrippedAt!.Value);
                 }
-                await Task.Delay(Interval, ct).ConfigureAwait(false);
+                await Task.Delay(Interval, Time, ct).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)

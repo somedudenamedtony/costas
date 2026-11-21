@@ -66,6 +66,7 @@ third_party/                  jt9 and Hamlib binaries with their licences (not c
 - One class per file. Public types in `Core` have XML doc comments.
 - Each source file starts with the GPLv3 short header.
 - Tests are named `Method_Condition_Result`. Domain logic in `Core` needs unit tests before the UI that uses it is built.
+- Tests must not depend on timing or on each other (test classes run in parallel; CI runners are slow). No fixed sleeps before an assertion: wait for the condition, an event or an acknowledgement, with a deadline of 10 s or more. Drive time with `ManualClock` or a `TimeProvider` rather than wall-clock windows. Never kill processes by name (kill only the one the test started), and write stand-in executables with `tests/Shared/ExecutableScript.cs`. A fake server stops its listener only after its accept loop has ended.
 - Commit per logical change, imperative subject line, body explains why.
 
 ## How to work

@@ -134,7 +134,10 @@ public class SuperFoxSessionTests
         r.Decoder.SuperFox(Slot(0), "CQ KH1X", "$VERIFY$ KH1X 123456");
         r.Decoder.SuperFox(Slot(2), "CQ KH1X", "$VERIFY$ KH1X 654321");
         await r.RunUntilAsync(Slot(2).AddSeconds(14.8));
-        for (var i = 0; i < 100 && r.Session.Snapshot.Rank.Line.All(x => x.Station.FoxCheck != FoxCheck.Verified); i++) await Task.Delay(10, TestContext.Current.CancellationToken);
+        // The check answers on the thread pool; wait for it with room for a busy runner (100 polls of 10 ms was not).
+        var deadline = DateTime.UtcNow.AddSeconds(15);
+        while (r.Session.Snapshot.Rank.Line.All(x => x.Station.FoxCheck != FoxCheck.Verified) && DateTime.UtcNow < deadline)
+            await Task.Delay(10, TestContext.Current.CancellationToken);
 
         var fox = r.Session.Snapshot.Rank.Line.Single(x => x.Station.Call == "KH1X").Station;
         fox.FoxCheck.Should().Be(FoxCheck.Verified);

@@ -57,6 +57,12 @@ public sealed class RigctldRig : IRig
     /// <summary>True while the child process runs.</summary>
     public bool ProcessRunning => _process is { HasExited: false };
 
+    /// <summary>
+    /// The running rigctld's process, for tests that kill it to check recovery. Tests run in parallel, each with its own
+    /// rigctld, so killing every process named rigctld would break the others.
+    /// </summary>
+    internal Process? ProcessForTests => _process;
+
     /// <inheritdoc />
     public event EventHandler<RigFault>? Faulted;
 

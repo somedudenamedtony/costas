@@ -197,7 +197,7 @@ public class PskReporterTests
         feed.MyDxcc.Should().Be(291);
 
         feed.FollowNeighbours("20m", "FT8", "DN40");
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await AreaSubscribed(feed, "20m", "FT8", "DN40");
         var line = """{"sq":1,"f":14075500,"md":"FT8","rp":-12,"t":1767495300,"sc":"K7AAA","sl":"DN41","rc":"DL1ABC","rl":"JO62","sa":291,"ra":230,"b":"20m"}""";
         var msg = new MqttApplicationMessageBuilder().WithTopic("pskr/filter/v2/20m/FT8/K7AAA/DL1ABC/DN41/JO62/291/230").WithPayload(line).Build();
         await server.InjectApplicationMessage(new InjectedMqttApplicationMessage(msg) { SenderClientId = "test" }, TestContext.Current.CancellationToken);
@@ -233,7 +233,7 @@ public class PskReporterTests
         feed.Start("W7LIT");
         await WaitFor(() => feed.Connected);
         feed.FollowNeighbours("20m", "FT8", "DN40", allBands: true, bands: ["20m", "15m"]);
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await AreaSubscribed(feed, "+", "FT8", "DN40");
 
         async Task Send(long sq, string band, string call)
         {
@@ -290,7 +290,7 @@ public class PskReporterTests
         feed.Start("W7LIT");
         await WaitFor(() => feed.Connected);
         feed.FollowHunt(["VK9XA"], [339], 291);
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await WaitFor(() => feed.IsSubscribed(PskFeedClient.HuntCallTopicFor("VK9XA")) && feed.IsSubscribed(PskFeedClient.HuntEntityTopicFor(339, 291)));
 
         async Task Send(string topic, string json)
         {
@@ -338,7 +338,7 @@ public class PskReporterTests
         await WaitFor(() => feed.Connected);
 
         feed.FollowNeighbours("20m", "FT8", "DN40", allBands: true);
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await AreaSubscribed(feed, "+", "FT8", "DN40");
         var line = """{"sq":2,"f":21075500,"md":"FT8","rp":-15,"t":1767495300,"sc":"K7AAA","sl":"DN41","rc":"PY2ABC","rl":"GG66","sa":291,"ra":108,"b":"15m"}""";
         var msg = new MqttApplicationMessageBuilder().WithTopic("pskr/filter/v2/15m/FT8/K7AAA/PY2ABC/DN41/GG66/291/108").WithPayload(line).Build();
         await server.InjectApplicationMessage(new InjectedMqttApplicationMessage(msg) { SenderClientId = "test" }, TestContext.Current.CancellationToken);
@@ -366,7 +366,8 @@ public class PskReporterTests
         feed.FollowHunt(["VE3AAA", "DL2ABC"], [], null);
         feed.Start("W7LIT");
         await WaitFor(() => feed.Connected);
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await AreaSubscribed(feed, "+", "FT8", "FN25AB");
+        await WaitFor(() => feed.IsSubscribed(PskFeedClient.HuntCallTopicFor("VE3AAA")) && feed.IsSubscribed(PskFeedClient.HuntCallTopicFor("DL2ABC")));
 
         async Task Send(long seq, string call, string grid, int dxcc, string mode = "FT8")
         {
@@ -382,7 +383,8 @@ public class PskReporterTests
         neighbours.Select(r => r.SenderCall).Should().Equal("VE3AAA", "W1AAA");
 
         feed.FollowNeighbours("20m", "FT8", "JO62", allBands: true);
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await AreaSubscribed(feed, "+", "FT8", "JO62");
+        await WaitFor(() => !feed.IsSubscribed(PskFeedClient.NeighbourTopicFor("+", "FT8", "FN25")));
         // Hunt subscriptions also deliver reports from far away and in another mode; neither is local activity.
         await Send(103, "VE3AAA", "FN25AB", 1);
         await Send(104, "DL2ABC", "JO62", 230, "FT4");
@@ -391,7 +393,7 @@ public class PskReporterTests
         neighbours.Select(r => r.SenderCall).Should().Equal("VE3AAA", "W1AAA", "DL2ABC");
 
         feed.FollowNeighbours("20m", "FT8", "invalid", allBands: true);
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await WaitFor(() => !NeighbourGrids.Covering("JO62").Any(g => feed.IsSubscribed(PskFeedClient.NeighbourTopicFor("+", "FT8", g))));
         await Send(106, "DL2ABC", "JO62", 230);
         await WaitFor(() => hunts.Count == 5);
         neighbours.Should().HaveCount(3);
@@ -419,6 +421,11 @@ public class PskReporterTests
             await server.InjectApplicationMessage(new InjectedMqttApplicationMessage(msg) { SenderClientId = "test" });
         }
     }
+
+    // Waits until the broker has acknowledged every square the feed follows around grid. A message injected before
+    // that is not delivered, which a fixed pause only made unlikely (it failed on busy runners).
+    private static Task AreaSubscribed(PskFeedClient feed, string band, string mode, string grid) =>
+        WaitFor(() => NeighbourGrids.Covering(grid).All(g => feed.IsSubscribed(PskFeedClient.NeighbourTopicFor(band, mode, g))));
 
     private static async Task WaitFor(Func<bool> cond, int seconds = 10)
     {

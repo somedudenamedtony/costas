@@ -10,6 +10,7 @@ using Ft8Client.Core;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Decoding;
 using Ft8Client.Decoding.Shared;
+using Ft8Client.Tests.Shared;
 
 namespace Ft8Client.Decoding.Tests;
 
@@ -174,8 +175,7 @@ public class Jt9PersistentDecoderTests
         else
         {
             exe = Path.Combine(dir, "quit.sh");
-            File.WriteAllText(exe, "#!/bin/sh\nexit 3\n");
-            File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            ExecutableScript.Write(exe, "#!/bin/sh\nexit 3\n");
         }
         using var decoder = new Jt9PersistentDecoder(new Jt9Options(exe, Path.Combine(dir, "tmp"), TimeSpan.FromSeconds(10)), "WSJT-X 3.0.1");
         var audio = new SlotAudio(Slot, Mode.Ft8, new short[ModeInfo.DecoderSamples(Mode.Ft8)]);

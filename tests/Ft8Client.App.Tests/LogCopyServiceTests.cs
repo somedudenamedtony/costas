@@ -26,7 +26,7 @@ public class LogCopyServiceTests
         StationCallsign = "W7LIT", ProfileId = "home",
     };
 
-    private static async Task Until(Func<bool> condition, int timeoutMs = 5000)
+    private static async Task Until(Func<bool> condition, int timeoutMs = 15000)
     {
         var sw = Stopwatch.StartNew();
         while (!condition())
@@ -42,14 +42,23 @@ public class LogCopyServiceTests
         var folder = Directory.CreateTempSubdirectory("ft8copy").FullName;
         var reads = 0;
         var log = new List<QsoRecord> { Contact("PA3A") };
-        var copy = new LogCopyService(new AdifLogMirror(() => { Interlocked.Increment(ref reads); return log; }, folder), new SystemClock(), Quiet);
+        // The quiet period runs on a manual clock: on the real one a busy runner could pause the burst for longer than
+        // the quiet period and split it in two.
+        var clock = new ManualClock(new DateTime(2026, 11, 18, 20, 0, 0, DateTimeKind.Utc));
+        var copy = new LogCopyService(new AdifLogMirror(() => { Interlocked.Increment(ref reads); return log; }, folder), clock, Quiet);
         using var cts = new CancellationTokenSource();
         var run = copy.RunAsync(cts.Token);
+        clock.Advance(Quiet);
         await Until(() => copy.Attempts == 1);
 
-        for (var i = 0; i < 20; i++) copy.Request();
+        for (var i = 0; i < 20; i++)
+        {
+            copy.Request();
+            clock.Advance(Quiet / 10);
+        }
+        copy.Attempts.Should().Be(1, "the log has not been quiet yet");
+        clock.Advance(Quiet);
         await Until(() => copy.Attempts == 2);
-        await Task.Delay(Quiet * 3, TestContext.Current.CancellationToken);
 
         copy.Attempts.Should().Be(2, "the start-up write plus one for the whole burst");
         reads.Should().Be(2);
@@ -68,19 +77,21 @@ public class LogCopyServiceTests
         var copy = new LogCopyService(new AdifLogMirror(() =>
         {
             writing.Set();
-            release.Wait(TimeSpan.FromSeconds(5));
+            release.Wait(TimeSpan.FromSeconds(60));
             return [Contact("PA3A")];
         }, folder), new SystemClock(), Quiet);
         using var cts = new CancellationTokenSource();
         var run = copy.RunAsync(cts.Token);
         writing.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken).Should().BeTrue();
 
-        var sw = Stopwatch.StartNew();
-        copy.Request();
-        sw.Stop();
+        // Request returns while the write is still held, so it did not wait for it. (Timing it against a few
+        // milliseconds failed whenever a busy runner paused the test thread.)
+        var request = Task.Run(copy.Request, TestContext.Current.CancellationToken);
+        var returned = await Task.WhenAny(request, Task.Delay(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken)) == request;
+        release.IsSet.Should().BeFalse();
         release.Set();
 
-        sw.ElapsedMilliseconds.Should().BeLessThan(50, "logging and PTT are never held up by the copy");
+        returned.Should().BeTrue("logging and PTT are never held up by the copy");
         await Until(() => copy.Attempts == 2);
         await cts.CancelAsync();
         await run.Invoking(t => t).Should().ThrowAsync<OperationCanceledException>();

@@ -53,6 +53,7 @@ public sealed class PskFeedClient : IAsyncDisposable
     private Timer? _sampleTimer;
     private HashSet<string> _huntTopics = new(StringComparer.Ordinal);
     private readonly HashSet<string> _subscribedHuntTopics = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _ackedHuntTopics = new(StringComparer.Ordinal);
     private HashSet<string> _huntCalls = new(StringComparer.Ordinal);
     private HashSet<int> _huntDxccs = [];
     private int _huntCount;
@@ -118,6 +119,16 @@ public sealed class PskFeedClient : IAsyncDisposable
     /// <summary>True while connected and subscribed (reports can arrive).</summary>
     public bool Connected => _subscribed && _client?.IsConnected == true;
 
+    /// <summary>
+    /// True when the broker has acknowledged a subscription to <paramref name="topic"/> on the current connection. Tests
+    /// wait on it before publishing, because a message published before the broker applies the subscription is not
+    /// delivered.
+    /// </summary>
+    internal bool IsSubscribed(string topic)
+    {
+        lock (_topicGate) return _subscribed && (_subscribedAreaTopics.Contains(topic) || _ackedHuntTopics.Contains(topic));
+    }
+
     /// <summary>Connections made so far (reconnects included).</summary>
     public int Connections { get; private set; }
 
@@ -172,13 +183,25 @@ public sealed class PskFeedClient : IAsyncDisposable
         }
         try
         {
-            foreach (var t in remove) await client.UnsubscribeAsync(t).ConfigureAwait(false);
-            foreach (var t in add) await client.SubscribeAsync(new MqttClientSubscribeOptionsBuilder().WithTopicFilter(t).Build()).ConfigureAwait(false);
+            foreach (var t in remove)
+            {
+                await client.UnsubscribeAsync(t).ConfigureAwait(false);
+                lock (_topicGate) _ackedHuntTopics.Remove(t);
+            }
+            foreach (var t in add)
+            {
+                await client.SubscribeAsync(new MqttClientSubscribeOptionsBuilder().WithTopicFilter(t).Build()).ConfigureAwait(false);
+                lock (_topicGate) _ackedHuntTopics.Add(t);
+            }
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
             // The next reconnect subscribes again.
-            lock (_topicGate) _subscribedHuntTopics.Clear();
+            lock (_topicGate)
+            {
+                _subscribedHuntTopics.Clear();
+                _ackedHuntTopics.Clear();
+            }
         }
     }
 
@@ -327,6 +350,7 @@ public sealed class PskFeedClient : IAsyncDisposable
                 {
                     _subscribedAreaTopics.Clear();
                     _subscribedHuntTopics.Clear();
+                    _ackedHuntTopics.Clear();
                 }
                 _subscribed = true;
                 await UpdateAreaSubscriptionsAsync().ConfigureAwait(false);

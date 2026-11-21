@@ -37,8 +37,10 @@ public class TxMeterMonitorTests
             Radio = new SimulatedRig(Clock) { TxMeters = meters };
             Tx = new Transmitter(Radio, new NullAudioOutput { Now = () => Clock.UtcNow }, Clock, ReferenceData.LoadFrequencies());
             // Short timings so a 0.4 s tone gets several readings.
+            // Meter time moves only when the monitor waits, so a short tone always gets the same readings.
             Monitor = new TxMeterMonitor(Tx, () => Radio)
             {
+                Time = new WaitedTimeProvider(),
                 Settle = TimeSpan.FromMilliseconds(20),
                 Interval = TimeSpan.FromMilliseconds(20),
                 StopBeforeEnd = TimeSpan.FromMilliseconds(100),
@@ -174,15 +176,11 @@ public class TxMeterMonitorTests
             slots.Poll();
             s.Tx.Poll();
         }
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        while (DateTime.UtcNow < deadline)
-        {
-            lock (s.Tripped) if (s.Tripped.Count > 0) break;
-            await Task.Delay(10, TestContext.Current.CancellationToken);
-        }
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        // Every reading of the transmission has been taken once the monitor is idle.
+        await s.Monitor.Idle;
         await s.Tx.HaltAsync();
         lock (s.Tripped) s.Tripped.Should().Equal(3.4);
+        lock (s.Live) s.Live.Count.Should().BeGreaterThan(SwrGuard.ReadingsToTrip, "readings went on after the trip");
     }
 
     [Fact]
@@ -201,7 +199,7 @@ public class TxMeterMonitorTests
             slots.Poll();
             s.Tx.Poll();
         }
-        await Task.Delay(200, TestContext.Current.CancellationToken);
+        await s.Monitor.Idle;
         await s.Tx.HaltAsync();
         lock (s.Tripped) s.Tripped.Should().BeEmpty();
         lock (s.Live) s.Live.Should().NotBeEmpty();

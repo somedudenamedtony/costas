@@ -9,6 +9,7 @@
 using FluentAssertions;
 using Ft8Client.Data.Secrets;
 using Xunit;
+using Ft8Client.Tests.Shared;
 
 namespace Ft8Client.Data.Tests;
 
@@ -24,8 +25,7 @@ public sealed class SecretToolStoreTests : IDisposable
     private string Script(string body)
     {
         var path = Path.Combine(_dir, "secret-tool");
-        File.WriteAllText(path, "#!/bin/sh\n" + body + "\n");
-        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        ExecutableScript.Write(path, "#!/bin/sh\n" + body + "\n");
         return path;
     }
 

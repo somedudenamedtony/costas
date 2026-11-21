@@ -9,6 +9,7 @@
 using Ft8Client.Core.Processes;
 using Ft8Client.Core.Time;
 using Ft8Client.Rig;
+using Ft8Client.Tests.Shared;
 
 namespace Ft8Client.Rig.Tests;
 
@@ -39,7 +40,11 @@ public class RigTests
     [Fact]
     public async Task SendAsync_CallerCancelsMidReply_NextCommandGetsItsOwnReply()
     {
-        // A slow radio: each reply comes 300 ms after its command. Accepts new connections like rigctld.
+        // A slow radio: the first reply is held until the caller has given up on it, so the cancel always lands mid-reply
+        // (a fixed 300 ms reply let a busy runner see the reply before its 100 ms cancel). Accepts new connections like
+        // rigctld.
+        var hold = new TaskCompletionSource();
+        var first = 0;
         var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
         l.Start();
         var port = ((System.Net.IPEndPoint)l.LocalEndpoint).Port;
@@ -61,12 +66,12 @@ public class RigTests
                             while (await r.ReadLineAsync(TestContext.Current.CancellationToken) is { } line)
                             {
                                 var name = line[3..];
-                                await Task.Delay(300, TestContext.Current.CancellationToken);
+                                if (Interlocked.Exchange(ref first, 1) == 0) await hold.Task.WaitAsync(TestContext.Current.CancellationToken);
                                 var val = name == "SWR" ? "1.500000" : "0.100000";
                                 await s.WriteAsync(System.Text.Encoding.ASCII.GetBytes($"get_level: {name}\n{val}\nRPRT 0\n"), TestContext.Current.CancellationToken);
                             }
                         }
-                        catch (IOException)
+                        catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException)
                         {
                         }
                     }
@@ -81,7 +86,8 @@ public class RigTests
                 var cancelled = () => client.GetLevelAsync("SWR", cts.Token);
                 await cancelled.Should().ThrowAsync<OperationCanceledException>();
             }
-            await Task.Delay(500, TestContext.Current.CancellationToken);
+            // The late reply now goes out, after the caller gave up.
+            hold.SetResult();
 
             (await client.GetLevelAsync("ALC", TestContext.Current.CancellationToken)).Should().Be(0.1);
             (await client.GetLevelAsync("SWR", TestContext.Current.CancellationToken)).Should().Be(1.5);
@@ -145,7 +151,7 @@ public class RigTests
                     await c.SetAsync("L RFPOWER 0.25", ct);
                     break;
                 }
-                catch (RigException) when (i < 20)
+                catch (RigException) when (i < 150) // up to 15 s for rigctld to open its port on a busy runner
                 {
                     await Task.Delay(100, ct);
                 }
@@ -341,7 +347,7 @@ public class RigTests
             for (var i = 0; ; i++)
             {
                 try { await direct.GetFrequencyAsync(ct); break; }
-                catch (RigException) when (i < 30) { await Task.Delay(100, ct); }
+                catch (RigException) when (i < 150) { await Task.Delay(100, ct); }
             }
             await direct.SetAsync("F 14074000", ct);
             await using (var proxy = await RigctldRig.StartAsync(
@@ -464,10 +470,10 @@ public class RigTests
         try
         {
             var exe = Path.Combine(dir, "rigctld");
-            File.WriteAllText(exe, "#!/bin/sh\nexec sleep 30\n");
-            if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-            var guard = new RecordingGuard();
-            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+            ExecutableScript.Write(exe, "#!/bin/sh\nexec sleep 30\n");
+            // Cancelled once rigctld has started (a fixed 500 ms could pass before a busy runner had even started it).
+            using var cts = new CancellationTokenSource();
+            var guard = new RecordingGuard(() => cts.CancelAfter(TimeSpan.FromMilliseconds(200)));
 
             var act = () => RigctldRig.StartAsync(new RigctldOptions(exe, 1, "/dev/ttyCostasNoSuchPort", 38400), guard, SystemClock.Instance, cts.Token);
 
@@ -482,11 +488,15 @@ public class RigTests
         }
     }
 
-    private sealed class RecordingGuard : IProcessGuard
+    private sealed class RecordingGuard(Action? adopted = null) : IProcessGuard
     {
         public List<int> Adopted { get; } = [];
 
-        public void Adopt(System.Diagnostics.Process process) => Adopted.Add(process.Id);
+        public void Adopt(System.Diagnostics.Process process)
+        {
+            Adopted.Add(process.Id);
+            adopted?.Invoke();
+        }
     }
 
     [Fact]
@@ -511,8 +521,7 @@ public class RigTests
         var log = Path.Combine(dir, "log");
         File.WriteAllText(log, string.Empty);
         var exe = Path.Combine(dir, "rigctld");
-        File.Copy(Path.Combine(AppContext.BaseDirectory, "Emulators", "lost_port_rigctld.py"), exe);
-        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        ExecutableScript.Copy(Path.Combine(AppContext.BaseDirectory, "Emulators", "lost_port_rigctld.py"), exe);
         Environment.SetEnvironmentVariable("COSTAS_FAKE_LOG", log);
         try
         {
@@ -570,11 +579,11 @@ public class RigTests
         // Kill rigctld behind the client's back: the next command faults, then the supervisor restarts it.
         var faults = new List<RigFault>();
         rig.Faulted += (_, f) => faults.Add(f);
-        foreach (var p in System.Diagnostics.Process.GetProcessesByName("rigctld"))
-        {
-            p.Kill();
-            await p.WaitForExitAsync(ct);
-        }
+        // Only this rig's rigctld: other test classes run alongside this one with their own, and killing those failed
+        // their commands with "rigctld closed the connection".
+        var own = rig.ProcessForTests!;
+        own.Kill();
+        await own.WaitForExitAsync(ct);
         // The exit is reported with no command pending, and commands fail (rather than quietly restarting) until it is back.
         var faultDeadline = DateTime.UtcNow.AddSeconds(5);
         while (faults.Count == 0 && DateTime.UtcNow < faultDeadline) await Task.Delay(20, ct);

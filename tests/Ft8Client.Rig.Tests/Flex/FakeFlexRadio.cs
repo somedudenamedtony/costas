@@ -25,6 +25,7 @@ internal sealed class FakeFlexRadio : IAsyncDisposable
     private readonly TcpListener _listener;
     private readonly CancellationTokenSource _cts = new();
     private readonly Task _accept;
+    private readonly ConcurrentDictionary<Task, Socket> _serving = new();
     private volatile NetworkStream? _client;
 
     /// <summary>Listens on loopback on a free port, or on <paramref name="endpoint"/>.</summary>
@@ -74,12 +75,14 @@ internal sealed class FakeFlexRadio : IAsyncDisposable
             {
                 var tcp = await _listener.AcceptTcpClientAsync(_cts.Token);
                 Interlocked.Increment(ref Connections);
-                _ = Task.Run(() => ServeAsync(tcp));
+                var socket = tcp.Client;
+                var serve = Task.Run(() => ServeAsync(tcp));
+                _serving[serve] = socket;
+                _ = serve.ContinueWith(t => _serving.TryRemove(t, out Socket? _), TaskScheduler.Default);
             }
         }
-        // InvalidOperationException ("Not listening"): DisposeAsync stopped the listener after the loop checked the token
-        // but before it reached AcceptTcpClientAsync.
-        catch (Exception ex) when (ex is OperationCanceledException or SocketException or ObjectDisposedException or InvalidOperationException)
+        // The listener is stopped only after this loop has ended (DisposeAsync), so cancellation is the only way out.
+        catch (OperationCanceledException)
         {
         }
     }
@@ -133,12 +136,17 @@ internal sealed class FakeFlexRadio : IAsyncDisposable
         return null;
     }
 
+    // Order matters. Cancelling ends the accept loop; the listener is stopped only once that loop has finished, because
+    // stopping it first races the loop: if the loop had checked the token but not yet called AcceptTcpClientAsync, that
+    // call threw "Not listening" (CI on Linux, PR #192). Then every connection is closed and its task awaited, so nothing
+    // still uses the token when it is disposed.
     public async ValueTask DisposeAsync()
     {
         await _cts.CancelAsync();
+        await _accept;
         _listener.Stop();
-        _client?.Socket.Close();
-        try { await _accept; } catch (OperationCanceledException) { }
+        foreach (var socket in _serving.Values) socket.Close();
+        await Task.WhenAll(_serving.Keys);
         _cts.Dispose();
     }
 }

@@ -9,6 +9,7 @@
 using Ft8Client.Core;
 using Ft8Client.Core.Decoding;
 using Ft8Client.Decoding;
+using Ft8Client.Tests.Shared;
 
 namespace Ft8Client.Decoding.Tests;
 
@@ -29,8 +30,7 @@ public class Jt9DecoderTests
         else
         {
             exe = Path.Combine(dir, "hang.sh");
-            File.WriteAllText(exe, "#!/bin/sh\nsleep 60\n");
-            File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            ExecutableScript.Write(exe, "#!/bin/sh\nsleep 60\n");
         }
 
         var decoder = new Jt9Decoder(new Jt9Options(exe, Path.Combine(dir, "tmp"), TimeSpan.FromMilliseconds(500)));
@@ -57,8 +57,7 @@ public class Jt9DecoderTests
         else
         {
             exe = Path.Combine(dir, "plan.sh");
-            File.WriteAllText(exe, "#!/bin/sh\necho planned >> jt9_wisdom.dat\n");
-            File.SetUnixFileMode(exe, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            ExecutableScript.Write(exe, "#!/bin/sh\necho planned >> jt9_wisdom.dat\n");
         }
         var tmp = Path.Combine(dir, "tmp");
         var decoder = new Jt9Decoder(new Jt9Options(exe, tmp));
