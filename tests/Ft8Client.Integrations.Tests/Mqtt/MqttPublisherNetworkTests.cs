@@ -124,8 +124,10 @@ public class MqttPublisherNetworkTests
 
         await statuses.WaitForAsync(s => s.Health != ServiceHealth.Ok);
         await Until(() => proxy.Accepted >= 2, "Costas reconnects by itself");
-        await broker.WaitForAsync(m => m.Topic == Topics.Availability && m.Payload == MqttPayloads.Online
-                                       && broker.Published.Skip(before).Count(x => x.Topic == Topics.Availability) > 0);
+        // "online" on the new connection. The broker's last will ("offline") also lands after the cut, so look only at
+        // what came after it, or the first connection's "online" would match before Costas is back.
+        await Until(() => broker.Published.Skip(before).Any(m => m.Topic == Topics.Availability && m.Payload == MqttPayloads.Online),
+            "Costas says online again");
         var after = broker.Published.Skip(before).ToList();
         var state = after.FindIndex(m => m.Topic == Topics.Session && m.Payload.Contains("idle_timeout", StringComparison.Ordinal));
         state.Should().BeGreaterThanOrEqualTo(0, "the state as it is now is sent on the new connection");
