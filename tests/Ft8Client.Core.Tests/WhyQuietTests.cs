@@ -39,6 +39,7 @@ public class WhyQuietTests
         Audio = InputLevelState.TooQuiet,
         DialHz = 14_090_000,
         RigMode = "LSB",
+        PassbandHz = 500,
         Decoder = new ServiceStatus(ServiceHealth.Down, "jt9 not found", T0),
         ClockOffsetSeconds = 3.1,
     };
@@ -164,8 +165,31 @@ public class WhyQuietTests
     {
         var r = WhyQuiet.Explain(Quiet() with { EmptySlots = 4 })!;
         r.Cause.Should().Be(QuietCause.NothingFound);
-        r.Text.Should().Be("No decodes in the last 4 slots. Audio, dial, radio mode, decoder and clock look right, so 20 m may just be quiet.");
+        r.Text.Should().Be("No decodes in the last 4 slots. Audio, dial, radio mode, filter, decoder and clock look right, so 20 m may just be quiet.");
     }
+
+    [Theory]
+    [InlineData(500)]
+    [InlineData(1800)]
+    public void Explain_NarrowFilter_SaysTheWidthAndHasNoGoTo(int width)
+    {
+        var r = WhyQuiet.Explain(Quiet() with { PassbandHz = width })!;
+        r.Cause.Should().Be(QuietCause.NarrowFilter);
+        r.Text.Should().Be($"No decodes: the radio's receive filter is {width} Hz wide, and FT8 signals spread over about 3000 Hz. Widen it on the radio to about 3000 Hz.");
+        r.GoToDialHz.Should().BeNull("Costas does not change the radio's filter");
+    }
+
+    [Theory]
+    [InlineData(2000)]
+    [InlineData(2400)]
+    [InlineData(3000)]
+    [InlineData(0)]
+    public void Explain_WideOrUnknownFilter_IsFine(int width) =>
+        WhyQuiet.Explain(Quiet() with { PassbandHz = width })!.Cause.Should().Be(QuietCause.NothingFound);
+
+    [Fact]
+    public void Explain_NarrowFilterRadioNotConnected_DefersToTheNoRadioBanner() =>
+        WhyQuiet.Explain(Quiet() with { Radio = ServiceHealth.Down, PassbandHz = 500 }).Should().BeNull();
 
     [Theory]
     [InlineData(ServiceHealth.Down)]
@@ -181,7 +205,7 @@ public class WhyQuietTests
     public void Explain_RadioNotConnectedButAudioSilent_StillSaysAudio() =>
         WhyQuiet.Explain(Quiet() with { Radio = ServiceHealth.Down, Audio = InputLevelState.Silence })!.Cause.Should().Be(QuietCause.Silence);
 
-    // The order of confidence: audio, dial, mode, decoder, clock.
+    // The order of confidence: audio, dial, mode, filter, decoder, clock.
     [Fact]
     public void Explain_EverythingWrong_AudioFirst() => WhyQuiet.Explain(AllWrong())!.Cause.Should().Be(QuietCause.TooQuiet);
 
@@ -194,12 +218,16 @@ public class WhyQuietTests
         WhyQuiet.Explain(AllWrong() with { Audio = InputLevelState.Good, DialHz = 14_074_000 })!.Cause.Should().Be(QuietCause.WrongMode);
 
     [Fact]
-    public void Explain_ModeFine_DecoderBeforeClock() =>
-        WhyQuiet.Explain(AllWrong() with { Audio = InputLevelState.Good, DialHz = 14_074_000, RigMode = "PKTUSB" })!.Cause.Should().Be(QuietCause.Decoder);
+    public void Explain_ModeFine_FilterBeforeDecoder() =>
+        WhyQuiet.Explain(AllWrong() with { Audio = InputLevelState.Good, DialHz = 14_074_000, RigMode = "PKTUSB" })!.Cause.Should().Be(QuietCause.NarrowFilter);
+
+    [Fact]
+    public void Explain_FilterFine_DecoderBeforeClock() =>
+        WhyQuiet.Explain(AllWrong() with { Audio = InputLevelState.Good, DialHz = 14_074_000, RigMode = "PKTUSB", PassbandHz = 3000 })!.Cause.Should().Be(QuietCause.Decoder);
 
     [Fact]
     public void Explain_DecoderFine_Clock() =>
-        WhyQuiet.Explain(AllWrong() with { Audio = InputLevelState.Good, DialHz = 14_074_000, RigMode = "PKTUSB", Decoder = Quiet().Decoder })!
+        WhyQuiet.Explain(AllWrong() with { Audio = InputLevelState.Good, DialHz = 14_074_000, RigMode = "PKTUSB", PassbandHz = 3000, Decoder = Quiet().Decoder })!
             .Cause.Should().Be(QuietCause.Clock);
 
     [Fact]

@@ -15,7 +15,7 @@ namespace Ft8Client.Core.Decoding;
 /// <summary>
 /// Picks the one line the Operate screen shows after <see cref="QuietWatch.SlotsBeforeQuiet"/> received slots with no
 /// decodes: the most likely reason, with a fix where there is one. Causes are checked in order of confidence: the receive
-/// audio, the dial, the radio's mode, the decoder, the clock. A radio that is not connected defers to the no-radio
+/// audio, the dial, the radio's mode, the radio's receive filter, the decoder, the clock. A radio that is not connected defers to the no-radio
 /// banner, and with no radio set up (and no simulation) nothing is shown, since nothing real is being received. The
 /// readout only advises: it never changes the radio. Pure.
 /// </summary>
@@ -26,6 +26,13 @@ public static class WhyQuiet
     /// sub-band is still in the receiver's passband, so the dial alone would not leave the band silent.
     /// </summary>
     public const long DialToleranceHz = 1_000;
+
+    /// <summary>
+    /// A receive filter narrower than this counts as too narrow. FT8 and FT4 signals spread over about 200 to 3000 Hz of
+    /// audio, so below 2000 Hz a third or more of the sub-band is cut off; a common 2400 Hz SSB filter loses only the top
+    /// few hundred hertz and is not flagged.
+    /// </summary>
+    public const int MinPassbandHz = 2_000;
 
     /// <summary>Hamlib modes that receive FT8 and FT4: USB data and plain USB (the fallback for radios without data mode).</summary>
     public static IReadOnlyList<string> GoodRigModes { get; } = ["PKTUSB", "USB"];
@@ -61,6 +68,14 @@ public static class WhyQuiet
             return new(QuietCause.WrongMode, $"No decodes: the radio is in {RigModeName(rigMode)}, and {mode} needs USB data.{fix}", f.UsualDialHz);
         }
 
+        // Costas never sets the filter width (it sends mode changes with "passband unchanged"), so there is no Go to.
+        if (radioUp && f.PassbandHz is { } width and > 0 && width < MinPassbandHz)
+        {
+            var hz = width.ToString(CultureInfo.InvariantCulture);
+            return new(QuietCause.NarrowFilter,
+                $"No decodes: the radio's receive filter is {hz} Hz wide, and {mode} signals spread over about 3000 Hz. Widen it on the radio to about 3000 Hz.");
+        }
+
         if (f.Decoder is { Health: ServiceHealth.Down or ServiceHealth.Degraded } d)
         {
             var why = d.Message.Trim().TrimEnd('.');
@@ -79,7 +94,7 @@ public static class WhyQuiet
         if (!radioUp) return null;
 
         return new(QuietCause.NothingFound,
-            $"No decodes in the last {f.EmptySlots} slots. Audio, dial, radio mode, decoder and clock look right, so {band} may just be quiet.");
+            $"No decodes in the last {f.EmptySlots} slots. Audio, dial, radio mode, filter, decoder and clock look right, so {band} may just be quiet.");
     }
 
     /// <summary>A Hamlib mode as the operator knows it: <c>PKTLSB</c> reads "LSB data".</summary>

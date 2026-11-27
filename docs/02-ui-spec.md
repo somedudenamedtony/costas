@@ -76,10 +76,11 @@ Label "Why it's quiet" in caution colour, then the text. Causes, in the order th
 | Clipping | No decodes: the receive audio is clipping. Turn down the radio's USB audio output or the computer's recording level. | — |
 | Dial off | No decodes: the dial is on 14.090, not the usual FT8 frequency for 20 m. | Go to 14.074 |
 | Wrong radio mode | No decodes: the radio is in LSB, and FT8 needs USB data. Change it on the radio, or Go to 14.074 sets it. | Go to 14.074 |
+| Narrow filter | No decodes: the radio's receive filter is 500 Hz wide, and FT8 signals spread over about 3000 Hz. Widen it on the radio to about 3000 Hz. | — |
 | Decoder down | No decodes: the decoder (jt9) is not running: jt9 not found. Diagnostics has the details. | — |
 | Decoder failing | No decodes: the decoder (jt9) is not working: jt9 exited with code 2. Diagnostics has the details. | — |
 | Clock off | No decodes: your clock is 3.1 s off, and decodes need it within 2 s. Sync the computer's clock, or turn on Clock correction in Settings › Transmitting. | — |
-| Nothing found | No decodes in the last 4 slots. Audio, dial, radio mode, decoder and clock look right, so 20 m may just be quiet. | — |
+| Nothing found | No decodes in the last 4 slots. Audio, dial, radio mode, filter, decoder and clock look right, so 20 m may just be quiet. | — |
 
 Values in the examples (14.090, LSB, -52 dBFS, the decoder's message, 3.1 s, 4 slots, 20 m, FT8) are filled in from the live state. Squelch is not checked. The phone page shows the same line and button (see Phone).
 

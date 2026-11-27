@@ -402,10 +402,11 @@ Owner request 2026-11-18. `WhyQuiet.Explain` (Core, pure) picks the Operate scre
     1. **Receive audio**: the settled level (`InputLevelTrend`: once a second, outside transmit time and two seconds after, classified by `InputLevelClassifier`, the same bands as Setup's meter: good -40 to -10 dBFS RMS, clipping at a peak of -1 dBFS or more; a state counts when it held for 7 of the last 10 readings). No audio, silence, too quiet and clipping are causes; too loud is not (decodes usually survive it).
     2. **Dial**: more than 1 kHz (`DialToleranceHz`) from the frequency table's dial for the band and mode. Within 1 kHz most of the 3 kHz sub-band is still in the passband, so the dial alone would not silence the band. Only for a radio that reports its dial and mode over CAT (not VOX, whose dial is only what Costas was told) and is connected. Fix: Go to the usual dial.
     3. **Radio mode**: the mode the radio reports is not `PKTUSB` or `USB` (plain USB is accepted: it is Costas's own fallback for radios that refuse data mode, and receives FT8 fine). Same conditions as the dial. Fix: Go to the usual dial, which also sets USB data.
-    4. **Decoder**: its status is Down (not running, for example jt9 not found) or Degraded (the slot's decode failed, as while it restarts).
-    5. **Clock**: the clock offset (SNTP after correction, or the decodes' median DT) beyond the clock limit (Settings › Transmitting, default 2 s), the same limit that blocks transmit.
-    6. **Radio not connected**: nothing; the no-radio banner already says so.
-    7. Otherwise **nothing found**: the band may just be quiet.
+    4. **Receive filter** (owner request 2026-11-27): the passband the radio reports with its mode is narrower than 2000 Hz (`MinPassbandHz`). FT8 and FT4 spread over about 200 to 3000 Hz of audio, so below 2000 Hz a third or more of the sub-band is cut off; a common 2400 Hz SSB filter is not flagged. A width of 0 or none (VOX, or a driver that gives no width) is not checked. Same conditions as the dial. No Go to: Costas never sets the filter width (mode changes go out with Hamlib's "passband unchanged"), so the fix is on the radio.
+    5. **Decoder**: its status is Down (not running, for example jt9 not found) or Degraded (the slot's decode failed, as while it restarts).
+    6. **Clock**: the clock offset (SNTP after correction, or the decodes' median DT) beyond the clock limit (Settings › Transmitting, default 2 s), the same limit that blocks transmit.
+    7. **Radio not connected**: nothing; the no-radio banner already says so.
+    8. Otherwise **nothing found**: the band may just be quiet.
 - The readout never changes rig state. Only the operator's click on its Go to button tunes, through `AppHost.TuneDialAsync`.
 
 ## 19. Band-edge and licence guard

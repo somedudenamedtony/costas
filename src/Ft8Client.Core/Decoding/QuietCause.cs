@@ -29,6 +29,9 @@ public enum QuietCause
     /// <summary>The radio reports a mode other than USB or USB data.</summary>
     WrongMode,
 
+    /// <summary>The radio reports a receive filter narrower than <see cref="WhyQuiet.MinPassbandHz"/>.</summary>
+    NarrowFilter,
+
     /// <summary>The decoder (jt9) is not running, or failing (as it does while it restarts).</summary>
     Decoder,
 

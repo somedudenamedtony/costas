@@ -99,6 +99,28 @@ public class QuietSessionTests
     }
 
     [Fact]
+    public async Task SetPassband_Narrow_SaysTheFilter()
+    {
+        var r = new Rig();
+        r.Session.SetRigMode("PKTUSB");
+        r.Session.SetPassband(500);
+        await r.RunUntilAsync(Slot(2).AddSeconds(5));
+        var q = r.Session.Snapshot.Quiet!;
+        q.Cause.Should().Be(QuietCause.NarrowFilter);
+        q.Text.Should().Contain("500 Hz wide");
+    }
+
+    [Fact]
+    public async Task SetPassband_NoRigModeReported_FilterNotChecked()
+    {
+        var r = new Rig();
+        r.Session.SetRigMode(null);
+        r.Session.SetPassband(500);
+        await r.RunUntilAsync(Slot(2).AddSeconds(5));
+        r.Session.Snapshot.Quiet!.Cause.Should().Be(QuietCause.NothingFound, "a VOX setup reports nothing from the radio");
+    }
+
+    [Fact]
     public async Task SetRigMode_Lsb_OffersGoToTheUsualDial()
     {
         var r = new Rig();

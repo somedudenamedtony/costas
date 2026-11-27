@@ -46,6 +46,12 @@ public sealed record QuietFacts
     /// <summary>The radio's mode as Hamlib names it (<c>PKTUSB</c>, <c>LSB</c>), or null when it reports none.</summary>
     public string? RigMode { get; init; }
 
+    /// <summary>
+    /// The receive filter width the radio reports with its mode, in hertz, or null when it reports none (audio only with
+    /// VOX, or a radio whose driver gives no width).
+    /// </summary>
+    public int? PassbandHz { get; init; }
+
     /// <summary>The decoder's status, or null when not known yet.</summary>
     public ServiceStatus? Decoder { get; init; }
 

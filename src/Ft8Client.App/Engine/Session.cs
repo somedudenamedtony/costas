@@ -1729,6 +1729,7 @@ public sealed partial class Session : Ft8Client.App.Remote.IRemoteTarget
         DialHz = _rigMode is null ? null : _dialHz,
         UsualDialHz = _frequencies.Find(_config.Band, _config.Mode)?.DialHz,
         RigMode = _rigMode,
+        PassbandHz = _rigMode is null ? null : _passbandHz,
         Decoder = _services.GetValueOrDefault(ServiceNames.Decoder),
         ClockOffsetSeconds = ClockEstimate.Offset(_sntpOffset, _medianDt),
         ClockLimitSeconds = _config.ClockBlockSeconds,
